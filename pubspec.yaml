@@ -1,0 +1,46 @@
+name: money_ledger
+description: Decentralized expense sharing app using the Matrix network.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # Matrix protocol
+  matrix: ^7.2.2
+  # State management
+  flutter_riverpod: ^3.3.1
+  riverpod_annotation: ^4.0.2
+  # Local database
+  drift: ^2.33.0
+  drift_flutter: ^0.3.0
+  sqlite3_flutter_libs: ^0.6.0
+  # sqflite for matrix SDK internal storage
+  sqflite: ^2.4.1
+  path_provider: ^2.1.5
+  # Navigation
+  go_router: ^17.2.3
+  # Web platform utilities (URL navigation for SSO)
+  web: ^1.1.0
+  # Utilities
+  uuid: ^4.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.15.0
+  drift_dev: ^2.33.0
+  riverpod_generator: ^4.0.3
+
+dependency_overrides:
+  sqlite3: '>=3.1.5 <4.0.0'
+  sqflite_common_ffi: ^2.4.0
+  sqflite_common: ^2.5.0
+
+flutter:
+  uses-material-design: true
