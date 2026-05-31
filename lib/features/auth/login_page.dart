@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart';
-
 import '../../core/platform/url_helper.dart';
+import '../../models/login_flows_result.dart';
 import 'auth_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -16,90 +17,104 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _homeserverCtrl =
-      TextEditingController(text: 'https://matrix.org');
+  final _serverCtrl = TextEditingController(text: 'matrix.org');
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
 
-  // When the homeserver field loses focus, fetch available login flows.
-  String _lastFetchedHomeserver = '';
+  /// The input currently being used to look up login flows.
+  String _lookupInput = 'matrix.org';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
-    // On web: check if we're returning from an SSO redirect with a loginToken.
     if (kIsWeb) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleSsoCallback();
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _handleSsoCallback());
     }
   }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _serverCtrl.dispose();
+    _usernameCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── SSO callback handling ────────────────────────────────────────────────
 
   Future<void> _handleSsoCallback() async {
     final params = currentUrlParams;
     final token = params['loginToken'];
-    final homeserver =
-        params['hs'] ?? _homeserverCtrl.text.trim();
     if (token == null || token.isEmpty) return;
 
-    // Clear the token from the URL immediately so a reload doesn't replay it.
+    final rawHs = params['hs'] ?? _serverCtrl.text.trim();
     clearUrlParams();
+
+    // Resolve the homeserver via .well-known before token exchange.
+    final result =
+        await ref.read(loginFlowsProvider(rawHs).future);
+    final hs = result.resolvedUrl.isNotEmpty ? result.resolvedUrl : rawHs;
 
     await ref
         .read(authProvider.notifier)
-        .loginWithToken(homeserver: homeserver, token: token);
+        .loginWithToken(resolvedHomeserver: hs, token: token);
 
-    final error = ref.read(authProvider).error;
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('SSO login failed: $error')),
-      );
-    } else if (mounted) {
-      context.go('/groups');
-    }
-  }
-
-  void _onHomeserverSubmitted() {
-    final hs = _homeserverCtrl.text.trim();
-    if (hs != _lastFetchedHomeserver && hs.isNotEmpty) {
-      setState(() => _lastFetchedHomeserver = hs);
-      // Invalidate the cached flows so they refresh for the new homeserver.
-      ref.invalidate(loginFlowsProvider(hs));
-    }
-  }
-
-  Future<void> _submitPassword() async {
-    if (!_formKey.currentState!.validate()) return;
-    await ref.read(authProvider.notifier).login(
-          homeserver: _homeserverCtrl.text.trim(),
-          username: _usernameCtrl.text.trim(),
-          password: _passwordCtrl.text,
-        );
-    final error = ref.read(authProvider).error;
-    if (error != null && mounted) {
+    if (!mounted) return;
+    final err = ref.read(authProvider).error;
+    if (err != null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
-    } else if (mounted) {
+          .showSnackBar(SnackBar(content: Text('SSO login failed: $err')));
+    } else {
       context.go('/groups');
     }
   }
 
-  void _startSso({String? providerId}) {
-    final hs = _homeserverCtrl.text.trim();
-    if (hs.isEmpty) return;
+  // ── Homeserver / login-flows ─────────────────────────────────────────────
 
-    final hsUri = Uri.tryParse(hs);
+  void _scheduleFlowsLookup(String input) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 600), () {
+      final trimmed = input.trim();
+      if (trimmed.isNotEmpty && trimmed != _lookupInput) {
+        setState(() => _lookupInput = trimmed);
+      }
+    });
+  }
+
+  /// Called when the user leaves the server field or presses Enter there.
+  void _commitServerInput() {
+    _debounce?.cancel();
+    final trimmed = _serverCtrl.text.trim();
+    if (trimmed.isNotEmpty && trimmed != _lookupInput) {
+      setState(() => _lookupInput = trimmed);
+    }
+  }
+
+  /// If the username looks like a Matrix ID, auto-fill the server field.
+  void _onUsernameChanged(String value) {
+    final match = RegExp(r'^@[^:]+:(.+)$').firstMatch(value.trim());
+    if (match == null) return;
+    final domain = match.group(1)!;
+    if (_serverCtrl.text != domain) {
+      _serverCtrl.text = domain;
+      _scheduleFlowsLookup(domain);
+    }
+  }
+
+  // ── SSO redirect ─────────────────────────────────────────────────────────
+
+  void _startSso(LoginFlowsResult result, {String? providerId}) {
+    final hsUri = Uri.tryParse(result.resolvedUrl);
     if (hsUri == null) return;
 
-    // Embed the homeserver in the callback URL so we know where to authenticate
-    // when the loginToken arrives after the SSO redirect.
     final callbackBase =
         kIsWeb ? Uri.base.origin : 'moneyledger://sso-callback';
     final callbackUrl =
-        '$callbackBase/?hs=${Uri.encodeComponent(hs)}';
+        '$callbackBase/?hs=${Uri.encodeComponent(result.resolvedUrl)}';
 
-    // Build the SSO redirect URL directly — no Matrix client needed.
     final path = providerId != null
         ? '_matrix/client/v3/login/sso/redirect/$providerId'
         : '_matrix/client/v3/login/sso/redirect';
@@ -111,41 +126,46 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (kIsWeb) {
       navigateTo(ssoUrl);
     } else {
-      // Mobile: open in WebView / in-app browser (to be wired up later).
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: SelectableText('SSO URL: $ssoUrl')),
+        SnackBar(content: SelectableText('SSO: $ssoUrl')),
       );
     }
   }
 
-  @override
-  void dispose() {
-    _homeserverCtrl.dispose();
-    _usernameCtrl.dispose();
-    _passwordCtrl.dispose();
-    super.dispose();
+  // ── Password submit ───────────────────────────────────────────────────────
+
+  Future<void> _submitPassword(String resolvedHomeserver) async {
+    if (!_formKey.currentState!.validate()) return;
+    await ref.read(authProvider.notifier).login(
+          resolvedHomeserver: resolvedHomeserver,
+          username: _usernameCtrl.text.trim(),
+          password: _passwordCtrl.text,
+        );
+    if (!mounted) return;
+    final err = ref.read(authProvider).error;
+    if (err != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(err.toString())));
+    } else {
+      context.go('/groups');
+    }
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final hs = _lastFetchedHomeserver.isEmpty
-        ? _homeserverCtrl.text.trim()
-        : _lastFetchedHomeserver;
-    final flowsAsync = ref.watch(loginFlowsProvider(hs));
-    final flows = flowsAsync.value ?? [];
-    final hasPassword =
-        flows.any((f) => f.type == AuthenticationTypes.password) ||
-            flows.isEmpty; // show password fields by default before flows load
-    final ssoFlow = flows.cast<LoginFlow?>().firstWhere(
-          (f) => f?.type == AuthenticationTypes.sso,
-          orElse: () => null,
-        );
-    final providers = (ssoFlow?.additionalProperties['identity_providers']
-            as List?)
-        ?.cast<Map>()
-        .toList() ??
-        [];
+    final flowsAsync = ref.watch(loginFlowsProvider(_lookupInput));
+    final result = flowsAsync.value ?? LoginFlowsResult.empty;
+
+    // Show resolved URL as a hint when it differs from what the user typed.
+    final resolvedLabel = result.resolvedUrl.isNotEmpty &&
+            result.resolvedUrl != 'https://${_lookupInput.trim()}'
+        ? result.resolvedUrl
+        : null;
+
+    final loading = authState.isLoading || flowsAsync.isLoading;
 
     return Scaffold(
       body: SafeArea(
@@ -160,66 +180,81 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   const Icon(Icons.account_balance_wallet,
                       size: 64, color: Colors.teal),
                   const SizedBox(height: 16),
-                  Text(
-                    'MoneyLedger',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                  ),
+                  Text('MoneyLedger',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                      textAlign: TextAlign.center),
                   const SizedBox(height: 8),
-                  Text(
-                    'Sign in with your Matrix account',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
+                  Text('Sign in with your Matrix account',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: Colors.grey),
+                      textAlign: TextAlign.center),
                   const SizedBox(height: 32),
 
-                  // ── Homeserver field ─────────────────────────────────
+                  // ── Server field ───────────────────────────────────────
                   TextFormField(
-                    controller: _homeserverCtrl,
-                    decoration: const InputDecoration(
+                    key: const Key('serverField'),
+                    controller: _serverCtrl,
+                    decoration: InputDecoration(
                       labelText: 'Homeserver',
-                      hintText: 'https://matrix.org',
-                      prefixIcon: Icon(Icons.dns),
+                      hintText: 'matrix.org or mozilla.modular.im',
+                      prefixIcon: const Icon(Icons.dns),
+                      helperText: resolvedLabel != null
+                          ? 'Resolved to $resolvedLabel'
+                          : null,
+                      suffix: flowsAsync.isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 1.5),
+                            )
+                          : null,
                     ),
                     keyboardType: TextInputType.url,
-                    onEditingComplete: _onHomeserverSubmitted,
-                    onTapOutside: (_) => _onHomeserverSubmitted(),
+                    onChanged: _scheduleFlowsLookup,
+                    onEditingComplete: _commitServerInput,
+                    onTapOutside: (_) => _commitServerInput(),
                   ),
                   const SizedBox(height: 24),
 
-                  // ── SSO providers ────────────────────────────────────
-                  if (ssoFlow != null) ...[
-                    if (providers.isNotEmpty)
-                      ...providers.map((p) => Padding(
+                  // ── SSO buttons ────────────────────────────────────────
+                  if (result.hasSso) ...[
+                    if (result.ssoProviders.isNotEmpty)
+                      ...result.ssoProviders.map((p) => Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: _SsoButton(
-                              label: 'Continue with ${p['name'] ?? 'SSO'}',
-                              brand: p['brand'] as String?,
-                              onTap: authState.isLoading
+                              key: Key('ssoBtn_${p.id}'),
+                              label: 'Continue with ${p.name}',
+                              brand: p.brand,
+                              onTap: loading
                                   ? null
-                                  : () => _startSso(
-                                      providerId: p['id'] as String?),
+                                  : () => _startSso(result,
+                                      providerId: p.id),
                             ),
                           ))
                     else
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _SsoButton(
-                          label: 'Continue with ${Uri.tryParse(hs)?.host ?? 'SSO'}',
-                          onTap: authState.isLoading
+                          key: const Key('ssoBtn'),
+                          label:
+                              'Continue with ${Uri.tryParse(result.resolvedUrl)?.host ?? _lookupInput}',
+                          onTap: loading
                               ? null
-                              : () => _startSso(),
+                              : () => _startSso(result),
                         ),
                       ),
-                    if (hasPassword) ...[
+                    if (result.hasPassword) ...[
                       Row(children: [
                         const Expanded(child: Divider()),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
                           child: Text('or',
-                              style: Theme.of(context).textTheme.bodySmall),
+                              style:
+                                  Theme.of(context).textTheme.bodySmall),
                         ),
                         const Expanded(child: Divider()),
                       ]),
@@ -227,24 +262,28 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ],
                   ],
 
-                  // ── Password form ────────────────────────────────────
-                  if (hasPassword)
+                  // ── Password form ──────────────────────────────────────
+                  if (result.hasPassword || !result.hasSso)
                     Form(
                       key: _formKey,
                       child: Column(
                         children: [
                           TextFormField(
+                            key: const Key('usernameField'),
                             controller: _usernameCtrl,
                             decoration: const InputDecoration(
                               labelText: 'Matrix ID or username',
                               hintText: '@user:matrix.org',
                               prefixIcon: Icon(Icons.person),
                             ),
-                            validator: (v) =>
-                                (v == null || v.isEmpty) ? 'Required' : null,
+                            onChanged: _onUsernameChanged,
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'Required'
+                                : null,
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
+                            key: const Key('passwordField'),
                             controller: _passwordCtrl,
                             decoration: InputDecoration(
                               labelText: 'Password',
@@ -258,17 +297,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                             ),
                             obscureText: _obscurePassword,
-                            onFieldSubmitted: (_) => authState.isLoading
+                            onFieldSubmitted: (_) => loading
                                 ? null
-                                : _submitPassword(),
-                            validator: (v) =>
-                                (v == null || v.isEmpty) ? 'Required' : null,
+                                : _submitPassword(
+                                    result.resolvedUrl.isNotEmpty
+                                        ? result.resolvedUrl
+                                        : 'https://$_lookupInput'),
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'Required'
+                                : null,
                           ),
                           const SizedBox(height: 20),
                           FilledButton(
-                            onPressed:
-                                authState.isLoading ? null : _submitPassword,
-                            child: authState.isLoading
+                            key: const Key('signInBtn'),
+                            onPressed: loading
+                                ? null
+                                : () => _submitPassword(
+                                    result.resolvedUrl.isNotEmpty
+                                        ? result.resolvedUrl
+                                        : 'https://$_lookupInput'),
+                            child: loading
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
@@ -281,12 +329,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ],
                       ),
                     ),
-
-                  if (authState.isLoading && ssoFlow != null)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 16),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
                 ],
               ),
             ),
@@ -297,17 +339,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 }
 
+// ── SSO button widget ────────────────────────────────────────────────────────
+
 class _SsoButton extends StatelessWidget {
   final String label;
   final String? brand;
   final VoidCallback? onTap;
 
-  const _SsoButton({required this.label, this.brand, this.onTap});
+  const _SsoButton({super.key, required this.label, this.brand, this.onTap});
 
   IconData get _icon {
     switch (brand?.toLowerCase()) {
       case 'google':
-        return Icons.login; // would use a proper Google icon in production
+        return Icons.login;
       case 'github':
         return Icons.code;
       case 'apple':

@@ -79,7 +79,7 @@ Authentication is pure Matrix — no separate auth system. Users connect to thei
 
 **Drift + Riverpod code-gen conflict:** Drift generates data classes (`Expense`, `Settlement`) in part files. Riverpod's generator can't reference those types as provider return types in the same build phase. Solution: use plain model classes (`ExpenseModel`, `SettlementModel` in `lib/models/`) as the DAO layer's public API, and map from Drift types internally. **Never use Drift-generated data classes (`Expense`, `Settlement`) as return types of `@riverpod` providers.**
 
-**`sqflite_common_ffi` + `sqlite3` version pinning:** `drift` requires `sqlite3 ^3.x` but `matrix` declares `sqlite3 ^2.x`. Resolved via `dependency_overrides` in `pubspec.yaml` that force `sqlite3 >=3.1.5`, `sqflite_common_ffi ^2.4.0`, `sqflite_common ^2.5.0`. These overrides must be kept.
+**`drift` + `matrix` SQLite compatibility:** Use `drift ^2.31` and `drift_flutter ^0.2.8` — these depend on `sqlite3 ^2.x` which aligns with the matrix SDK's requirement. Avoid upgrading drift to 2.32+ without checking; that version switches to `sqlite3 ^3.x` which conflicts with matrix and breaks test compilation.
 
 **Matrix SDK (7.x) API:**
 - `Client(name, database: db)` — database is required in constructor (not a builder callback)

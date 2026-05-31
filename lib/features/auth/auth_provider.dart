@@ -1,6 +1,7 @@
 import 'package:matrix/matrix.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/matrix/matrix_service.dart';
+import '../../models/login_flows_result.dart';
 
 part 'auth_provider.g.dart';
 
@@ -17,20 +18,80 @@ bool isLoggedIn(Ref ref) {
   return clientAsync.value?.isLoggedIn ?? false;
 }
 
-/// Fetches the login flows supported by a homeserver.
-/// Uses a lightweight API client so it works before the main client is ready.
+/// Resolves a homeserver URL (with .well-known discovery) and returns its
+/// login flows. Input can be a bare domain ("matrix.org"), a URL
+/// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
 @riverpod
-Future<List<LoginFlow>> loginFlows(Ref ref, String homeserver) async {
-  if (homeserver.isEmpty) return [];
+Future<LoginFlowsResult> loginFlows(Ref ref, String input) async {
+  final normalised = _normalise(input);
+  if (normalised == null) return LoginFlowsResult.empty;
+
+  // Step 1: try .well-known discovery to find the real homeserver URL.
+  Uri resolved = normalised;
   try {
-    // Use the MatrixApi directly — no database or session needed.
-    final api = MatrixApi(homeserver: Uri.parse(homeserver));
-    final flows = await api.getLoginFlows();
-    api.httpClient.close();
-    return flows ?? [];
+    final probe = MatrixApi(homeserver: normalised);
+    final wk = await probe.getWellknown();
+    probe.httpClient.close();
+    resolved = wk.mHomeserver.baseUrl;
   } catch (_) {
-    return [];
+    // No .well-known or server doesn't support it — use the URL as-is.
   }
+
+  // Step 2: fetch login flows from the resolved URL.
+  try {
+    final api = MatrixApi(homeserver: resolved);
+    final rawFlows = await api.getLoginFlows() ?? [];
+    api.httpClient.close();
+    return _toResult(resolved.toString(), rawFlows);
+  } catch (_) {
+    return LoginFlowsResult(
+      resolvedUrl: resolved.toString(),
+      hasPassword: true,
+      hasSso: false,
+      ssoProviders: [],
+    );
+  }
+}
+
+LoginFlowsResult _toResult(String resolvedUrl, List<LoginFlow> flows) {
+  final hasSso = flows.any((f) => f.type == AuthenticationTypes.sso);
+  final hasPassword =
+      flows.any((f) => f.type == AuthenticationTypes.password);
+  final ssoFlow = flows
+      .cast<LoginFlow?>()
+      .firstWhere((f) => f?.type == AuthenticationTypes.sso,
+          orElse: () => null);
+  final providers =
+      (ssoFlow?.additionalProperties['identity_providers'] as List?)
+              ?.cast<Map>()
+              .map((p) => SsoProvider(
+                    id: p['id'] as String? ?? '',
+                    name: p['name'] as String? ?? 'SSO',
+                    brand: p['brand'] as String?,
+                  ))
+              .toList() ??
+          [];
+  return LoginFlowsResult(
+    resolvedUrl: resolvedUrl,
+    hasPassword: hasPassword,
+    hasSso: hasSso,
+    ssoProviders: providers,
+  );
+}
+
+/// Turns arbitrary user input into a well-formed Uri, or null if unparseable.
+Uri? _normalise(String raw) {
+  raw = raw.trim();
+  if (raw.isEmpty) return null;
+  // Strip leading "@user:" to extract just the domain from a Matrix ID.
+  if (raw.startsWith('@')) {
+    final colon = raw.indexOf(':');
+    if (colon == -1) return null;
+    raw = raw.substring(colon + 1);
+  }
+  // Add https:// if no scheme.
+  if (!raw.startsWith('http')) raw = 'https://$raw';
+  return Uri.tryParse(raw);
 }
 
 @riverpod
@@ -39,14 +100,14 @@ class AuthNotifier extends _$AuthNotifier {
   AsyncValue<void> build() => const AsyncData(null);
 
   Future<void> login({
-    required String homeserver,
+    required String resolvedHomeserver,
     required String username,
     required String password,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final client = await ref.read(matrixClientProvider.future);
-      await client.checkHomeserver(Uri.parse(homeserver));
+      await client.checkHomeserver(Uri.parse(resolvedHomeserver));
       await client.login(
         AuthenticationTypes.password,
         identifier: AuthenticationUserIdentifier(user: username),
@@ -57,16 +118,14 @@ class AuthNotifier extends _$AuthNotifier {
     });
   }
 
-  /// Completes an SSO flow by exchanging the one-time login token the
-  /// homeserver passed back in the redirect URL.
   Future<void> loginWithToken({
-    required String homeserver,
+    required String resolvedHomeserver,
     required String token,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final client = await ref.read(matrixClientProvider.future);
-      await client.checkHomeserver(Uri.parse(homeserver));
+      await client.checkHomeserver(Uri.parse(resolvedHomeserver));
       await client.login(
         AuthenticationTypes.token,
         token: token,

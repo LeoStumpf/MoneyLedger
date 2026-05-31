@@ -82,25 +82,28 @@ final class IsLoggedInProvider extends $FunctionalProvider<bool, bool, bool>
 
 String _$isLoggedInHash() => r'87eb721750548f7ba985a978bfa786f7db2da9df';
 
-/// Fetches the login flows supported by a homeserver.
-/// Uses a lightweight API client so it works before the main client is ready.
+/// Resolves a homeserver URL (with .well-known discovery) and returns its
+/// login flows. Input can be a bare domain ("matrix.org"), a URL
+/// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
 
 @ProviderFor(loginFlows)
 final loginFlowsProvider = LoginFlowsFamily._();
 
-/// Fetches the login flows supported by a homeserver.
-/// Uses a lightweight API client so it works before the main client is ready.
+/// Resolves a homeserver URL (with .well-known discovery) and returns its
+/// login flows. Input can be a bare domain ("matrix.org"), a URL
+/// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
 
 final class LoginFlowsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<LoginFlow>>,
-          List<LoginFlow>,
-          FutureOr<List<LoginFlow>>
+          AsyncValue<LoginFlowsResult>,
+          LoginFlowsResult,
+          FutureOr<LoginFlowsResult>
         >
-    with $FutureModifier<List<LoginFlow>>, $FutureProvider<List<LoginFlow>> {
-  /// Fetches the login flows supported by a homeserver.
-  /// Uses a lightweight API client so it works before the main client is ready.
+    with $FutureModifier<LoginFlowsResult>, $FutureProvider<LoginFlowsResult> {
+  /// Resolves a homeserver URL (with .well-known discovery) and returns its
+  /// login flows. Input can be a bare domain ("matrix.org"), a URL
+  /// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
   LoginFlowsProvider._({
     required LoginFlowsFamily super.from,
     required String super.argument,
@@ -124,12 +127,12 @@ final class LoginFlowsProvider
 
   @$internal
   @override
-  $FutureProviderElement<List<LoginFlow>> $createElement(
+  $FutureProviderElement<LoginFlowsResult> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<List<LoginFlow>> create(Ref ref) {
+  FutureOr<LoginFlowsResult> create(Ref ref) {
     final argument = this.argument as String;
     return loginFlows(ref, argument);
   }
@@ -145,13 +148,14 @@ final class LoginFlowsProvider
   }
 }
 
-String _$loginFlowsHash() => r'87cdcb5ce360b4fa974712a14c949a42152cb072';
+String _$loginFlowsHash() => r'9275248a8a2c732ce0c24b20d71d5b5666c41376';
 
-/// Fetches the login flows supported by a homeserver.
-/// Uses a lightweight API client so it works before the main client is ready.
+/// Resolves a homeserver URL (with .well-known discovery) and returns its
+/// login flows. Input can be a bare domain ("matrix.org"), a URL
+/// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
 
 final class LoginFlowsFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<List<LoginFlow>>, String> {
+    with $FunctionalFamilyOverride<FutureOr<LoginFlowsResult>, String> {
   LoginFlowsFamily._()
     : super(
         retry: null,
@@ -161,11 +165,12 @@ final class LoginFlowsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Fetches the login flows supported by a homeserver.
-  /// Uses a lightweight API client so it works before the main client is ready.
+  /// Resolves a homeserver URL (with .well-known discovery) and returns its
+  /// login flows. Input can be a bare domain ("matrix.org"), a URL
+  /// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
 
-  LoginFlowsProvider call(String homeserver) =>
-      LoginFlowsProvider._(argument: homeserver, from: this);
+  LoginFlowsProvider call(String input) =>
+      LoginFlowsProvider._(argument: input, from: this);
 
   @override
   String toString() => r'loginFlowsProvider';
@@ -203,7 +208,7 @@ final class AuthNotifierProvider
   }
 }
 
-String _$authNotifierHash() => r'66c932cd160b10d5107cbf4dc8747f4280779124';
+String _$authNotifierHash() => r'8654b30a27a674d84dd5c4da91f7c99baeac3fe9';
 
 abstract class _$AuthNotifier extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
