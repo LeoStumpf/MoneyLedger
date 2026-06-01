@@ -47,6 +47,7 @@ List<dynamic> testOverrides({
           .overrideWith((ref, roomId) => Stream.value(settlements)),
       balanceForRoomProvider.overrideWith((ref, roomId) => debts),
       ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
+      pendingInvitesProvider.overrideWith((_) => Stream.value([])),
     ];
 
 /// Additional override for groups tests where you want to control the group list.

@@ -24,13 +24,13 @@ void main() {
 
     tearDown(() => db.close());
 
-    ProviderContainer _makeContainer() => ProviderContainer(overrides: [
+    ProviderContainer makeContainer() => ProviderContainer(overrides: [
           appDatabaseProvider.overrideWithValue(db),
         ]);
 
     // Returns the first emission of ledgerGroupsProvider while keeping the
     // provider alive (autoDispose disposes it if there are no listeners).
-    Future<List> _firstEmission(ProviderContainer c) async {
+    Future<List> firstEmission(ProviderContainer c) async {
       final completer = Completer<List>();
       final sub = c.listen<AsyncValue>(ledgerGroupsProvider, (_, next) {
         next.whenData((v) {
@@ -43,15 +43,15 @@ void main() {
     }
 
     test('emits empty list initially', () async {
-      final c = _makeContainer();
+      final c = makeContainer();
       addTearDown(c.dispose);
 
-      final groups = await _firstEmission(c);
+      final groups = await firstEmission(c);
       expect(groups, isEmpty);
     });
 
     test('emits group after it is inserted into the DAO', () async {
-      final c = _makeContainer();
+      final c = makeContainer();
       addTearDown(c.dispose);
 
       await dao.upsertGroup(const GroupsCompanion(
@@ -60,7 +60,7 @@ void main() {
         currency: Value('EUR'),
       ));
 
-      final groups = await _firstEmission(c);
+      final groups = await firstEmission(c);
       expect(groups.length, 1);
       expect(groups.first.roomId, '!abc:matrix.org');
       expect(groups.first.name, 'Road Trip');
@@ -68,7 +68,7 @@ void main() {
     });
 
     test('emits updated list when a second group is inserted', () async {
-      final c = _makeContainer();
+      final c = makeContainer();
       addTearDown(c.dispose);
 
       await dao.upsertGroup(const GroupsCompanion(
@@ -82,7 +82,7 @@ void main() {
         currency: Value('USD'),
       ));
 
-      final groups = await _firstEmission(c);
+      final groups = await firstEmission(c);
       expect(groups.length, 2);
       final roomIds = groups.map((g) => g.roomId).toSet();
       expect(roomIds, containsAll(['!r1:m.org', '!r2:m.org']));
