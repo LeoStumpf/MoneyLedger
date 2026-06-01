@@ -25,6 +25,10 @@ void main() {
       expect(routerRedirect(true, '/login'), '/groups');
     });
 
+    test('redirects bare / to /groups', () {
+      expect(routerRedirect(true, '/'), '/groups');
+    });
+
     test('stays on /groups (no redirect)', () {
       expect(routerRedirect(true, '/groups'), isNull);
     });

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../features/auth/auth_provider.dart';
+import 'error_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/balance/balance_page.dart';
 import '../features/expenses/add_expense_page.dart';
@@ -14,7 +15,8 @@ part 'router.g.dart';
 
 String? routerRedirect(bool isLoggedIn, String location) {
   if (!isLoggedIn && location != '/login') return '/login';
-  if (isLoggedIn && location == '/login') return '/groups';
+  // Send logged-in users away from /login and the bare root / to the groups list.
+  if (isLoggedIn && (location == '/login' || location == '/')) return '/groups';
   return null;
 }
 
@@ -29,6 +31,7 @@ GoRouter router(Ref ref) {
     refreshListenable: listenable,
     redirect: (_, state) =>
         routerRedirect(ref.read(isLoggedInProvider), state.matchedLocation),
+    errorBuilder: (_, state) => ErrorPage(error: state.error),
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
