@@ -20,6 +20,24 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   final _descCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
 
+  // null = still loading; fetched via requestParticipants() on init
+  // so the list is always accurate even before the room is fully synced.
+  List<User>? _members;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMembers();
+  }
+
+  Future<void> _loadMembers() async {
+    final client = await ref.read(matrixClientProvider.future);
+    final room = client.getRoomById(widget.roomId);
+    if (room == null || !mounted) return;
+    final members = await room.requestParticipants([Membership.join]);
+    if (mounted) setState(() => _members = members);
+  }
+
   @override
   void dispose() {
     _descCtrl.dispose();
@@ -66,8 +84,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (client) {
-          final room = client.getRoomById(widget.roomId);
-          final members = room?.getParticipants() ?? [];
+          final members = _members;
+          if (members == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Form(
@@ -107,7 +127,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
-                    onPressed: adderState.isLoading
+                    onPressed: adderState.isLoading || members.isEmpty
                         ? null
                         : () => _submit(client, members),
                     child: adderState.isLoading
