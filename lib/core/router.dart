@@ -12,6 +12,12 @@ import '../features/groups/groups_page.dart';
 
 part 'router.g.dart';
 
+String? routerRedirect(bool isLoggedIn, String location) {
+  if (!isLoggedIn && location != '/login') return '/login';
+  if (isLoggedIn && location == '/login') return '/groups';
+  return null;
+}
+
 @Riverpod(keepAlive: true)
 GoRouter router(Ref ref) {
   final listenable = ValueNotifier<bool>(false);
@@ -21,12 +27,8 @@ GoRouter router(Ref ref) {
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: listenable,
-    redirect: (_, state) {
-      final isLoggedIn = ref.read(isLoggedInProvider);
-      if (!isLoggedIn && state.matchedLocation != '/login') return '/login';
-      if (isLoggedIn && state.matchedLocation == '/login') return '/groups';
-      return null;
-    },
+    redirect: (_, state) =>
+        routerRedirect(ref.read(isLoggedInProvider), state.matchedLocation),
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),

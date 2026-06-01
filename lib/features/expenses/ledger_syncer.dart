@@ -1,28 +1,30 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:matrix/matrix.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
+import '../../core/database/daos/groups_dao.dart';
 import '../../core/matrix/matrix_service.dart';
 import '../auth/auth_provider.dart';
 import 'expenses_provider.dart';
 
-final ledgerSyncerProvider = Provider.autoDispose<_LedgerSyncer>((ref) {
-  final syncer = _LedgerSyncer(ref);
+final ledgerSyncerProvider = Provider.autoDispose<LedgerSyncer>((ref) {
+  final syncer = LedgerSyncer(ref);
   syncer.start();
   ref.onDispose(syncer.dispose);
   return syncer;
 });
 
-class _LedgerSyncer {
+class LedgerSyncer {
   final Ref _ref;
   bool _disposed = false;
   Client? _client;
 
-  _LedgerSyncer(this._ref);
+  LedgerSyncer(this._ref);
 
   Future<void> start() async {
     final client = await _ref.read(matrixClientProvider.future);
@@ -46,61 +48,84 @@ class _LedgerSyncer {
       final roomId = entry.key;
       final roomUpdate = entry.value;
 
-      // Sync group metadata: any joined room that carries the ledger state
-      // event is a MoneyLedger group — upsert it into Drift immediately.
       for (final stateEvent in roomUpdate.state ?? []) {
         if (stateEvent.type == groupStateEventType) {
-          final currency =
-              stateEvent.content['currency'] as String? ?? 'EUR';
           final name = _client?.getRoomById(roomId)?.name ?? roomId;
-          groupDao.upsertGroup(GroupsCompanion(
-            roomId: Value(roomId),
-            name: Value(name),
-            currency: Value(currency),
-          ));
+          processGroupState(roomId, stateEvent.content, name, groupDao);
         }
       }
 
       for (final event in roomUpdate.timeline?.events ?? []) {
-        _handleEvent(roomId, event, expDao);
+        if (event.type == expenseEventType) {
+          processExpense(
+              roomId, event.eventId, event.content,
+              event.originServerTs.millisecondsSinceEpoch, expDao);
+        } else if (event.type == settlementEventType) {
+          processSettlement(
+              roomId, event.eventId, event.content,
+              event.originServerTs.millisecondsSinceEpoch, expDao);
+        }
       }
     }
   }
 
-  void _handleEvent(String roomId, MatrixEvent event, ExpensesDao expDao) {
-    if (event.type == expenseEventType) {
-      final c = event.content;
-      final id = c['id'] as String?;
-      if (id == null) return;
-      expDao.upsertExpense(ExpensesCompanion(
-        id: Value(id),
-        roomId: Value(roomId),
-        matrixEventId: Value(event.eventId),
-        description: Value(c['description'] as String? ?? ''),
-        amountCents: Value(c['amount'] as int? ?? 0),
-        currency: Value(c['currency'] as String? ?? 'EUR'),
-        paidBy: Value(c['paid_by'] as String? ?? ''),
-        splitsJson: Value(jsonEncode(c['split'] ?? {})),
-        createdAt: Value(
-          event.originServerTs.millisecondsSinceEpoch,
-        ),
-      ));
-    } else if (event.type == settlementEventType) {
-      final c = event.content;
-      final id = c['id'] as String?;
-      if (id == null) return;
-      expDao.upsertSettlement(SettlementsCompanion(
-        id: Value(id),
-        roomId: Value(roomId),
-        matrixEventId: Value(event.eventId),
-        amountCents: Value(c['amount'] as int? ?? 0),
-        currency: Value(c['currency'] as String? ?? 'EUR'),
-        fromUser: Value(c['from'] as String? ?? ''),
-        toUser: Value(c['to'] as String? ?? ''),
-        createdAt: Value(
-          event.originServerTs.millisecondsSinceEpoch,
-        ),
-      ));
-    }
+  @visibleForTesting
+  static void processExpense(
+    String roomId,
+    String? eventId,
+    Map<String, dynamic> content,
+    int tsMs,
+    ExpensesDao dao,
+  ) {
+    final id = content['id'] as String?;
+    if (id == null) return;
+    dao.upsertExpense(ExpensesCompanion(
+      id: Value(id),
+      roomId: Value(roomId),
+      matrixEventId: Value(eventId),
+      description: Value(content['description'] as String? ?? ''),
+      amountCents: Value(content['amount'] as int? ?? 0),
+      currency: Value(content['currency'] as String? ?? 'EUR'),
+      paidBy: Value(content['paid_by'] as String? ?? ''),
+      splitsJson: Value(jsonEncode(content['split'] ?? {})),
+      createdAt: Value(tsMs),
+    ));
+  }
+
+  @visibleForTesting
+  static void processSettlement(
+    String roomId,
+    String? eventId,
+    Map<String, dynamic> content,
+    int tsMs,
+    ExpensesDao dao,
+  ) {
+    final id = content['id'] as String?;
+    if (id == null) return;
+    dao.upsertSettlement(SettlementsCompanion(
+      id: Value(id),
+      roomId: Value(roomId),
+      matrixEventId: Value(eventId),
+      amountCents: Value(content['amount'] as int? ?? 0),
+      currency: Value(content['currency'] as String? ?? 'EUR'),
+      fromUser: Value(content['from'] as String? ?? ''),
+      toUser: Value(content['to'] as String? ?? ''),
+      createdAt: Value(tsMs),
+    ));
+  }
+
+  @visibleForTesting
+  static void processGroupState(
+    String roomId,
+    Map<String, dynamic> content,
+    String roomName,
+    GroupsDao dao,
+  ) {
+    final currency = content['currency'] as String? ?? 'EUR';
+    dao.upsertGroup(GroupsCompanion(
+      roomId: Value(roomId),
+      name: Value(roomName),
+      currency: Value(currency),
+    ));
   }
 }
