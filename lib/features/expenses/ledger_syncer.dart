@@ -20,12 +20,14 @@ final ledgerSyncerProvider = Provider.autoDispose<_LedgerSyncer>((ref) {
 class _LedgerSyncer {
   final Ref _ref;
   bool _disposed = false;
+  Client? _client;
 
   _LedgerSyncer(this._ref);
 
   Future<void> start() async {
     final client = await _ref.read(matrixClientProvider.future);
     if (_disposed) return;
+    _client = client;
     client.onSync.stream.listen(_onSync);
   }
 
@@ -36,12 +38,29 @@ class _LedgerSyncer {
   void _onSync(SyncUpdate sync) {
     if (_disposed) return;
     final expDao = _ref.read(expensesDaoProvider);
+    final groupDao = _ref.read(groupsDaoProvider);
     final rooms = sync.rooms;
     if (rooms == null) return;
 
     for (final entry in (rooms.join ?? {}).entries) {
       final roomId = entry.key;
       final roomUpdate = entry.value;
+
+      // Sync group metadata: any joined room that carries the ledger state
+      // event is a MoneyLedger group — upsert it into Drift immediately.
+      for (final stateEvent in roomUpdate.state ?? []) {
+        if (stateEvent.type == groupStateEventType) {
+          final currency =
+              stateEvent.content['currency'] as String? ?? 'EUR';
+          final name = _client?.getRoomById(roomId)?.name ?? roomId;
+          groupDao.upsertGroup(GroupsCompanion(
+            roomId: Value(roomId),
+            name: Value(name),
+            currency: Value(currency),
+          ));
+        }
+      }
+
       for (final event in roomUpdate.timeline?.events ?? []) {
         _handleEvent(roomId, event, expDao);
       }

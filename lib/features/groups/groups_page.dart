@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../auth/auth_provider.dart';
+import '../../models/group_model.dart';
 import 'group_provider.dart';
 
 class GroupsPage extends ConsumerWidget {
@@ -42,13 +43,14 @@ class GroupsPage extends ConsumerWidget {
           return ListView.builder(
             itemCount: groups.length,
             itemBuilder: (context, i) {
-              final room = groups[i];
+              final GroupModel group = groups[i];
               return ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.group)),
-                title: Text(room.name),
-                subtitle: Text(room.id),
+                title: Text(group.name),
+                subtitle: Text(group.currency),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/groups/${room.id}/expenses'),
+                onTap: () =>
+                    context.push('/groups/${group.roomId}/expenses'),
               );
             },
           );

@@ -15,11 +15,11 @@ final ledgerGroupsProvider = LedgerGroupsProvider._();
 final class LedgerGroupsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<Room>>,
-          List<Room>,
-          Stream<List<Room>>
+          AsyncValue<List<GroupModel>>,
+          List<GroupModel>,
+          Stream<List<GroupModel>>
         >
-    with $FutureModifier<List<Room>>, $StreamProvider<List<Room>> {
+    with $FutureModifier<List<GroupModel>>, $StreamProvider<List<GroupModel>> {
   LedgerGroupsProvider._()
     : super(
         from: null,
@@ -36,16 +36,17 @@ final class LedgerGroupsProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<Room>> $createElement($ProviderPointer pointer) =>
-      $StreamProviderElement(pointer);
+  $StreamProviderElement<List<GroupModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<Room>> create(Ref ref) {
+  Stream<List<GroupModel>> create(Ref ref) {
     return ledgerGroups(ref);
   }
 }
 
-String _$ledgerGroupsHash() => r'edaed1a450be42106b4a4fe6c1c38929b078d859';
+String _$ledgerGroupsHash() => r'c3aed9224eebc302f4f51720d4bb662853a9e3f4';
 
 @ProviderFor(GroupCreator)
 final groupCreatorProvider = GroupCreatorProvider._();
@@ -79,7 +80,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'3e575c8d9da320a672073b0e5f41ad80ff087635';
+String _$groupCreatorHash() => r'2e633643f0cbd5df318e5cc0ca64caae25157863';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

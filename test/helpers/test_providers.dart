@@ -6,7 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:matrix/matrix.dart' show Room;
+import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
@@ -57,4 +57,4 @@ dynamic emptyGroupsOverride() =>
 
 /// Override that simulates the stream still loading (never emits, never closes).
 dynamic loadingGroupsOverride() =>
-    ledgerGroupsProvider.overrideWith((_) => StreamController<List<Room>>().stream);
+    ledgerGroupsProvider.overrideWith((_) => StreamController<List<GroupModel>>().stream);

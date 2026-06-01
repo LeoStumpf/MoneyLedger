@@ -3,7 +3,7 @@ import 'package:matrix/matrix.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
 
-const _groupStateEventType = 'app.moneyledger.group';
+const groupStateEventType = 'app.moneyledger.group';
 const expenseEventType = 'com.moneyledger.expense';
 const settlementEventType = 'com.moneyledger.settlement';
 
@@ -38,7 +38,7 @@ extension MoneyLedgerMatrix on Client {
   bool get isLoggedIn => isLogged();
 
   List<Room> get ledgerGroups => rooms
-      .where((r) => r.getState(_groupStateEventType) != null)
+      .where((r) => r.getState(groupStateEventType) != null)
       .toList();
 
   Future<String> createLedgerGroup(String name, String currency) async {
@@ -51,7 +51,7 @@ extension MoneyLedgerMatrix on Client {
     if (room != null) {
       await room.client.setRoomStateWithKey(
         roomId,
-        _groupStateEventType,
+        groupStateEventType,
         '',
         {'currency': currency},
       );
@@ -61,7 +61,7 @@ extension MoneyLedgerMatrix on Client {
 
   String? groupCurrency(String roomId) {
     final room = getRoomById(roomId);
-    return room?.getState(_groupStateEventType)?.content['currency'] as String?;
+    return room?.getState(groupStateEventType)?.content['currency'] as String?;
   }
 
   Future<String?> sendExpenseEvent(

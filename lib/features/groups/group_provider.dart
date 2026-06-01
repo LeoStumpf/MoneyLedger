@@ -1,17 +1,16 @@
-import 'package:matrix/matrix.dart';
+import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../core/database/app_database.dart';
 import '../../core/matrix/matrix_service.dart';
+import '../../models/group_model.dart';
 import '../auth/auth_provider.dart';
+import '../expenses/expenses_provider.dart';
 
 part 'group_provider.g.dart';
 
 @riverpod
-Stream<List<Room>> ledgerGroups(Ref ref) async* {
-  final client = await ref.watch(matrixClientProvider.future);
-  yield client.ledgerGroups;
-  await for (final _ in client.onSync.stream) {
-    yield client.ledgerGroups;
-  }
+Stream<List<GroupModel>> ledgerGroups(Ref ref) {
+  return ref.watch(groupsDaoProvider).watchAllGroups();
 }
 
 @riverpod
@@ -23,7 +22,12 @@ class GroupCreator extends _$GroupCreator {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final client = await ref.read(matrixClientProvider.future);
-      await client.createLedgerGroup(name, currency);
+      final roomId = await client.createLedgerGroup(name, currency);
+      await ref.read(groupsDaoProvider).upsertGroup(GroupsCompanion(
+            roomId: Value(roomId),
+            name: Value(name),
+            currency: Value(currency),
+          ));
     });
   }
 }
