@@ -21,7 +21,7 @@ final class RouterProvider
         argument: null,
         retry: null,
         name: r'routerProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -48,4 +48,4 @@ final class RouterProvider
   }
 }
 
-String _$routerHash() => r'fded6cf2de5a2ae2065dd3ad10c8ed94f0047e12';
+String _$routerHash() => r'3768a26e7ef56e3f63cdafa880b05af8f5e96230';

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -11,11 +12,17 @@ import '../features/groups/groups_page.dart';
 
 part 'router.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 GoRouter router(Ref ref) {
-  final isLoggedIn = ref.watch(isLoggedInProvider);
+  final listenable = ValueNotifier<bool>(false);
+  ref.listen<bool>(isLoggedInProvider, (_, next) => listenable.value = next);
+  ref.onDispose(listenable.dispose);
+
   return GoRouter(
+    initialLocation: '/login',
+    refreshListenable: listenable,
     redirect: (_, state) {
+      final isLoggedIn = ref.read(isLoggedInProvider);
       if (!isLoggedIn && state.matchedLocation != '/login') return '/login';
       if (isLoggedIn && state.matchedLocation == '/login') return '/groups';
       return null;
