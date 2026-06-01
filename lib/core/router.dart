@@ -9,6 +9,7 @@ import '../features/balance/balance_page.dart';
 import '../features/expenses/add_expense_page.dart';
 import '../features/expenses/expenses_page.dart';
 import '../features/groups/create_group_page.dart';
+import '../features/groups/group_members_page.dart';
 import '../features/groups/groups_page.dart';
 
 part 'router.g.dart';
@@ -52,6 +53,11 @@ GoRouter router(Ref ref) {
         path: '/groups/:roomId/balance',
         builder: (_, s) =>
             BalancePage(roomId: s.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: '/groups/:roomId/members',
+        builder: (_, s) =>
+            GroupMembersPage(roomId: s.pathParameters['roomId']!),
       ),
     ],
   );

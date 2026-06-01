@@ -190,6 +190,58 @@ abstract class _$UserInviter extends $Notifier<AsyncValue<void>> {
   }
 }
 
+@ProviderFor(MemberRemover)
+final memberRemoverProvider = MemberRemoverProvider._();
+
+final class MemberRemoverProvider
+    extends $NotifierProvider<MemberRemover, AsyncValue<void>> {
+  MemberRemoverProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'memberRemoverProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$memberRemoverHash();
+
+  @$internal
+  @override
+  MemberRemover create() => MemberRemover();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<void> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<void>>(value),
+    );
+  }
+}
+
+String _$memberRemoverHash() => r'2ed22e51caed6e69070b82dbf8f55bfc03a32e19';
+
+abstract class _$MemberRemover extends $Notifier<AsyncValue<void>> {
+  AsyncValue<void> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<void>, AsyncValue<void>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<void>, AsyncValue<void>>,
+              AsyncValue<void>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
 @ProviderFor(InviteAcceptor)
 final inviteAcceptorProvider = InviteAcceptorProvider._();
 
@@ -222,7 +274,7 @@ final class InviteAcceptorProvider
   }
 }
 
-String _$inviteAcceptorHash() => r'2d8d9d165655b99196430a57a90d007c48289e27';
+String _$inviteAcceptorHash() => r'49f2f0022272bba76ac52593129c20e0d02be7a8';
 
 abstract class _$InviteAcceptor extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

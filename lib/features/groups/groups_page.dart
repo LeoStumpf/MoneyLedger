@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart' show Room;
 import '../auth/auth_provider.dart';
+import '../expenses/ledger_syncer.dart';
 import '../../models/group_model.dart';
 import 'group_provider.dart';
 
@@ -11,6 +12,7 @@ class GroupsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(ledgerSyncerProvider); // keep syncer alive on the main screen
     final groupsAsync = ref.watch(ledgerGroupsProvider);
     final invitesAsync = ref.watch(pendingInvitesProvider);
     final acceptorState = ref.watch(inviteAcceptorProvider);

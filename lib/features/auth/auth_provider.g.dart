@@ -148,7 +148,7 @@ final class LoginFlowsProvider
   }
 }
 
-String _$loginFlowsHash() => r'9275248a8a2c732ce0c24b20d71d5b5666c41376';
+String _$loginFlowsHash() => r'e5b9f884cba7d90e71075e70eecdcc8131fd7afb';
 
 /// Resolves a homeserver URL (with .well-known discovery) and returns its
 /// login flows. Input can be a bare domain ("matrix.org"), a URL

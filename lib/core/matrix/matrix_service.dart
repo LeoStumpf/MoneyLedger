@@ -31,6 +31,11 @@ Future<Client> buildMatrixClient() async {
       AuthenticationTypes.sso,
       AuthenticationTypes.token,
     },
+    // The SDK only keeps a fixed set of "important" state events available via
+    // room.getState() for rooms in the list. Our custom group-metadata event is
+    // not in that default set, so without this it gets dropped and a joining
+    // user can never read the group — even though the event is in the room.
+    importantStateEvents: {groupStateEventType},
   );
 }
 

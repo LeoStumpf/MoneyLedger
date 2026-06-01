@@ -62,6 +62,25 @@ class UserInviter extends _$UserInviter {
 }
 
 @riverpod
+class MemberRemover extends _$MemberRemover {
+  @override
+  AsyncValue<void> build() => const AsyncData(null);
+
+  /// Removes (kicks) [userId] from the room. The expense history they're part
+  /// of stays in Drift, so balances are preserved — only their Matrix
+  /// membership is cleared. See planned virtual-user model.
+  Future<void> remove(String roomId, String userId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final client = await ref.read(matrixClientProvider.future);
+      final room = client.getRoomById(roomId);
+      if (room == null) throw Exception('Room not found');
+      await room.kick(userId);
+    });
+  }
+}
+
+@riverpod
 class InviteAcceptor extends _$InviteAcceptor {
   @override
   AsyncValue<void> build() => const AsyncData(null);
@@ -71,6 +90,21 @@ class InviteAcceptor extends _$InviteAcceptor {
     state = await AsyncValue.guard(() async {
       final client = await ref.read(matrixClientProvider.future);
       await client.joinRoomById(roomId);
+      // Write to Drift immediately so the group appears without waiting for
+      // the next sync. The room may already have its state from the join
+      // response; if not, LedgerSyncer overwrites with the correct data on
+      // the next onSync event.
+      final room = client.getRoomById(roomId);
+      if (room != null) {
+        final stateContent =
+            room.getState(groupStateEventType)?.content ?? {};
+        final currency = stateContent['currency'] as String? ?? 'EUR';
+        await ref.read(groupsDaoProvider).upsertGroup(GroupsCompanion(
+              roomId: Value(roomId),
+              name: Value(room.name.isNotEmpty ? room.name : roomId),
+              currency: Value(currency),
+            ));
+      }
     });
   }
 

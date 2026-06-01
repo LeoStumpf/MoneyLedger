@@ -157,7 +157,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final flowsAsync = ref.watch(loginFlowsProvider(_lookupInput));
-    final result = flowsAsync.value ?? LoginFlowsResult.empty;
+    // On error (e.g. provider threw), still offer SSO with the entered URL.
+    final result = flowsAsync.when(
+      data: (r) => r,
+      loading: () => LoginFlowsResult.empty,
+      error: (_, __) => LoginFlowsResult(
+        resolvedUrl: _lookupInput.startsWith('http')
+            ? _lookupInput
+            : 'https://$_lookupInput',
+        hasPassword: true,
+        hasSso: true,
+        ssoProviders: [],
+      ),
+    );
 
     // Show resolved URL as a hint when it differs from what the user typed.
     final resolvedLabel = result.resolvedUrl.isNotEmpty &&

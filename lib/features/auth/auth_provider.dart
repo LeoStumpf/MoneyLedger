@@ -44,10 +44,13 @@ Future<LoginFlowsResult> loginFlows(Ref ref, String input) async {
     api.httpClient.close();
     return _toResult(resolved.toString(), rawFlows);
   } catch (_) {
+    // Flow check failed (e.g. CORS on a non-public server). Show both SSO and
+    // password — we don't know which is supported, but SSO is worth offering
+    // since we at least have the resolved homeserver URL to redirect to.
     return LoginFlowsResult(
       resolvedUrl: resolved.toString(),
       hasPassword: true,
-      hasSso: false,
+      hasSso: true,
       ssoProviders: [],
     );
   }
@@ -57,6 +60,10 @@ LoginFlowsResult _toResult(String resolvedUrl, List<LoginFlow> flows) {
   final hasSso = flows.any((f) => f.type == AuthenticationTypes.sso);
   final hasPassword =
       flows.any((f) => f.type == AuthenticationTypes.password);
+  // Servers running native OIDC or token-only configs report no m.login.sso
+  // and no m.login.password (e.g. mozilla.modular.im returns [m.login.token]).
+  // In that case, offer SSO — the generic SSO redirect endpoint still works.
+  final ssoAvailable = hasSso || !hasPassword;
   final ssoFlow = flows
       .cast<LoginFlow?>()
       .firstWhere((f) => f?.type == AuthenticationTypes.sso,
@@ -74,7 +81,7 @@ LoginFlowsResult _toResult(String resolvedUrl, List<LoginFlow> flows) {
   return LoginFlowsResult(
     resolvedUrl: resolvedUrl,
     hasPassword: hasPassword,
-    hasSso: hasSso,
+    hasSso: ssoAvailable,
     ssoProviders: providers,
   );
 }

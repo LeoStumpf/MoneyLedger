@@ -123,6 +123,53 @@ void main() {
       expect(find.byIcon(Icons.visibility), findsNothing);
     });
 
+    testWidgets(
+        'shows SSO button for token-only server (no m.login.sso in flows)',
+        (tester) async {
+      // Native-OIDC / token-only servers return hasSso:false, hasPassword:false.
+      // _toResult infers ssoAvailable = hasSso || !hasPassword = true.
+      final tokenOnly = LoginFlowsResult(
+        resolvedUrl: 'https://mozilla.modular.im',
+        hasSso: true,
+        hasPassword: false,
+        ssoProviders: [],
+      );
+
+      await tester.pumpWidget(testApp(
+        const LoginPage(),
+        overrides: testOverrides(isLoggedIn: false, loginFlows: tokenOnly),
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const Key('ssoBtn')), findsOneWidget);
+      expect(find.byKey(const Key('signInBtn')), findsNothing);
+    });
+
+    testWidgets(
+        'shows SSO button when login flows cannot be fetched (CORS fallback)',
+        (tester) async {
+      // Simulates the catch-block fallback: hasSso:true so the button appears
+      // even when the server can't be probed (e.g. chat.mozilla.org).
+      final fallback = LoginFlowsResult(
+        resolvedUrl: 'https://mozilla.modular.im',
+        hasSso: true,
+        hasPassword: true,
+        ssoProviders: [],
+      );
+
+      await tester.pumpWidget(testApp(
+        const LoginPage(),
+        overrides: testOverrides(isLoggedIn: false, loginFlows: fallback),
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const Key('ssoBtn')), findsOneWidget);
+      expect(find.byKey(const Key('signInBtn')), findsOneWidget);
+      expect(find.text('Continue with mozilla.modular.im'), findsOneWidget);
+    });
+
     testWidgets('shows "or" divider between SSO and password form',
         (tester) async {
       final mixed = LoginFlowsResult(

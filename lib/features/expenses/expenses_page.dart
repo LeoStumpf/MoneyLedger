@@ -28,6 +28,11 @@ class ExpensesPage extends ConsumerWidget {
                 : () => _showInviteDialog(context, ref),
           ),
           IconButton(
+            icon: const Icon(Icons.group_outlined),
+            tooltip: 'Members',
+            onPressed: () => context.push('/groups/$roomId/members'),
+          ),
+          IconButton(
             icon: const Icon(Icons.balance),
             tooltip: 'Balance',
             onPressed: () => context.push('/groups/$roomId/balance'),
