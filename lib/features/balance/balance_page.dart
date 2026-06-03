@@ -18,7 +18,6 @@ class _BalancePageState extends ConsumerState<BalancePage> {
   Widget build(BuildContext context) {
     final debts = ref.watch(balanceForRoomProvider(widget.roomId));
     final transport = ref.watch(ledgerTransportProvider).value;
-    final currency = transport?.room(widget.roomId)?.currency ?? '';
     final myId = transport?.userId ?? '';
     final adderState = ref.watch(expenseAdderProvider);
 
@@ -34,6 +33,7 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                   itemBuilder: (context, i) {
                     final d = debts[i];
                     final amount = (d.cents / 100).toStringAsFixed(2);
+                    final currency = d.currency;
                     final isMine = d.from == myId;
                     return Card(
                       child: ListTile(
@@ -62,7 +62,7 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                         ),
                         // Only the current user can settle their own debts.
                         onTap: isMine && !adderState.isLoading
-                            ? () => _settle(context, d, currency, myId)
+                            ? () => _settle(context, d, myId)
                             : null,
                       ),
                     );
@@ -82,10 +82,10 @@ class _BalancePageState extends ConsumerState<BalancePage> {
   Future<void> _settle(
     BuildContext context,
     DebtEntry debt,
-    String currency,
     String myId,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final currency = debt.currency;
     final amount = (debt.cents / 100).toStringAsFixed(2);
     final confirmed = await showDialog<bool>(
       context: context,

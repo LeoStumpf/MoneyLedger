@@ -7,13 +7,14 @@ ExpenseModel _expense({
   required String paidBy,
   required int amountCents,
   required String splitsJson,
+  String currency = 'EUR',
 }) =>
     ExpenseModel(
       id: id,
       roomId: 'r1',
       description: 'Test',
       amountCents: amountCents,
-      currency: 'EUR',
+      currency: currency,
       paidBy: paidBy,
       splitsJson: splitsJson,
       createdAt: 0,
@@ -24,12 +25,13 @@ SettlementModel _settlement({
   required String fromUser,
   required String toUser,
   required int amountCents,
+  String currency = 'EUR',
 }) =>
     SettlementModel(
       id: id,
       roomId: 'r1',
       amountCents: amountCents,
-      currency: 'EUR',
+      currency: currency,
       fromUser: fromUser,
       toUser: toUser,
       createdAt: 0,
@@ -100,6 +102,77 @@ void main() {
       for (final d in debts) {
         expect(d.from, '@carol:m.org');
       }
+    });
+
+    test('single-currency debts carry that currency', () {
+      final debts = calculateDebts([
+        _expense(
+          id: '1',
+          paidBy: '@alice:m.org',
+          amountCents: 2000,
+          currency: 'CHF',
+          splitsJson: '{"@alice:m.org": 1000, "@bob:m.org": 1000}',
+        ),
+      ], []);
+      expect(debts.single.currency, 'CHF');
+    });
+
+    test('mixed currencies are computed independently, not summed', () {
+      // In EUR: bob owes alice 10. In USD: alice owes bob 5.
+      // A naive sum would net these to "bob owes alice 5" — which is wrong.
+      final expenses = [
+        _expense(
+          id: 'eur',
+          paidBy: '@alice:m.org',
+          amountCents: 2000,
+          currency: 'EUR',
+          splitsJson: '{"@alice:m.org": 1000, "@bob:m.org": 1000}',
+        ),
+        _expense(
+          id: 'usd',
+          paidBy: '@bob:m.org',
+          amountCents: 1000,
+          currency: 'USD',
+          splitsJson: '{"@alice:m.org": 500, "@bob:m.org": 500}',
+        ),
+      ];
+      final debts = calculateDebts(expenses, []);
+
+      expect(debts, hasLength(2));
+      final eur = debts.firstWhere((d) => d.currency == 'EUR');
+      final usd = debts.firstWhere((d) => d.currency == 'USD');
+      expect(eur.from, '@bob:m.org');
+      expect(eur.to, '@alice:m.org');
+      expect(eur.cents, 1000);
+      expect(usd.from, '@alice:m.org');
+      expect(usd.to, '@bob:m.org');
+      expect(usd.cents, 500);
+    });
+
+    test('a settlement only clears debt in its own currency', () {
+      final expenses = [
+        _expense(
+          id: 'eur',
+          paidBy: '@alice:m.org',
+          amountCents: 2000,
+          currency: 'EUR',
+          splitsJson: '{"@alice:m.org": 1000, "@bob:m.org": 1000}',
+        ),
+      ];
+      // Bob pays alice 10, but in USD — must NOT clear the EUR debt.
+      final settlements = [
+        _settlement(
+          id: 's1',
+          fromUser: '@bob:m.org',
+          toUser: '@alice:m.org',
+          amountCents: 1000,
+          currency: 'USD',
+        ),
+      ];
+      final debts = calculateDebts(expenses, settlements);
+
+      final eur = debts.firstWhere((d) => d.currency == 'EUR');
+      expect(eur.cents, 1000); // EUR debt still stands
     });
   });
 }

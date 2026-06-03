@@ -7,14 +7,12 @@ and roughly ordered by priority within each. Last reviewed: 2026-06-03.
 
 ## Correctness / bugs
 
-### 1. Balances ignore currency (multi-currency groups are wrong) — HIGH
-`calculateDebts` (`lib/features/balance/balance_calculator.dart`) sums all amounts
-as raw cents regardless of each expense's `currency`. A group mixing EUR and CHF
-expenses produces meaningless balances. Expenses and settlements already carry a
-per-row `currency`; the calculator does not partition by it.
-- **Fix direction:** compute balances per currency (return debts grouped by
-  currency), or constrain a group to a single currency at creation and validate
-  on add. The group already has a currency (`app.moneyledger.group`).
+### 1. Balances ignore currency (multi-currency groups are wrong) — ✅ RESOLVED
+`calculateDebts` now partitions expenses + settlements by `currency` and runs the
+greedy simplification independently per currency; each `DebtEntry` carries its
+`currency`, and `BalancePage` displays/settles per-debt currency. Covered by new
+tests in `test/balance_calculator_test.dart` (mixed currencies not summed; a
+settlement only clears debt in its own currency). _Done 2026-06-03._
 
 ### 2. Historical expenses may be incomplete after joining — MEDIUM
 On join, `LedgerSyncer._reconcileTimeline` replays only the timeline the SDK
@@ -106,9 +104,9 @@ Missing: `AddExpensePage`, `GroupMembersPage`, `CreateGroupPage`. The first two
 now use the transport port and could be tested with a `FakeLedgerNetwork`
 override (participants, currency, submit).
 
-### 14. No multi-currency balance test — ties to #1
-Add a `balance_calculator` test with mixed currencies to pin the intended
-behaviour once #1 is decided.
+### 14. No multi-currency balance test — ✅ RESOLVED (with #1)
+Added mixed-currency and per-currency-settlement tests to
+`test/balance_calculator_test.dart`.
 
 ### 15. Router provider wiring is only partially tested — LOW
 `routerRedirect` (pure) is well covered; the `router` provider's
@@ -129,5 +127,6 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: **#1 (multi-currency balances)** for correctness, then
-**#2 (history backfill)**; both are user-visible. #4/#5/#6 are quick hygiene.
+Suggested next focus: **#2 (history backfill)** for correctness (user-visible),
+then **#3 (native SSO)**. #4/#5/#6 are quick hygiene. (#1 multi-currency balances
+is now done.)

@@ -23,9 +23,9 @@ void main() {
     testWidgets('renders debt cards when debts exist', (tester) async {
       final debts = [
         const DebtEntry(
-            from: '@bob:matrix.org', to: '@alice:matrix.org', cents: 2100),
+            from: '@bob:matrix.org', to: '@alice:matrix.org', cents: 2100, currency: 'EUR'),
         const DebtEntry(
-            from: '@carol:matrix.org', to: '@alice:matrix.org', cents: 1050),
+            from: '@carol:matrix.org', to: '@alice:matrix.org', cents: 1050, currency: 'EUR'),
       ];
 
       await tester.pumpWidget(testApp(
@@ -52,7 +52,7 @@ void main() {
     testWidgets('shows arrow_forward icon for each debt', (tester) async {
       final debts = [
         const DebtEntry(
-            from: '@bob:matrix.org', to: '@alice:matrix.org', cents: 500),
+            from: '@bob:matrix.org', to: '@alice:matrix.org', cents: 500, currency: 'EUR'),
       ];
 
       await tester.pumpWidget(testApp(
