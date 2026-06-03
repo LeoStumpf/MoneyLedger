@@ -4,9 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
-import '../../core/matrix/matrix_service.dart';
+import '../../core/matrix/transport_provider.dart';
 import '../../models/expense_model.dart';
-import '../auth/auth_provider.dart';
 
 part 'expenses_provider.g.dart';
 
@@ -45,9 +44,9 @@ class ExpenseAdder extends _$ExpenseAdder {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
+      final transport = await ref.read(ledgerTransportProvider.future);
       final id = const Uuid().v7();
-      await client.sendExpenseEvent(roomId, {
+      await transport.sendExpense(roomId, {
         'id': id,
         'description': description,
         'amount': amountCents,
@@ -67,9 +66,9 @@ class ExpenseAdder extends _$ExpenseAdder {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
+      final transport = await ref.read(ledgerTransportProvider.future);
       final id = const Uuid().v7();
-      await client.sendSettlementEvent(roomId, {
+      await transport.sendSettlement(roomId, {
         'id': id,
         'amount': amountCents,
         'currency': currency,

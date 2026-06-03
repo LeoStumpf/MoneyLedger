@@ -1,10 +1,10 @@
 import 'package:drift/drift.dart';
-import 'package:matrix/matrix.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
 import '../../core/database/app_database.dart';
-import '../../core/matrix/matrix_service.dart';
+import '../../core/matrix/ledger_transport.dart';
+import '../../core/matrix/transport_provider.dart';
 import '../../models/group_model.dart';
-import '../auth/auth_provider.dart';
 import '../expenses/expenses_provider.dart';
 
 part 'group_provider.g.dart';
@@ -15,16 +15,17 @@ Stream<List<GroupModel>> ledgerGroups(Ref ref) {
 }
 
 @riverpod
-Stream<List<Room>> pendingInvites(Ref ref) async* {
-  final client = await ref.watch(matrixClientProvider.future);
-  yield _invitedRooms(client);
-  await for (final _ in client.onSync.stream) {
-    yield _invitedRooms(client);
+Stream<List<TransportRoom>> pendingInvites(Ref ref) async* {
+  final transport = await ref.watch(ledgerTransportProvider.future);
+  yield _invitedRooms(transport);
+  await for (final _ in transport.onSync) {
+    yield _invitedRooms(transport);
   }
 }
 
-List<Room> _invitedRooms(Client client) =>
-    client.rooms.where((r) => r.membership == Membership.invite).toList();
+List<TransportRoom> _invitedRooms(LedgerTransport transport) => transport.rooms
+    .where((r) => r.membership == TransportMembership.invite)
+    .toList();
 
 @riverpod
 class GroupCreator extends _$GroupCreator {
@@ -34,8 +35,8 @@ class GroupCreator extends _$GroupCreator {
   Future<void> create(String name, String currency) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
-      final roomId = await client.createLedgerGroup(name, currency);
+      final transport = await ref.read(ledgerTransportProvider.future);
+      final roomId = await transport.createGroup(name, currency);
       await ref.read(groupsDaoProvider).upsertGroup(GroupsCompanion(
             roomId: Value(roomId),
             name: Value(name),
@@ -53,10 +54,8 @@ class UserInviter extends _$UserInviter {
   Future<void> invite(String roomId, String userId) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
-      final room = client.getRoomById(roomId);
-      if (room == null) throw Exception('Room not found');
-      await room.invite(userId);
+      final transport = await ref.read(ledgerTransportProvider.future);
+      await transport.invite(roomId, userId);
     });
   }
 }
@@ -72,10 +71,8 @@ class MemberRemover extends _$MemberRemover {
   Future<void> remove(String roomId, String userId) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
-      final room = client.getRoomById(roomId);
-      if (room == null) throw Exception('Room not found');
-      await room.kick(userId);
+      final transport = await ref.read(ledgerTransportProvider.future);
+      await transport.kick(roomId, userId);
     });
   }
 }
@@ -88,32 +85,28 @@ class InviteAcceptor extends _$InviteAcceptor {
   Future<void> accept(String roomId) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
-      await client.joinRoomById(roomId);
-      // Write to Drift immediately so the group appears without waiting for
-      // the next sync. The room may already have its state from the join
-      // response; if not, LedgerSyncer overwrites with the correct data on
-      // the next onSync event.
-      final room = client.getRoomById(roomId);
-      if (room != null) {
-        final stateContent =
-            room.getState(groupStateEventType)?.content ?? {};
-        final currency = stateContent['currency'] as String? ?? 'EUR';
-        await ref.read(groupsDaoProvider).upsertGroup(GroupsCompanion(
-              roomId: Value(roomId),
-              name: Value(room.name.isNotEmpty ? room.name : roomId),
-              currency: Value(currency),
-            ));
-      }
+      final transport = await ref.read(ledgerTransportProvider.future);
+      // The transport supplies federation hints (`via`) so this works across
+      // homeservers — see docs/fix-second-user-cannot-see-group.md.
+      await transport.join(roomId);
+      // Write to Drift immediately so the group appears without waiting for the
+      // next sync. The room's group state may not be loaded yet right after
+      // joining (currency falls back to EUR); LedgerSyncer overwrites it with
+      // the correct data on the next onSync.
+      final room = transport.room(roomId);
+      await ref.read(groupsDaoProvider).upsertGroup(GroupsCompanion(
+            roomId: Value(roomId),
+            name: Value(room?.displayName ?? roomId),
+            currency: Value(room?.currency ?? 'EUR'),
+          ));
     });
   }
 
   Future<void> decline(String roomId) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
-      final room = client.getRoomById(roomId);
-      await room?.leave();
+      final transport = await ref.read(ledgerTransportProvider.future);
+      await transport.leave(roomId);
     });
   }
 }

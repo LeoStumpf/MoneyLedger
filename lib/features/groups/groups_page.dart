@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart' show Room;
+import '../../core/matrix/ledger_transport.dart' show TransportRoom;
 import '../auth/auth_provider.dart';
 import '../expenses/ledger_syncer.dart';
 import '../../models/group_model.dart';
@@ -16,6 +16,17 @@ class GroupsPage extends ConsumerWidget {
     final groupsAsync = ref.watch(ledgerGroupsProvider);
     final invitesAsync = ref.watch(pendingInvitesProvider);
     final acceptorState = ref.watch(inviteAcceptorProvider);
+
+    // Surface join failures instead of swallowing them (the old "Accept does
+    // nothing" symptom). Fires once per error transition.
+    ref.listen(inviteAcceptorProvider, (prev, next) {
+      final error = next.error;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not join group: $error')),
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -108,7 +119,7 @@ class GroupsPage extends ConsumerWidget {
 }
 
 class _InviteTile extends ConsumerWidget {
-  final Room room;
+  final TransportRoom room;
   const _InviteTile({required this.room});
 
   @override
@@ -116,7 +127,7 @@ class _InviteTile extends ConsumerWidget {
     final acceptor = ref.read(inviteAcceptorProvider.notifier);
     return ListTile(
       leading: const CircleAvatar(child: Icon(Icons.mail_outline)),
-      title: Text(room.name.isNotEmpty ? room.name : room.id),
+      title: Text(room.displayName),
       subtitle: const Text('Invited you to join'),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
