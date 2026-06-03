@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git workflow
+
+Single-developer project — **commit directly to `main`** (the default branch). Do
+not create feature branches or open PRs unless explicitly asked; just commit to
+`main` and push. Still only commit/push when the user asks.
+
 ## Project Overview
 
 MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternative) with no central server. The Matrix network is used as the sync and transport layer: users authenticate with their Matrix ID, groups are Matrix rooms, and expenses are custom Matrix timeline events. All ledger data is stored locally on each device.
