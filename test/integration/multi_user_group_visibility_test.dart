@@ -86,6 +86,41 @@ void main() {
     );
   });
 
+  test('a second user sees expenses that predate their join', () async {
+    final net = FakeMatrixNetwork();
+    final alice = makeUser(net, '@alice:x.org');
+    final bob = makeUser(net, '@bob:y.org');
+    await bob.read(ledgerTransportProvider.future);
+
+    final roomId = await createGroupAs(alice, 'Trip', 'EUR');
+
+    // Alice records an expense BEFORE bob is invited — it's not in any live
+    // sync delta bob will receive, only in history.
+    await alice.read(expenseAdderProvider.notifier).addExpense(
+      roomId: roomId,
+      description: 'Pre-join dinner',
+      amountCents: 4000,
+      currency: 'EUR',
+      paidBy: '@alice:x.org',
+      splits: {'@alice:x.org': 2000, '@bob:y.org': 2000},
+    );
+
+    // Bob's syncer is already running when he joins (he's mid-session).
+    bob.listen(ledgerSyncerProvider, (_, _) {});
+    await net.settle();
+
+    await alice.read(userInviterProvider.notifier).invite(roomId, '@bob:y.org');
+    await net.settle();
+    await bob.read(inviteAcceptorProvider.notifier).accept(roomId);
+    await net.settle();
+
+    // The history-backfill reconcile must have pulled the pre-join expense in.
+    final bobExpenses =
+        await bob.read(expensesDaoProvider).watchExpensesForRoom(roomId).first;
+    expect(bobExpenses, hasLength(1));
+    expect(bobExpenses.first.description, 'Pre-join dinner');
+  });
+
   test('expense added by the first user appears for the second after joining',
       () async {
     final net = FakeMatrixNetwork();

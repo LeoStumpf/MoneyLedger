@@ -28,6 +28,10 @@ class LedgerSyncer {
   LedgerTransport? _transport;
   StreamSubscription<TransportSyncUpdate>? _sub;
 
+  /// Ledger rooms whose full history we've already paged in + replayed, so we
+  /// don't re-page (a network round-trip) on every sync.
+  final Set<String> _reconciled = {};
+
   LedgerSyncer(this._ref);
 
   Future<void> start() async {
@@ -55,18 +59,24 @@ class LedgerSyncer {
     }
   }
 
-  /// Replays a room's timeline into Drift so a freshly-joined user sees the full
-  /// history, not just events that arrive after they joined.
+  /// Pages in a room's full history and replays its timeline into Drift so a
+  /// freshly-joined user sees the whole ledger, not just events that arrive
+  /// after they joined or fall inside the current sync window. Runs at most once
+  /// per room (tracked in [_reconciled]).
   Future<void> _reconcileTimeline(
       LedgerTransport transport, String roomId, ExpensesDao expDao) async {
+    if (!_reconciled.add(roomId)) return; // already done
     try {
+      await transport.loadHistory(roomId);
+      if (_disposed) return;
       final events = await transport.timelineEvents(roomId);
       for (final event in events) {
         if (_disposed) return;
         _processEvent(roomId, event, expDao);
       }
     } catch (_) {
-      // Timeline unavailable right now — live sync will fill it in.
+      // History unavailable right now — allow a later sync to retry.
+      _reconciled.remove(roomId);
     }
   }
 
@@ -89,6 +99,9 @@ class LedgerSyncer {
         if (room.groupState != null) {
           processGroupState(
               room.id, room.groupState!, room.displayName, groupDao);
+          // Backfill history the first time we see a ledger room live (e.g. one
+          // joined after the syncer started). Self-guards against re-running.
+          unawaited(_reconcileTimeline(transport, room.id, expDao));
         }
       }
     }

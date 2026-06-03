@@ -95,6 +95,9 @@ class MatrixLedgerTransport implements LedgerTransport {
     return timeline.events.map(_toEvent).toList();
   }
 
+  @override
+  Future<void> loadHistory(String roomId) => _client.loadRoomHistory(roomId);
+
   // ── mapping helpers ─────────────────────────────────────────────────────
 
   /// Resident-server hints for [roomId]: the room id's origin server plus the

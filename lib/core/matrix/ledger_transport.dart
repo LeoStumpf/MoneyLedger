@@ -112,6 +112,11 @@ abstract interface class LedgerTransport {
   });
 
   Future<List<TransportEvent>> timelineEvents(String roomId);
+
+  /// Pages older history into the room so [timelineEvents] returns the full
+  /// ledger, not just the events in the current sync window. Used when
+  /// reconciling a freshly-joined room.
+  Future<void> loadHistory(String roomId);
 }
 
 /// Pure: resident-server hints derivable from a room id and the inviter's MXID.

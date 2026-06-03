@@ -14,13 +14,14 @@ greedy simplification independently per currency; each `DebtEntry` carries its
 tests in `test/balance_calculator_test.dart` (mixed currencies not summed; a
 settlement only clears debt in its own currency). _Done 2026-06-03._
 
-### 2. Historical expenses may be incomplete after joining — MEDIUM
-On join, `LedgerSyncer._reconcileTimeline` replays only the timeline the SDK
-currently holds; it never pages back through history. `loadRoomHistory`
-(`matrix_service.dart`) exists for this but is **never called**. For a group with
-a long history, a newly-joined second user can see a partial ledger.
-- **Fix direction:** call history backfill for a room after a successful join /
-  on first reconcile, then re-run the timeline replay.
+### 2. Historical expenses may be incomplete after joining — ✅ RESOLVED
+The transport now exposes `loadHistory(roomId)` (real adapter pages back via
+`loadRoomHistory`), and `LedgerSyncer._reconcileTimeline` calls it before replay.
+Crucially, the syncer now also reconciles a ledger room the **first time it sees
+it live** (not only at startup), so a user who joins mid-session backfills the
+full pre-join history — tracked per-room in `_reconciled` to avoid re-paging.
+Covered by `test/integration/...: 'a second user sees expenses that predate their
+join'`. _Done 2026-06-03._
 
 ### 3. SSO on native platforms doesn't actually launch — MEDIUM
 `LoginPage._startSso` opens the browser only on web; on native it just shows the
@@ -33,9 +34,9 @@ SSO URL in a `SnackBar` (`login_page.dart:126`). Mobile SSO + the
 
 ### 4. Dead code in `matrix_service.dart` — LOW
 After the transport/auth port migrations these extension methods are now unused:
-`groupCurrency`, `loadRoomHistory` (see #2 — wire it instead of deleting), and
-`ssoRedirectUri`. `LoginPage` builds the SSO URL inline rather than calling
-`ssoRedirectUri`. Either delete or re-integrate.
+`groupCurrency` and `ssoRedirectUri`. (`loadRoomHistory` is now wired via the
+transport's `loadHistory` — see #2.) `LoginPage` builds the SSO URL inline rather
+than calling `ssoRedirectUri`. Either delete or re-integrate (see #5).
 
 ### 5. SSO URL building still lives in the UI — LOW
 `LoginPage._startSso` constructs the redirect URL by hand. It belongs behind the
@@ -127,6 +128,6 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: **#2 (history backfill)** for correctness (user-visible),
-then **#3 (native SSO)**. #4/#5/#6 are quick hygiene. (#1 multi-currency balances
-is now done.)
+Suggested next focus: **#3 (native SSO)** for the last user-visible correctness
+gap, then **#4/#5/#6** quick hygiene. (#1 multi-currency balances and #2 history
+backfill are now done.)

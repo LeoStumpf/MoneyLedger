@@ -235,4 +235,9 @@ class FakeTransport implements LedgerTransport {
   @override
   Future<List<TransportEvent>> timelineEvents(String roomId) async =>
       _net.timeline(roomId, userId);
+
+  @override
+  Future<void> loadHistory(String roomId) async {
+    // The fake keeps the whole timeline in memory, so there's nothing to page.
+  }
 }
