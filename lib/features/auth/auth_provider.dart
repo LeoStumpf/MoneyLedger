@@ -1,5 +1,7 @@
 import 'package:matrix/matrix.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../core/matrix/auth_gateway.dart';
+import '../../core/matrix/matrix_auth_gateway.dart';
 import '../../core/matrix/matrix_service.dart';
 import '../../models/login_flows_result.dart';
 
@@ -12,93 +14,33 @@ Future<Client> matrixClient(Ref ref) async {
   return client;
 }
 
+/// Auth seam: the rest of the app drives login/session through this, never the
+/// raw Client. Overridden with an in-memory fake for offline/test login.
+@Riverpod(keepAlive: true)
+Future<AuthGateway> authGateway(Ref ref) async {
+  final client = await ref.watch(matrixClientProvider.future);
+  return MatrixAuthGateway(client);
+}
+
+/// Current login state, kept in sync with the gateway's login/logout stream.
+@riverpod
+Stream<bool> loginState(Ref ref) async* {
+  final gateway = await ref.watch(authGatewayProvider.future);
+  yield gateway.isLoggedIn;
+  yield* gateway.loginStateChanges;
+}
+
 @riverpod
 bool isLoggedIn(Ref ref) {
-  final clientAsync = ref.watch(matrixClientProvider);
-  return clientAsync.value?.isLoggedIn ?? false;
+  return ref.watch(loginStateProvider).value ?? false;
 }
 
-/// Resolves a homeserver URL (with .well-known discovery) and returns its
-/// login flows. Input can be a bare domain ("matrix.org"), a URL
-/// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
+/// Resolves a homeserver (with .well-known discovery) and returns its login
+/// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
 @riverpod
 Future<LoginFlowsResult> loginFlows(Ref ref, String input) async {
-  final normalised = _normalise(input);
-  if (normalised == null) return LoginFlowsResult.empty;
-
-  // Step 1: try .well-known discovery to find the real homeserver URL.
-  Uri resolved = normalised;
-  try {
-    final probe = MatrixApi(homeserver: normalised);
-    final wk = await probe.getWellknown();
-    probe.httpClient.close();
-    resolved = wk.mHomeserver.baseUrl;
-  } catch (_) {
-    // No .well-known or server doesn't support it — use the URL as-is.
-  }
-
-  // Step 2: fetch login flows from the resolved URL.
-  try {
-    final api = MatrixApi(homeserver: resolved);
-    final rawFlows = await api.getLoginFlows() ?? [];
-    api.httpClient.close();
-    return _toResult(resolved.toString(), rawFlows);
-  } catch (_) {
-    // Flow check failed (e.g. CORS on a non-public server). Show both SSO and
-    // password — we don't know which is supported, but SSO is worth offering
-    // since we at least have the resolved homeserver URL to redirect to.
-    return LoginFlowsResult(
-      resolvedUrl: resolved.toString(),
-      hasPassword: true,
-      hasSso: true,
-      ssoProviders: [],
-    );
-  }
-}
-
-LoginFlowsResult _toResult(String resolvedUrl, List<LoginFlow> flows) {
-  final hasSso = flows.any((f) => f.type == AuthenticationTypes.sso);
-  final hasPassword =
-      flows.any((f) => f.type == AuthenticationTypes.password);
-  // Servers running native OIDC or token-only configs report no m.login.sso
-  // and no m.login.password (e.g. mozilla.modular.im returns [m.login.token]).
-  // In that case, offer SSO — the generic SSO redirect endpoint still works.
-  final ssoAvailable = hasSso || !hasPassword;
-  final ssoFlow = flows
-      .cast<LoginFlow?>()
-      .firstWhere((f) => f?.type == AuthenticationTypes.sso,
-          orElse: () => null);
-  final providers =
-      (ssoFlow?.additionalProperties['identity_providers'] as List?)
-              ?.cast<Map>()
-              .map((p) => SsoProvider(
-                    id: p['id'] as String? ?? '',
-                    name: p['name'] as String? ?? 'SSO',
-                    brand: p['brand'] as String?,
-                  ))
-              .toList() ??
-          [];
-  return LoginFlowsResult(
-    resolvedUrl: resolvedUrl,
-    hasPassword: hasPassword,
-    hasSso: ssoAvailable,
-    ssoProviders: providers,
-  );
-}
-
-/// Turns arbitrary user input into a well-formed Uri, or null if unparseable.
-Uri? _normalise(String raw) {
-  raw = raw.trim();
-  if (raw.isEmpty) return null;
-  // Strip leading "@user:" to extract just the domain from a Matrix ID.
-  if (raw.startsWith('@')) {
-    final colon = raw.indexOf(':');
-    if (colon == -1) return null;
-    raw = raw.substring(colon + 1);
-  }
-  // Add https:// if no scheme.
-  if (!raw.startsWith('http')) raw = 'https://$raw';
-  return Uri.tryParse(raw);
+  final gateway = await ref.watch(authGatewayProvider.future);
+  return gateway.loginFlows(input);
 }
 
 @riverpod
@@ -113,16 +55,14 @@ class AuthNotifier extends _$AuthNotifier {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
-      await client.checkHomeserver(Uri.parse(resolvedHomeserver));
-      await client.login(
-        AuthenticationTypes.password,
-        identifier: AuthenticationUserIdentifier(user: username),
+      final gateway = await ref.read(authGatewayProvider.future);
+      await gateway.loginWithPassword(
+        homeserver: resolvedHomeserver,
+        username: username,
         password: password,
-        initialDeviceDisplayName: 'MoneyLedger',
       );
-      ref.invalidate(matrixClientProvider);
     });
+    _refreshLoginState();
   }
 
   Future<void> loginWithToken({
@@ -131,23 +71,28 @@ class AuthNotifier extends _$AuthNotifier {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
-      await client.checkHomeserver(Uri.parse(resolvedHomeserver));
-      await client.login(
-        AuthenticationTypes.token,
+      final gateway = await ref.read(authGatewayProvider.future);
+      await gateway.loginWithToken(
+        homeserver: resolvedHomeserver,
         token: token,
-        initialDeviceDisplayName: 'MoneyLedger',
       );
-      ref.invalidate(matrixClientProvider);
     });
+    _refreshLoginState();
   }
 
   Future<void> logout() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final client = await ref.read(matrixClientProvider.future);
-      await client.logout();
-      ref.invalidate(matrixClientProvider);
+      final gateway = await ref.read(authGatewayProvider.future);
+      await gateway.logout();
     });
+    _refreshLoginState();
+  }
+
+  /// Recompute [isLoggedInProvider] immediately after a login/logout instead of
+  /// waiting for the gateway's async stream — so the router redirect can't read
+  /// a stale value (the old `invalidate(matrixClientProvider)` guarantee).
+  void _refreshLoginState() {
+    if (!state.hasError) ref.invalidate(loginStateProvider);
   }
 }

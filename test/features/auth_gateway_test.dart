@@ -1,0 +1,79 @@
+/// Offline login tests: drive the auth providers against an in-memory
+/// FakeAuthGateway — no real homeserver, no network.
+library;
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/features/auth/auth_provider.dart';
+
+import '../helpers/fake_auth_gateway.dart';
+
+void main() {
+  ProviderContainer makeContainer(FakeAuthGateway gateway) {
+    final container = ProviderContainer(overrides: [
+      authGatewayProvider.overrideWith((ref) => gateway),
+    ]);
+    addTearDown(() {
+      container.dispose();
+      gateway.dispose();
+    });
+    // Keep the reactive login-state chain alive for the duration of the test.
+    container.listen(isLoggedInProvider, (_, _) {});
+    return container;
+  }
+
+  test('starts logged out', () async {
+    final container = makeContainer(FakeAuthGateway());
+    // Let loginState yield its initial value.
+    await container.read(loginStateProvider.future);
+    expect(container.read(isLoggedInProvider), isFalse);
+  });
+
+  test('password login flips isLoggedIn to true', () async {
+    final container = makeContainer(FakeAuthGateway());
+    await container.read(loginStateProvider.future);
+
+    await container.read(authProvider.notifier).login(
+          resolvedHomeserver: 'https://matrix.org',
+          username: 'alice',
+          password: 'hunter2',
+        );
+
+    expect(container.read(authProvider).hasError, isFalse);
+    // login() refreshes loginState; await its rebuilt first emission.
+    await container.read(loginStateProvider.future);
+    expect(container.read(isLoggedInProvider), isTrue);
+  });
+
+  test('logout flips isLoggedIn back to false', () async {
+    final container = makeContainer(FakeAuthGateway(initialUserId: '@a:x.org'));
+    await container.read(loginStateProvider.future);
+    expect(container.read(isLoggedInProvider), isTrue);
+
+    await container.read(authProvider.notifier).logout();
+    await container.read(loginStateProvider.future);
+    expect(container.read(isLoggedInProvider), isFalse);
+  });
+
+  test('login failure is surfaced and leaves user logged out', () async {
+    final gateway = FakeAuthGateway()..failWith = Exception('bad creds');
+    final container = makeContainer(gateway);
+    await container.read(loginStateProvider.future);
+
+    await container.read(authProvider.notifier).login(
+          resolvedHomeserver: 'https://matrix.org',
+          username: 'alice',
+          password: 'wrong',
+        );
+
+    expect(container.read(authProvider).hasError, isTrue);
+    expect(container.read(isLoggedInProvider), isFalse);
+  });
+
+  test('loginFlows is served offline from the gateway', () async {
+    final container = makeContainer(FakeAuthGateway());
+    final flows = await container.read(loginFlowsProvider('matrix.org').future);
+    expect(flows.hasPassword, isTrue);
+    expect(flows.resolvedUrl, 'https://fake.test');
+  });
+}

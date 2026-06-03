@@ -42,6 +42,91 @@ final class MatrixClientProvider
 
 String _$matrixClientHash() => r'e3824949e7753fe6c00a6ad46689d306e32f6c66';
 
+/// Auth seam: the rest of the app drives login/session through this, never the
+/// raw Client. Overridden with an in-memory fake for offline/test login.
+
+@ProviderFor(authGateway)
+final authGatewayProvider = AuthGatewayProvider._();
+
+/// Auth seam: the rest of the app drives login/session through this, never the
+/// raw Client. Overridden with an in-memory fake for offline/test login.
+
+final class AuthGatewayProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<AuthGateway>,
+          AuthGateway,
+          FutureOr<AuthGateway>
+        >
+    with $FutureModifier<AuthGateway>, $FutureProvider<AuthGateway> {
+  /// Auth seam: the rest of the app drives login/session through this, never the
+  /// raw Client. Overridden with an in-memory fake for offline/test login.
+  AuthGatewayProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'authGatewayProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$authGatewayHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<AuthGateway> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<AuthGateway> create(Ref ref) {
+    return authGateway(ref);
+  }
+}
+
+String _$authGatewayHash() => r'4c9a2869c96a4c1b5a052be97fc03cda14b9875c';
+
+/// Current login state, kept in sync with the gateway's login/logout stream.
+
+@ProviderFor(loginState)
+final loginStateProvider = LoginStateProvider._();
+
+/// Current login state, kept in sync with the gateway's login/logout stream.
+
+final class LoginStateProvider
+    extends $FunctionalProvider<AsyncValue<bool>, bool, Stream<bool>>
+    with $FutureModifier<bool>, $StreamProvider<bool> {
+  /// Current login state, kept in sync with the gateway's login/logout stream.
+  LoginStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'loginStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$loginStateHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<bool> create(Ref ref) {
+    return loginState(ref);
+  }
+}
+
+String _$loginStateHash() => r'a35f1701d3d18ac4ab1510bca7539034337afb7b';
+
 @ProviderFor(isLoggedIn)
 final isLoggedInProvider = IsLoggedInProvider._();
 
@@ -80,18 +165,16 @@ final class IsLoggedInProvider extends $FunctionalProvider<bool, bool, bool>
   }
 }
 
-String _$isLoggedInHash() => r'87eb721750548f7ba985a978bfa786f7db2da9df';
+String _$isLoggedInHash() => r'a517a967b551e17d5537c8bd4aafdd7d7ab8cf9c';
 
-/// Resolves a homeserver URL (with .well-known discovery) and returns its
-/// login flows. Input can be a bare domain ("matrix.org"), a URL
-/// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
+/// Resolves a homeserver (with .well-known discovery) and returns its login
+/// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
 
 @ProviderFor(loginFlows)
 final loginFlowsProvider = LoginFlowsFamily._();
 
-/// Resolves a homeserver URL (with .well-known discovery) and returns its
-/// login flows. Input can be a bare domain ("matrix.org"), a URL
-/// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
+/// Resolves a homeserver (with .well-known discovery) and returns its login
+/// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
 
 final class LoginFlowsProvider
     extends
@@ -101,9 +184,8 @@ final class LoginFlowsProvider
           FutureOr<LoginFlowsResult>
         >
     with $FutureModifier<LoginFlowsResult>, $FutureProvider<LoginFlowsResult> {
-  /// Resolves a homeserver URL (with .well-known discovery) and returns its
-  /// login flows. Input can be a bare domain ("matrix.org"), a URL
-  /// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
+  /// Resolves a homeserver (with .well-known discovery) and returns its login
+  /// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
   LoginFlowsProvider._({
     required LoginFlowsFamily super.from,
     required String super.argument,
@@ -148,11 +230,10 @@ final class LoginFlowsProvider
   }
 }
 
-String _$loginFlowsHash() => r'e5b9f884cba7d90e71075e70eecdcc8131fd7afb';
+String _$loginFlowsHash() => r'711269d3d7c142144a5631a1c7d4d51db6cb4b2f';
 
-/// Resolves a homeserver URL (with .well-known discovery) and returns its
-/// login flows. Input can be a bare domain ("matrix.org"), a URL
-/// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
+/// Resolves a homeserver (with .well-known discovery) and returns its login
+/// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
 
 final class LoginFlowsFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<LoginFlowsResult>, String> {
@@ -165,9 +246,8 @@ final class LoginFlowsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Resolves a homeserver URL (with .well-known discovery) and returns its
-  /// login flows. Input can be a bare domain ("matrix.org"), a URL
-  /// ("https://matrix.org"), or a Matrix ID ("@user:matrix.org").
+  /// Resolves a homeserver (with .well-known discovery) and returns its login
+  /// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
 
   LoginFlowsProvider call(String input) =>
       LoginFlowsProvider._(argument: input, from: this);
@@ -208,7 +288,7 @@ final class AuthNotifierProvider
   }
 }
 
-String _$authNotifierHash() => r'8654b30a27a674d84dd5c4da91f7c99baeac3fe9';
+String _$authNotifierHash() => r'0aa3ab53d1f5a8432c79fa148495dd64fd14b7b3';
 
 abstract class _$AuthNotifier extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

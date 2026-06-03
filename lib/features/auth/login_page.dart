@@ -161,7 +161,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final result = flowsAsync.when(
       data: (r) => r,
       loading: () => LoginFlowsResult.empty,
-      error: (_, __) => LoginFlowsResult(
+      error: (_, _) => LoginFlowsResult(
         resolvedUrl: _lookupInput.startsWith('http')
             ? _lookupInput
             : 'https://$_lookupInput',
