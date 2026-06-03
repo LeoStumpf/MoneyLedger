@@ -9,6 +9,7 @@ import '../../models/login_flows_result.dart';
 import 'auth_provider.dart';
 import 'sso_callback.dart';
 import 'sso_provider.dart';
+import 'sso_url.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -127,13 +128,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final callbackUrl =
         '$callbackBase/?hs=${Uri.encodeComponent(result.resolvedUrl)}';
 
-    final path = providerId != null
-        ? '_matrix/client/v3/login/sso/redirect/$providerId'
-        : '_matrix/client/v3/login/sso/redirect';
-    final ssoUrl = hsUri
-        .resolve(path)
-        .replace(queryParameters: {'redirectUrl': callbackUrl})
-        .toString();
+    final ssoUrl = buildSsoRedirectUrl(
+      homeserver: result.resolvedUrl,
+      callbackUrl: callbackUrl,
+      providerId: providerId,
+    );
 
     // Web redirects the current tab; native opens the system browser. Either
     // way the homeserver sends the user back to [callbackUrl], handled by

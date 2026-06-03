@@ -1,12 +1,17 @@
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:sqlite3/open.dart';
 
 // Runs once before every test file in this directory tree.
 // Points the sqlite3 package at the native library bundled by the build hooks
 // so Drift's NativeDatabase.memory() works without a system-installed sqlite3.
 Future<void> testExecutable(Future<void> Function() testMain) async {
+  // Tests open many independent in-memory databases (one per ProviderContainer),
+  // which is intentional — silence Drift's multi-instance warning.
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
   final libPath = _findSqlite3();
   if (libPath != null) {
     open.overrideForAll(() => DynamicLibrary.open(libPath));

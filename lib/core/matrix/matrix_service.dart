@@ -42,12 +42,6 @@ Future<Client> buildMatrixClient() async {
 }
 
 extension MoneyLedgerMatrix on Client {
-  bool get isLoggedIn => isLogged();
-
-  List<Room> get ledgerGroups => rooms
-      .where((r) => r.getState(groupStateEventType) != null)
-      .toList();
-
   Future<String> createLedgerGroup(String name, String currency) async {
     final roomId = await createRoom(
       name: name,
@@ -64,11 +58,6 @@ extension MoneyLedgerMatrix on Client {
       );
     }
     return roomId;
-  }
-
-  String? groupCurrency(String roomId) {
-    final room = getRoomById(roomId);
-    return room?.getState(groupStateEventType)?.content['currency'] as String?;
   }
 
   Future<String?> sendExpenseEvent(
@@ -97,17 +86,5 @@ extension MoneyLedgerMatrix on Client {
     } catch (_) {
       // Reached beginning of timeline
     }
-  }
-
-  /// Returns the URL to redirect to for SSO login.
-  /// [providerId] is optional — pass it to go directly to a specific provider.
-  Uri ssoRedirectUri({String? providerId, required String callbackUrl}) {
-    final base = homeserver!;
-    final path = providerId != null
-        ? '_matrix/client/v3/login/sso/redirect/$providerId'
-        : '_matrix/client/v3/login/sso/redirect';
-    return base.resolve(path).replace(
-          queryParameters: {'redirectUrl': callbackUrl},
-        );
   }
 }

@@ -38,24 +38,21 @@ pure function (`sso_callback.dart`) with unit tests. _Done 2026-06-03._
 
 ## Tech debt / cleanup
 
-### 4. Dead code in `matrix_service.dart` — LOW
-After the transport/auth port migrations these extension methods are now unused:
-`groupCurrency` and `ssoRedirectUri`. (`loadRoomHistory` is now wired via the
-transport's `loadHistory` — see #2.) `LoginPage` builds the SSO URL inline rather
-than calling `ssoRedirectUri`. Either delete or re-integrate (see #5).
+### 4. Dead code in `matrix_service.dart` — ✅ RESOLVED
+Removed the unused `Client` extension members `groupCurrency`, `ssoRedirectUri`,
+`isLoggedIn`, and `ledgerGroups`. The extension now holds only what the transport
+adapter uses (`createLedgerGroup`, `sendExpenseEvent`, `sendSettlementEvent`,
+`loadRoomHistory`). _Done 2026-06-03._
 
-### 5. SSO URL building still lives in the UI — LOW
-`LoginPage._startSso` still constructs the redirect URL by hand (launch + callback
-parsing are now extracted, but URL assembly isn't). Could move behind the
-`AuthGateway` port (e.g. `ssoRedirectUri(...)`) so it's unit-testable and the page
-stays declarative. The now-unused `ssoRedirectUri` in `matrix_service.dart` is a
-ready home for it.
+### 5. SSO URL building still lives in the UI — ✅ RESOLVED
+Extracted the redirect-URL assembly into the pure `buildSsoRedirectUrl`
+(`sso_url.dart`), now unit-tested (`test/features/sso_url_test.dart`).
+`LoginPage._startSso` only computes the platform-specific callback base and calls
+it. _Done 2026-06-03._
 
-### 6. Drift "multiple databases" warning in tests — LOW
-Each test container opens its own in-memory `AppDatabase`, so Drift logs a
-multi-instance warning. Harmless, but noisy — set
-`driftRuntimeOptions.dontWarnAboutMultipleDatabases = true` in the test bootstrap
-(`test/flutter_test_config.dart`).
+### 6. Drift "multiple databases" warning in tests — ✅ RESOLVED
+`test/flutter_test_config.dart` now sets
+`driftRuntimeOptions.dontWarnAboutMultipleDatabases = true`. _Done 2026-06-03._
 
 ---
 
@@ -136,6 +133,7 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: **#4/#5/#6** quick hygiene, or **#13** (page widget tests).
-(#1 multi-currency balances, #2 history backfill, and #3 native SSO are now done;
-#3 still wants a manual device smoke test.)
+Suggested next focus: **#13** (widget tests for the AddExpense / GroupMembers /
+CreateGroup pages — now easy with the fake transport), then the remaining
+features (#7 virtual users, #9 offline demo mode). Resolved so far: #1, #2, #3
+(needs device smoke test), #4, #5, #6, #14.
