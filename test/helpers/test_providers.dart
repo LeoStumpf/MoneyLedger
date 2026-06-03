@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
@@ -27,6 +28,27 @@ Widget testApp(Widget child, {List overrides = const []}) =>
       overrides: [...overrides],
       child: MaterialApp(home: child),
     );
+
+/// Like [testApp] but mounts [page] under a GoRouter (pushed onto a host route)
+/// so pages that call `context.pop()` on success have somewhere to pop back to.
+/// After a pop, the "host" text is visible — assert on it to confirm navigation.
+Widget testRouterApp(Widget page, {List overrides = const []}) {
+  final router = GoRouter(
+    initialLocation: '/host',
+    routes: [
+      GoRoute(
+        path: '/host',
+        builder: (_, _) => const Scaffold(body: Center(child: Text('host'))),
+      ),
+      GoRoute(path: '/page', builder: (_, _) => page),
+    ],
+  );
+  WidgetsBinding.instance.addPostFrameCallback((_) => router.push('/page'));
+  return ProviderScope(
+    overrides: [...overrides],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
 
 // ── Override helpers ──────────────────────────────────────────────────────────
 

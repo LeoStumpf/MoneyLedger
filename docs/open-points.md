@@ -105,10 +105,13 @@ ledgers should be E2EE.
 
 ## Testing gaps
 
-### 13. No widget tests for several pages — MEDIUM
-Missing: `AddExpensePage`, `GroupMembersPage`, `CreateGroupPage`. The first two
-now use the transport port and could be tested with a `FakeLedgerNetwork`
-override (participants, currency, submit).
+### 13. No widget tests for several pages — ✅ RESOLVED
+Added widget tests for `AddExpensePage`, `GroupMembersPage`, and
+`CreateGroupPage`, driven by `FakeMatrixNetwork` (members, currency, submit/kick).
+A `testRouterApp` harness gives pages that `context.pop()` somewhere to return to.
+Note: `CreateGroupPage`'s submit writes to a real in-memory Drift DB, which only
+completes on the real event loop — so that interaction runs under
+`tester.runAsync` (the fake test clock won't drive Drift). _Done 2026-06-03._
 
 ### 14. No multi-currency balance test — ✅ RESOLVED (with #1)
 Added mixed-currency and per-currency-settlement tests to
@@ -133,7 +136,6 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: **#13** (widget tests for the AddExpense / GroupMembers /
-CreateGroup pages — now easy with the fake transport), then the remaining
-features (#7 virtual users, #9 offline demo mode). Resolved so far: #1, #2, #3
-(needs device smoke test), #4, #5, #6, #14.
+Suggested next focus: the remaining features — **#7 virtual users** and **#9
+offline demo mode** — plus small items #8, #15, and the auth edge cases #10/#11.
+Resolved so far: #1, #2, #3 (needs device smoke test), #4, #5, #6, #13, #14.
