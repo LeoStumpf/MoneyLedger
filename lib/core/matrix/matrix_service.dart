@@ -3,9 +3,11 @@ import 'package:matrix/matrix.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
 
-const groupStateEventType = 'app.moneyledger.group';
-const expenseEventType = 'com.moneyledger.expense';
-const settlementEventType = 'com.moneyledger.settlement';
+import 'ledger_transport.dart'
+    show groupStateEventType, expenseEventType, settlementEventType;
+
+export 'ledger_transport.dart'
+    show groupStateEventType, expenseEventType, settlementEventType;
 
 Future<Client> buildMatrixClient() async {
   MatrixSdkDatabase db;

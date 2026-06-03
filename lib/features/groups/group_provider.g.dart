@@ -54,11 +54,13 @@ final pendingInvitesProvider = PendingInvitesProvider._();
 final class PendingInvitesProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<Room>>,
-          List<Room>,
-          Stream<List<Room>>
+          AsyncValue<List<TransportRoom>>,
+          List<TransportRoom>,
+          Stream<List<TransportRoom>>
         >
-    with $FutureModifier<List<Room>>, $StreamProvider<List<Room>> {
+    with
+        $FutureModifier<List<TransportRoom>>,
+        $StreamProvider<List<TransportRoom>> {
   PendingInvitesProvider._()
     : super(
         from: null,
@@ -75,16 +77,17 @@ final class PendingInvitesProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<Room>> $createElement($ProviderPointer pointer) =>
-      $StreamProviderElement(pointer);
+  $StreamProviderElement<List<TransportRoom>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<Room>> create(Ref ref) {
+  Stream<List<TransportRoom>> create(Ref ref) {
     return pendingInvites(ref);
   }
 }
 
-String _$pendingInvitesHash() => r'24055a93b722b73124fe808e203f1ffc4d18a383';
+String _$pendingInvitesHash() => r'ddf1dc6717b1f20f8a2e201bab4ba29d68d475ff';
 
 @ProviderFor(GroupCreator)
 final groupCreatorProvider = GroupCreatorProvider._();
@@ -118,7 +121,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'2e633643f0cbd5df318e5cc0ca64caae25157863';
+String _$groupCreatorHash() => r'7eae316675e7874c19d9cc050085de49cc1d9452';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -170,7 +173,7 @@ final class UserInviterProvider
   }
 }
 
-String _$userInviterHash() => r'ee2f8955547878439a139f119d940002544a04f7';
+String _$userInviterHash() => r'528fc5f5fdab6ef76df8b618803c7cbba5394ab2';
 
 abstract class _$UserInviter extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -222,7 +225,7 @@ final class MemberRemoverProvider
   }
 }
 
-String _$memberRemoverHash() => r'2ed22e51caed6e69070b82dbf8f55bfc03a32e19';
+String _$memberRemoverHash() => r'351792e409c8d3d21a29cecb1ded7eb6def2c09f';
 
 abstract class _$MemberRemover extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -274,7 +277,7 @@ final class InviteAcceptorProvider
   }
 }
 
-String _$inviteAcceptorHash() => r'49f2f0022272bba76ac52593129c20e0d02be7a8';
+String _$inviteAcceptorHash() => r'6aee5133565081700db5e0f13f6fba6a1ff54b12';
 
 abstract class _$InviteAcceptor extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
