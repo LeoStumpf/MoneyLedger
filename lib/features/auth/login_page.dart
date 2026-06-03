@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/platform/url_helper.dart';
 import '../../models/login_flows_result.dart';
 import 'auth_provider.dart';
+import 'sso_callback.dart';
+import 'sso_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -45,17 +47,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   // ── SSO callback handling ────────────────────────────────────────────────
 
+  /// Web: the SSO redirect returns to the page with `?loginToken=…` params.
   Future<void> _handleSsoCallback() async {
     final params = currentUrlParams;
     final token = params['loginToken'];
     if (token == null || token.isEmpty) return;
-
     final rawHs = params['hs'] ?? _serverCtrl.text.trim();
     clearUrlParams();
+    await _exchangeToken(token, rawHs);
+  }
 
+  /// Native: the SSO redirect returns as a `moneyledger://sso-callback` deep link.
+  void _onSsoCallbackUri(Uri uri) {
+    final cb = parseSsoCallback(uri);
+    if (cb == null) return;
+    _exchangeToken(cb.loginToken, cb.homeserver ?? _serverCtrl.text.trim());
+  }
+
+  /// Exchanges an SSO login token for a session (shared by web + native).
+  Future<void> _exchangeToken(String token, String rawHs) async {
     // Resolve the homeserver via .well-known before token exchange.
-    final result =
-        await ref.read(loginFlowsProvider(rawHs).future);
+    final result = await ref.read(loginFlowsProvider(rawHs).future);
     final hs = result.resolvedUrl.isNotEmpty ? result.resolvedUrl : rawHs;
 
     await ref
@@ -106,7 +118,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   // ── SSO redirect ─────────────────────────────────────────────────────────
 
-  void _startSso(LoginFlowsResult result, {String? providerId}) {
+  Future<void> _startSso(LoginFlowsResult result, {String? providerId}) async {
     final hsUri = Uri.tryParse(result.resolvedUrl);
     if (hsUri == null) return;
 
@@ -123,13 +135,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         .replace(queryParameters: {'redirectUrl': callbackUrl})
         .toString();
 
-    if (kIsWeb) {
-      navigateTo(ssoUrl);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: SelectableText('SSO: $ssoUrl')),
-      );
-    }
+    // Web redirects the current tab; native opens the system browser. Either
+    // way the homeserver sends the user back to [callbackUrl], handled by
+    // _handleSsoCallback (web) or _onSsoCallbackUri (native deep link).
+    await launchExternalUrl(ssoUrl);
   }
 
   // ── Password submit ───────────────────────────────────────────────────────
@@ -155,6 +164,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Native SSO returns via deep link; web uses page params (see initState).
+    ref.listen(ssoCallbackProvider, (_, next) {
+      final uri = next.value;
+      if (uri != null) _onSsoCallbackUri(uri);
+    });
+
     final authState = ref.watch(authProvider);
     final flowsAsync = ref.watch(loginFlowsProvider(_lookupInput));
     // On error (e.g. provider threw), still offer SSO with the entered URL.

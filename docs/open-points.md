@@ -23,10 +23,16 @@ full pre-join history — tracked per-room in `_reconciled` to avoid re-paging.
 Covered by `test/integration/...: 'a second user sees expenses that predate their
 join'`. _Done 2026-06-03._
 
-### 3. SSO on native platforms doesn't actually launch — MEDIUM
-`LoginPage._startSso` opens the browser only on web; on native it just shows the
-SSO URL in a `SnackBar` (`login_page.dart:126`). Mobile SSO + the
-`moneyledger://sso-callback` deep link is not wired end to end.
+### 3. SSO on native platforms doesn't actually launch — ✅ RESOLVED (needs device verification)
+Native now opens the system browser via `url_launcher` (`launchExternalUrl`) and
+receives the `moneyledger://sso-callback` deep link via `app_links`
+(`incomingSsoLinks` → `ssoCallbackProvider`), exchanging the token through the
+same path as web. Added the Android intent-filter + `<queries>` and iOS
+`CFBundleURLTypes` + `LSApplicationQueriesSchemes`. Token/homeserver parsing is a
+pure function (`sso_callback.dart`) with unit tests. _Done 2026-06-03._
+- **Caveat:** the end-to-end deep-link round trip can only be verified on a real
+  device/emulator — not in `flutter test` or the web build. Worth a manual smoke
+  test on Android + iOS before relying on it.
 
 ---
 
@@ -39,9 +45,11 @@ transport's `loadHistory` — see #2.) `LoginPage` builds the SSO URL inline rat
 than calling `ssoRedirectUri`. Either delete or re-integrate (see #5).
 
 ### 5. SSO URL building still lives in the UI — LOW
-`LoginPage._startSso` constructs the redirect URL by hand. It belongs behind the
-`AuthGateway` port (e.g. `ssoRedirectUri(...)`), so SSO can be simulated offline
-too and the page stays declarative.
+`LoginPage._startSso` still constructs the redirect URL by hand (launch + callback
+parsing are now extracted, but URL assembly isn't). Could move behind the
+`AuthGateway` port (e.g. `ssoRedirectUri(...)`) so it's unit-testable and the page
+stays declarative. The now-unused `ssoRedirectUri` in `matrix_service.dart` is a
+ready home for it.
 
 ### 6. Drift "multiple databases" warning in tests — LOW
 Each test container opens its own in-memory `AppDatabase`, so Drift logs a
@@ -128,6 +136,6 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: **#3 (native SSO)** for the last user-visible correctness
-gap, then **#4/#5/#6** quick hygiene. (#1 multi-currency balances and #2 history
-backfill are now done.)
+Suggested next focus: **#4/#5/#6** quick hygiene, or **#13** (page widget tests).
+(#1 multi-currency balances, #2 history backfill, and #3 native SSO are now done;
+#3 still wants a manual device smoke test.)

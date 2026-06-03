@@ -27,6 +27,9 @@ dependencies:
   go_router: ^17.2.3
   # Web platform utilities (URL navigation for SSO)
   web: ^1.1.0
+  # Native SSO: open the system browser and receive the moneyledger:// callback
+  url_launcher: ^6.3.0
+  app_links: ^6.3.0
   # Utilities
   uuid: ^4.5.3
 

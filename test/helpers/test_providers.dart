@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
+import 'package:money_ledger/features/auth/sso_provider.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
@@ -50,6 +51,8 @@ List<dynamic> testOverrides({
       ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
       pendingInvitesProvider
           .overrideWith((_) => Stream.value(const <TransportRoom>[])),
+      // Never touch the app_links plugin in widget tests.
+      ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
     ];
 
 /// Additional override for groups tests where you want to control the group list.

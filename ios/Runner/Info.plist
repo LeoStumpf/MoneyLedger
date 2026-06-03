@@ -66,5 +66,23 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- SSO callback deep link: moneyledger://sso-callback?loginToken=... -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.moneyledger.sso</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>moneyledger</string>
+			</array>
+		</dict>
+	</array>
+	<!-- So url_launcher can open the SSO page in Safari. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+	</array>
 </dict>
 </plist>
