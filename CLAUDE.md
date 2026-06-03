@@ -38,6 +38,9 @@ Output lands in `build/web/`.
 
 ```bash
 flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0   # dev web server
+flutter run -d android               # run on a connected Android device/emulator
+flutter run -d ios                   # run on iOS simulator/device (macOS only)
+flutter devices                      # list available run targets
 flutter test --reporter compact      # run all tests (exit 0 = green)
 flutter test test/foo_test.dart      # run a single test file
 flutter build apk                    # Android release build
@@ -47,9 +50,11 @@ dart run build_runner build          # regenerate Drift + Riverpod code-gen file
 dart run build_runner watch          # watch mode for code generation
 ```
 
-After any change to a file annotated with `@riverpod`, `@DriftDatabase`, or `@DriftAccessor`, regenerate with `dart run build_runner build`.
+On a fresh clone, run `flutter pub get && dart run build_runner build` before anything else. After any change to a file annotated with `@riverpod`, `@DriftDatabase`, or `@DriftAccessor`, regenerate with `dart run build_runner build`.
 
-**Always run `flutter test --reporter compact` before committing.** Write tests alongside every feature or bug fix — do not defer coverage.
+**Always run `flutter test --reporter compact` before committing.** Write tests alongside every feature or bug fix — do not defer coverage. Tests run fully offline against in-memory fakes (`test/helpers/fake_ledger_network.dart`, `test/helpers/fake_auth_gateway.dart`) — no real homeserver or network.
+
+User-facing build/run/test instructions also live in [`README.md`](README.md); keep the two in sync when changing commands.
 
 ## Project Structure
 
