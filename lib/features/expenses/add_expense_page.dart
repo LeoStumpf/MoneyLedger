@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:matrix/matrix.dart';
 
-import '../../core/matrix/matrix_service.dart';
-import '../auth/auth_provider.dart';
+import '../../core/matrix/ledger_transport.dart';
+import '../../core/matrix/transport_provider.dart';
 import 'expenses_provider.dart';
 
 class AddExpensePage extends ConsumerStatefulWidget {
@@ -20,9 +19,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   final _descCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
 
-  // null = still loading; fetched via requestParticipants() on init
-  // so the list is always accurate even before the room is fully synced.
-  List<User>? _members;
+  // null = still loading; fetched via the transport on init so the list is
+  // always accurate even before the room is fully synced.
+  List<TransportMember>? _members;
 
   @override
   void initState() {
@@ -31,10 +30,12 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   }
 
   Future<void> _loadMembers() async {
-    final client = await ref.read(matrixClientProvider.future);
-    final room = client.getRoomById(widget.roomId);
-    if (room == null || !mounted) return;
-    final members = await room.requestParticipants([Membership.join]);
+    final transport = await ref.read(ledgerTransportProvider.future);
+    if (!mounted) return;
+    final members = await transport.participants(
+      widget.roomId,
+      memberships: {TransportMembership.join},
+    );
     if (mounted) setState(() => _members = members);
   }
 
@@ -45,13 +46,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     super.dispose();
   }
 
-  Future<void> _submit(Client client, List<User> members) async {
+  Future<void> _submit(
+      LedgerTransport transport, List<TransportMember> members) async {
     if (!_formKey.currentState!.validate()) return;
 
     final amountCents =
         (double.parse(_amountCtrl.text.replaceAll(',', '.')) * 100).round();
-    final currency = client.groupCurrency(widget.roomId) ?? 'EUR';
-    final paidBy = client.userID ?? '';
+    final currency = transport.room(widget.roomId)?.currency ?? 'EUR';
+    final paidBy = transport.userId;
     final share = (amountCents / members.length).round();
     final splits = {for (final m in members) m.id: share};
 
@@ -75,15 +77,15 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
   @override
   Widget build(BuildContext context) {
-    final clientAsync = ref.watch(matrixClientProvider);
+    final transportAsync = ref.watch(ledgerTransportProvider);
     final adderState = ref.watch(expenseAdderProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Add expense')),
-      body: clientAsync.when(
+      body: transportAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (client) {
+        data: (transport) {
           final members = _members;
           if (members == null) {
             return const Center(child: CircularProgressIndicator());
@@ -108,7 +110,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     decoration: InputDecoration(
                       labelText: 'Amount',
                       suffixText:
-                          client.groupCurrency(widget.roomId) ?? 'EUR',
+                          transport.room(widget.roomId)?.currency ?? 'EUR',
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                         decimal: true),
@@ -129,7 +131,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   FilledButton(
                     onPressed: adderState.isLoading || members.isEmpty
                         ? null
-                        : () => _submit(client, members),
+                        : () => _submit(transport, members),
                     child: adderState.isLoading
                         ? const SizedBox(
                             height: 20,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:matrix/matrix.dart';
 
-import '../auth/auth_provider.dart';
+import '../../core/matrix/ledger_transport.dart';
+import '../../core/matrix/transport_provider.dart';
 import 'group_provider.dart';
 
 /// Lists the Matrix members of a group and lets the user remove (kick) them.
@@ -16,7 +16,7 @@ class GroupMembersPage extends ConsumerStatefulWidget {
 }
 
 class _GroupMembersPageState extends ConsumerState<GroupMembersPage> {
-  List<User>? _members; // null = loading
+  List<TransportMember>? _members; // null = loading
   String? _myId;
 
   @override
@@ -26,20 +26,21 @@ class _GroupMembersPageState extends ConsumerState<GroupMembersPage> {
   }
 
   Future<void> _loadMembers() async {
-    final client = await ref.read(matrixClientProvider.future);
-    final room = client.getRoomById(widget.roomId);
-    if (room == null || !mounted) return;
-    final members =
-        await room.requestParticipants([Membership.join, Membership.invite]);
+    final transport = await ref.read(ledgerTransportProvider.future);
+    if (!mounted) return;
+    final members = await transport.participants(
+      widget.roomId,
+      memberships: {TransportMembership.join, TransportMembership.invite},
+    );
     if (mounted) {
       setState(() {
         _members = members;
-        _myId = client.userID;
+        _myId = transport.userId;
       });
     }
   }
 
-  Future<void> _remove(User member) async {
+  Future<void> _remove(TransportMember member) async {
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -94,7 +95,7 @@ class _GroupMembersPageState extends ConsumerState<GroupMembersPage> {
               itemBuilder: (context, i) {
                 final m = members[i];
                 final isSelf = m.id == _myId;
-                final isInvited = m.membership == Membership.invite;
+                final isInvited = m.membership == TransportMembership.invite;
                 return ListTile(
                   leading: CircleAvatar(
                     child: Icon(isInvited ? Icons.mail_outline : Icons.person),

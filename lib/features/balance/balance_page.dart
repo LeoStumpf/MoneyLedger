@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/matrix/matrix_service.dart';
-import '../auth/auth_provider.dart';
+import '../../core/matrix/transport_provider.dart';
 import '../expenses/expenses_provider.dart';
 import 'balance_calculator.dart';
 import 'balance_provider.dart';
@@ -18,9 +17,9 @@ class _BalancePageState extends ConsumerState<BalancePage> {
   @override
   Widget build(BuildContext context) {
     final debts = ref.watch(balanceForRoomProvider(widget.roomId));
-    final clientAsync = ref.watch(matrixClientProvider);
-    final currency = clientAsync.value?.groupCurrency(widget.roomId) ?? '';
-    final myId = clientAsync.value?.userID ?? '';
+    final transport = ref.watch(ledgerTransportProvider).value;
+    final currency = transport?.room(widget.roomId)?.currency ?? '';
+    final myId = transport?.userId ?? '';
     final adderState = ref.watch(expenseAdderProvider);
 
     return Scaffold(
