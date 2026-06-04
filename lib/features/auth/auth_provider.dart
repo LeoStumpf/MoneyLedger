@@ -10,7 +10,14 @@ part 'auth_provider.g.dart';
 @Riverpod(keepAlive: true)
 Future<Client> matrixClient(Ref ref) async {
   final client = await buildMatrixClient();
-  await client.init();
+  // waitForFirstSync: false — never block app startup on a network sync. With
+  // the default (true), init() awaits the first /sync when a session is
+  // restored, so a stalled sync hangs the whole provider chain forever (the
+  // login screen spins on both the homeserver field and the sign-in button and
+  // can't recover across restarts). Drift is the local source of truth and
+  // Matrix is background transport, so local data still loads; sync continues
+  // in the background after init returns.
+  await client.init(waitForFirstSync: false);
   return client;
 }
 

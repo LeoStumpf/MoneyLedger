@@ -57,14 +57,18 @@ Widget testRouterApp(Widget page, {List overrides = const []}) {
 List<dynamic> testOverrides({
   bool isLoggedIn = false,
   LoginFlowsResult? loginFlows,
+  bool loginFlowsLoading = false,
   List<ExpenseModel> expenses = const [],
   List<SettlementModel> settlements = const [],
   List<DebtEntry> debts = const [],
 }) =>
     [
       isLoggedInProvider.overrideWith((ref) => isLoggedIn),
-      loginFlowsProvider
-          .overrideWith((ref, input) async => loginFlows ?? LoginFlowsResult.empty),
+      // loginFlowsLoading: future never completes, simulating homeserver
+      // discovery still in flight (the just-launched state).
+      loginFlowsProvider.overrideWith((ref, input) => loginFlowsLoading
+          ? Completer<LoginFlowsResult>().future
+          : Future.value(loginFlows ?? LoginFlowsResult.empty)),
       expensesForRoomProvider
           .overrideWith((ref, roomId) => Stream.value(expenses)),
       settlementsForRoomProvider

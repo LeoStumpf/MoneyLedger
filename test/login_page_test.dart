@@ -170,6 +170,33 @@ void main() {
       expect(find.text('Continue with mozilla.modular.im'), findsOneWidget);
     });
 
+    testWidgets(
+        'form is usable while homeserver discovery is still loading',
+        (tester) async {
+      // Just-launched state: loginFlows future hasn't resolved yet. The form
+      // must be interactive immediately, not greyed out behind discovery.
+      await tester.pumpWidget(testApp(
+        const LoginPage(),
+        overrides: testOverrides(isLoggedIn: false, loginFlowsLoading: true),
+      ));
+      await tester.pump(); // build; discovery future never completes
+
+      // Optimistic form: generic SSO + password, both enabled.
+      expect(find.byKey(const Key('ssoBtn')), findsOneWidget);
+      expect(find.byKey(const Key('signInBtn')), findsOneWidget);
+      expect(find.text('Sign in'), findsOneWidget); // not a spinner
+
+      final ssoButton = tester.widget<OutlinedButton>(find.descendant(
+        of: find.byKey(const Key('ssoBtn')),
+        matching: find.byType(OutlinedButton),
+      ));
+      expect(ssoButton.onPressed, isNotNull, reason: 'SSO must be tappable');
+
+      final signIn =
+          tester.widget<FilledButton>(find.byKey(const Key('signInBtn')));
+      expect(signIn.onPressed, isNotNull, reason: 'Sign in must be tappable');
+    });
+
     testWidgets('shows "or" divider between SSO and password form',
         (tester) async {
       final mixed = LoginFlowsResult(

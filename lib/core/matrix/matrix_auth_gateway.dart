@@ -6,6 +6,11 @@ import 'auth_gateway.dart';
 /// Real [AuthGateway] backed by the Matrix SDK [Client]. The only place that
 /// translates Matrix auth types into the app's plain-Dart auth port.
 class MatrixAuthGateway implements AuthGateway {
+  /// Cap on the discovery/login-flows network calls so a stalled connection on
+  /// a flaky mobile network surfaces as the fallback result instead of an
+  /// indefinite spinner on the login screen.
+  static const _lookupTimeout = Duration(seconds: 10);
+
   final Client _client;
   MatrixAuthGateway(this._client);
 
@@ -28,7 +33,7 @@ class MatrixAuthGateway implements AuthGateway {
     Uri resolved = normalised;
     try {
       final probe = MatrixApi(homeserver: normalised);
-      final wk = await probe.getWellknown();
+      final wk = await probe.getWellknown().timeout(_lookupTimeout);
       probe.httpClient.close();
       resolved = wk.mHomeserver.baseUrl;
     } catch (_) {
@@ -38,7 +43,7 @@ class MatrixAuthGateway implements AuthGateway {
     // Step 2: fetch login flows from the resolved URL.
     try {
       final api = MatrixApi(homeserver: resolved);
-      final rawFlows = await api.getLoginFlows() ?? [];
+      final rawFlows = await api.getLoginFlows().timeout(_lookupTimeout) ?? [];
       api.httpClient.close();
       return _toResult(resolved.toString(), rawFlows);
     } catch (_) {

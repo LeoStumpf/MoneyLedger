@@ -119,17 +119,31 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   // ── SSO redirect ─────────────────────────────────────────────────────────
 
-  Future<void> _startSso(LoginFlowsResult result, {String? providerId}) async {
-    final hsUri = Uri.tryParse(result.resolvedUrl);
+  Future<void> _startSso({String? providerId}) async {
+    // Resolve the homeserver (.well-known) before redirecting. Uses the cached
+    // loginFlows result if discovery already settled; otherwise awaits it now,
+    // so tapping SSO before discovery finished still works (build() already
+    // kicked the lookup off, so this is usually an instant cache read).
+    var resolvedUrl = _lookupInput.startsWith('http')
+        ? _lookupInput
+        : 'https://${_lookupInput.trim()}';
+    try {
+      final r = await ref.read(loginFlowsProvider(_lookupInput).future);
+      if (r.resolvedUrl.isNotEmpty) resolvedUrl = r.resolvedUrl;
+    } catch (_) {
+      // Discovery failed — fall back to the entered homeserver as-is.
+    }
+
+    final hsUri = Uri.tryParse(resolvedUrl);
     if (hsUri == null) return;
 
     final callbackBase =
         kIsWeb ? Uri.base.origin : 'moneyledger://sso-callback';
     final callbackUrl =
-        '$callbackBase/?hs=${Uri.encodeComponent(result.resolvedUrl)}';
+        '$callbackBase/?hs=${Uri.encodeComponent(resolvedUrl)}';
 
     final ssoUrl = buildSsoRedirectUrl(
-      homeserver: result.resolvedUrl,
+      homeserver: resolvedUrl,
       callbackUrl: callbackUrl,
       providerId: providerId,
     );
@@ -171,18 +185,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     final authState = ref.watch(authProvider);
     final flowsAsync = ref.watch(loginFlowsProvider(_lookupInput));
-    // On error (e.g. provider threw), still offer SSO with the entered URL.
+    // While discovery is still in flight (or if it failed), show an optimistic
+    // form — generic SSO + password — so the screen is usable immediately
+    // instead of frozen behind the homeserver lookup. It's refined once the
+    // real flows arrive.
+    LoginFlowsResult optimistic() => LoginFlowsResult(
+          resolvedUrl: _lookupInput.startsWith('http')
+              ? _lookupInput
+              : 'https://${_lookupInput.trim()}',
+          hasPassword: true,
+          hasSso: true,
+          ssoProviders: const [],
+        );
     final result = flowsAsync.when(
       data: (r) => r,
-      loading: () => LoginFlowsResult.empty,
-      error: (_, _) => LoginFlowsResult(
-        resolvedUrl: _lookupInput.startsWith('http')
-            ? _lookupInput
-            : 'https://$_lookupInput',
-        hasPassword: true,
-        hasSso: true,
-        ssoProviders: [],
-      ),
+      loading: optimistic,
+      error: (_, _) => optimistic(),
     );
 
     // Show resolved URL as a hint when it differs from what the user typed.
@@ -191,7 +209,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ? result.resolvedUrl
         : null;
 
-    final loading = authState.isLoading || flowsAsync.isLoading;
+    // Disable the action buttons only while an actual login is in flight — NOT
+    // while we're still discovering login flows. Gating the whole form behind
+    // that network round-trip made the screen feel frozen for seconds after
+    // launch. Discovery shows as the subtle spinner on the homeserver field.
+    final authBusy = authState.isLoading;
 
     return Scaffold(
       body: SafeArea(
@@ -254,10 +276,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               key: Key('ssoBtn_${p.id}'),
                               label: 'Continue with ${p.name}',
                               brand: p.brand,
-                              onTap: loading
+                              onTap: authBusy
                                   ? null
-                                  : () => _startSso(result,
-                                      providerId: p.id),
+                                  : () => _startSso(providerId: p.id),
                             ),
                           ))
                     else
@@ -267,9 +288,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           key: const Key('ssoBtn'),
                           label:
                               'Continue with ${Uri.tryParse(result.resolvedUrl)?.host ?? _lookupInput}',
-                          onTap: loading
-                              ? null
-                              : () => _startSso(result),
+                          onTap: authBusy ? null : () => _startSso(),
                         ),
                       ),
                     if (result.hasPassword) ...[
@@ -323,7 +342,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                             ),
                             obscureText: _obscurePassword,
-                            onFieldSubmitted: (_) => loading
+                            onFieldSubmitted: (_) => authBusy
                                 ? null
                                 : _submitPassword(
                                     result.resolvedUrl.isNotEmpty
@@ -336,13 +355,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           const SizedBox(height: 20),
                           FilledButton(
                             key: const Key('signInBtn'),
-                            onPressed: loading
+                            onPressed: authBusy
                                 ? null
                                 : () => _submitPassword(
                                     result.resolvedUrl.isNotEmpty
                                         ? result.resolvedUrl
                                         : 'https://$_lookupInput'),
-                            child: loading
+                            child: authBusy
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
