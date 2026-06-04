@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 
 import '../../models/login_flows_result.dart';
@@ -26,6 +27,7 @@ class MatrixAuthGateway implements AuthGateway {
 
   @override
   Future<LoginFlowsResult> loginFlows(String input) async {
+    final sw = Stopwatch()..start();
     final normalised = _normalise(input);
     if (normalised == null) return LoginFlowsResult.empty;
 
@@ -36,8 +38,12 @@ class MatrixAuthGateway implements AuthGateway {
       final wk = await probe.getWellknown().timeout(_lookupTimeout);
       probe.httpClient.close();
       resolved = wk.mHomeserver.baseUrl;
-    } catch (_) {
+      debugPrint('[flows] well-known $normalised -> $resolved '
+          '(${sw.elapsedMilliseconds}ms)');
+    } catch (e) {
       // No .well-known or server doesn't support it — use the URL as-is.
+      debugPrint('[flows] well-known failed for $normalised after '
+          '${sw.elapsedMilliseconds}ms: $e');
     }
 
     // Step 2: fetch login flows from the resolved URL.
@@ -45,8 +51,12 @@ class MatrixAuthGateway implements AuthGateway {
       final api = MatrixApi(homeserver: resolved);
       final rawFlows = await api.getLoginFlows().timeout(_lookupTimeout) ?? [];
       api.httpClient.close();
+      debugPrint('[flows] getLoginFlows $resolved ok '
+          '(total ${sw.elapsedMilliseconds}ms)');
       return _toResult(resolved.toString(), rawFlows);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[flows] getLoginFlows $resolved failed after '
+          '${sw.elapsedMilliseconds}ms: $e');
       // Flow check failed (e.g. CORS on a non-public server). Show both SSO and
       // password — we don't know which is supported, but SSO is worth offering
       // since we at least have the resolved homeserver URL to redirect to.

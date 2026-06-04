@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/matrix/auth_gateway.dart';
@@ -9,7 +10,16 @@ part 'auth_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 Future<Client> matrixClient(Ref ref) async {
-  final client = await buildMatrixClient();
+  final sw = Stopwatch()..start();
+  final Client client;
+  try {
+    client = await buildMatrixClient();
+  } catch (e, st) {
+    debugPrint('[client] buildMatrixClient FAILED after '
+        '${sw.elapsedMilliseconds}ms: $e\n$st');
+    rethrow;
+  }
+  debugPrint('[client] buildMatrixClient ${sw.elapsedMilliseconds}ms');
   // waitForFirstSync: false — never block app startup on a network sync. With
   // the default (true), init() awaits the first /sync when a session is
   // restored, so a stalled sync hangs the whole provider chain forever (the
@@ -17,7 +27,14 @@ Future<Client> matrixClient(Ref ref) async {
   // can't recover across restarts). Drift is the local source of truth and
   // Matrix is background transport, so local data still loads; sync continues
   // in the background after init returns.
-  await client.init(waitForFirstSync: false);
+  try {
+    await client.init(waitForFirstSync: false);
+  } catch (e, st) {
+    debugPrint('[client] init FAILED after ${sw.elapsedMilliseconds}ms: $e\n$st');
+    rethrow;
+  }
+  debugPrint('[client] init done (logged in: ${client.isLogged()}) '
+      '${sw.elapsedMilliseconds}ms');
   return client;
 }
 
@@ -50,7 +67,12 @@ Future<LoginFlowsResult> loginFlows(Ref ref, String input) async {
   return gateway.loginFlows(input);
 }
 
-@riverpod
+// keepAlive: a successful login flips isLoggedIn, the router redirects off the
+// login page, and the page (this notifier's only listener) is disposed — an
+// autoDispose notifier would then crash setting `state` after the await
+// ("Cannot use Ref … after it has been disposed"). Auth is app-global state
+// anyway, like matrixClient/authGateway.
+@Riverpod(keepAlive: true)
 class AuthNotifier extends _$AuthNotifier {
   @override
   AsyncValue<void> build() => const AsyncData(null);
@@ -61,7 +83,7 @@ class AuthNotifier extends _$AuthNotifier {
     required String password,
   }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    final result = await AsyncValue.guard(() async {
       final gateway = await ref.read(authGatewayProvider.future);
       await gateway.loginWithPassword(
         homeserver: resolvedHomeserver,
@@ -69,6 +91,8 @@ class AuthNotifier extends _$AuthNotifier {
         password: password,
       );
     });
+    if (!ref.mounted) return;
+    state = result;
     _refreshLoginState();
   }
 
@@ -77,22 +101,26 @@ class AuthNotifier extends _$AuthNotifier {
     required String token,
   }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    final result = await AsyncValue.guard(() async {
       final gateway = await ref.read(authGatewayProvider.future);
       await gateway.loginWithToken(
         homeserver: resolvedHomeserver,
         token: token,
       );
     });
+    if (!ref.mounted) return;
+    state = result;
     _refreshLoginState();
   }
 
   Future<void> logout() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    final result = await AsyncValue.guard(() async {
       final gateway = await ref.read(authGatewayProvider.future);
       await gateway.logout();
     });
+    if (!ref.mounted) return;
+    state = result;
     _refreshLoginState();
   }
 

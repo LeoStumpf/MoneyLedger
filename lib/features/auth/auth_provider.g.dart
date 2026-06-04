@@ -40,7 +40,7 @@ final class MatrixClientProvider
   }
 }
 
-String _$matrixClientHash() => r'e3824949e7753fe6c00a6ad46689d306e32f6c66';
+String _$matrixClientHash() => r'b3d60b04531b01c7184e70c2fd40876d969eeba7';
 
 /// Auth seam: the rest of the app drives login/session through this, never the
 /// raw Client. Overridden with an in-memory fake for offline/test login.
@@ -267,7 +267,7 @@ final class AuthNotifierProvider
         argument: null,
         retry: null,
         name: r'authProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -288,7 +288,7 @@ final class AuthNotifierProvider
   }
 }
 
-String _$authNotifierHash() => r'aa8830ae2be16de40805a996a552efa4517fe807';
+String _$authNotifierHash() => r'a55bb96b762cf116a81e72766e2aee4f0bf17779';
 
 abstract class _$AuthNotifier extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

@@ -17,8 +17,16 @@ Future<Client> buildMatrixClient() async {
     db = await MatrixSdkDatabase.init('money_ledger_matrix');
   } else {
     final appDir = await getApplicationSupportDirectory();
+    // matrix 7.x's BoxCollection requires an already-OPENED sqflite Database on
+    // native — passing only sqfliteFactory throws "You must provide a Database
+    // `sqfliteDatabase` for use on native" (sqflite_box.dart). The factory is
+    // used only for high-level ops like delete. So open the DB here and pass it.
+    final database = await sqflite.openDatabase(
+      '${appDir.path}/money_ledger_matrix.sqlite',
+    );
     db = await MatrixSdkDatabase.init(
       'money_ledger_matrix',
+      database: database,
       sqfliteFactory: sqflite.databaseFactory,
       fileStorageLocation: appDir.uri,
     );

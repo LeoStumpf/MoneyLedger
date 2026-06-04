@@ -140,7 +140,8 @@ Drift is the **local source of truth**. The UI never reads directly from Matrix 
 
 **Matrix SDK (7.x) API:**
 - `Client(name, database: db)` — database is required in constructor (not a builder callback)
-- `MatrixSdkDatabase.init(name, sqfliteFactory: databaseFactory)` — uses sqflite internally
+- `MatrixSdkDatabase.init(name, database: openedDb, sqfliteFactory: databaseFactory)` — on **native you MUST pass an already-opened sqflite `Database`** via `database:` (open it with `sqflite.openDatabase(path)` first). `sqfliteFactory` alone is **not** enough: `BoxCollection` throws `You must provide a Database 'sqfliteDatabase' for use on native` (the factory is only used for high-level ops like delete). On web, call `MatrixSdkDatabase.init(name)` with no DB (it uses IndexedDB). See `buildMatrixClient()` in `lib/core/matrix/matrix_service.dart`.
+- `client.init(waitForFirstSync: false)` — **always pass `false`.** The default `true` makes `init()` block on the first network `/sync` when a session is restored, which hangs app startup indefinitely on a stalled sync. Drift is the local source of truth; sync runs in the background.
 - `client.rooms` — `List<Room>`, rooms with `app.moneyledger.group` state event are ledger groups
 - `room.name` — display name (not `displayName`)
 - `room.sendEvent(content, type: '...')` — send custom events

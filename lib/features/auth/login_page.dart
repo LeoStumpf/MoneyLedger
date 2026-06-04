@@ -60,16 +60,30 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   /// Native: the SSO redirect returns as a `moneyledger://sso-callback` deep link.
   void _onSsoCallbackUri(Uri uri) {
+    debugPrint('[sso] callback uri received: $uri');
     final cb = parseSsoCallback(uri);
-    if (cb == null) return;
+    if (cb == null) {
+      debugPrint('[sso] no loginToken in callback uri — ignoring');
+      return;
+    }
     _exchangeToken(cb.loginToken, cb.homeserver ?? _serverCtrl.text.trim());
   }
 
+  /// Guards against exchanging the same single-use token twice (the deep link
+  /// can be delivered via both the initial intent and the link stream).
+  String? _exchangingToken;
+
   /// Exchanges an SSO login token for a session (shared by web + native).
   Future<void> _exchangeToken(String token, String rawHs) async {
-    // Resolve the homeserver via .well-known before token exchange.
-    final result = await ref.read(loginFlowsProvider(rawHs).future);
-    final hs = result.resolvedUrl.isNotEmpty ? result.resolvedUrl : rawHs;
+    if (_exchangingToken == token) return;
+    _exchangingToken = token;
+    // loginWithToken -> checkHomeserver does its own .well-known resolution, so
+    // pass the homeserver hint directly. Don't re-read loginFlowsProvider here:
+    // [rawHs] is a different autoDispose family key than the one the page
+    // watches, so with no listener it gets disposed mid-load and throws
+    // "provider … disposed during loading state".
+    final hs = rawHs.startsWith('http') ? rawHs : 'https://$rawHs';
+    debugPrint('[sso] exchanging token (len=${token.length}) on hs=$hs');
 
     await ref
         .read(authProvider.notifier)
@@ -77,7 +91,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (!mounted) return;
     final err = ref.read(authProvider).error;
+    debugPrint('[sso] token exchange done; error=$err');
     if (err != null) {
+      _exchangingToken = null; // allow a retry after a failed exchange
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('SSO login failed: $err')));
     } else {
