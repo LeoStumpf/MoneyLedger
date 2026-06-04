@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,6 +33,13 @@ class GroupsPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Groups'),
         actions: [
+          // TEMP: Phase B0 to-device spike (debug builds only).
+          if (kDebugMode)
+            IconButton(
+              icon: const Icon(Icons.bug_report),
+              onPressed: () => context.push('/debug/todevice'),
+              tooltip: 'to-device spike',
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authProvider.notifier).logout(),
