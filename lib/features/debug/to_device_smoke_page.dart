@@ -96,6 +96,29 @@ class _ToDeviceSmokePageState extends ConsumerState<ToDeviceSmokePage> {
     }
   }
 
+  /// Phase B0: unencrypted to-device send. Proves the homeserver-to-homeserver
+  /// routing/federation works without any E2EE setup. "*" targets all of the
+  /// user's devices, so no prior "Resolve devices" is required.
+  Future<void> _sendPingPlain(Client client) async {
+    final target = _targetCtrl.text.trim();
+    if (target.isEmpty) return;
+    final txnId = client.generateUniqueTransactionId();
+    final content = {
+      'msg': 'hello (plaintext) from MoneyLedger spike',
+      'from': client.userID,
+      'ts': DateTime.now().toIso8601String(),
+    };
+    _append('Sending PLAINTEXT ping to all devices of $target ...');
+    try {
+      await client.sendToDevice(_spikePingType, txnId, {
+        target: {'*': content},
+      });
+      _append('OK plaintext send completed (no error)');
+    } catch (e) {
+      _append('FAIL plaintext send: $e');
+    }
+  }
+
   @override
   void dispose() {
     _sub?.cancel();
@@ -141,6 +164,11 @@ class _ToDeviceSmokePageState extends ConsumerState<ToDeviceSmokePage> {
                     ),
                   ),
                 ]),
+                const SizedBox(height: 8),
+                FilledButton.tonal(
+                  onPressed: () => _sendPingPlain(client),
+                  child: const Text('Send plaintext (no E2EE)'),
+                ),
                 const SizedBox(height: 8),
                 const Text(
                   'Receive needs a 2nd app instance (other account/device): '
