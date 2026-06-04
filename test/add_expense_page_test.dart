@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/features/expenses/add_expense_page.dart';
+import 'package:money_ledger/features/expenses/expenses_provider.dart';
 
 import 'helpers/fake_ledger_network.dart';
+import 'helpers/in_memory_database.dart';
 import 'helpers/test_providers.dart';
 
 void main() {
@@ -42,7 +44,11 @@ void main() {
 
       await tester.pumpWidget(testRouterApp(
         AddExpensePage(roomId: roomId),
-        overrides: [ledgerTransportProvider.overrideWith((ref) => alice)],
+        overrides: [
+          ledgerTransportProvider.overrideWith((ref) => alice),
+          // addExpense now writes to Drift first — use an isolated in-memory DB.
+          appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+        ],
       ));
       await tester.pumpAndSettle(); // navigate + load members
 
