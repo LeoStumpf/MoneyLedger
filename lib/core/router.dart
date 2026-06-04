@@ -6,7 +6,6 @@ import '../features/auth/auth_provider.dart';
 import 'error_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/balance/balance_page.dart';
-import '../features/debug/to_device_smoke_page.dart'; // TEMP: Phase B0 spike
 import '../features/expenses/add_expense_page.dart';
 import '../features/expenses/expenses_page.dart';
 import '../features/groups/create_group_page.dart';
@@ -37,10 +36,6 @@ GoRouter router(Ref ref) {
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
-      // TEMP: Phase B0 spike — remove with the debug button + smoke page.
-      GoRoute(
-          path: '/debug/todevice',
-          builder: (_, _) => const ToDeviceSmokePage()),
       GoRoute(
           path: '/groups/create',
           builder: (_, _) => const CreateGroupPage()),

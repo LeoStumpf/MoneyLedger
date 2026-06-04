@@ -42,13 +42,41 @@ class Settlements extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Groups, Expenses, Settlements])
+/// Group membership, owned locally and replicated peer-to-peer (Phase B,
+/// roomless). [groupId] is the local group id (the Groups.roomId value).
+/// [status] is `active` or `removed`; [updatedAt] is a logical clock used for
+/// last-writer-wins so concurrent add/remove of the same member resolves
+/// deterministically.
+class Members extends Table {
+  TextColumn get groupId => text()();
+  TextColumn get userId => text()(); // Matrix ID (@user:server)
+  TextColumn get status => text().withDefault(const Constant('active'))();
+  IntColumn get updatedAt => integer()(); // ms epoch, LWW clock
+
+  @override
+  Set<Column> get primaryKey => {groupId, userId};
+}
+
+@DriftDatabase(tables: [Groups, Expenses, Settlements, Members])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // v2 (Phase B): add the local membership table. Existing
+          // groups/expenses/settlements are left untouched (clean-slate move to
+          // roomless — old room-based groups simply stop syncing).
+          if (from < 2) {
+            await m.createTable(members);
+          }
+        },
+      );
 }
 
 QueryExecutor _openConnection() {

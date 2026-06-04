@@ -14,7 +14,7 @@ class ExpensesPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(ledgerSyncerProvider);
     final expensesAsync = ref.watch(expensesForRoomProvider(roomId));
-    final inviterState = ref.watch(userInviterProvider);
+    final adderState = ref.watch(memberAdderProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -22,10 +22,10 @@ class ExpensesPage extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.person_add_outlined),
-            tooltip: 'Invite',
-            onPressed: inviterState.isLoading
+            tooltip: 'Add member',
+            onPressed: adderState.isLoading
                 ? null
-                : () => _showInviteDialog(context, ref),
+                : () => _showAddMemberDialog(context, ref),
           ),
           IconButton(
             icon: const Icon(Icons.group_outlined),
@@ -60,7 +60,7 @@ class ExpensesPage extends ConsumerWidget {
               );
             },
           ),
-          if (inviterState.isLoading)
+          if (adderState.isLoading)
             const ColoredBox(
               color: Colors.black26,
               child: Center(child: CircularProgressIndicator()),
@@ -70,14 +70,15 @@ class ExpensesPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _showInviteDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _showAddMemberDialog(
+      BuildContext context, WidgetRef ref) async {
     final ctrl = TextEditingController();
     final messenger = ScaffoldMessenger.of(context);
 
     final userId = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Invite user'),
+        title: const Text('Add member'),
         content: TextField(
           controller: ctrl,
           decoration: const InputDecoration(
@@ -99,7 +100,7 @@ class ExpensesPage extends ConsumerWidget {
                 Navigator.of(ctx).pop(id);
               }
             },
-            child: const Text('Invite'),
+            child: const Text('Add'),
           ),
         ],
       ),
@@ -108,16 +109,12 @@ class ExpensesPage extends ConsumerWidget {
     ctrl.dispose();
     if (userId == null) return;
 
-    await ref.read(userInviterProvider.notifier).invite(roomId, userId);
+    await ref.read(memberAdderProvider.notifier).add(roomId, userId);
 
-    final error = ref.read(userInviterProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-          SnackBar(content: Text('Failed: $error')));
-    } else {
-      messenger.showSnackBar(
-          SnackBar(content: Text('Invited $userId')));
-    }
+    final error = ref.read(memberAdderProvider).error;
+    messenger.showSnackBar(SnackBar(
+        content:
+            Text(error != null ? 'Failed: $error' : 'Added $userId')));
   }
 }
 

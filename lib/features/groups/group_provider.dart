@@ -1,10 +1,14 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../models/group_model.dart';
+import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
 
 part 'group_provider.g.dart';
@@ -15,48 +19,125 @@ Stream<List<GroupModel>> ledgerGroups(Ref ref) {
 }
 
 @riverpod
-Stream<List<TransportRoom>> pendingInvites(Ref ref) async* {
-  final transport = await ref.watch(ledgerTransportProvider.future);
-  yield _invitedRooms(transport);
-  await for (final _ in transport.onSync) {
-    yield _invitedRooms(transport);
-  }
+Stream<List<MemberModel>> groupMembers(Ref ref, String groupId) {
+  return ref.watch(membersDaoProvider).watchMembers(groupId);
 }
 
-List<TransportRoom> _invitedRooms(LedgerTransport transport) => transport.rooms
-    .where((r) => r.membership == TransportMembership.invite)
-    .toList();
+/// This device's own Matrix ID (empty until the transport/client is ready).
+@riverpod
+String currentUserId(Ref ref) =>
+    ref.watch(ledgerTransportProvider).value?.userId ?? '';
 
 @riverpod
 class GroupCreator extends _$GroupCreator {
   @override
   AsyncValue<void> build() => const AsyncData(null);
 
+  /// Creates a group locally (roomless): a fresh UUID id, with the creator as
+  /// the first active member. Nothing is sent to Matrix — members are added (and
+  /// the group replicated to them) via [MemberAdder].
   Future<void> create(String name, String currency) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final transport = await ref.read(ledgerTransportProvider.future);
-      final roomId = await transport.createGroup(name, currency);
+      final groupId = const Uuid().v7();
+      final me = (await ref.read(ledgerTransportProvider.future)).userId;
       await ref.read(groupsDaoProvider).upsertGroup(GroupsCompanion(
-            roomId: Value(roomId),
+            roomId: Value(groupId),
             name: Value(name),
             currency: Value(currency),
+          ));
+      await ref.read(membersDaoProvider).upsertMemberLww(MembersCompanion(
+            groupId: Value(groupId),
+            userId: Value(me),
+            status: const Value('active'),
+            updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
           ));
     });
   }
 }
 
 @riverpod
-class UserInviter extends _$UserInviter {
+class MemberAdder extends _$MemberAdder {
   @override
   AsyncValue<void> build() => const AsyncData(null);
 
-  Future<void> invite(String roomId, String userId) async {
+  /// Adds [userId] (a Matrix ID) to the group: records them locally, sends them
+  /// the whole group as a bootstrap payload ("send my friend the database"), and
+  /// notifies existing members of the new member.
+  Future<void> add(String groupId, String userId) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final memberDao = ref.read(membersDaoProvider);
+      await memberDao.upsertMemberLww(MembersCompanion(
+        groupId: Value(groupId),
+        userId: Value(userId),
+        status: const Value('active'),
+        updatedAt: Value(now),
+      ));
+
       final transport = await ref.read(ledgerTransportProvider.future);
-      await transport.invite(roomId, userId);
+
+      // 1) Bootstrap the new member with the full group state + ledger.
+      await transport.sendToUsers(
+          {userId}, bootstrapEventType, await _buildBootstrap(groupId));
+
+      // 2) Tell the existing active members about the new member.
+      final others = (await memberDao.activeMemberIds(groupId))
+          .where((m) => m != userId)
+          .toSet();
+      await transport.sendToUsers(others, memberEventType, {
+        'group': groupId,
+        'user': userId,
+        'status': 'active',
+        'updated_at': now,
+      });
     });
+  }
+
+  Future<Map<String, dynamic>> _buildBootstrap(String groupId) async {
+    final group = await ref.read(groupsDaoProvider).getGroup(groupId);
+    final members = await ref.read(membersDaoProvider).getMembers(groupId);
+    final expenses =
+        await ref.read(expensesDaoProvider).getExpensesForRoom(groupId);
+    final settlements =
+        await ref.read(expensesDaoProvider).getSettlementsForRoom(groupId);
+    return {
+      'group': groupId,
+      'name': group?.name ?? groupId,
+      'currency': group?.currency ?? 'EUR',
+      'members': members
+          .map((m) => {
+                'group': groupId,
+                'user': m.userId,
+                'status': m.status,
+                'updated_at': m.updatedAt,
+              })
+          .toList(),
+      'expenses': expenses
+          .map((e) => {
+                'group': groupId,
+                'id': e.id,
+                'description': e.description,
+                'amount': e.amountCents,
+                'currency': e.currency,
+                'paid_by': e.paidBy,
+                'split': jsonDecode(e.splitsJson),
+                'created_at': e.createdAt,
+              })
+          .toList(),
+      'settlements': settlements
+          .map((s) => {
+                'group': groupId,
+                'id': s.id,
+                'amount': s.amountCents,
+                'currency': s.currency,
+                'from': s.fromUser,
+                'to': s.toUser,
+                'created_at': s.createdAt,
+              })
+          .toList(),
+    };
   }
 }
 
@@ -65,48 +146,30 @@ class MemberRemover extends _$MemberRemover {
   @override
   AsyncValue<void> build() => const AsyncData(null);
 
-  /// Removes (kicks) [userId] from the room. The expense history they're part
-  /// of stays in Drift, so balances are preserved — only their Matrix
-  /// membership is cleared. See planned virtual-user model.
-  Future<void> remove(String roomId, String userId) async {
+  /// Marks [userId] removed (last-writer-wins) and relays the change. Their
+  /// expense history stays in Drift, so balances are preserved — only their
+  /// membership status changes. The removed user is included in the relay so
+  /// their own device updates too.
+  Future<void> remove(String groupId, String userId) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final memberDao = ref.read(membersDaoProvider);
+      await memberDao.upsertMemberLww(MembersCompanion(
+        groupId: Value(groupId),
+        userId: Value(userId),
+        status: const Value('removed'),
+        updatedAt: Value(now),
+      ));
+      final targets =
+          (await memberDao.getMembers(groupId)).map((m) => m.userId).toSet();
       final transport = await ref.read(ledgerTransportProvider.future);
-      await transport.kick(roomId, userId);
-    });
-  }
-}
-
-@riverpod
-class InviteAcceptor extends _$InviteAcceptor {
-  @override
-  AsyncValue<void> build() => const AsyncData(null);
-
-  Future<void> accept(String roomId) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final transport = await ref.read(ledgerTransportProvider.future);
-      // The transport supplies federation hints (`via`) so this works across
-      // homeservers — see docs/fix-second-user-cannot-see-group.md.
-      await transport.join(roomId);
-      // Write to Drift immediately so the group appears without waiting for the
-      // next sync. The room's group state may not be loaded yet right after
-      // joining (currency falls back to EUR); LedgerSyncer overwrites it with
-      // the correct data on the next onSync.
-      final room = transport.room(roomId);
-      await ref.read(groupsDaoProvider).upsertGroup(GroupsCompanion(
-            roomId: Value(roomId),
-            name: Value(room?.displayName ?? roomId),
-            currency: Value(room?.currency ?? 'EUR'),
-          ));
-    });
-  }
-
-  Future<void> decline(String roomId) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final transport = await ref.read(ledgerTransportProvider.future);
-      await transport.leave(roomId);
+      await transport.sendToUsers(targets, memberEventType, {
+        'group': groupId,
+        'user': userId,
+        'status': 'removed',
+        'updated_at': now,
+      });
     });
   }
 }

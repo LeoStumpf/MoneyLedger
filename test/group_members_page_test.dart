@@ -1,32 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/features/groups/group_members_page.dart';
+import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/models/member_model.dart';
 
-import 'helpers/fake_ledger_network.dart';
 import 'helpers/test_providers.dart';
 
 void main() {
   group('GroupMembersPage', () {
-    Future<(FakeMatrixNetwork, String)> seedRoom() async {
-      final net = FakeMatrixNetwork();
-      final alice = net.clientFor('@alice:x.org');
-      final roomId = await alice.createGroup('Trip', 'EUR');
-      net.invite(roomId, '@alice:x.org', '@bob:x.org');
-      net.join(roomId, '@bob:x.org');
-      return (net, roomId);
-    }
+    // Widget-level rendering test with overridden providers (no real DB/relay —
+    // the remove + replication flow is covered by the integration test and the
+    // MembersDao LWW test).
+    List<Object> overridesFor(List<MemberModel> members, String selfId) => [
+          currentUserIdProvider.overrideWithValue(selfId),
+          groupMembersProvider('g1').overrideWith((ref) => Stream.value(members)),
+        ];
 
-    testWidgets('lists members; self gets a "You" chip, others are removable',
+    MemberModel member(String id, {String status = 'active'}) => MemberModel(
+        groupId: 'g1', userId: id, status: status, updatedAt: 1);
+
+    testWidgets('lists active members; self gets a "You" chip, others removable',
         (tester) async {
-      final (net, roomId) = await seedRoom();
-
       await tester.pumpWidget(testApp(
-        GroupMembersPage(roomId: roomId),
-        overrides: [
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
+        const GroupMembersPage(roomId: 'g1'),
+        overrides: overridesFor(
+          [member('@alice:x.org'), member('@bob:x.org')],
+          '@alice:x.org',
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -37,23 +37,17 @@ void main() {
       expect(find.byTooltip('Remove'), findsOneWidget);
     });
 
-    testWidgets('removing a member kicks them from the list', (tester) async {
-      final (net, roomId) = await seedRoom();
-
+    testWidgets('removed members are hidden from the list', (tester) async {
       await tester.pumpWidget(testApp(
-        GroupMembersPage(roomId: roomId),
-        overrides: [
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
+        const GroupMembersPage(roomId: 'g1'),
+        overrides: overridesFor(
+          [member('@alice:x.org'), member('@bob:x.org', status: 'removed')],
+          '@alice:x.org',
+        ),
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Remove'));
-      await tester.pumpAndSettle(); // confirm dialog
-      await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
-      await tester.pumpAndSettle(); // kick + reload
-
+      expect(find.text('@alice:x.org'), findsWidgets);
       expect(find.text('@bob:x.org'), findsNothing);
     });
   });

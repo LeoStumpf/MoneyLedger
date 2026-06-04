@@ -1,139 +1,56 @@
 /// The app's transport port: a narrow, plain-Dart interface over whatever
-/// delivers ledger data (the real Matrix client, or an in-memory fake in tests).
+/// relays ledger data (the real Matrix client, or an in-memory fake in tests).
 ///
 /// **No `package:matrix` import may ever be added to this file.** Everything
 /// here is plain Dart so that test code (and the fake network) can depend on it
 /// without pulling in the Matrix SDK / native sqlite3. The real implementation
 /// lives in `matrix_ledger_transport.dart`.
+///
+/// Phase B: this is a **roomless relay**. There are no Matrix rooms — groups and
+/// membership are owned by the local DB. The transport only resolves a set of
+/// member MXIDs to their devices and ships an encrypted to-device payload to
+/// them, and exposes an inbound stream of decrypted payloads. The homeserver
+/// retains nothing once a to-device message is delivered.
 library;
 
-// Matrix event types used across the app. Kept here (not in matrix_service.dart)
-// so both the real adapter and matrix-free test code can reference them.
-const groupStateEventType = 'app.moneyledger.group';
+// Payload type tags carried as the to-device event `type`. All app payloads use
+// the `com.moneyledger.` prefix so the transport can filter them on receive.
 const expenseEventType = 'com.moneyledger.expense';
 const settlementEventType = 'com.moneyledger.settlement';
+const groupMetaEventType = 'com.moneyledger.group';
+const memberEventType = 'com.moneyledger.member';
+const bootstrapEventType = 'com.moneyledger.bootstrap';
 
-enum TransportMembership { join, invite, leave }
+/// Common prefix for every app to-device payload (used to filter inbound).
+const moneyLedgerTypePrefix = 'com.moneyledger.';
 
-/// A member of a room, as the app cares about it.
-class TransportMember {
-  final String id;
-  final String? displayName;
-  final TransportMembership membership;
-
-  const TransportMember({
-    required this.id,
-    this.displayName,
-    required this.membership,
-  });
-}
-
-/// A timeline event (expense / settlement / anything), in plain-Dart form.
-class TransportEvent {
-  final String eventId;
-  final String type;
+/// One decrypted inbound to-device payload.
+class TransportMessage {
   final String senderId;
-  final int originServerTs; // millis since epoch
+  final String type;
   final Map<String, dynamic> content;
 
-  const TransportEvent({
-    required this.eventId,
-    required this.type,
+  const TransportMessage({
     required this.senderId,
-    required this.originServerTs,
+    required this.type,
     required this.content,
   });
 }
 
-/// A room as the app sees it. [groupState] is the content of the
-/// `app.moneyledger.group` state event, or null when this room is not a ledger
-/// group *or* its state isn't visible yet (e.g. while only invited — matching
-/// Matrix strip-state behaviour).
-class TransportRoom {
-  final String id;
-  final String displayName;
-  final TransportMembership membership;
-  final Map<String, dynamic>? groupState;
-
-  const TransportRoom({
-    required this.id,
-    required this.displayName,
-    required this.membership,
-    this.groupState,
-  });
-
-  bool get isLedgerGroup => groupState != null;
-  String get currency => groupState?['currency'] as String? ?? 'EUR';
-}
-
-/// Delta delivered on each sync: the new timeline events per joined room.
-/// An empty map is still a meaningful tick (membership/state may have changed —
-/// consumers re-read [LedgerTransport.rooms]).
-class TransportSyncUpdate {
-  final Map<String, List<TransportEvent>> newTimelineEvents;
-  const TransportSyncUpdate(this.newTimelineEvents);
-}
-
-/// Thrown when a transport operation (e.g. a federated join with no resolvable
-/// resident server) fails.
-class TransportJoinException implements Exception {
-  final String message;
-  TransportJoinException(this.message);
-  @override
-  String toString() => 'TransportJoinException: $message';
-}
-
-/// The operations the app needs from its sync/transport layer.
+/// The operations the app needs from its relay layer.
 abstract interface class LedgerTransport {
+  /// This device's own Matrix ID.
   String get userId;
 
-  /// Fires on every sync. Broadcast — multiple listeners are supported.
-  Stream<TransportSyncUpdate> get onSync;
+  /// Inbound decrypted app payloads. Broadcast — multiple listeners supported.
+  Stream<TransportMessage> get onMessage;
 
-  /// All rooms currently known for this user (join + invite).
-  List<TransportRoom> get rooms;
-  TransportRoom? room(String roomId);
-
-  Future<String> createGroup(String name, String currency);
-  Future<void> invite(String roomId, String userId);
-
-  /// Joins [roomId]. Implementations are responsible for supplying any
-  /// resident-server hints needed for a federated join.
-  Future<void> join(String roomId);
-  Future<void> leave(String roomId);
-  Future<void> kick(String roomId, String userId);
-
-  Future<void> sendExpense(String roomId, Map<String, dynamic> content);
-  Future<void> sendSettlement(String roomId, Map<String, dynamic> content);
-
-  Future<List<TransportMember>> participants(
-    String roomId, {
-    Set<TransportMembership> memberships,
-  });
-
-  Future<List<TransportEvent>> timelineEvents(String roomId);
-
-  /// Pages older history into the room so [timelineEvents] returns the full
-  /// ledger, not just the events in the current sync window. Used when
-  /// reconciling a freshly-joined room.
-  Future<void> loadHistory(String roomId);
-}
-
-/// Pure: resident-server hints derivable from a room id and the inviter's MXID.
-/// Used to join a federated room by id (the `via` parameter). The room id's
-/// origin server is always the creating homeserver and a guaranteed resident
-/// server; the inviter's server is a second good candidate.
-List<String> viaServersFrom(String roomId, String? inviterId) {
-  final servers = <String>{};
-  final colon = roomId.indexOf(':');
-  if (colon != -1 && colon + 1 < roomId.length) {
-    servers.add(roomId.substring(colon + 1));
-  }
-  if (inviterId != null) {
-    final ic = inviterId.indexOf(':');
-    if (ic != -1 && ic + 1 < inviterId.length) {
-      servers.add(inviterId.substring(ic + 1));
-    }
-  }
-  return servers.toList();
+  /// Encrypts and relays [content] (tagged [type]) to every device of every
+  /// MXID in [userIds]. Best-effort: the homeserver queues undelivered
+  /// to-device messages, and the SDK retries failed sends.
+  Future<void> sendToUsers(
+    Set<String> userIds,
+    String type,
+    Map<String, dynamic> content,
+  );
 }

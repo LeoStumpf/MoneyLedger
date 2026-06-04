@@ -48,46 +48,128 @@ final class LedgerGroupsProvider
 
 String _$ledgerGroupsHash() => r'c3aed9224eebc302f4f51720d4bb662853a9e3f4';
 
-@ProviderFor(pendingInvites)
-final pendingInvitesProvider = PendingInvitesProvider._();
+@ProviderFor(groupMembers)
+final groupMembersProvider = GroupMembersFamily._();
 
-final class PendingInvitesProvider
+final class GroupMembersProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransportRoom>>,
-          List<TransportRoom>,
-          Stream<List<TransportRoom>>
+          AsyncValue<List<MemberModel>>,
+          List<MemberModel>,
+          Stream<List<MemberModel>>
         >
     with
-        $FutureModifier<List<TransportRoom>>,
-        $StreamProvider<List<TransportRoom>> {
-  PendingInvitesProvider._()
+        $FutureModifier<List<MemberModel>>,
+        $StreamProvider<List<MemberModel>> {
+  GroupMembersProvider._({
+    required GroupMembersFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'groupMembersProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$groupMembersHash();
+
+  @override
+  String toString() {
+    return r'groupMembersProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<MemberModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<MemberModel>> create(Ref ref) {
+    final argument = this.argument as String;
+    return groupMembers(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is GroupMembersProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$groupMembersHash() => r'3cb151491b4278fb65d2e7d8bab18ac46d619f57';
+
+final class GroupMembersFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<MemberModel>>, String> {
+  GroupMembersFamily._()
+    : super(
+        retry: null,
+        name: r'groupMembersProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  GroupMembersProvider call(String groupId) =>
+      GroupMembersProvider._(argument: groupId, from: this);
+
+  @override
+  String toString() => r'groupMembersProvider';
+}
+
+/// This device's own Matrix ID (empty until the transport/client is ready).
+
+@ProviderFor(currentUserId)
+final currentUserIdProvider = CurrentUserIdProvider._();
+
+/// This device's own Matrix ID (empty until the transport/client is ready).
+
+final class CurrentUserIdProvider
+    extends $FunctionalProvider<String, String, String>
+    with $Provider<String> {
+  /// This device's own Matrix ID (empty until the transport/client is ready).
+  CurrentUserIdProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'pendingInvitesProvider',
+        name: r'currentUserIdProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$pendingInvitesHash();
+  String debugGetCreateSourceHash() => _$currentUserIdHash();
 
   @$internal
   @override
-  $StreamProviderElement<List<TransportRoom>> $createElement(
-    $ProviderPointer pointer,
-  ) => $StreamProviderElement(pointer);
+  $ProviderElement<String> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
 
   @override
-  Stream<List<TransportRoom>> create(Ref ref) {
-    return pendingInvites(ref);
+  String create(Ref ref) {
+    return currentUserId(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String>(value),
+    );
   }
 }
 
-String _$pendingInvitesHash() => r'ddf1dc6717b1f20f8a2e201bab4ba29d68d475ff';
+String _$currentUserIdHash() => r'76f65c8883f46092cc228dc1ff6c8a26b9366446';
 
 @ProviderFor(GroupCreator)
 final groupCreatorProvider = GroupCreatorProvider._();
@@ -121,7 +203,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'7eae316675e7874c19d9cc050085de49cc1d9452';
+String _$groupCreatorHash() => r'cc07b295bfeee01e5a1dd9470a5fe53a541a794f';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -141,28 +223,28 @@ abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   }
 }
 
-@ProviderFor(UserInviter)
-final userInviterProvider = UserInviterProvider._();
+@ProviderFor(MemberAdder)
+final memberAdderProvider = MemberAdderProvider._();
 
-final class UserInviterProvider
-    extends $NotifierProvider<UserInviter, AsyncValue<void>> {
-  UserInviterProvider._()
+final class MemberAdderProvider
+    extends $NotifierProvider<MemberAdder, AsyncValue<void>> {
+  MemberAdderProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'userInviterProvider',
+        name: r'memberAdderProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$userInviterHash();
+  String debugGetCreateSourceHash() => _$memberAdderHash();
 
   @$internal
   @override
-  UserInviter create() => UserInviter();
+  MemberAdder create() => MemberAdder();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(AsyncValue<void> value) {
@@ -173,9 +255,9 @@ final class UserInviterProvider
   }
 }
 
-String _$userInviterHash() => r'528fc5f5fdab6ef76df8b618803c7cbba5394ab2';
+String _$memberAdderHash() => r'5e10d1315b366f05f9d79076cf647ca67b23a7bc';
 
-abstract class _$UserInviter extends $Notifier<AsyncValue<void>> {
+abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
   @$mustCallSuper
   @override
@@ -225,61 +307,9 @@ final class MemberRemoverProvider
   }
 }
 
-String _$memberRemoverHash() => r'351792e409c8d3d21a29cecb1ded7eb6def2c09f';
+String _$memberRemoverHash() => r'1a998db297884d6f90cb7a2a48bf2ab2f0efeb5c';
 
 abstract class _$MemberRemover extends $Notifier<AsyncValue<void>> {
-  AsyncValue<void> build();
-  @$mustCallSuper
-  @override
-  void runBuild() {
-    final ref = this.ref as $Ref<AsyncValue<void>, AsyncValue<void>>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<AsyncValue<void>, AsyncValue<void>>,
-              AsyncValue<void>,
-              Object?,
-              Object?
-            >;
-    element.handleCreate(ref, build);
-  }
-}
-
-@ProviderFor(InviteAcceptor)
-final inviteAcceptorProvider = InviteAcceptorProvider._();
-
-final class InviteAcceptorProvider
-    extends $NotifierProvider<InviteAcceptor, AsyncValue<void>> {
-  InviteAcceptorProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'inviteAcceptorProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$inviteAcceptorHash();
-
-  @$internal
-  @override
-  InviteAcceptor create() => InviteAcceptor();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AsyncValue<void> value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<AsyncValue<void>>(value),
-    );
-  }
-}
-
-String _$inviteAcceptorHash() => r'6aee5133565081700db5e0f13f6fba6a1ff54b12';
-
-abstract class _$InviteAcceptor extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
   @$mustCallSuper
   @override

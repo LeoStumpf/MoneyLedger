@@ -14,6 +14,11 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
   Future<void> upsertGroup(GroupsCompanion group) =>
       into(groups).insertOnConflictUpdate(group);
 
+  Future<GroupModel?> getGroup(String roomId) =>
+      (select(groups)..where((t) => t.roomId.equals(roomId)))
+          .getSingleOrNull()
+          .then((row) => row == null ? null : _toModel(row));
+
   Future<void> deleteGroup(String roomId) =>
       (delete(groups)..where((t) => t.roomId.equals(roomId))).go();
 

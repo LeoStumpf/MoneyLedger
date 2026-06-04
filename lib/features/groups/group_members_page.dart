@@ -1,53 +1,75 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/matrix/ledger_transport.dart';
-import '../../core/matrix/transport_provider.dart';
+import '../../models/member_model.dart';
 import 'group_provider.dart';
 
-/// Lists the Matrix members of a group and lets the user remove (kick) them.
-/// Removing only clears Matrix membership — expense history is kept in Drift.
-class GroupMembersPage extends ConsumerStatefulWidget {
+/// Lists the group's members (from the local DB) and lets the user remove them.
+/// Removing marks the member `removed` (replicated, last-writer-wins) — their
+/// expense history is kept in Drift, so balances are preserved.
+class GroupMembersPage extends ConsumerWidget {
   final String roomId;
   const GroupMembersPage({super.key, required this.roomId});
 
   @override
-  ConsumerState<GroupMembersPage> createState() => _GroupMembersPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final membersAsync = ref.watch(groupMembersProvider(roomId));
+    final myId = ref.watch(currentUserIdProvider);
+    final removerState = ref.watch(memberRemoverProvider);
 
-class _GroupMembersPageState extends ConsumerState<GroupMembersPage> {
-  List<TransportMember>? _members; // null = loading
-  String? _myId;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMembers();
-  }
-
-  Future<void> _loadMembers() async {
-    final transport = await ref.read(ledgerTransportProvider.future);
-    if (!mounted) return;
-    final members = await transport.participants(
-      widget.roomId,
-      memberships: {TransportMembership.join, TransportMembership.invite},
+    return Scaffold(
+      appBar: AppBar(title: const Text('Members')),
+      body: Stack(
+        children: [
+          membersAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('Error: $e')),
+            data: (all) {
+              final members = all.where((m) => m.isActive).toList();
+              if (members.isEmpty) {
+                return const Center(child: Text('No members.'));
+              }
+              return ListView.builder(
+                itemCount: members.length,
+                itemBuilder: (context, i) {
+                  final m = members[i];
+                  final isSelf = m.userId == myId;
+                  return ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    title: Text(m.userId),
+                    subtitle: Text(m.userId),
+                    trailing: isSelf
+                        ? const Chip(label: Text('You'))
+                        : IconButton(
+                            icon: const Icon(Icons.person_remove_outlined),
+                            tooltip: 'Remove',
+                            onPressed: removerState.isLoading
+                                ? null
+                                : () => _remove(context, ref, m),
+                          ),
+                  );
+                },
+              );
+            },
+          ),
+          if (removerState.isLoading)
+            const ColoredBox(
+              color: Colors.black26,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        ],
+      ),
     );
-    if (mounted) {
-      setState(() {
-        _members = members;
-        _myId = transport.userId;
-      });
-    }
   }
 
-  Future<void> _remove(TransportMember member) async {
+  Future<void> _remove(
+      BuildContext context, WidgetRef ref, MemberModel member) async {
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Remove member'),
-        content: Text(
-            'Remove ${member.displayName ?? member.id} from this group?\n\n'
+        content: Text('Remove ${member.userId} from this group?\n\n'
             'Their expense history is kept; only their membership is cleared.'),
         actions: [
           TextButton(
@@ -65,62 +87,11 @@ class _GroupMembersPageState extends ConsumerState<GroupMembersPage> {
 
     await ref
         .read(memberRemoverProvider.notifier)
-        .remove(widget.roomId, member.id);
+        .remove(roomId, member.userId);
 
     final error = ref.read(memberRemoverProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
-    } else {
-      messenger.showSnackBar(SnackBar(content: Text('Removed ${member.id}')));
-      await _loadMembers();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final removerState = ref.watch(memberRemoverProvider);
-    final members = _members;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Members')),
-      body: Stack(
-        children: [
-          if (members == null)
-            const Center(child: CircularProgressIndicator())
-          else if (members.isEmpty)
-            const Center(child: Text('No members.'))
-          else
-            ListView.builder(
-              itemCount: members.length,
-              itemBuilder: (context, i) {
-                final m = members[i];
-                final isSelf = m.id == _myId;
-                final isInvited = m.membership == TransportMembership.invite;
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Icon(isInvited ? Icons.mail_outline : Icons.person),
-                  ),
-                  title: Text(m.displayName ?? m.id),
-                  subtitle: Text(isInvited ? 'Invited · ${m.id}' : m.id),
-                  trailing: isSelf
-                      ? const Chip(label: Text('You'))
-                      : IconButton(
-                          icon: const Icon(Icons.person_remove_outlined),
-                          tooltip: 'Remove',
-                          onPressed: removerState.isLoading
-                              ? null
-                              : () => _remove(m),
-                        ),
-                );
-              },
-            ),
-          if (removerState.isLoading)
-            const ColoredBox(
-              color: Colors.black26,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-        ],
-      ),
-    );
+    messenger.showSnackBar(SnackBar(
+        content: Text(
+            error != null ? 'Failed: $error' : 'Removed ${member.userId}')));
   }
 }

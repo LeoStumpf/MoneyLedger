@@ -132,6 +132,47 @@ final class GroupsDaoProvider
 
 String _$groupsDaoHash() => r'6cb0afbf2815a1a69a2a8720065d500d0b720576';
 
+@ProviderFor(membersDao)
+final membersDaoProvider = MembersDaoProvider._();
+
+final class MembersDaoProvider
+    extends $FunctionalProvider<MembersDao, MembersDao, MembersDao>
+    with $Provider<MembersDao> {
+  MembersDaoProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'membersDaoProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$membersDaoHash();
+
+  @$internal
+  @override
+  $ProviderElement<MembersDao> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  MembersDao create(Ref ref) {
+    return membersDao(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(MembersDao value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<MembersDao>(value),
+    );
+  }
+}
+
+String _$membersDaoHash() => r'd9a0cb328ed0e80f8566beffc6b14eb0602dcb9b';
+
 @ProviderFor(expensesForRoom)
 final expensesForRoomProvider = ExpensesForRoomFamily._();
 
@@ -311,7 +352,7 @@ final class ExpenseAdderProvider
   ExpenseAdder create() => ExpenseAdder();
 }
 
-String _$expenseAdderHash() => r'659fd3b23f452eb433afd7af2be646e29fe4ab2f';
+String _$expenseAdderHash() => r'd0908aa2490f6d4917cac6d14f34391333a9bb51';
 
 abstract class _$ExpenseAdder extends $AsyncNotifier<void> {
   FutureOr<void> build();

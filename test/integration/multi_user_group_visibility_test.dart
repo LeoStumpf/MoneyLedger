@@ -2,12 +2,13 @@
 /// in-memory [FakeMatrixNetwork] — no real homeserver, no network, no auth.
 ///
 /// Each user is a separate [ProviderContainer] (its own "device": own Drift DB
-/// and own transport view) sharing one fake network, mirroring two real apps.
+/// and own transport view) sharing one fake relay, mirroring two real apps.
+/// Roomless (Phase B): groups/members live in each device's DB and replicate via
+/// to-device payloads; each user's LedgerSyncer consumes the inbound stream.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/expenses/ledger_syncer.dart';
@@ -17,12 +18,12 @@ import '../helpers/fake_ledger_network.dart';
 import '../helpers/in_memory_database.dart';
 
 void main() {
-  /// Builds a user's app instance backed by an in-memory DB and a fake
-  /// transport bound to [userId] on the shared [net].
+  /// Builds a user's app instance backed by an in-memory DB and a fake transport
+  /// bound to [userId] on the shared [net], with its LedgerSyncer running so
+  /// inbound payloads land in Drift.
   ProviderContainer makeUser(FakeMatrixNetwork net, String userId) {
     final db = openTestDatabase();
-    // Pre-register so invites/events delivered to this user have a target.
-    net.clientFor(userId);
+    net.clientFor(userId); // pre-register so deliveries have a target
     final container = ProviderContainer(overrides: [
       appDatabaseProvider.overrideWithValue(db),
       ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
@@ -31,6 +32,7 @@ void main() {
       container.dispose();
       db.close();
     });
+    container.listen(ledgerSyncerProvider, (_, _) {}); // keep the syncer alive
     return container;
   }
 
@@ -42,105 +44,70 @@ void main() {
     return groups.first.roomId;
   }
 
-  test('federated invite → accept makes the group visible to the second user',
-      () async {
+  test('adding a member relays the whole group (bootstrap) to them', () async {
     final net = FakeMatrixNetwork();
     final alice = makeUser(net, '@alice:x.org');
     final bob = makeUser(net, '@bob:y.org');
-    await bob.read(ledgerTransportProvider.future); // ensure bob is live
+    await net.settle(); // let both syncers subscribe
 
-    final roomId = await createGroupAs(alice, 'Trip', 'CHF');
-
-    await alice.read(userInviterProvider.notifier).invite(roomId, '@bob:y.org');
-    await net.settle();
-
-    // Bob sees the pending invite. (listen keeps the autoDispose provider alive.)
-    bob.listen(pendingInvitesProvider, (_, _) {});
-    final invites = await bob.read(pendingInvitesProvider.future);
-    expect(invites.map((r) => r.id), contains(roomId));
-
-    // Bob accepts — this is the path that previously failed silently.
-    await bob.read(inviteAcceptorProvider.notifier).accept(roomId);
-    expect(bob.read(inviteAcceptorProvider).hasError, isFalse);
+    final groupId = await createGroupAs(alice, 'Trip', 'CHF');
+    await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
+    expect(alice.read(memberAdderProvider).hasError, isFalse);
     await net.settle();
 
     // The group is now visible (and correctly typed) for Bob.
     final bobGroups = await bob.read(groupsDaoProvider).watchAllGroups().first;
     expect(bobGroups, hasLength(1));
-    expect(bobGroups.first.roomId, roomId);
+    expect(bobGroups.first.roomId, groupId);
     expect(bobGroups.first.currency, 'CHF');
+    // ...with both members.
+    final bobMembers = await bob.read(membersDaoProvider).getMembers(groupId);
+    expect(bobMembers.map((m) => m.userId),
+        containsAll(['@alice:x.org', '@bob:y.org']));
   });
 
-  test('joining a remote room with no invite fails (federation guard)',
+  test('a new member receives expenses that predate their join (bootstrap)',
       () async {
-    final net = FakeMatrixNetwork();
-    final alice = net.clientFor('@alice:x.org');
-    final carol = net.clientFor('@carol:z.org');
-    final roomId = await alice.createGroup('Trip', 'EUR'); // hosted on x.org
-
-    // Carol is on a different server and was never invited → no resolvable
-    // resident server. This is the failure the via-less joinRoomById produced.
-    await expectLater(
-      carol.join(roomId),
-      throwsA(isA<TransportJoinException>()),
-    );
-  });
-
-  test('a second user sees expenses that predate their join', () async {
     final net = FakeMatrixNetwork();
     final alice = makeUser(net, '@alice:x.org');
     final bob = makeUser(net, '@bob:y.org');
-    await bob.read(ledgerTransportProvider.future);
+    await net.settle();
 
-    final roomId = await createGroupAs(alice, 'Trip', 'EUR');
+    final groupId = await createGroupAs(alice, 'Trip', 'EUR');
 
-    // Alice records an expense BEFORE bob is invited — it's not in any live
-    // sync delta bob will receive, only in history.
+    // Alice records an expense BEFORE bob is added — bob will only get it via
+    // the bootstrap payload, not a live relay.
     await alice.read(expenseAdderProvider.notifier).addExpense(
-      roomId: roomId,
+      roomId: groupId,
       description: 'Pre-join dinner',
       amountCents: 4000,
       currency: 'EUR',
       paidBy: '@alice:x.org',
       splits: {'@alice:x.org': 2000, '@bob:y.org': 2000},
     );
-
-    // Bob's syncer is already running when he joins (he's mid-session).
-    bob.listen(ledgerSyncerProvider, (_, _) {});
     await net.settle();
 
-    await alice.read(userInviterProvider.notifier).invite(roomId, '@bob:y.org');
-    await net.settle();
-    await bob.read(inviteAcceptorProvider.notifier).accept(roomId);
+    await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
     await net.settle();
 
-    // The history-backfill reconcile must have pulled the pre-join expense in.
     final bobExpenses =
-        await bob.read(expensesDaoProvider).watchExpensesForRoom(roomId).first;
+        await bob.read(expensesDaoProvider).watchExpensesForRoom(groupId).first;
     expect(bobExpenses, hasLength(1));
     expect(bobExpenses.first.description, 'Pre-join dinner');
   });
 
-  test('expense added by the first user appears for the second after joining',
-      () async {
+  test('expense added after a member joins live-relays to them', () async {
     final net = FakeMatrixNetwork();
     final alice = makeUser(net, '@alice:x.org');
     final bob = makeUser(net, '@bob:y.org');
-    await bob.read(ledgerTransportProvider.future);
-
-    final roomId = await createGroupAs(alice, 'Trip', 'EUR');
-    await alice.read(userInviterProvider.notifier).invite(roomId, '@bob:y.org');
-    await net.settle();
-    await bob.read(inviteAcceptorProvider.notifier).accept(roomId);
     await net.settle();
 
-    // Bob keeps the syncer alive so live events land in his Drift.
-    // (listen, not read — ledgerSyncerProvider is autoDispose.)
-    bob.listen(ledgerSyncerProvider, (_, _) {});
+    final groupId = await createGroupAs(alice, 'Trip', 'EUR');
+    await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
     await net.settle();
 
     await alice.read(expenseAdderProvider.notifier).addExpense(
-      roomId: roomId,
+      roomId: groupId,
       description: 'Pizza',
       amountCents: 2000,
       currency: 'EUR',
@@ -150,9 +117,48 @@ void main() {
     await net.settle();
 
     final bobExpenses =
-        await bob.read(expensesDaoProvider).watchExpensesForRoom(roomId).first;
+        await bob.read(expensesDaoProvider).watchExpensesForRoom(groupId).first;
     expect(bobExpenses, hasLength(1));
     expect(bobExpenses.first.description, 'Pizza');
     expect(bobExpenses.first.amountCents, 2000);
+
+    // And it flows the other way too: Bob adds an expense, Alice receives it.
+    await bob.read(expenseAdderProvider.notifier).addExpense(
+      roomId: groupId,
+      description: 'Drinks',
+      amountCents: 1000,
+      currency: 'EUR',
+      paidBy: '@bob:y.org',
+      splits: {'@alice:x.org': 500, '@bob:y.org': 500},
+    );
+    await net.settle();
+
+    final aliceExpenses = await alice
+        .read(expensesDaoProvider)
+        .watchExpensesForRoom(groupId)
+        .first;
+    expect(aliceExpenses.map((e) => e.description),
+        containsAll(['Pizza', 'Drinks']));
+  });
+
+  test('removing a member replicates the removal to the other device',
+      () async {
+    final net = FakeMatrixNetwork();
+    final alice = makeUser(net, '@alice:x.org');
+    final bob = makeUser(net, '@bob:y.org');
+    await net.settle();
+
+    final groupId = await createGroupAs(alice, 'Trip', 'EUR');
+    await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
+    await net.settle();
+
+    await alice.read(memberRemoverProvider.notifier).remove(groupId, '@bob:y.org');
+    expect(alice.read(memberRemoverProvider).hasError, isFalse);
+    await net.settle();
+
+    // Bob's own device reflects that he was removed.
+    final bobMembers = await bob.read(membersDaoProvider).getMembers(groupId);
+    final bobSelf = bobMembers.firstWhere((m) => m.userId == '@bob:y.org');
+    expect(bobSelf.status, 'removed');
   });
 }

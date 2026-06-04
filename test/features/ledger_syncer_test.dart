@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
+import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/features/expenses/ledger_syncer.dart';
 
 import '../helpers/in_memory_database.dart';
@@ -14,84 +15,77 @@ void main() {
   late AppDatabase db;
   late ExpensesDao expDao;
   late GroupsDao groupDao;
+  late MembersDao memberDao;
 
   setUp(() {
     db = openTestDatabase();
     expDao = ExpensesDao(db);
     groupDao = GroupsDao(db);
+    memberDao = MembersDao(db);
   });
 
   tearDown(() => db.close());
 
   group('LedgerSyncer.processExpense', () {
     test('writes expense row to DB', () async {
-      LedgerSyncer.processExpense(
-        '!r:m.org',
-        '\$event1',
-        {
-          'id': 'uuid-1',
-          'description': 'Pizza',
-          'amount': 3000,
-          'currency': 'EUR',
-          'paid_by': '@alice:m.org',
-          'split': {'@alice:m.org': 1500, '@bob:m.org': 1500},
-        },
-        1_000_000,
-        expDao,
-      );
+      LedgerSyncer.processExpense({
+        'id': 'uuid-1',
+        'group': 'g1',
+        'description': 'Pizza',
+        'amount': 3000,
+        'currency': 'EUR',
+        'paid_by': '@alice:m.org',
+        'split': {'@alice:m.org': 1500, '@bob:m.org': 1500},
+        'created_at': 1000000,
+      }, expDao);
 
-      final rows = await expDao.watchExpensesForRoom('!r:m.org').first;
+      final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows.length, 1);
       expect(rows.first.id, 'uuid-1');
       expect(rows.first.description, 'Pizza');
       expect(rows.first.amountCents, 3000);
-      expect(rows.first.currency, 'EUR');
       expect(rows.first.paidBy, '@alice:m.org');
-      expect(rows.first.createdAt, 1_000_000);
+      expect(rows.first.createdAt, 1000000);
     });
 
-    test('missing id field — no row written', () async {
-      LedgerSyncer.processExpense(
-        '!r:m.org', null, {'description': 'No id'}, 0, expDao);
-
-      final rows = await expDao.watchExpensesForRoom('!r:m.org').first;
+    test('missing id or group — no row written', () async {
+      LedgerSyncer.processExpense({'description': 'No id'}, expDao);
+      LedgerSyncer.processExpense({'id': 'x', 'description': 'No group'}, expDao);
+      final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows, isEmpty);
     });
 
     test('calling twice with same id is idempotent', () async {
       final content = {
         'id': 'uuid-1',
+        'group': 'g1',
         'description': 'Pizza',
         'amount': 3000,
         'currency': 'EUR',
         'paid_by': '@alice:m.org',
         'split': <String, int>{},
+        'created_at': 0,
       };
-      LedgerSyncer.processExpense('!r:m.org', '\$e1', content, 0, expDao);
-      LedgerSyncer.processExpense('!r:m.org', '\$e1', content, 0, expDao);
-
-      final rows = await expDao.watchExpensesForRoom('!r:m.org').first;
+      LedgerSyncer.processExpense(content, expDao);
+      LedgerSyncer.processExpense(content, expDao);
+      final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows.length, 1);
     });
   });
 
   group('LedgerSyncer.processSettlement', () {
     test('writes settlement row to DB', () async {
-      LedgerSyncer.processSettlement(
-        '!r:m.org',
-        '\$event2',
-        {
-          'id': 'settle-1',
-          'amount': 1500,
-          'currency': 'EUR',
-          'from': '@bob:m.org',
-          'to': '@alice:m.org',
-        },
-        2_000_000,
-        expDao,
-      );
+      LedgerSyncer.processSettlement({
+        'id': 'settle-1',
+        'group': 'g1',
+        'amount': 1500,
+        'currency': 'EUR',
+        'from': '@bob:m.org',
+        'to': '@alice:m.org',
+        'created_at': 2000000,
+      }, expDao);
 
-      final rows = await expDao.watchSettlementsForRoom('!r:m.org').first;
+      final rows = await expDao.watchSettlementsForRoom('g1').first;
       expect(rows.length, 1);
       expect(rows.first.id, 'settle-1');
       expect(rows.first.amountCents, 1500);
@@ -99,47 +93,103 @@ void main() {
       expect(rows.first.toUser, '@alice:m.org');
     });
 
-    test('missing id field — no row written', () async {
-      LedgerSyncer.processSettlement(
-          '!r:m.org', null, {'amount': 100}, 0, expDao);
-
-      final rows = await expDao.watchSettlementsForRoom('!r:m.org').first;
+    test('missing id — no row written', () async {
+      LedgerSyncer.processSettlement({'group': 'g1', 'amount': 100}, expDao);
+      final rows = await expDao.watchSettlementsForRoom('g1').first;
       expect(rows, isEmpty);
     });
   });
 
-  group('LedgerSyncer.processGroupState', () {
+  group('LedgerSyncer.processGroupMeta', () {
     test('writes group row to DB', () async {
-      LedgerSyncer.processGroupState(
-        '!r:m.org',
-        {'currency': 'CHF'},
-        'Alpine Hut',
-        groupDao,
-      );
-
+      LedgerSyncer.processGroupMeta(
+          {'group': 'g1', 'name': 'Alpine Hut', 'currency': 'CHF'}, groupDao);
       final groups = await groupDao.watchAllGroups().first;
       expect(groups.length, 1);
-      expect(groups.first.roomId, '!r:m.org');
+      expect(groups.first.roomId, 'g1');
       expect(groups.first.name, 'Alpine Hut');
       expect(groups.first.currency, 'CHF');
     });
 
     test('missing currency falls back to EUR', () async {
-      LedgerSyncer.processGroupState('!r:m.org', {}, 'No Currency', groupDao);
-
+      LedgerSyncer.processGroupMeta({'group': 'g1', 'name': 'X'}, groupDao);
       final groups = await groupDao.watchAllGroups().first;
       expect(groups.first.currency, 'EUR');
     });
+  });
 
-    test('calling twice with same roomId is idempotent', () async {
-      LedgerSyncer.processGroupState(
-          '!r:m.org', {'currency': 'USD'}, 'v1', groupDao);
-      LedgerSyncer.processGroupState(
-          '!r:m.org', {'currency': 'GBP'}, 'v2', groupDao);
+  group('LedgerSyncer.processMember', () {
+    test('writes member row (active)', () async {
+      LedgerSyncer.processMember({
+        'group': 'g1',
+        'user': '@bob:m.org',
+        'status': 'active',
+        'updated_at': 100,
+      }, memberDao);
+      final members = await memberDao.getMembers('g1');
+      expect(members.length, 1);
+      expect(members.first.userId, '@bob:m.org');
+      expect(members.first.isActive, true);
+    });
 
-      final groups = await groupDao.watchAllGroups().first;
-      expect(groups.length, 1);
-      expect(groups.first.currency, 'GBP');
+    test('older update is ignored (last-writer-wins)', () async {
+      LedgerSyncer.processMember({
+        'group': 'g1',
+        'user': '@bob:m.org',
+        'status': 'removed',
+        'updated_at': 200,
+      }, memberDao);
+      // An older "active" must not overwrite the newer "removed".
+      LedgerSyncer.processMember({
+        'group': 'g1',
+        'user': '@bob:m.org',
+        'status': 'active',
+        'updated_at': 100,
+      }, memberDao);
+      final members = await memberDao.getMembers('g1');
+      expect(members.single.status, 'removed');
+    });
+  });
+
+  group('LedgerSyncer.processBootstrap', () {
+    test('applies group meta, members and ledger in one payload', () async {
+      LedgerSyncer.processBootstrap({
+        'group': 'g1',
+        'name': 'Trip',
+        'currency': 'USD',
+        'members': [
+          {'group': 'g1', 'user': '@a:m.org', 'status': 'active', 'updated_at': 1},
+          {'group': 'g1', 'user': '@b:m.org', 'status': 'active', 'updated_at': 1},
+        ],
+        'expenses': [
+          {
+            'group': 'g1',
+            'id': 'e1',
+            'description': 'Hotel',
+            'amount': 8000,
+            'currency': 'USD',
+            'paid_by': '@a:m.org',
+            'split': {'@a:m.org': 4000, '@b:m.org': 4000},
+            'created_at': 5,
+          },
+        ],
+        'settlements': [
+          {
+            'group': 'g1',
+            'id': 's1',
+            'amount': 4000,
+            'currency': 'USD',
+            'from': '@b:m.org',
+            'to': '@a:m.org',
+            'created_at': 6,
+          },
+        ],
+      }, groupDao, memberDao, expDao);
+
+      expect((await groupDao.watchAllGroups().first).single.currency, 'USD');
+      expect((await memberDao.getMembers('g1')).length, 2);
+      expect((await expDao.watchExpensesForRoom('g1').first).single.id, 'e1');
+      expect((await expDao.watchSettlementsForRoom('g1').first).single.id, 's1');
     });
   });
 }

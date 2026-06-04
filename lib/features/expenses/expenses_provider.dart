@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
+import '../../core/database/daos/members_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../models/expense_model.dart';
@@ -23,6 +24,9 @@ ExpensesDao expensesDao(Ref ref) =>
 
 @Riverpod(keepAlive: true)
 GroupsDao groupsDao(Ref ref) => GroupsDao(ref.watch(appDatabaseProvider));
+
+@Riverpod(keepAlive: true)
+MembersDao membersDao(Ref ref) => MembersDao(ref.watch(appDatabaseProvider));
 
 @riverpod
 Stream<List<ExpenseModel>> expensesForRoom(Ref ref, String roomId) {
@@ -50,9 +54,9 @@ class ExpenseAdder extends _$ExpenseAdder {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final id = const Uuid().v7();
+      final createdAt = DateTime.now().millisecondsSinceEpoch;
       // Local-first: persist to Drift immediately so the expense is saved and
-      // visible even offline. matrixEventId stays null until replication
-      // confirms it; the eventual sync echo re-upserts the same id.
+      // visible even offline. Replication is best-effort afterwards.
       await ref.read(expensesDaoProvider).upsertExpense(ExpensesCompanion(
             id: Value(id),
             roomId: Value(roomId),
@@ -61,16 +65,18 @@ class ExpenseAdder extends _$ExpenseAdder {
             currency: Value(currency),
             paidBy: Value(paidBy),
             splitsJson: Value(jsonEncode(splits)),
-            createdAt: Value(DateTime.now().millisecondsSinceEpoch),
+            createdAt: Value(createdAt),
           ));
-      await _replicate((t) => t.sendExpense(roomId, {
-            'id': id,
-            'description': description,
-            'amount': amountCents,
-            'currency': currency,
-            'paid_by': paidBy,
-            'split': splits,
-          }));
+      await _replicate(roomId, expenseEventType, {
+        'id': id,
+        'group': roomId,
+        'description': description,
+        'amount': amountCents,
+        'currency': currency,
+        'paid_by': paidBy,
+        'split': splits,
+        'created_at': createdAt,
+      });
     });
   }
 
@@ -84,6 +90,7 @@ class ExpenseAdder extends _$ExpenseAdder {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final id = const Uuid().v7();
+      final createdAt = DateTime.now().millisecondsSinceEpoch;
       // Local-first: persist before replicating (see addExpense).
       await ref.read(expensesDaoProvider).upsertSettlement(SettlementsCompanion(
             id: Value(id),
@@ -92,27 +99,32 @@ class ExpenseAdder extends _$ExpenseAdder {
             currency: Value(currency),
             fromUser: Value(fromUser),
             toUser: Value(toUser),
-            createdAt: Value(DateTime.now().millisecondsSinceEpoch),
+            createdAt: Value(createdAt),
           ));
-      await _replicate((t) => t.sendSettlement(roomId, {
-            'id': id,
-            'amount': amountCents,
-            'currency': currency,
-            'from': fromUser,
-            'to': toUser,
-          }));
+      await _replicate(roomId, settlementEventType, {
+        'id': id,
+        'group': roomId,
+        'amount': amountCents,
+        'currency': currency,
+        'from': fromUser,
+        'to': toUser,
+        'created_at': createdAt,
+      });
     });
   }
 
-  /// Best-effort replication to group members. The record is already saved
-  /// locally, so a transport failure (offline) must not fail the user action —
-  /// the real Matrix transport queues + retries the send, and Phase B's
-  /// to-device dispatcher will flush anything still unreplicated.
+  /// Best-effort replication to the group's active members via encrypted
+  /// to-device. The record is already saved locally, so a transport failure
+  /// (offline) must not fail the user action — the homeserver queues undelivered
+  /// to-device messages and the SDK retries. Self is included so the user's
+  /// other devices stay in sync (the SDK skips the current device).
   Future<void> _replicate(
-      Future<void> Function(LedgerTransport) send) async {
+      String groupId, String type, Map<String, dynamic> content) async {
     try {
+      final members = await ref.read(membersDaoProvider).activeMemberIds(groupId);
+      if (members.isEmpty) return;
       final transport = await ref.read(ledgerTransportProvider.future);
-      await send(transport);
+      await transport.sendToUsers(members.toSet(), type, content);
     } catch (e) {
       debugPrint('[ledger] saved locally; replication deferred: $e');
     }
