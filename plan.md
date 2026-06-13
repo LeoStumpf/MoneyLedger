@@ -164,19 +164,23 @@ green; `dart run build_runner build` after any annotated-file change.
       participant; empty/zero-weight guarded; `isEqualSplit` true/false (incl.
       the canonical 34/33/33 and the wrong-cent-position negative). Suite 199.
 
-### M2 — Split editor UI + wire into add/edit
+### M2 — Split editor UI + wire into add/edit ✅
 
-- [ ] `lib/features/expenses/split_editor.dart`: a `SplitEditor` widget — mode
-      selector (`SegmentedButton`) + per-participant rows (checkbox / amount /
-      weight / percent per mode), live per-person preview and a running
-      total/remainder; surfaces a validated `{id: cents}` map (or null = invalid)
-      via callback.
-- [ ] `add_expense_page.dart`: replace the hardcoded equal split with
-      `SplitEditor`; disable Add/Save while the split is invalid; on edit, seed
-      the included set + mode from the stored map (`isEqualSplit`).
-- [ ] widget tests (`test/add_expense_page_test.dart` / `split_editor_test.dart`):
-      each mode yields the expected map; sum-mismatch / empty selection disables
-      submit; editing an unequal expense prefills Exact mode with stored cents.
+- [x] `lib/features/expenses/split_editor.dart`: a `SplitEditor` widget — mode
+      selector (`SegmentedButton`: Equal/Exact/Shares/%) + per-participant rows
+      (checkbox / amount / weight / percent) with a live per-person preview and a
+      status line (remaining / total weight / 100%). Surfaces an immutable
+      `SplitPlan` (mode + raw inputs) via `onPlanChanged`; the **parent resolves
+      it against the live amount** so changing the amount never strands a stale
+      split (no didUpdateWidget round-trip).
+- [x] `add_expense_page.dart`: replaced the hardcoded equal split with
+      `SplitEditor`; Add/Save disabled unless `_plan.resolve(amount).isValid`; on
+      edit, seeds included set + mode from the stored map (`isEqualSplit` →
+      Equal, else Exact prefilled).
+- [x] widget tests (`test/add_expense_page_test.dart`, +5): exact relays typed
+      amounts; shares relays a proportional split; deselecting in Equal excludes;
+      an unbalanced exact split disables Add (shows Remaining); editing an
+      unequal expense opens Exact prefilled. Suite 204.
 
 ### M3 — Round-trip + docs
 

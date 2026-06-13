@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
+import 'split_editor.dart';
 
 /// Add (default) or edit an expense — pass [initial] to prefill the form and
 /// save the submit as an LWW edit of the same record.
@@ -29,6 +32,21 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   List<MemberModel>? _members;
   String? _paidBy; // participant id of the payer
   String _currency = 'EUR';
+
+  // The SplitEditor's current mode + inputs; resolved against the live amount.
+  SplitPlan? _plan;
+
+  int get _amountCents {
+    final v = double.tryParse(_amountCtrl.text.replaceAll(',', '.'));
+    return v == null ? 0 : (v * 100).round();
+  }
+
+  Map<String, int>? get _initialSplit {
+    final json = widget.initial?.splitsJson;
+    if (json == null) return null;
+    return (jsonDecode(json) as Map)
+        .map((k, v) => MapEntry(k as String, (v as num).toInt()));
+  }
 
   @override
   void initState() {
@@ -70,12 +88,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   Future<void> _submit(List<MemberModel> members) async {
     if (!_formKey.currentState!.validate()) return;
     final paidBy = _paidBy;
-    if (paidBy == null) return;
+    final amountCents = _amountCents;
+    final result = _plan?.resolve(amountCents);
+    if (paidBy == null || result == null || !result.isValid) return;
 
-    final amountCents =
-        (double.parse(_amountCtrl.text.replaceAll(',', '.')) * 100).round();
-    final share = (amountCents / members.length).round();
-    final splits = {for (final m in members) m.userId: share};
+    final splits = result.shares;
 
     final initial = widget.initial;
     if (initial != null) {
@@ -142,6 +159,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       ),
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}), // re-split on amount edit
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Required';
                         if (double.tryParse(v.replaceAll(',', '.')) == null) {
@@ -165,14 +183,19 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       ],
                       onChanged: (v) => setState(() => _paidBy = v),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Split equally among ${members.length} member(s)',
-                      style: Theme.of(context).textTheme.bodySmall,
+                    const SizedBox(height: 16),
+                    SplitEditor(
+                      members: members,
+                      totalCents: _amountCents,
+                      currency: _currency,
+                      initialSplit: _initialSplit,
+                      onPlanChanged: (p) => setState(() => _plan = p),
                     ),
                     const SizedBox(height: 24),
                     FilledButton(
-                      onPressed: adderState.isLoading || members.isEmpty
+                      onPressed: adderState.isLoading ||
+                              members.isEmpty ||
+                              !(_plan?.resolve(_amountCents).isValid ?? false)
                           ? null
                           : () => _submit(members),
                       child: adderState.isLoading
