@@ -151,17 +151,18 @@ Decisions (locked):
 Each milestone is one commit: code + tests, `flutter test --reporter compact`
 green; `dart run build_runner build` after any annotated-file change.
 
-### M1 — Split math (pure Dart)
+### M1 — Split math (pure Dart) ✅
 
-- [ ] `lib/features/expenses/split_calculator.dart` (pure Dart, no Flutter/DB):
+- [x] `lib/features/expenses/split_calculator.dart` (pure Dart, no Flutter/DB):
       `splitEqually(total, ids)`, `splitByShares(total, {id: weight})`,
       `splitByPercent(total, {id: percent})` → `{id: cents}` summing **exactly**
-      to total via a shared largest-remainder helper; `isEqualSplit(map)` for
-      edit-mode inference; `remainingForExact(total, {id: cents})`.
-- [ ] tests (`test/features/split_calculator_test.dart`): sum-equals-total
-      invariant incl. the 100¢÷3 remainder case; shares proportionality;
-      percent→cents; deterministic remainder assignment; single participant;
-      empty/zero-weight guarded; `isEqualSplit` true/false.
+      to total via the shared `distributeByWeights` largest-remainder helper;
+      `isEqualSplit(map)` for edit-mode inference; `remainingForExact`.
+- [x] tests (`test/features/split_calculator_test.dart`, 21): sum-equals-total
+      invariant incl. the 100¢÷3 remainder case + a brute-force sweep; shares
+      proportionality; percent→cents; deterministic remainder assignment; single
+      participant; empty/zero-weight guarded; `isEqualSplit` true/false (incl.
+      the canonical 34/33/33 and the wrong-cent-position negative). Suite 199.
 
 ### M2 — Split editor UI + wire into add/edit
 
