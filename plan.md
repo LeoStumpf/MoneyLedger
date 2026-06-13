@@ -338,11 +338,17 @@ green; `dart run build_runner build` after any annotated-file change.
       success-navigates, web-fallback, short-password guard), `auth_gateway_test`
       (+2 register paths), `router_redirect_test` (+2 `/register`). Suite 246.
 
-### F-M5 — First-run onboarding
+### F-M5 — First-run onboarding ✅
 
-- [ ] one-time onboarding flow gated by a local flag (intro to the decentralized
-      model + add members/expenses); entry from first launch / post-register.
-- [ ] tests: shows on first run, suppressed thereafter (flag persisted).
+- [x] one-time `OnboardingPage` (intro to the decentralized model) gated by an
+      `onboarding_seen` flag in a new device-local `AppSettings` Drift KV table
+      (schema v5; `SettingsDao`; never synced). Router-driven: `routerRedirect`
+      now takes `onboardingSeen` and forces `/onboarding` for a signed-in user
+      who hasn't completed it; "Get started" marks it seen → `/groups`. Default
+      *seen* until the flag loads so returning users never flash it.
+- [x] tests: `router_redirect_test` (onboarding branch, +5), `settings_dao_test`
+      (2 — starts unseen, idempotent mark), `onboarding_page_test` (2 — renders,
+      Get-started marks seen + navigates). Suite 255.
 
 ### F-M6 — Device-verification UX
 

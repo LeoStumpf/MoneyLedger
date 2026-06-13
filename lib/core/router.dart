@@ -7,6 +7,8 @@ import '../models/expense_model.dart';
 import 'error_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/register_page.dart';
+import '../features/onboarding/onboarding_page.dart';
+import '../features/onboarding/onboarding_provider.dart';
 import '../features/balance/balance_page.dart';
 import '../features/expenses/add_expense_page.dart';
 import '../features/expenses/expenses_page.dart';
@@ -19,10 +21,19 @@ part 'router.g.dart';
 /// Pages reachable while signed out (login + in-app registration).
 const _authPages = {'/login', '/register'};
 
-String? routerRedirect(bool isLoggedIn, String location) {
-  if (!isLoggedIn && !_authPages.contains(location)) return '/login';
-  // Send logged-in users away from the auth pages and the bare root / to groups.
-  if (isLoggedIn && (_authPages.contains(location) || location == '/')) {
+String? routerRedirect(bool isLoggedIn, bool onboardingSeen, String location) {
+  if (!isLoggedIn) {
+    return _authPages.contains(location) ? null : '/login';
+  }
+  // Logged in but hasn't completed the one-time onboarding → force it.
+  if (!onboardingSeen) {
+    return location == '/onboarding' ? null : '/onboarding';
+  }
+  // Logged in and onboarded: bounce off the auth pages, bare root, and the
+  // now-stale onboarding screen to the groups list.
+  if (_authPages.contains(location) ||
+      location == '/' ||
+      location == '/onboarding') {
     return '/groups';
   }
   return null;
@@ -30,19 +41,28 @@ String? routerRedirect(bool isLoggedIn, String location) {
 
 @Riverpod(keepAlive: true)
 GoRouter router(Ref ref) {
+  // Toggled on any auth/onboarding change so GoRouter re-runs the redirect
+  // (toggling guarantees a notification regardless of the new value).
   final listenable = ValueNotifier<bool>(false);
-  ref.listen<bool>(isLoggedInProvider, (_, next) => listenable.value = next);
+  void bump() => listenable.value = !listenable.value;
+  ref.listen<bool>(isLoggedInProvider, (_, _) => bump());
+  ref.listen<bool>(onboardingSeenProvider, (_, _) => bump());
   ref.onDispose(listenable.dispose);
 
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: listenable,
-    redirect: (_, state) =>
-        routerRedirect(ref.read(isLoggedInProvider), state.matchedLocation),
+    redirect: (_, state) => routerRedirect(
+      ref.read(isLoggedInProvider),
+      ref.read(onboardingSeenProvider),
+      state.matchedLocation,
+    ),
     errorBuilder: (_, state) => ErrorPage(error: state.error),
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
+      GoRoute(
+          path: '/onboarding', builder: (_, _) => const OnboardingPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
       GoRoute(
           path: '/groups/create',

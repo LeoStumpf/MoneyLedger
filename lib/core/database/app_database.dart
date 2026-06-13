@@ -89,13 +89,24 @@ class PeerSyncStates extends Table {
   Set<Column> get primaryKey => {groupId, userId};
 }
 
-@DriftDatabase(tables: [Groups, Expenses, Settlements, Members, PeerSyncStates])
+/// Device-local key/value flags (e.g. whether onboarding has been seen). Purely
+/// local — never replicated; only the ledger record types sync over to-device.
+class AppSettings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+@DriftDatabase(
+    tables: [Groups, Expenses, Settlements, Members, PeerSyncStates, AppSettings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -138,6 +149,10 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
                 "UPDATE members SET display_name = user_id "
                 "WHERE user_id NOT LIKE '@%:%'");
+          }
+          // v5 (Phase F): device-local settings (onboarding-seen flag).
+          if (from < 5) {
+            await m.createTable(appSettings);
           }
         },
       );

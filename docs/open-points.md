@@ -230,11 +230,10 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: Phase F (public-release hardening) is underway —
+Suggested next focus: Phase F (public-release hardening) is nearly done —
 membership-gated records (M1), sync-failure surfacing (M2), auth edge cases
-#10/#11 (M3) and in-app registration (M4) landed. Remaining: first-run
-onboarding (M5) and device-verification UX (M6). Smaller items: #15, #9 offline
-demo mode.
+#10/#11 (M3), in-app registration (M4) and first-run onboarding (M5) landed.
+Remaining: device-verification UX (M6). Smaller items: #15, #9 offline demo mode.
 Resolved / superseded: #1, #2 (superseded by Phase C), #3 (needs device smoke
 test), #4, #5, #6, #7 (virtual users), #8 (with #7), #10/#11 (auth edge cases),
 #12 (obsolete — roomless + E2EE), #13, #14, #16 (CSV backup), #17 (custom
