@@ -10,6 +10,7 @@ import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/expense_model.dart';
+import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
@@ -150,6 +151,38 @@ void main() {
       expect(find.byIcon(Icons.cloud_queue), findsNWidgets(2));
       expect(find.byIcon(Icons.cloud_done_outlined), findsNothing);
       expect(find.byTooltip('Waiting for @bob:y.org…'), findsOneWidget);
+    });
+
+    testWidgets('shows a self-claim banner when not yet a participant',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const ExpensesPage(roomId: _roomId),
+        overrides: [
+          expensesForRoomProvider
+              .overrideWith((ref, roomId) => Stream.value(const [])),
+          groupSyncStatusProvider.overrideWith((ref, g) =>
+              const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null)),
+          // A local participant exists, but this device claims nobody.
+          groupMembersProvider.overrideWith((ref, g) => Stream.value(const [
+                MemberModel(
+                    groupId: _roomId,
+                    userId: 'p-bobby',
+                    displayName: 'Bobby',
+                    status: 'active',
+                    updatedAt: 1),
+              ])),
+          currentParticipantProvider
+              .overrideWith((ref, g) => Future<MemberModel?>.value(null)),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Which participant are you'), findsOneWidget);
+      // Opening the picker lists the unclaimed local participant.
+      await tester.tap(find.widgetWithText(TextButton, 'Choose'));
+      await tester.pumpAndSettle();
+      expect(find.text('Bobby'), findsOneWidget);
+      expect(find.text("I'm someone new"), findsOneWidget);
     });
 
     testWidgets('confirming the delete dialog tombstones the expense',

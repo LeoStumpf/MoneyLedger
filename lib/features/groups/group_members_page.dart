@@ -24,7 +24,16 @@ class GroupMembersPage extends ConsumerWidget {
     final busy = adderState.isLoading || removerState.isLoading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Members')),
+      appBar: AppBar(
+        title: const Text('Members'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Invite by Matrix ID',
+            onPressed: busy ? null : () => _showInviteDialog(context, ref),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: busy ? null : () => _showAddDialog(context, ref),
         icon: const Icon(Icons.person_add_outlined),
@@ -55,6 +64,48 @@ class GroupMembersPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Shares the group with a Matrix account without assigning them a slot — the
+  /// invitee then self-claims an existing participant on their own device.
+  Future<void> _showInviteDialog(BuildContext context, WidgetRef ref) async {
+    final ctrl = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final mxid = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invite by Matrix ID'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'Matrix ID',
+            hintText: '@user:server',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final id = ctrl.text.trim();
+              if (id.startsWith('@') && id.contains(':')) {
+                Navigator.of(ctx).pop(id);
+              }
+            },
+            child: const Text('Invite'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (mxid == null) return;
+    await ref.read(memberAdderProvider.notifier).invite(roomId, mxid);
+    final error = ref.read(memberAdderProvider).error;
+    messenger.showSnackBar(SnackBar(
+        content: Text(error != null ? 'Failed: $error' : 'Invited $mxid')));
   }
 
   Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {

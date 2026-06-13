@@ -64,11 +64,13 @@ A participant is now a stable per-group entity with a `displayName` and an
 **optional** `matrixId` (the "claim"); records reference the participant id, not
 the MXID. You can add a local person (name, no account), link/detach a Matrix
 account at any time (history is kept), and rename. Routing targets only claimed
-participants. Design + milestones (M1–M4) in `plan.md`; covered by
-`members_dao_test`, `group_provider_test`, `group_members_page_test`, and the
-add-expense payer test. **Remaining:** automatic self-claim-on-join handshake
-(plan M6, deferred — manual link covers it); see also the trust-model limitation
-under Phase C.
+participants. An invited account can **self-claim** an existing participant on
+its own device (invite → pick who you are → link), so no duplicate is created.
+Design + milestones (M1–M6) in `plan.md`; covered by `members_dao_test`,
+`group_provider_test`, `group_members_page_test`, the add-expense payer test,
+and `integration/self_claim_on_join_test`. See also the trust-model limitation
+under Phase C (inbound records, incl. claims, are unauthenticated — release
+hardening).
 
 ### 8. Removed members show as raw MXIDs — ✅ RESOLVED (with #7)
 Balances and history resolve participant ids through `participantNames`

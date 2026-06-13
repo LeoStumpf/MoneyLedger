@@ -100,33 +100,50 @@ class MemberAdder extends _$MemberAdder {
   /// notifies existing members of the new member.
   Future<void> add(String groupId, String userId, {String? displayName}) async {
     state = const AsyncLoading();
+    state = await AsyncValue.guard(
+        () => _applyAdd(groupId, userId, displayName: displayName));
+  }
+
+  Future<void> _applyAdd(String groupId, String userId,
+      {String? displayName}) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final memberDao = ref.read(membersDaoProvider);
+    // Added by Matrix ID → a claimed participant (id == MXID for now).
+    final member = MemberModel(
+      groupId: groupId,
+      userId: userId,
+      displayName: (displayName != null && displayName.isNotEmpty)
+          ? displayName
+          : localpartOf(userId),
+      matrixId: userId,
+      status: 'active',
+      updatedAt: now,
+    );
+    await memberDao.upsertMemberLww(memberCompanion(member));
+
+    final transport = await ref.read(ledgerTransportProvider.future);
+
+    // 1) Bootstrap the new member with the full group state + ledger.
+    await transport.sendToUsers(
+        {userId}, bootstrapEventType, await _buildBootstrap(groupId));
+
+    // 2) Tell the existing active members about the new member.
+    final others = (await memberDao.activeClaimedMatrixIds(groupId))
+        .where((m) => m != userId)
+        .toSet();
+    await transport.sendToUsers(others, memberEventType, memberPayload(member));
+  }
+
+  /// Shares the whole group with a Matrix account **without** assigning them a
+  /// participant — they receive the bootstrap and then pick which existing
+  /// participant they are (self-claim on join, [selfClaim]). Use this to invite
+  /// someone who already has a local placeholder in the ledger.
+  Future<void> invite(String groupId, String matrixId) async {
+    state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final memberDao = ref.read(membersDaoProvider);
-      // Added by Matrix ID → a claimed participant (id == MXID for now).
-      final member = MemberModel(
-        groupId: groupId,
-        userId: userId,
-        displayName: (displayName != null && displayName.isNotEmpty)
-            ? displayName
-            : localpartOf(userId),
-        matrixId: userId,
-        status: 'active',
-        updatedAt: now,
-      );
-      await memberDao.upsertMemberLww(memberCompanion(member));
-
       final transport = await ref.read(ledgerTransportProvider.future);
-
-      // 1) Bootstrap the new member with the full group state + ledger.
       await transport.sendToUsers(
-          {userId}, bootstrapEventType, await _buildBootstrap(groupId));
-
-      // 2) Tell the existing active members about the new member.
-      final others = (await memberDao.activeClaimedMatrixIds(groupId))
-          .where((m) => m != userId)
-          .toSet();
-      await transport.sendToUsers(others, memberEventType, memberPayload(member));
+          {matrixId}, bootstrapEventType, await _buildBootstrap(groupId));
     });
   }
 
@@ -161,19 +178,45 @@ class MemberAdder extends _$MemberAdder {
   Future<void> claim(
       String groupId, String participantId, String matrixId) async {
     state = const AsyncLoading();
+    state = await AsyncValue.guard(
+        () => _applyClaim(groupId, participantId, matrixId));
+  }
+
+  Future<void> _applyClaim(
+      String groupId, String participantId, String matrixId) async {
+    final memberDao = ref.read(membersDaoProvider);
+    final current = _find(await memberDao.getMembers(groupId), participantId);
+    if (current == null) return;
+    final updated = _copyWith(current, matrixId: matrixId);
+    await memberDao.upsertMemberLww(memberCompanion(updated));
+    final transport = await ref.read(ledgerTransportProvider.future);
+    await transport.sendToUsers(
+        {matrixId}, bootstrapEventType, await _buildBootstrap(groupId));
+    final targets = (await memberDao.activeClaimedMatrixIds(groupId)).toSet();
+    await transport.sendToUsers(
+        targets, memberEventType, memberPayload(updated));
+  }
+
+  /// Claims an existing participant as **this device's own account** — the
+  /// "self-claim on join" of open-points #7. Used when you've been invited to a
+  /// group ([invite]) and recognise yourself as one of the existing
+  /// participants; links your MXID and replicates so everyone sees the claim.
+  Future<void> selfClaim(String groupId, String participantId) async {
+    state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final memberDao = ref.read(membersDaoProvider);
-      final current = _find(await memberDao.getMembers(groupId), participantId);
-      if (current == null) return;
-      final updated = _copyWith(current, matrixId: matrixId);
-      await memberDao.upsertMemberLww(memberCompanion(updated));
-      final transport = await ref.read(ledgerTransportProvider.future);
-      await transport.sendToUsers(
-          {matrixId}, bootstrapEventType, await _buildBootstrap(groupId));
-      final targets =
-          (await memberDao.activeClaimedMatrixIds(groupId)).toSet();
-      await transport.sendToUsers(
-          targets, memberEventType, memberPayload(updated));
+      final me = (await ref.read(ledgerTransportProvider.future)).userId;
+      await _applyClaim(groupId, participantId, me);
+    });
+  }
+
+  /// Joins a group you were invited to as a brand-new participant (you are not
+  /// any of the existing local people) — creates a self-participant and tells
+  /// the others.
+  Future<void> joinAsNew(String groupId, String name) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final me = (await ref.read(ledgerTransportProvider.future)).userId;
+      await _applyAdd(groupId, me, displayName: name);
     });
   }
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/sync/sync_status_provider.dart';
 import '../../models/expense_model.dart';
+import '../../models/member_model.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 import 'ledger_syncer.dart';
@@ -19,6 +20,13 @@ class ExpensesPage extends ConsumerWidget {
     final expensesAsync = ref.watch(expensesForRoomProvider(roomId));
     final syncStatus = ref.watch(groupSyncStatusProvider(roomId));
     final names = ref.watch(participantNamesProvider(roomId));
+    final meAsync = ref.watch(currentParticipantProvider(roomId));
+    final members =
+        ref.watch(groupMembersProvider(roomId)).value ?? const <MemberModel>[];
+    // Invited but not yet linked to anyone in this group → offer self-claim.
+    final needsClaim = meAsync.hasValue &&
+        meAsync.value == null &&
+        members.any((m) => m.isActive);
     final adderState = ref.watch(memberAdderProvider);
     // Keep the (auto-dispose) expense notifier alive while this page can
     // trigger deletes — a bare `read` in the dialog callback would let it be
@@ -54,8 +62,23 @@ class ExpensesPage extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add expense'),
       ),
-      body: Stack(
+      body: Column(
         children: [
+          if (needsClaim)
+            MaterialBanner(
+              content: const Text("You've been added to this group. "
+                  'Which participant are you?'),
+              leading: const Icon(Icons.person_pin_circle_outlined),
+              actions: [
+                TextButton(
+                  onPressed: () => _showClaimPicker(context, ref, members),
+                  child: const Text('Choose'),
+                ),
+              ],
+            ),
+          Expanded(
+            child: Stack(
+              children: [
           expensesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
@@ -82,9 +105,75 @@ class ExpensesPage extends ConsumerWidget {
               color: Colors.black26,
               child: Center(child: CircularProgressIndicator()),
             ),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  /// Lets a just-invited user say which participant they are: pick an existing
+  /// (unclaimed) local person → self-claim them, or join as a new participant.
+  Future<void> _showClaimPicker(
+      BuildContext context, WidgetRef ref, List<MemberModel> members) async {
+    final unclaimed =
+        members.where((m) => m.isActive && m.matrixId == null).toList();
+    final messenger = ScaffoldMessenger.of(context);
+    final choice = await showDialog<MemberModel?>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Which participant are you?'),
+        children: [
+          for (final m in unclaimed)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(ctx).pop(m),
+              child: Text(m.displayName.isNotEmpty ? m.displayName : m.userId),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text("I'm someone new"),
+          ),
+        ],
+      ),
+    );
+    if (choice != null) {
+      await ref
+          .read(memberAdderProvider.notifier)
+          .selfClaim(roomId, choice.userId);
+    } else {
+      // "Someone new" — ask for a name, then join as a fresh participant.
+      final name = await _promptName(context);
+      if (name == null || name.isEmpty) return;
+      await ref.read(memberAdderProvider.notifier).joinAsNew(roomId, name);
+    }
+    final error = ref.read(memberAdderProvider).error;
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+    }
+  }
+
+  Future<String?> _promptName(BuildContext context) {
+    final ctrl = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Your name'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Name'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+              child: const Text('Join')),
+        ],
+      ),
+    ).whenComplete(ctrl.dispose);
   }
 
   Future<void> _confirmDelete(

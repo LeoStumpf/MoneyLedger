@@ -141,11 +141,19 @@ green, `dart run build_runner build` after any annotated-file change.
       wire format + structure tree updated.
 - [x] `docs/open-points.md`: #7 marked done, #8 resolved, footer updated.
 
-### M6 — (later) Auto self-claim on join
+### M6 — Auto self-claim on join ✅
 
-- [ ] new device whose MXID matches no participant in a freshly bootstrapped
-      group → prompt to pick an unclaimed participant → set matrixId = self,
-      replicate the claim. (Deferred — manual claim covers the gap until then.)
+- [x] `MemberAdder.invite(groupId, matrixId)` — shares the group (bootstrap)
+      without assigning a slot; `selfClaim(groupId, participantId)` links the
+      participant to this device's account; `joinAsNew(groupId, name)` adds a
+      fresh self-participant.
+- [x] `group_members_page`: "Invite by Matrix ID" app-bar action.
+- [x] `expenses_page`: a self-claim banner when `currentParticipant == null`
+      (invited but unlinked) → picker of unclaimed participants + "I'm someone
+      new".
+- [x] tests: integration (invite → self-claim an existing local participant,
+      no duplicate on the sharer; invite → join as new); widget (banner +
+      picker). Full suite green (164).
 
 ---
 
