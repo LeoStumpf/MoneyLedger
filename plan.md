@@ -1,170 +1,102 @@
 # MoneyLedger — Implementation Plan
 
-Active phase: **Virtual users** (Tricount-style participants). Phase C
-(record-digest anti-entropy + expense edit/delete) is **done** and committed
-(`3feecf7`); its milestone detail lives in git history and `docs/open-points.md`.
+Active phase: **Phase D — CSV export/import**. The virtual-users phase (M1–M6)
+is **done** and committed (`afbd1dc` → `3492b1f`); detail is in git history and
+`docs/open-points.md`.
 
 Status legend: `[ ]` open · `[x]` done. Update this file as milestones land.
+Workflow: commit + push after each milestone (tests green first).
 
 ---
 
-## Roadmap (recommended order)
+## Roadmap
 
-1. ~~Phase C — sync reliability + expense edit/delete~~ ✅ done
-2. **Virtual users** (open-points #7) ← this plan
-3. Phase D — CSV export/import (backup + migration path)
+1. ~~Phase C — sync reliability + edit/delete~~ ✅
+2. ~~Virtual users~~ ✅
+3. **Phase D — CSV export/import** ← this plan
 4. Custom splits — per-person amounts/shares
-5. Public-release hardening — in-app registration, onboarding, device
-   verification UX, membership check on inbound records, surfacing sync failures
-6. Nice-to-haves: offline demo mode (#9), group rename/currency edit, avatars
+5. Public-release hardening — registration, onboarding, device-verification UX,
+   membership check on inbound records, surfacing sync failures
+6. Nice-to-haves: offline demo mode, group rename/currency edit, avatars
 
 ---
 
-## Virtual users — design
+## Phase D — design
 
-**Problem.** Identity is keyed on the raw MXID everywhere: `Members.userId`,
-`Expenses.paidBy` + `split` keys, `Settlements.from/to`, sync routing, and the
-UI all use `@user:server`. That blocks Tricount-style local participants (a
-named person with no Matrix account) and makes removed members show as raw
-MXIDs (#8).
+**Goal.** Export a group to a spreadsheet-friendly CSV (backup / sharing /
+migrating old room-era groups) and import one back. Decisions (locked):
 
-**Decision (locked).** A participant is a **stable per-group entity** with its
-own participant id (UUID), a `displayName`, and an **optional** `matrixId`
-(the "claim"). Records reference the participant id, never the MXID — so
-attaching or detaching a Matrix account never rewrites ledger history.
+- **Human-readable expenses sheet** — one CSV per group, one row per (non-deleted)
+  expense, with a share column per participant. Readable columns first, machine
+  columns appended so it still round-trips.
+- **Import merges by id (LWW)** — idempotent: re-importing a backup never
+  duplicates; a group id not present locally is created.
 
-> Implementation note: the participant id is physically the existing
-> `Members.userId` column (kept under that name to make the migration
-> non-destructive and keep every milestone compiling). It is documented as "the
-> stable participant id, not necessarily a Matrix ID"; the Matrix account, if
-> any, lives in the new `matrixId` column. A cosmetic field rename can follow
-> later if desired.
+### Reconciliation (the two choices partly conflict — how we square them)
 
-- **Routing.** Replication / digest / bootstrap target the `matrixId` of
-  participants that are `active` **and claimed** (`matrixId != null`).
-  Nameless-local participants are data-only — carried in the members map and
-  bootstraps, but nobody sends them to-device messages.
-- **Claim** = set `matrixId`. **Unclaim / "remove account"** = clear `matrixId`,
-  keeping the participant and all history. `status` (`active`/`removed`) still
-  hides a participant from the active roster; rows (and history) are never
-  deleted.
-- **Self.** `currentParticipant(groupId)` = the participant whose `matrixId`
-  equals this device's MXID. The group creator seeds a self-participant.
-- **Migration (v4, non-destructive).** Each existing `Members` row becomes a
-  participant whose `participantId` **is the existing MXID string** — so every
-  existing `paid_by` / `split` / `from` / `to` reference stays valid with zero
-  record rewrites — with `matrixId` = that MXID and `displayName` = its
-  localpart. New participants always get fresh UUIDs.
-- **Protocol.** The member object in payloads/digests gains `name` + `matrix_id`
-  and is keyed by `participantId`. Additive; stays `v: 1` (pre-release, all
-  peers upgrade together).
-- **PeerSyncStates** stays keyed by MXID — it tracks real peer *accounts*, not
-  participants.
+A purely human-readable sheet has no ids/clocks; id-based LWW merge needs them.
+So the CSV is readable **and** carries trailing machine columns:
+
+```
+Date, Description, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
+2026-06-13T…, Dinner, EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
+```
+
+- Leading columns are the spreadsheet view; share columns are decimals per
+  participant (header = display name); trailing columns drive the merge.
+- **Participants are matched by display name** within the target group (created
+  as local participants if unknown) — the sheet carries names, not participant
+  ids, so identity is by name (acceptable for a human-readable backup).
+- **Merge:** ensure the group by `Group ID` (LWW-upsert meta, create if absent),
+  resolve/create participants by name, then **LWW-upsert each expense by
+  `Expense ID`** using `Updated At` as the clock → idempotent re-import.
+- **Out of scope (documented limitation):** settlements and tombstones are not
+  in the sheet; balances reconstruct from expenses only. Participant identity is
+  by name, not stable id. A future full-fidelity backup format could add these.
 
 ---
 
 ## Milestones
 
 Each milestone is one commit: code + tests, `flutter test --reporter compact`
-green, `dart run build_runner build` after any annotated-file change.
+green; `dart run build_runner build` after any annotated-file change.
 
-### M1 — Schema v4: participant identity on the Members table ✅
+### M1 — CSV codec (pure Dart) ✅
 
-- [x] `lib/core/database/app_database.dart`: `Members` += `displayName` (text,
-      default '') and `matrixId` (text, nullable); `userId` re-documented as the
-      stable participant id. `schemaVersion => 4`; `onUpgrade` `if (from < 4)`:
-      `addColumn` ×2, then backfill `matrixId = userId` and
-      `displayName = localpart(userId)` for existing (already-claimed) rows.
-- [x] `lib/models/member_model.dart`: `MemberModel` += `displayName`,
-      `matrixId`; `isClaimed => matrixId != null`. `userId` doc'd as participant
-      id.
-- [x] `lib/core/database/daos/members_dao.dart`: + `memberByMatrixId`,
-      `activeClaimedMatrixIds` (status active && matrixId != null);
-      `_toModel`/upsert carry the new fields.
-- [x] codegen
-- [x] tests (`test/database/members_dao_test.dart`): backfill SQL (matrixId /
-      localpart); `activeClaimedMatrixIds` excludes local + removed;
-      `memberByMatrixId`; LWW still ignores stale. Full suite green (149).
+- [x] `lib/features/backup/ledger_csv.dart`: RFC4180 encode/decode;
+      `buildGroupCsv(group, members, expenses)` (non-deleted, share column per
+      participant); `parseGroupCsv` → `ParsedCsv` / `ParsedExpenseRow`.
+- [x] tests (`test/features/ledger_csv_test.dart`, 7): round-trip; quoting
+      (comma/quote/newline in description + names); decimal↔cents; share columns
+      map to the right people; deleted excluded; empty group.
 
-### M2 — Wire protocol: participant identity over the relay ✅
+### M2 — Import service (DB merge) ✅
 
-- [x] `lib/core/sync/ledger_payloads.dart`: `memberPayload` carries
-      `participant_id`, `name`, `matrix_id`, `status`, `updated_at`; digest
-      `members` map values gain `name`/`matrix_id` (sync_engine).
-- [x] `lib/features/expenses/ledger_syncer.dart`: `processMember` reads
-      `participant_id` (fallback `user`) + `name` + `matrix_id`, LWW upsert.
-- [x] `lib/core/sync/sync_engine.dart`: `buildDigestContent` members map +
-      digest gossip-apply carry `name`/`matrix_id` (no longer wipe them);
-      `compareDigest` unchanged (updatedAt is the LWW source of truth).
-- [x] writers (`group_provider.dart`): create/add/remove set `displayName` +
-      `matrixId` and relay the full participant payload (`memberCompanion`).
-- [x] tests: `processMember` reads the new shape; claim via LWW; digest content
-      shape; full suite green (151).
+- [x] `lib/features/backup/csv_import.dart` (`CsvImporter`): ensure group (LWW
+      meta, create if absent) → resolve participants by name (existing else new
+      local) → LWW-upsert expenses by id (shares remapped name→participant id).
+- [x] tests (`test/features/csv_import_test.dart`, 4): import into empty creates
+      group + participants + expenses; idempotent re-import; LWW merge (newer
+      wins, stale ignored); unknown names → local participants. Suite green (175).
 
-### M3 — Sync routing + self identity ✅
+### M3 — Export/import UI + platform glue
 
-- [x] route `_replicate` (expenses_provider) + digest/bootstrap targets +
-      add/remove relays to `activeClaimedMatrixIds`; engine resolves self/sender
-      by `matrixId` (`_claimedBy`).
-- [x] `currentParticipant(groupId)` provider (matrixId == my MXID);
-      `currentUserId` stays the device MXID.
-- [x] `GroupCreator.create`: seeds a self-participant claimed by the creator
-      (id == MXID for from-scratch users; displayName = localpart).
-- [x] `sync_status_provider`: active peers = active **claimed** participants'
-      matrixIds, self excluded.
-- [x] tests (`group_provider_test`): self-participant seeded + currentParticipant;
-      local participants never become sync targets. Full suite green (153).
+- [ ] export action on the group/expenses screen → build CSV → save/share
+      (web download; Android share/save). Add the minimal plugin(s) needed.
+- [ ] import action → pick a `.csv` → `CsvImporter`; success/error feedback.
+- [ ] tests: the wiring that is testable (the codec + importer are covered in
+      M1/M2); file pick/share is manual-smoke only (like SSO deep-link).
 
-### M4 — UI: participants (names, add local/real, claim/unclaim, payer) ✅
+### M4 — Docs
 
-- [x] `participantNames(groupId)` resolver (participantId → displayName, with
-      matrixId/id fallback).
-- [x] `group_provider` (`MemberAdder`): `addLocal(name)`, `add(mxid,
-      {displayName})`, `claim(id, mxid)`, `unclaim(id)`, `rename(id, name)`;
-      `MemberRemover.remove` keeps history.
-- [x] `group_members_page`: displayName title, MXID-or-“Local” subtitle, “You”
-      chip; add dialog (name + optional MXID); per-row menu (rename / link /
-      detach Matrix account / remove from group).
-- [x] `add_expense_page`: payer dropdown + splits over participants by name.
-- [x] `expenses_page` tiles + `balance_page`: resolve participantId → name (and
-      self/settle via `currentParticipant`).
-- [x] tests: group_members_page (You chip, Local badge, link menu); group_provider
-      (addLocal/claim/unclaim/rename/resolver); add_expense payer dropdown. Full
-      suite green (160).
-
-### M5 — Removed/unclaimed display (#8) + docs ✅
-
-- [x] removed / unclaimed participants still render by name in balances +
-      history (`participantNames` is built from the full members stream, removed
-      included); locked by a `group_provider_test` case.
-- [x] `CLAUDE.md`: Participant identity section + roomless table + member/digest
-      wire format + structure tree updated.
-- [x] `docs/open-points.md`: #7 marked done, #8 resolved, footer updated.
-
-### M6 — Auto self-claim on join ✅
-
-- [x] `MemberAdder.invite(groupId, matrixId)` — shares the group (bootstrap)
-      without assigning a slot; `selfClaim(groupId, participantId)` links the
-      participant to this device's account; `joinAsNew(groupId, name)` adds a
-      fresh self-participant.
-- [x] `group_members_page`: "Invite by Matrix ID" app-bar action.
-- [x] `expenses_page`: a self-claim banner when `currentParticipant == null`
-      (invited but unlinked) → picker of unclaimed participants + "I'm someone
-      new".
-- [x] tests: integration (invite → self-claim an existing local participant,
-      no duplicate on the sharer; invite → join as new); widget (banner +
-      picker). Full suite green (164).
+- [ ] `CLAUDE.md`: backup feature + CSV format/columns + limitations.
+- [ ] `docs/open-points.md`: Phase D done; note settlements/identity-by-name
+      limitations.
 
 ---
 
-## Correctness notes
+## Verification
 
-- Migration is non-destructive (participantId = MXID keeps all existing record
-  references valid); old room-era groups already stopped syncing at v2.
-- Claim/unclaim is a normal LWW field edit on the participant row — converges
-  like every other record; concurrent claim of the same slot resolves by clock.
-- A participant with no `matrixId` is pure ledger data; it is never a transport
-  target, so routing must filter on `matrixId != null` everywhere.
-- Verification: `flutter test --reporter compact` green per milestone;
-  `./build.sh` green at phase end; manual two-device smoke (add a local
-  participant on web, claim it from Android).
+`flutter test --reporter compact` green per milestone; `./build.sh` green at
+phase end. Manual smoke: export a group on web, re-import the file → no
+duplicates; edit a share in a spreadsheet, re-import → LWW applies.
