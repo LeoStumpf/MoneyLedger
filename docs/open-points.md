@@ -84,6 +84,21 @@ The fakes (`FakeLedgerNetwork`, `FakeAuthGateway`) exist for tests. A
 `authGatewayProvider` with pre-seeded fakes would let the **real UI** be driven
 with no homeserver — useful for manual multi-user inspection and screenshots.
 
+### 16. CSV export/import backup (Phase D) — ✅ DONE (2026-06-13)
+A group exports to one human-readable CSV (spreadsheet columns first, machine
+columns trailing) and imports back with an idempotent **LWW merge by expense
+id**; an unknown `Group ID` is created. Export sits on the expenses screen,
+import on the groups screen (`file_picker` glue, web download / native save).
+Codec `lib/features/backup/ledger_csv.dart`, DB seam `csv_export.dart`, merge
+`csv_import.dart`; covered by `ledger_csv_test`, `csv_import_test`,
+`csv_export_test`. **Documented limitations** (acceptable for a human-readable
+backup): settlements and tombstones are not in the sheet (balances reconstruct
+from expenses only), and participant identity travels **by display name**, not
+stable id (import resolves names to participants, creating local ones for
+unknown names — so a name collision merges and a rename splits). A future
+full-fidelity format could add settlements, tombstones, and id-based identity.
+Design + milestones (M1–M4) in `plan.md`.
+
 ---
 
 ## Auth / session
@@ -188,11 +203,10 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus (post virtual users): the **self-claim-on-join handshake**
-(plan M6), then Phase D (CSV export/import), custom splits, and public-release
-hardening (membership check on inbound records, onboarding,
-device-verification UX). Smaller items: #15, auth edge cases #10/#11, #9 offline
-demo mode.
+Suggested next focus: with virtual users (M6) and Phase D (CSV export/import)
+landed, the open ground is custom splits and public-release hardening
+(membership check on inbound records, onboarding, device-verification UX).
+Smaller items: #15, auth edge cases #10/#11, #9 offline demo mode.
 Resolved / superseded: #1, #2 (superseded by Phase C), #3 (needs device smoke
 test), #4, #5, #6, #7 (virtual users), #8 (with #7), #12 (obsolete — roomless +
-E2EE), #13, #14.
+E2EE), #13, #14, #16 (CSV backup).

@@ -1,8 +1,9 @@
 # MoneyLedger — Implementation Plan
 
-Active phase: **Phase D — CSV export/import**. The virtual-users phase (M1–M6)
-is **done** and committed (`afbd1dc` → `3492b1f`); detail is in git history and
-`docs/open-points.md`.
+Active phase: **none** — **Phase D — CSV export/import is done** (M1–M4). The
+virtual-users phase (M1–M6) is also done. Detail is in git history,
+`docs/open-points.md`, and the "Backup (CSV)" section of `CLAUDE.md`. Next up
+the roadmap: custom splits.
 
 Status legend: `[ ]` open · `[x]` done. Update this file as milestones land.
 Workflow: commit + push after each milestone (tests green first).
@@ -13,8 +14,8 @@ Workflow: commit + push after each milestone (tests green first).
 
 1. ~~Phase C — sync reliability + edit/delete~~ ✅
 2. ~~Virtual users~~ ✅
-3. **Phase D — CSV export/import** ← this plan
-4. Custom splits — per-person amounts/shares
+3. ~~Phase D — CSV export/import~~ ✅
+4. **Custom splits — per-person amounts/shares** ← next
 5. Public-release hardening — registration, onboarding, device-verification UX,
    membership check on inbound records, surfacing sync failures
 6. Nice-to-haves: offline demo mode, group rename/currency edit, avatars
@@ -91,11 +92,12 @@ green; `dart run build_runner build` after any annotated-file change.
       to expenses; missing group → empty; file-name sanitising. Import seam
       covered in M2; file pick/share is manual-smoke only (like SSO deep-link).
 
-### M4 — Docs
+### M4 — Docs ✅
 
-- [ ] `CLAUDE.md`: backup feature + CSV format/columns + limitations.
-- [ ] `docs/open-points.md`: Phase D done; note settlements/identity-by-name
-      limitations.
+- [x] `CLAUDE.md`: "Backup (CSV export/import — Phase D)" section (format,
+      columns, merge semantics, limitations) + `backup/` in the structure tree.
+- [x] `docs/open-points.md`: item #16 (Phase D done; settlements/tombstones not
+      in sheet, identity-by-name limitation); roadmap/footer updated.
 
 ---
 

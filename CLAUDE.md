@@ -92,6 +92,11 @@ lib/
     balance/
       balance_calculator.dart  # Pure function: List<Expense> + settlements → List<DebtEntry>
       balance_provider.dart    # Riverpod: watches Drift streams, recomputes on change
+    backup/                    # CSV export/import (Phase D) — see "Backup (CSV)" below
+      ledger_csv.dart          # Pure-Dart RFC4180 codec: buildGroupCsv / parseGroupCsv
+      csv_export.dart          # DB → CSV seam (buildGroupCsvForExport) + csvFileName
+      csv_import.dart          # CsvImporter: LWW merge-by-id back into Drift
+      csv_files.dart           # file_picker glue (web download / native save+pick)
 test/
   flutter_test_config.dart     # Loads bundled sqlite3 FFI before every test file
   helpers/
@@ -174,6 +179,43 @@ recovery: an empty DB sends `resync_request{scope: all}` to the user's own MXID
 peer's digest triggers organic bootstrap. Sync status (`cloud_done`/
 `cloud_queue` icons) is derived from `PeerSyncStates.lastInSyncAt`
 (`lib/core/sync/sync_status_provider.dart`). Full design: `plan.md`.
+
+### Backup (CSV export/import — Phase D)
+
+A group can be exported to a **single human-readable CSV** and imported back
+(backup / sharing / migrating old room-era groups). `lib/features/backup/`:
+the codec `ledger_csv.dart` is pure Dart (models + strings, no DB/Flutter, fully
+unit-testable); `csv_export.dart` is the Drift-read seam; `csv_import.dart`
+(`CsvImporter`) is the merge; `csv_files.dart` wraps `file_picker` (manual-smoke
+only, like the SSO deep link). **Export** is on the expenses screen, **import**
+on the groups screen.
+
+**Format** — one row per **non-deleted** expense. Spreadsheet columns first, then
+a **decimal share column per participant** (header = display name), then trailing
+machine columns that drive the merge:
+
+```
+Date, Description, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
+2026-06-13T…, Dinner, EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
+```
+
+Amounts are **decimal** in the sheet (`cents/100`, 2 dp) but **integer cents**
+everywhere else. The parser locates fixed columns by header name and treats any
+column between `Paid By` and `Expense ID` as a participant share column, so
+extra/missing optional columns are tolerated.
+
+**Merge** is idempotent: ensure the group by `Group ID` (LWW-upsert meta, create
+if absent — a CSV with no id mints a UUIDv7), resolve participants **by display
+name** (unknown name → new local participant), then **LWW-upsert each expense by
+`Expense ID`** using `Updated At` as the clock. Re-importing a backup never
+duplicates; merging into a live group lets the newer copy win.
+
+**Documented limitations** (acceptable for a human-readable backup): settlements
+and tombstones are **not** in the sheet — balances reconstruct from expenses
+only, and a deleted expense simply isn't exported (so it won't re-delete on a
+peer via CSV). Participant identity is **by name, not stable id** — a name
+collision merges two people and a rename splits one. A future full-fidelity
+format could add settlements, tombstones, and id-based identity.
 
 ### Key Implementation Notes
 
