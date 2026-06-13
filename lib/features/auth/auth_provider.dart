@@ -113,6 +113,25 @@ class AuthNotifier extends _$AuthNotifier {
     _refreshLoginState();
   }
 
+  Future<void> register({
+    required String resolvedHomeserver,
+    required String username,
+    required String password,
+  }) async {
+    state = const AsyncLoading();
+    final result = await AsyncValue.guard(() async {
+      final gateway = await ref.read(authGatewayProvider.future);
+      await gateway.register(
+        homeserver: resolvedHomeserver,
+        username: username,
+        password: password,
+      );
+    });
+    if (!ref.mounted) return;
+    state = result;
+    _refreshLoginState();
+  }
+
   Future<void> logout() async {
     state = const AsyncLoading();
     final result = await AsyncValue.guard(() async {

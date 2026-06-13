@@ -390,6 +390,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ],
                       ),
                     ),
+
+                  // ── Create account ─────────────────────────────────────
+                  const SizedBox(height: 12),
+                  TextButton(
+                    key: const Key('createAccountLink'),
+                    onPressed: () => context.push('/register'),
+                    child: const Text("New here? Create an account"),
+                  ),
                 ],
               ),
             ),

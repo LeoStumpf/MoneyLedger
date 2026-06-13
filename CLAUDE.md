@@ -84,7 +84,8 @@ lib/
     group_model.dart           # Plain Dart model (GroupModel)
     member_model.dart          # MemberModel; sync_state_model.dart (PeerSyncStateModel)
   features/
-    auth/                      # Matrix login, session management
+    auth/                      # Matrix login, in-app registration, session mgmt
+                               #   register_flows.dart: pure UIA-flow classifier; register_page.dart
     groups/                    # Group list + create (local-only groups, member add/remove)
     expenses/                  # Expense list, add/edit/delete, ledger sync
       ledger_syncer.dart       # LedgerSyncer: subscribes to to-device onMessage → writes to Drift
@@ -141,7 +142,9 @@ is obsolete.)
 | Sync / transport | Encrypted **to-device** messages via `LedgerTransport` |
 | Replication log | The Drift DB itself — digests drive anti-entropy |
 
-Authentication is pure Matrix — no separate auth system. Users connect to their own homeserver (self-hosted, matrix.org, etc.). The single transport seam is `LedgerTransport` (real adapter `MatrixLedgerTransport`); fakes back all tests.
+Authentication is pure Matrix — no separate auth system. Users connect to their own homeserver (self-hosted, matrix.org, etc.). The single transport seam is `LedgerTransport` (real adapter `MatrixLedgerTransport`); fakes back all tests. Login (password + SSO) and **in-app registration** go through `AuthGateway` (`auth_provider.dart`'s `AuthNotifier`).
+
+**Registration (Phase F).** `RegisterPage` → `AuthGateway.register`. The real adapter attempts `client.register`, and on a UIA challenge classifies the flows with the pure `register_flows.dart`: a flow needing only `m.login.dummy` is completed in-app; anything requiring a CAPTCHA / email / phone / terms / token throws `RegistrationRequiresWebException` (with friendly labels) and the page shows a **web-registration fallback** (we don't reimplement every UIA stage). `/register` is reachable while signed out (see `routerRedirect`).
 
 ### Participant identity (virtual users)
 

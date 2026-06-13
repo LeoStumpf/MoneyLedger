@@ -325,13 +325,18 @@ green; `dart run build_runner build` after any annotated-file change.
       Resolves open-points #10/#11 (real-`Client` SDK round-trip after logout
       remains a device smoke-test caveat). Suite 230.
 
-### F-M4 — In-app registration
+### F-M4 — In-app registration ✅
 
-- [ ] pure flow-parse / request-build function (UIA `m.login.dummy` path);
-      `RegisterPage` reusing the login plumbing, with a clear fallback message
-      for captcha/email/terms servers.
-- [ ] tests for the pure function (dummy succeeds; captcha/email → fallback
-      signalled); a widget smoke test for the page.
+- [x] pure `classifyRegistrationFlows` (`register_flows.dart`): a `m.login.dummy`
+      flow → in-app; captcha/email/phone/terms/token → web fallback with friendly
+      labels (easiest flow reported). `AuthGateway.register` + the real adapter's
+      UIA dummy-completion dance + `RegistrationRequiresWebException`.
+- [x] `RegisterPage` (homeserver/username/password; success → `/groups`;
+      requires-web → fallback card with "Open homeserver website"); `/register`
+      route + redirect allowance; "Create an account" link on the login page.
+- [x] tests: `register_flows_test` (8), `register_page_test` (4 — render,
+      success-navigates, web-fallback, short-password guard), `auth_gateway_test`
+      (+2 register paths), `router_redirect_test` (+2 `/register`). Suite 246.
 
 ### F-M5 — First-run onboarding
 

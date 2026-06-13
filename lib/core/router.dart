@@ -6,6 +6,7 @@ import '../features/auth/auth_provider.dart';
 import '../models/expense_model.dart';
 import 'error_page.dart';
 import '../features/auth/login_page.dart';
+import '../features/auth/register_page.dart';
 import '../features/balance/balance_page.dart';
 import '../features/expenses/add_expense_page.dart';
 import '../features/expenses/expenses_page.dart';
@@ -15,10 +16,15 @@ import '../features/groups/groups_page.dart';
 
 part 'router.g.dart';
 
+/// Pages reachable while signed out (login + in-app registration).
+const _authPages = {'/login', '/register'};
+
 String? routerRedirect(bool isLoggedIn, String location) {
-  if (!isLoggedIn && location != '/login') return '/login';
-  // Send logged-in users away from /login and the bare root / to the groups list.
-  if (isLoggedIn && (location == '/login' || location == '/')) return '/groups';
+  if (!isLoggedIn && !_authPages.contains(location)) return '/login';
+  // Send logged-in users away from the auth pages and the bare root / to groups.
+  if (isLoggedIn && (_authPages.contains(location) || location == '/')) {
+    return '/groups';
+  }
   return null;
 }
 
@@ -36,6 +42,7 @@ GoRouter router(Ref ref) {
     errorBuilder: (_, state) => ErrorPage(error: state.error),
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+      GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
       GoRoute(
           path: '/groups/create',

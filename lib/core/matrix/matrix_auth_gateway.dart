@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 
+import '../../features/auth/register_flows.dart';
 import '../../models/login_flows_result.dart';
 import 'auth_gateway.dart';
 
@@ -95,6 +96,42 @@ class MatrixAuthGateway implements AuthGateway {
       token: token,
       initialDeviceDisplayName: 'MoneyLedger',
     );
+  }
+
+  @override
+  Future<void> register({
+    required String homeserver,
+    required String username,
+    required String password,
+  }) async {
+    await _client.checkHomeserver(Uri.parse(homeserver));
+    try {
+      // First attempt with no auth: an open server completes immediately;
+      // otherwise it answers with a UIA challenge (flows + session).
+      await _client.register(
+        username: username,
+        password: password,
+        initialDeviceDisplayName: 'MoneyLedger',
+      );
+    } on MatrixException catch (e) {
+      final flows = e.authenticationFlows;
+      if (flows == null) rethrow; // not a UIA challenge (e.g. username taken)
+      final plan =
+          classifyRegistrationFlows([for (final f in flows) f.stages]);
+      final session = e.session;
+      if (!plan.canRegisterInApp || session == null) {
+        throw RegistrationRequiresWebException(
+            homeserver, plan.blockingRequirements);
+      }
+      // Complete the no-op dummy stage to finish sign-up.
+      await _client.register(
+        username: username,
+        password: password,
+        initialDeviceDisplayName: 'MoneyLedger',
+        auth: AuthenticationData(
+            type: AuthenticationTypes.dummy, session: session),
+      );
+    }
   }
 
   @override

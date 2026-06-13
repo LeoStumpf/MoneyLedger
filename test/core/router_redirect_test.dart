@@ -18,6 +18,11 @@ void main() {
     test('stays on /login (no redirect)', () {
       expect(routerRedirect(false, '/login'), isNull);
     });
+
+    test('stays on /register (in-app sign-up is reachable while signed out)',
+        () {
+      expect(routerRedirect(false, '/register'), isNull);
+    });
   });
 
   group('routerRedirect — logged in', () {
@@ -27,6 +32,10 @@ void main() {
 
     test('redirects bare / to /groups', () {
       expect(routerRedirect(true, '/'), '/groups');
+    });
+
+    test('redirects /register to /groups (already signed in)', () {
+      expect(routerRedirect(true, '/register'), '/groups');
     });
 
     test('stays on /groups (no redirect)', () {

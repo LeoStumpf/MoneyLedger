@@ -15,6 +15,10 @@ class FakeAuthGateway implements AuthGateway {
   /// If set, login/loginFlows throw this — for testing failure paths.
   Object? failWith;
 
+  /// If set, [register] throws [RegistrationRequiresWebException] with these
+  /// requirements — simulates a CAPTCHA/email/terms homeserver.
+  List<String>? registerRequiresWeb;
+
   final StreamController<bool> _controller = StreamController.broadcast();
 
   FakeAuthGateway({
@@ -61,6 +65,19 @@ class FakeAuthGateway implements AuthGateway {
   }) async {
     if (failWith != null) throw failWith!;
     _setUser('@token:${Uri.parse(homeserver).host}');
+  }
+
+  @override
+  Future<void> register({
+    required String homeserver,
+    required String username,
+    required String password,
+  }) async {
+    if (failWith != null) throw failWith!;
+    if (registerRequiresWeb != null) {
+      throw RegistrationRequiresWebException(homeserver, registerRequiresWeb!);
+    }
+    _setUser('@$username:${Uri.parse(homeserver).host}');
   }
 
   @override

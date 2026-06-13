@@ -113,6 +113,37 @@ void main() {
     expect(container.read(isLoggedInProvider), isFalse);
   });
 
+  // F-M4: in-app registration flips isLoggedIn like a login does.
+  test('register flips isLoggedIn to true', () async {
+    final container = makeContainer(FakeAuthGateway());
+    await container.read(loginStateProvider.future);
+
+    await container.read(authProvider.notifier).register(
+          resolvedHomeserver: 'https://matrix.org',
+          username: 'alice',
+          password: 'password123',
+        );
+
+    expect(container.read(authProvider).hasError, isFalse);
+    await container.read(loginStateProvider.future);
+    expect(container.read(isLoggedInProvider), isTrue);
+  });
+
+  test('register surfaces a web-fallback error and stays logged out', () async {
+    final gateway = FakeAuthGateway()..registerRequiresWeb = ['a CAPTCHA'];
+    final container = makeContainer(gateway);
+    await container.read(loginStateProvider.future);
+
+    await container.read(authProvider.notifier).register(
+          resolvedHomeserver: 'https://matrix.org',
+          username: 'alice',
+          password: 'password123',
+        );
+
+    expect(container.read(authProvider).hasError, isTrue);
+    expect(container.read(isLoggedInProvider), isFalse);
+  });
+
   test('loginFlows is served offline from the gateway', () async {
     final container = makeContainer(FakeAuthGateway());
     final flows = await container.read(loginFlowsProvider('matrix.org').future);

@@ -34,5 +34,33 @@ abstract interface class AuthGateway {
     required String token,
   });
 
+  /// Creates a new account and signs in. Succeeds only when the homeserver
+  /// offers an in-app-completable registration flow (open / `m.login.dummy`);
+  /// otherwise throws [RegistrationRequiresWebException].
+  Future<void> register({
+    required String homeserver,
+    required String username,
+    required String password,
+  });
+
   Future<void> logout();
+}
+
+/// Thrown by [AuthGateway.register] when the homeserver requires interactive
+/// stages MoneyLedger doesn't implement (CAPTCHA, email/phone verification,
+/// terms acceptance, registration token) — the user must register on the web.
+class RegistrationRequiresWebException implements Exception {
+  /// The resolved homeserver the user was trying to register on.
+  final String homeserverUrl;
+
+  /// Human-readable requirements of the easiest flow (e.g. `['a CAPTCHA']`).
+  final List<String> requirements;
+
+  const RegistrationRequiresWebException(this.homeserverUrl, this.requirements);
+
+  @override
+  String toString() => requirements.isEmpty
+      ? 'This homeserver requires registering on its website.'
+      : 'This homeserver requires ${requirements.join(' and ')} — '
+          'please register on its website.';
 }
