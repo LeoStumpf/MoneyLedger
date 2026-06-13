@@ -314,13 +314,16 @@ green; `dart run build_runner build` after any annotated-file change.
       add-expense form scrollable (`SingleChildScrollView`) so the taller
       split-editor form can't push the payer dropdown off-screen. Suite 228.
 
-### F-M3 — Auth edge cases (#10 / #11)
+### F-M3 — Auth edge cases (#10 / #11) ✅
 
-- [ ] re-login after logout on the same client (gateway clears/rebuilds the
-      client as needed); external login-state change (token expiry / remote
-      logout) propagates to the router.
-- [ ] tests via the fake auth gateway: logout→login round-trip; an injected
-      `loginStateChanges` event redirects. Resolves open-points #10/#11.
+- [x] verified via the fake auth gateway (no production change needed — the
+      `authProvider → loginStateProvider → isLoggedInProvider` chain already
+      handles both): `re-login after logout` round-trip flips `isLoggedIn` back
+      to true; `simulateRemoteLogout()` (an external `loginStateChanges` event)
+      flips it to false without the app calling `logout()`.
+- [x] `auth_gateway_test` +2; `FakeAuthGateway.simulateRemoteLogout` helper.
+      Resolves open-points #10/#11 (real-`Client` SDK round-trip after logout
+      remains a device smoke-test caveat). Suite 230.
 
 ### F-M4 — In-app registration
 

@@ -2,6 +2,8 @@
 /// FakeAuthGateway — no real homeserver, no network.
 library;
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
@@ -67,6 +69,47 @@ void main() {
         );
 
     expect(container.read(authProvider).hasError, isTrue);
+    expect(container.read(isLoggedInProvider), isFalse);
+  });
+
+  // #10: logging in again after a logout reuses the same gateway/client.
+  test('re-login after logout flips isLoggedIn back to true', () async {
+    final container = makeContainer(FakeAuthGateway(initialUserId: '@a:x.org'));
+    await container.read(loginStateProvider.future);
+
+    await container.read(authProvider.notifier).logout();
+    await container.read(loginStateProvider.future);
+    expect(container.read(isLoggedInProvider), isFalse);
+
+    await container.read(authProvider.notifier).login(
+          resolvedHomeserver: 'https://x.org',
+          username: 'a',
+          password: 'hunter2',
+        );
+    expect(container.read(authProvider).hasError, isFalse);
+    await container.read(loginStateProvider.future);
+    expect(container.read(isLoggedInProvider), isTrue);
+  });
+
+  // #11: a remote logout / token expiry arrives on the gateway stream and the
+  // app reacts — without the app calling logout() itself.
+  test('an external remote logout propagates to isLoggedIn', () async {
+    final gateway = FakeAuthGateway(initialUserId: '@a:x.org');
+    final container = makeContainer(gateway);
+    await container.read(loginStateProvider.future);
+    // Let the loginState generator subscribe to the broadcast stream before we
+    // emit, so the external event isn't dropped.
+    await pumpEventQueue();
+    expect(container.read(isLoggedInProvider), isTrue);
+
+    final flipped = Completer<void>();
+    final sub = container.listen<bool>(isLoggedInProvider, (_, next) {
+      if (!next && !flipped.isCompleted) flipped.complete();
+    });
+    gateway.simulateRemoteLogout();
+    await flipped.future;
+    sub.close();
+
     expect(container.read(isLoggedInProvider), isFalse);
   });
 

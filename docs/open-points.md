@@ -118,17 +118,20 @@ per-item assignment / saved default splits are out of scope. Design + milestones
 
 ## Auth / session
 
-### 10. Re-login after logout on the same client is untested — MEDIUM
-`logout()` no longer rebuilds the Matrix client (the old
-`invalidate(matrixClientProvider)` was dropped in favour of gateway-driven
-`loginState`). Logging in again reuses the same `Client` instance. This path
-isn't covered by a test and should be verified against a real homeserver, or the
-gateway should rebuild/clear the client on logout.
+### 10. Re-login after logout on the same client — ✅ COVERED (Phase F M1.5, 2026-06-14)
+`logout()` reuses the same `Client`; a `logout → login` round-trip now has a
+test (`auth_gateway_test`, "re-login after logout flips isLoggedIn back to
+true") proving the provider chain (`authProvider` → `loginStateProvider` →
+`isLoggedInProvider`) recovers. The fake exercises the gateway contract; the SDK
+round-trip on a real `Client` after logout is still worth a one-off device smoke
+test (left as a caveat, like the SSO deep link).
 
-### 11. External login-state changes are surfaced but unproven — LOW
-`AuthGateway.loginStateChanges` (from `client.onLoginStateChanged`) feeds
-`loginStateProvider`, so token expiry / remote logout *should* propagate to the
-router. Not exercised by a test.
+### 11. External login-state changes — ✅ COVERED (Phase F M1.5, 2026-06-14)
+A remote logout / token expiry arriving on `AuthGateway.loginStateChanges`
+(`client.onLoginStateChanged`) now has a test
+(`FakeAuthGateway.simulateRemoteLogout` → `isLoggedInProvider` flips to false
+without the app calling `logout()`), proving the router will redirect off a
+session that ends out from under it.
 
 ---
 
@@ -227,10 +230,11 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: with virtual users (M6), Phase D (CSV export/import) and
-Phase E (custom splits) all landed, the open ground is public-release hardening
-(membership check on inbound records, onboarding, device-verification UX).
-Smaller items: #15, auth edge cases #10/#11, #9 offline demo mode.
+Suggested next focus: Phase F (public-release hardening) is underway —
+membership-gated records (M1) and sync-failure surfacing (M2) landed, auth edge
+cases #10/#11 covered (M3). Remaining: in-app registration + onboarding (M4/M5)
+and device-verification UX (M6). Smaller items: #15, #9 offline demo mode.
 Resolved / superseded: #1, #2 (superseded by Phase C), #3 (needs device smoke
-test), #4, #5, #6, #7 (virtual users), #8 (with #7), #12 (obsolete — roomless +
-E2EE), #13, #14, #16 (CSV backup), #17 (custom splits).
+test), #4, #5, #6, #7 (virtual users), #8 (with #7), #10/#11 (auth edge cases),
+#12 (obsolete — roomless + E2EE), #13, #14, #16 (CSV backup), #17 (custom
+splits).

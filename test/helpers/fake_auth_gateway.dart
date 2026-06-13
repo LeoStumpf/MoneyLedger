@@ -69,6 +69,14 @@ class FakeAuthGateway implements AuthGateway {
     _controller.add(false);
   }
 
+  /// Simulates an **external** session end the app didn't initiate — a remote
+  /// logout or token expiry arriving via `client.onLoginStateChanged` — without
+  /// anyone calling [logout].
+  void simulateRemoteLogout() {
+    _userId = null;
+    _controller.add(false);
+  }
+
   void _setUser(String id) {
     _userId = id;
     _controller.add(true);
