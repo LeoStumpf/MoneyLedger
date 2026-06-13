@@ -160,11 +160,22 @@ the UI resolves ids → names via `participantNames(groupId)`
 
 ### Data Flow
 
-Inbound to-device message → `LedgerSyncer._onMessage` → DAO LWW upsert → Drift
-stream providers → UI rebuild. Local writes are **local-first**: persisted to
-Drift immediately, then best-effort replicated to members (`_replicate`). Drift
-is the **local source of truth** — the UI always reads Drift streams, never
-Matrix in-memory state.
+Inbound to-device message → `LedgerSyncer._onMessage` → **membership gate** →
+DAO LWW upsert → Drift stream providers → UI rebuild. Local writes are
+**local-first**: persisted to Drift immediately, then best-effort replicated to
+members (`_replicate`). Drift is the **local source of truth** — the UI always
+reads Drift streams, never Matrix in-memory state.
+
+**Membership gate (Phase F).** To-device messages are E2EE, so `msg.senderId` is
+authenticated. `LedgerSyncer.isSenderAuthorized` (pure, `@visibleForTesting`)
+drops any record whose sender isn't an active member of the target group:
+expense/settlement/group-meta require an active claimed member; a `bootstrap` for
+an **unknown** group is TOFU-accepted (else member-only); a `member` payload from
+a non-member is allowed only as a **self-claim/join** for the sender's own MXID
+and never hijacks a participant another account owns. Inbound `updated_at` is
+clamped to `now + 5 min` (`clampInboundClock`) to bound clock-skew LWW wins. Not
+yet covered: per-record cryptographic authorship (a member can still forge
+another member's record) — see `docs/open-points.md`.
 
 ### Anti-entropy (Phase C)
 

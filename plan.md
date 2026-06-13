@@ -283,19 +283,22 @@ real homeserver (like the SSO deep link); unit-test whatever is pure.
 Each milestone is one commit: code + tests, `flutter test --reporter compact`
 green; `dart run build_runner build` after any annotated-file change.
 
-### F-M1 — Inbound membership gate + clock clamp
+### F-M1 — Inbound membership gate + clock clamp ✅
 
-- [ ] `isSenderAuthorized(...)` pure function (expense/settlement/member/
-      bootstrap rules + self-claim + unknown-group TOFU); clamp helper for
-      inbound `updated_at`.
-- [ ] wire into `LedgerSyncer._onMessage` (async membership fetch from
-      `MembersDao`; drop unauthorized, log at debug); apply clamp in the
-      processors.
-- [ ] tests: forged record from a non-member dropped; member record applied;
-      self-claim accepted, third-party claim rejected; bootstrap TOFU for unknown
-      group vs. dropped for a known group from a non-member; removed sender's
-      records dropped; clamp bounds a future-dated `updated_at`. Update
-      `open-points.md` (trust-model limitation → resolved).
+- [x] `LedgerSyncer.isSenderAuthorized(...)` pure function (expense/settlement/
+      group-meta → active member; bootstrap → unknown-group TOFU else member;
+      member → self-claim/join for own MXID, no hijack of another's participant)
+      + `clampInboundClock` helper.
+- [x] wired into `LedgerSyncer._onMessage` (now async: fetches the group's
+      members + existence from Drift, drops unauthorized with a debug log);
+      clamp applied in every processor's `updated_at`.
+- [x] tests: `inbound_authorization_test` (14 — every rule incl. removed sender,
+      hijack, forge-other, clamp) + `integration/membership_gate_test` (2 —
+      forged non-member expense dropped, real member's expense applied). All
+      existing replication/self-claim/join flows still green. Suite 221.
+- [x] `CLAUDE.md` (Data Flow membership-gate note) + `docs/open-points.md`
+      (trust-model limitation → membership-gated; residual = per-record
+      cryptographic authorship).
 
 ### F-M2 — Surface sync / transport failures
 

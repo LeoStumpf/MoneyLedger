@@ -193,15 +193,24 @@ milestones M1–M7 (see `plan.md`):
 
 ### Known limitations (carried into release hardening)
 
-- **Trust model unchanged** — any sender can forge state. Inbound records are
-  applied LWW with no membership/authorship check (TOFU); only `resync_request`
-  is gated by a membership check. Fix deferred to public-release hardening.
+- **Trust model — membership-gated (Phase F M1, 2026-06-13).** Inbound records
+  are E2EE so `senderId` is authenticated; `LedgerSyncer` now drops any
+  `expense`/`settlement`/`group_meta`/`member`/`bootstrap` whose sender isn't an
+  active member of the target group (`isSenderAuthorized`). A bootstrap for an
+  **unknown** group is TOFU-accepted; a **member** payload from a non-member is
+  allowed only as a **self-claim/join** for the sender's own MXID and never
+  hijacks a participant another account owns. _Remaining gap:_ no per-record
+  **cryptographic authorship** — a member can still forge *another member's*
+  expense/settlement (deferred; would need per-record signatures). Digest-borne
+  membership gossip in `SyncEngine` is gated only by the digest sender being a
+  known member (rules 5/6), not per-entry.
 - **Digest ceiling** — a digest is O(records in group); fine to ~1,000
   records/group under to-device size limits. The `"v"` protocol-version field on
   every payload enables sharding later.
-- **Wall-clock LWW** — a skewed clock can win edits; merge granularity is the
-  whole record. Consistent with the existing Members LWW; optional future clamp
-  of inbound `updated_at` to `now + 5 min`.
+- **Wall-clock LWW** — merge granularity is the whole record. Inbound
+  `updated_at` is now **clamped to `now + 5 min`** (Phase F M1) so a skewed/
+  hostile future clock can't win every merge forever; within that window a later
+  honest clock still wins (consistent with Members LWW).
 
 ---
 
