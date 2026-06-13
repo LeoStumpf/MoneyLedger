@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../expenses/expenses_provider.dart';
+import '../groups/group_provider.dart';
 import 'balance_calculator.dart';
 import 'balance_provider.dart';
 
@@ -17,9 +18,16 @@ class _BalancePageState extends ConsumerState<BalancePage> {
   @override
   Widget build(BuildContext context) {
     final debts = ref.watch(balanceForRoomProvider(widget.roomId));
+    final names = ref.watch(participantNamesProvider(widget.roomId));
     final transport = ref.watch(ledgerTransportProvider).value;
-    final myId = transport?.userId ?? '';
+    // "Me" is this device's participant in the group (id may differ from the
+    // MXID once a local slot has been claimed); fall back to the raw MXID.
+    final myId =
+        ref.watch(currentParticipantProvider(widget.roomId)).value?.userId ??
+            transport?.userId ??
+            '';
     final adderState = ref.watch(expenseAdderProvider);
+    String nameOf(String id) => names[id] ?? id;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Balance')),
@@ -42,14 +50,14 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                           color: isMine ? Colors.red : Colors.grey,
                         ),
                         title: Text(
-                          d.from,
+                          nameOf(d.from),
                           style: TextStyle(
                             fontWeight: isMine
                                 ? FontWeight.bold
                                 : FontWeight.normal,
                           ),
                         ),
-                        subtitle: Text('owes ${d.to}'),
+                        subtitle: Text('owes ${nameOf(d.to)}'),
                         trailing: Text(
                           '$amount $currency',
                           style: Theme.of(context)
@@ -87,12 +95,14 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     final messenger = ScaffoldMessenger.of(context);
     final currency = debt.currency;
     final amount = (debt.cents / 100).toStringAsFixed(2);
+    final toName =
+        ref.read(participantNamesProvider(widget.roomId))[debt.to] ?? debt.to;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Record settlement'),
         content: Text(
-            'Mark that you paid $amount $currency to ${debt.to}?'),
+            'Mark that you paid $amount $currency to $toName?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),

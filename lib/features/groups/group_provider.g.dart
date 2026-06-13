@@ -271,6 +271,113 @@ final class CurrentParticipantFamily extends $Family
   String toString() => r'currentParticipantProvider';
 }
 
+/// participant id → display label for [groupId]. Falls back to the Matrix id
+/// (or the raw participant id) when a participant has no name yet, so the UI
+/// never shows a blank. Watches the members stream, so renames/claims reflect
+/// live.
+
+@ProviderFor(participantNames)
+final participantNamesProvider = ParticipantNamesFamily._();
+
+/// participant id → display label for [groupId]. Falls back to the Matrix id
+/// (or the raw participant id) when a participant has no name yet, so the UI
+/// never shows a blank. Watches the members stream, so renames/claims reflect
+/// live.
+
+final class ParticipantNamesProvider
+    extends
+        $FunctionalProvider<
+          Map<String, String>,
+          Map<String, String>,
+          Map<String, String>
+        >
+    with $Provider<Map<String, String>> {
+  /// participant id → display label for [groupId]. Falls back to the Matrix id
+  /// (or the raw participant id) when a participant has no name yet, so the UI
+  /// never shows a blank. Watches the members stream, so renames/claims reflect
+  /// live.
+  ParticipantNamesProvider._({
+    required ParticipantNamesFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'participantNamesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$participantNamesHash();
+
+  @override
+  String toString() {
+    return r'participantNamesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<Map<String, String>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  Map<String, String> create(Ref ref) {
+    final argument = this.argument as String;
+    return participantNames(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Map<String, String> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Map<String, String>>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ParticipantNamesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$participantNamesHash() => r'e7a6f8c47f19349a1283ee23a45e47ce20218643';
+
+/// participant id → display label for [groupId]. Falls back to the Matrix id
+/// (or the raw participant id) when a participant has no name yet, so the UI
+/// never shows a blank. Watches the members stream, so renames/claims reflect
+/// live.
+
+final class ParticipantNamesFamily extends $Family
+    with $FunctionalFamilyOverride<Map<String, String>, String> {
+  ParticipantNamesFamily._()
+    : super(
+        retry: null,
+        name: r'participantNamesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// participant id → display label for [groupId]. Falls back to the Matrix id
+  /// (or the raw participant id) when a participant has no name yet, so the UI
+  /// never shows a blank. Watches the members stream, so renames/claims reflect
+  /// live.
+
+  ParticipantNamesProvider call(String groupId) =>
+      ParticipantNamesProvider._(argument: groupId, from: this);
+
+  @override
+  String toString() => r'participantNamesProvider';
+}
+
 @ProviderFor(GroupCreator)
 final groupCreatorProvider = GroupCreatorProvider._();
 
@@ -355,7 +462,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'86483d0469483672b53ebe31e72a2a71229217bb';
+String _$memberAdderHash() => r'a1d1478bd87f102daffa10f1f432dd8b84bbcadd';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

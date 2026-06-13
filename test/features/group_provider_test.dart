@@ -2,7 +2,7 @@ library;
 
 import 'dart:async';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/database/app_database.dart';
@@ -141,6 +141,70 @@ void main() {
       final targets =
           await c.read(membersDaoProvider).activeClaimedMatrixIds(groupId);
       expect(targets, ['@alice:x.org']); // only the claimed self
+    });
+
+    test('addLocal creates an unclaimed participant, not a sync target',
+        () async {
+      final groupId = await createTrip();
+      await c.read(memberAdderProvider.notifier).addLocal(groupId, 'Cash');
+      final cash = (await c.read(membersDaoProvider).getMembers(groupId))
+          .firstWhere((m) => m.displayName == 'Cash');
+      expect(cash.matrixId, isNull);
+      expect(cash.isClaimed, false);
+      expect(await c.read(membersDaoProvider).activeClaimedMatrixIds(groupId),
+          ['@alice:x.org']);
+    });
+
+    test('claim then unclaim keeps the participant identity + name', () async {
+      final groupId = await createTrip();
+      await c.read(memberAdderProvider.notifier).addLocal(groupId, 'Bob');
+      final bob = (await c.read(membersDaoProvider).getMembers(groupId))
+          .firstWhere((m) => m.displayName == 'Bob');
+
+      await c
+          .read(memberAdderProvider.notifier)
+          .claim(groupId, bob.userId, '@bob:y.org');
+      final claimed =
+          await c.read(membersDaoProvider).memberByMatrixId(groupId, '@bob:y.org');
+      expect(claimed?.userId, bob.userId); // same ledger identity
+      expect(claimed?.matrixId, '@bob:y.org');
+
+      await c.read(memberAdderProvider.notifier).unclaim(groupId, bob.userId);
+      final after = (await c.read(membersDaoProvider).getMembers(groupId))
+          .firstWhere((m) => m.userId == bob.userId);
+      expect(after.matrixId, isNull);
+      expect(after.displayName, 'Bob'); // identity + history preserved
+    });
+
+    test('rename updates the display name', () async {
+      final groupId = await createTrip();
+      await c.read(memberAdderProvider.notifier).addLocal(groupId, 'Cassh');
+      final p = (await c.read(membersDaoProvider).getMembers(groupId))
+          .firstWhere((m) => m.displayName == 'Cassh');
+      await c.read(memberAdderProvider.notifier).rename(groupId, p.userId, 'Cash');
+      final after = (await c.read(membersDaoProvider).getMembers(groupId))
+          .firstWhere((m) => m.userId == p.userId);
+      expect(after.displayName, 'Cash');
+    });
+
+    test('participantNames resolves names, falling back to matrixId/id',
+        () async {
+      final groupId = await createTrip();
+      await c.read(membersDaoProvider).upsertMemberLww(MembersCompanion(
+            groupId: Value(groupId),
+            userId: const Value('p1'),
+            displayName: const Value(''),
+            matrixId: const Value('@x:y.org'),
+            status: const Value('active'),
+            updatedAt: const Value(1),
+          ));
+      // Keep the (auto-dispose) stream alive so it emits before we read it.
+      final sub = c.listen(participantNamesProvider(groupId), (_, _) {});
+      await c.read(groupMembersProvider(groupId).future);
+      final names = c.read(participantNamesProvider(groupId));
+      expect(names['@alice:x.org'], 'alice'); // creator's localpart
+      expect(names['p1'], '@x:y.org'); // empty name → matrixId fallback
+      sub.close();
     });
   });
 }

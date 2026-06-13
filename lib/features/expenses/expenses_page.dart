@@ -18,6 +18,7 @@ class ExpensesPage extends ConsumerWidget {
     ref.watch(syncEngineProvider); // run anti-entropy while this group is open
     final expensesAsync = ref.watch(expensesForRoomProvider(roomId));
     final syncStatus = ref.watch(groupSyncStatusProvider(roomId));
+    final names = ref.watch(participantNamesProvider(roomId));
     final adderState = ref.watch(memberAdderProvider);
     // Keep the (auto-dispose) expense notifier alive while this page can
     // trigger deletes — a bare `read` in the dialog callback would let it be
@@ -66,6 +67,8 @@ class ExpensesPage extends ConsumerWidget {
                 itemCount: expenses.length,
                 itemBuilder: (context, i) => _ExpenseTile(
                   expense: expenses[i],
+                  paidByName:
+                      names[expenses[i].paidBy] ?? expenses[i].paidBy,
                   pending: syncStatus.isRecordPending(expenses[i].updatedAt),
                   onTap: () => context.push('/groups/$roomId/expenses/edit',
                       extra: expenses[i]),
@@ -191,11 +194,13 @@ class _SyncStatusIcon extends StatelessWidget {
 
 class _ExpenseTile extends StatelessWidget {
   final ExpenseModel expense;
+  final String paidByName;
   final bool pending;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   const _ExpenseTile(
       {required this.expense,
+      required this.paidByName,
       required this.pending,
       required this.onTap,
       required this.onDelete});
@@ -206,7 +211,7 @@ class _ExpenseTile extends StatelessWidget {
     return ListTile(
       leading: const CircleAvatar(child: Icon(Icons.receipt)),
       title: Text(expense.description),
-      subtitle: Text('Paid by ${expense.paidBy}'),
+      subtitle: Text('Paid by $paidByName'),
       onTap: onTap,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

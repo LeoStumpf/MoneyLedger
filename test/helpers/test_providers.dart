@@ -75,6 +75,9 @@ List<dynamic> testOverrides({
           .overrideWith((ref, roomId) => Stream.value(settlements)),
       balanceForRoomProvider.overrideWith((ref, roomId) => debts),
       ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
+      // The participant-name resolver and members page read the members stream
+      // off the DB; default it to empty so unrelated widget tests stay offline.
+      groupMembersProvider.overrideWith((ref, groupId) => Stream.value(const [])),
       // Sync-status reads several DB-backed streams; widget tests that don't
       // exercise it default to "synced" so they never open a real database.
       groupSyncStatusProvider.overrideWith((ref, groupId) =>

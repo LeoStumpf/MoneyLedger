@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Single-developer project — **commit directly to `main`** (the default branch). Do
 not create feature branches or open PRs unless explicitly asked; just commit to
-`main` and push. Still only commit/push when the user asks.
+`main` and push. **Always commit and push after a task/milestone is done**
+(tests green first) — no need to wait to be asked each time.
 
 ## Project Overview
 

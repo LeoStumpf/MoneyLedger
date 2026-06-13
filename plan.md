@@ -115,19 +115,22 @@ green, `dart run build_runner build` after any annotated-file change.
 - [x] tests (`group_provider_test`): self-participant seeded + currentParticipant;
       local participants never become sync targets. Full suite green (153).
 
-### M4 — UI: participants (names, add local/real, claim/unclaim, payer)
+### M4 — UI: participants (names, add local/real, claim/unclaim, payer) ✅
 
-- [ ] participant name resolver (participantId → displayName, per group).
-- [ ] `group_provider`: `ParticipantAdder.add(name, {matrixId})`,
-      `claim(id, matrixId)`, `unclaim(id)`, `rename(id, name)`, `remove(id)`.
-- [ ] `group_members_page`: displayName title, MXID-or-“Local” badge, “You”
-      chip; add dialog (name + optional MXID); per-row edit (rename / attach /
-      detach MXID); remove keeps history.
-- [ ] `add_expense_page`: payer dropdown + splits over participants, by name
-      (payer is hard-coded to self today).
-- [ ] `expenses_page` tiles + `balance_page`: resolve participantId → name.
-- [ ] tests: widget (add local participant, claim/unclaim, payer pick) +
-      resolver unit.
+- [x] `participantNames(groupId)` resolver (participantId → displayName, with
+      matrixId/id fallback).
+- [x] `group_provider` (`MemberAdder`): `addLocal(name)`, `add(mxid,
+      {displayName})`, `claim(id, mxid)`, `unclaim(id)`, `rename(id, name)`;
+      `MemberRemover.remove` keeps history.
+- [x] `group_members_page`: displayName title, MXID-or-“Local” subtitle, “You”
+      chip; add dialog (name + optional MXID); per-row menu (rename / link /
+      detach Matrix account / remove from group).
+- [x] `add_expense_page`: payer dropdown + splits over participants by name.
+- [x] `expenses_page` tiles + `balance_page`: resolve participantId → name (and
+      self/settle via `currentParticipant`).
+- [x] tests: group_members_page (You chip, Local badge, link menu); group_provider
+      (addLocal/claim/unclaim/rename/resolver); add_expense payer dropdown. Full
+      suite green (160).
 
 ### M5 — Removed/unclaimed display (#8) + docs
 

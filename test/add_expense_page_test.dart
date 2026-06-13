@@ -92,9 +92,45 @@ void main() {
       expect(received.first.type, expenseEventType);
       expect(received.first.content['description'], 'Pizza');
       expect(received.first.content['amount'], 2000);
+      // Defaults to the current user as payer.
+      expect(received.first.content['paid_by'], '@alice:x.org');
       // Split equally across the two members.
       expect(received.first.content['split'],
           {'@alice:x.org': 1000, '@bob:x.org': 1000});
+    });
+
+    testWidgets('the payer dropdown sets paid_by', (tester) async {
+      final (db, net) = await seedGroup();
+      final bob = net.clientFor('@bob:x.org');
+      final received = <TransportMessage>[];
+      bob.onMessage.listen(received.add);
+
+      await tester.pumpWidget(testRouterApp(
+        const AddExpensePage(roomId: 'g1'),
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => db),
+          ledgerTransportProvider
+              .overrideWith((ref) => net.clientFor('@alice:x.org')),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Description'), 'Pizza');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Amount'), '20');
+      // Switch the payer from alice (default) to bob.
+      await tester.tap(find.text('Paid by'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('@bob:x.org').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+
+      expect(received, hasLength(1));
+      expect(received.first.content['paid_by'], '@bob:x.org');
     });
 
     testWidgets('edit mode prefills the form and saves as the same record',

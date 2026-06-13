@@ -8,6 +8,7 @@ import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
+import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/expense_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
@@ -134,6 +135,8 @@ void main() {
         overrides: [
           expensesForRoomProvider
               .overrideWith((ref, roomId) => Stream.value([expense])),
+          groupMembersProvider
+              .overrideWith((ref, groupId) => Stream.value(const [])),
           groupSyncStatusProvider.overrideWith(
             (ref, groupId) => const GroupSyncStatus(
                 pendingPeers: {'@bob:y.org'}, minPeerInSyncAt: 0),

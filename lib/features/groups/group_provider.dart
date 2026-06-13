@@ -38,6 +38,22 @@ Future<MemberModel?> currentParticipant(Ref ref, String groupId) {
   return ref.watch(membersDaoProvider).memberByMatrixId(groupId, myId);
 }
 
+/// participant id → display label for [groupId]. Falls back to the Matrix id
+/// (or the raw participant id) when a participant has no name yet, so the UI
+/// never shows a blank. Watches the members stream, so renames/claims reflect
+/// live.
+@riverpod
+Map<String, String> participantNames(Ref ref, String groupId) {
+  final members =
+      ref.watch(groupMembersProvider(groupId)).value ?? const <MemberModel>[];
+  return {
+    for (final m in members)
+      m.userId: m.displayName.isNotEmpty
+          ? m.displayName
+          : (m.matrixId ?? m.userId)
+  };
+}
+
 @riverpod
 class GroupCreator extends _$GroupCreator {
   @override
@@ -82,7 +98,7 @@ class MemberAdder extends _$MemberAdder {
   /// Adds [userId] (a Matrix ID) to the group: records them locally, sends them
   /// the whole group as a bootstrap payload ("send my friend the database"), and
   /// notifies existing members of the new member.
-  Future<void> add(String groupId, String userId) async {
+  Future<void> add(String groupId, String userId, {String? displayName}) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -91,7 +107,9 @@ class MemberAdder extends _$MemberAdder {
       final member = MemberModel(
         groupId: groupId,
         userId: userId,
-        displayName: localpartOf(userId),
+        displayName: (displayName != null && displayName.isNotEmpty)
+            ? displayName
+            : localpartOf(userId),
         matrixId: userId,
         status: 'active',
         updatedAt: now,
@@ -112,6 +130,114 @@ class MemberAdder extends _$MemberAdder {
     });
   }
 
+  /// Adds a Tricount-style local participant: a named person with no Matrix
+  /// account (a fresh UUID participant id, `matrixId == null`). They are pure
+  /// ledger data — relayed to the claimed members so everyone sees them, but
+  /// never a sync target until someone claims the slot.
+  Future<void> addLocal(String groupId, String name) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final member = MemberModel(
+        groupId: groupId,
+        userId: const Uuid().v7(),
+        displayName: name,
+        matrixId: null,
+        status: 'active',
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await ref.read(membersDaoProvider).upsertMemberLww(memberCompanion(member));
+      await _relayToClaimed(groupId, member);
+    });
+  }
+
+  /// Renames a participant (LWW edit), then replicates.
+  Future<void> rename(String groupId, String participantId, String name) =>
+      _editParticipant(groupId, participantId,
+          (m) => _copyWith(m, displayName: name));
+
+  /// Claims a (typically local) participant for the Matrix account [matrixId]:
+  /// links the account to the existing ledger identity, keeping all history.
+  /// Bootstraps that account with the whole group (they may not have it yet).
+  Future<void> claim(
+      String groupId, String participantId, String matrixId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final memberDao = ref.read(membersDaoProvider);
+      final current = _find(await memberDao.getMembers(groupId), participantId);
+      if (current == null) return;
+      final updated = _copyWith(current, matrixId: matrixId);
+      await memberDao.upsertMemberLww(memberCompanion(updated));
+      final transport = await ref.read(ledgerTransportProvider.future);
+      await transport.sendToUsers(
+          {matrixId}, bootstrapEventType, await _buildBootstrap(groupId));
+      final targets =
+          (await memberDao.activeClaimedMatrixIds(groupId)).toSet();
+      await transport.sendToUsers(
+          targets, memberEventType, memberPayload(updated));
+    });
+  }
+
+  /// Detaches the Matrix account from a participant (the "remove account" of
+  /// open-points #7) — the participant and their history stay; only the claim
+  /// is cleared. Relays to the remaining members and to the detached account's
+  /// own device so it learns it is no longer linked.
+  Future<void> unclaim(String groupId, String participantId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final memberDao = ref.read(membersDaoProvider);
+      final current = _find(await memberDao.getMembers(groupId), participantId);
+      if (current == null || current.matrixId == null) return;
+      final detached = current.matrixId!;
+      final updated = _copyWith(current, matrixId: null);
+      await memberDao.upsertMemberLww(memberCompanion(updated));
+      final targets = (await memberDao.activeClaimedMatrixIds(groupId)).toSet()
+        ..add(detached);
+      final transport = await ref.read(ledgerTransportProvider.future);
+      await transport.sendToUsers(
+          targets, memberEventType, memberPayload(updated));
+    });
+  }
+
+  Future<void> _editParticipant(String groupId, String participantId,
+      MemberModel Function(MemberModel) edit) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final memberDao = ref.read(membersDaoProvider);
+      final current = _find(await memberDao.getMembers(groupId), participantId);
+      if (current == null) return;
+      final updated = edit(current);
+      await memberDao.upsertMemberLww(memberCompanion(updated));
+      await _relayToClaimed(groupId, updated);
+    });
+  }
+
+  Future<void> _relayToClaimed(String groupId, MemberModel member) async {
+    final transport = await ref.read(ledgerTransportProvider.future);
+    final targets =
+        (await ref.read(membersDaoProvider).activeClaimedMatrixIds(groupId))
+            .toSet();
+    if (targets.isEmpty) return;
+    await transport.sendToUsers(targets, memberEventType, memberPayload(member));
+  }
+
+  static MemberModel? _find(List<MemberModel> members, String participantId) {
+    for (final m in members) {
+      if (m.userId == participantId) return m;
+    }
+    return null;
+  }
+
+  static MemberModel _copyWith(MemberModel m,
+          {String? displayName, Object? matrixId = _unset}) =>
+      MemberModel(
+        groupId: m.groupId,
+        userId: m.userId,
+        displayName: displayName ?? m.displayName,
+        matrixId: identical(matrixId, _unset) ? m.matrixId : matrixId as String?,
+        status: m.status,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+
   Future<Map<String, dynamic>> _buildBootstrap(String groupId) async {
     final expDao = ref.read(expensesDaoProvider);
     return buildBootstrapContent(
@@ -125,6 +251,10 @@ class MemberAdder extends _$MemberAdder {
     );
   }
 }
+
+/// Sentinel for [_copyWith] so `matrixId: null` (unclaim) is distinguishable
+/// from "leave unchanged".
+const Object _unset = Object();
 
 @riverpod
 class MemberRemover extends _$MemberRemover {

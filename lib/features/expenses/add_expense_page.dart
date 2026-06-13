@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/expense_model.dart';
+import '../../models/member_model.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 
@@ -25,7 +26,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   bool get _isEdit => widget.initial != null;
 
   // null = still loading. Loaded from the local DB (roomless).
-  List<String>? _memberIds;
+  List<MemberModel>? _members;
+  String? _paidBy; // participant id of the payer
   String _currency = 'EUR';
 
   @override
@@ -40,13 +42,20 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   }
 
   Future<void> _loadData() async {
-    final memberIds =
-        await ref.read(membersDaoProvider).activeMemberIds(widget.roomId);
+    final members = (await ref.read(membersDaoProvider).getMembers(widget.roomId))
+        .where((m) => m.isActive)
+        .toList();
     final group = await ref.read(groupsDaoProvider).getGroup(widget.roomId);
+    // Default payer: the edited expense's payer, else this device's participant.
+    final self = await ref.read(currentParticipantProvider(widget.roomId).future);
+    final defaultPayer = widget.initial?.paidBy ??
+        self?.userId ??
+        (members.isNotEmpty ? members.first.userId : null);
     if (mounted) {
       setState(() {
-        _memberIds = memberIds;
+        _members = members;
         _currency = group?.currency ?? 'EUR';
+        _paidBy = defaultPayer;
       });
     }
   }
@@ -58,24 +67,26 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     super.dispose();
   }
 
-  Future<void> _submit(List<String> members) async {
+  Future<void> _submit(List<MemberModel> members) async {
     if (!_formKey.currentState!.validate()) return;
+    final paidBy = _paidBy;
+    if (paidBy == null) return;
 
     final amountCents =
         (double.parse(_amountCtrl.text.replaceAll(',', '.')) * 100).round();
     final share = (amountCents / members.length).round();
-    final splits = {for (final m in members) m: share};
+    final splits = {for (final m in members) m.userId: share};
 
     final initial = widget.initial;
     if (initial != null) {
-      // Edit: same record id (and original payer/creation time), fresh clock.
+      // Edit: same record id and creation time, fresh clock; payer editable.
       await ref.read(expenseAdderProvider.notifier).updateExpense(
             id: initial.id,
             roomId: widget.roomId,
             description: _descCtrl.text.trim(),
             amountCents: amountCents,
             currency: _currency,
-            paidBy: initial.paidBy,
+            paidBy: paidBy,
             splits: splits,
             createdAt: initial.createdAt,
           );
@@ -85,7 +96,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             description: _descCtrl.text.trim(),
             amountCents: amountCents,
             currency: _currency,
-            paidBy: ref.read(currentUserIdProvider),
+            paidBy: paidBy,
             splits: splits,
           );
     }
@@ -102,7 +113,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   @override
   Widget build(BuildContext context) {
     final adderState = ref.watch(expenseAdderProvider);
-    final members = _memberIds;
+    final members = _members;
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Edit expense' : 'Add expense')),
@@ -138,6 +149,21 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: _paidBy,
+                      decoration: const InputDecoration(labelText: 'Paid by'),
+                      items: [
+                        for (final m in members)
+                          DropdownMenuItem(
+                            value: m.userId,
+                            child: Text(m.displayName.isNotEmpty
+                                ? m.displayName
+                                : (m.matrixId ?? m.userId)),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _paidBy = v),
                     ),
                     const SizedBox(height: 8),
                     Text(
