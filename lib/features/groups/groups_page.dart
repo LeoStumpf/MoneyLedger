@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../auth/auth_provider.dart';
 import '../expenses/ledger_syncer.dart';
+import '../../core/sync/sync_engine.dart';
 import '../../models/group_model.dart';
 import 'group_provider.dart';
 
@@ -12,6 +13,7 @@ class GroupsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(ledgerSyncerProvider); // keep syncer alive on the main screen
+    ref.watch(syncEngineProvider); // run anti-entropy while signed in
     final groupsAsync = ref.watch(ledgerGroupsProvider);
 
     return Scaffold(

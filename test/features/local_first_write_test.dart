@@ -99,6 +99,104 @@ void main() {
       expect(received.first.content['description'], 'Pizza');
     });
 
+    test('updateExpense persists the edit locally when offline', () async {
+      final container = ProviderContainer(overrides: [
+        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+        ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
+      ]);
+      addTearDown(container.dispose);
+      await seedMembers(container, 'g1');
+
+      final adder = container.read(expenseAdderProvider.notifier);
+      await adder.addExpense(
+        roomId: 'g1',
+        description: 'Pizza',
+        amountCents: 2000,
+        currency: 'CHF',
+        paidBy: '@alice:x.org',
+        splits: const {'@alice:x.org': 1000, '@bob:x.org': 1000},
+      );
+      final saved =
+          (await container.read(expensesDaoProvider).getExpensesForRoom('g1'))
+              .single;
+
+      await adder.updateExpense(
+        id: saved.id,
+        roomId: 'g1',
+        description: 'Pizza + drinks',
+        amountCents: 3000,
+        currency: 'CHF',
+        paidBy: '@alice:x.org',
+        splits: const {'@alice:x.org': 1500, '@bob:x.org': 1500},
+        createdAt: saved.createdAt,
+      );
+
+      expect(container.read(expenseAdderProvider).hasError, isFalse);
+      final edited =
+          (await container.read(expensesDaoProvider).getExpensesForRoom('g1'))
+              .single;
+      expect(edited.id, saved.id);
+      expect(edited.description, 'Pizza + drinks');
+      expect(edited.amountCents, 3000);
+      expect(edited.updatedAt, greaterThanOrEqualTo(saved.updatedAt));
+    });
+
+    test('deleteExpense tombstones locally when offline', () async {
+      final container = ProviderContainer(overrides: [
+        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+        ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
+      ]);
+      addTearDown(container.dispose);
+      await seedMembers(container, 'g1');
+
+      final adder = container.read(expenseAdderProvider.notifier);
+      await adder.addExpense(
+        roomId: 'g1',
+        description: 'Mistake',
+        amountCents: 100,
+        currency: 'CHF',
+        paidBy: '@alice:x.org',
+        splits: const {'@alice:x.org': 100},
+      );
+      final dao = container.read(expensesDaoProvider);
+      final saved = (await dao.getExpensesForRoom('g1')).single;
+
+      await adder.deleteExpense(saved.id, 'g1');
+
+      expect(container.read(expenseAdderProvider).hasError, isFalse);
+      // Hidden from the UI, but kept as a tombstone for anti-entropy.
+      expect(await dao.getExpensesForRoom('g1'), isEmpty);
+      final all = await dao.getAllExpensesForGroup('g1');
+      expect(all.single.deleted, true);
+    });
+
+    test('deleteSettlement tombstones locally when offline', () async {
+      final container = ProviderContainer(overrides: [
+        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+        ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
+      ]);
+      addTearDown(container.dispose);
+      await seedMembers(container, 'g1');
+
+      final adder = container.read(expenseAdderProvider.notifier);
+      await adder.addSettlement(
+        roomId: 'g1',
+        amountCents: 500,
+        currency: 'CHF',
+        fromUser: '@bob:x.org',
+        toUser: '@alice:x.org',
+      );
+      final dao = container.read(expensesDaoProvider);
+      final saved = (await dao.getSettlementsForRoom('g1')).single;
+
+      await adder.deleteSettlement(saved.id, 'g1');
+
+      expect(container.read(expenseAdderProvider).hasError, isFalse);
+      expect(await dao.getSettlementsForRoom('g1'), isEmpty);
+      final all = await dao.getAllSettlementsForGroup('g1');
+      expect(all.single.deleted, true);
+    });
+
     test('addSettlement persists locally when replication fails', () async {
       final container = ProviderContainer(overrides: [
         appDatabaseProvider.overrideWith((ref) => openTestDatabase()),

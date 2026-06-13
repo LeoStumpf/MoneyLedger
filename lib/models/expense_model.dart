@@ -8,6 +8,8 @@ class ExpenseModel {
   final String paidBy;
   final String splitsJson;
   final int createdAt;
+  final int updatedAt; // ms epoch, LWW clock
+  final bool deleted; // tombstone — kept forever, hidden from the UI
 
   const ExpenseModel({
     required this.id,
@@ -19,6 +21,8 @@ class ExpenseModel {
     required this.paidBy,
     required this.splitsJson,
     required this.createdAt,
+    this.updatedAt = 0,
+    this.deleted = false,
   });
 }
 
@@ -31,6 +35,8 @@ class SettlementModel {
   final String fromUser;
   final String toUser;
   final int createdAt;
+  final int updatedAt; // ms epoch, LWW clock
+  final bool deleted; // tombstone — kept forever, hidden from the UI
 
   const SettlementModel({
     required this.id,
@@ -41,5 +47,7 @@ class SettlementModel {
     required this.fromUser,
     required this.toUser,
     required this.createdAt,
+    this.updatedAt = 0,
+    this.deleted = false,
   });
 }

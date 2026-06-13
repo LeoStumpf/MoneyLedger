@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/auth/sso_provider.dart';
@@ -74,6 +75,10 @@ List<dynamic> testOverrides({
           .overrideWith((ref, roomId) => Stream.value(settlements)),
       balanceForRoomProvider.overrideWith((ref, roomId) => debts),
       ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
+      // Sync-status reads several DB-backed streams; widget tests that don't
+      // exercise it default to "synced" so they never open a real database.
+      groupSyncStatusProvider.overrideWith((ref, groupId) =>
+          const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null)),
       // Never touch the app_links plugin in widget tests.
       ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
     ];

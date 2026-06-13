@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../features/auth/auth_provider.dart';
+import '../models/expense_model.dart';
 import 'error_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/balance/balance_page.dart';
@@ -48,6 +49,13 @@ GoRouter router(Ref ref) {
         path: '/groups/:roomId/expenses/add',
         builder: (_, s) =>
             AddExpensePage(roomId: s.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: '/groups/:roomId/expenses/edit',
+        builder: (_, s) => AddExpensePage(
+          roomId: s.pathParameters['roomId']!,
+          initial: s.extra as ExpenseModel?,
+        ),
       ),
       GoRoute(
         path: '/groups/:roomId/balance',

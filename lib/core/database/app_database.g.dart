@@ -38,8 +38,20 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
     requiredDuringInsert: false,
     defaultValue: const Constant('EUR'),
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
   @override
-  List<GeneratedColumn> get $columns => [roomId, name, currency];
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [roomId, name, currency, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -74,6 +86,12 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
       );
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -95,6 +113,10 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         DriftSqlType.string,
         data['${effectivePrefix}currency'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -108,10 +130,12 @@ class Group extends DataClass implements Insertable<Group> {
   final String roomId;
   final String name;
   final String currency;
+  final int updatedAt;
   const Group({
     required this.roomId,
     required this.name,
     required this.currency,
+    required this.updatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -119,6 +143,7 @@ class Group extends DataClass implements Insertable<Group> {
     map['room_id'] = Variable<String>(roomId);
     map['name'] = Variable<String>(name);
     map['currency'] = Variable<String>(currency);
+    map['updated_at'] = Variable<int>(updatedAt);
     return map;
   }
 
@@ -127,6 +152,7 @@ class Group extends DataClass implements Insertable<Group> {
       roomId: Value(roomId),
       name: Value(name),
       currency: Value(currency),
+      updatedAt: Value(updatedAt),
     );
   }
 
@@ -139,6 +165,7 @@ class Group extends DataClass implements Insertable<Group> {
       roomId: serializer.fromJson<String>(json['roomId']),
       name: serializer.fromJson<String>(json['name']),
       currency: serializer.fromJson<String>(json['currency']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
   }
   @override
@@ -148,19 +175,27 @@ class Group extends DataClass implements Insertable<Group> {
       'roomId': serializer.toJson<String>(roomId),
       'name': serializer.toJson<String>(name),
       'currency': serializer.toJson<String>(currency),
+      'updatedAt': serializer.toJson<int>(updatedAt),
     };
   }
 
-  Group copyWith({String? roomId, String? name, String? currency}) => Group(
+  Group copyWith({
+    String? roomId,
+    String? name,
+    String? currency,
+    int? updatedAt,
+  }) => Group(
     roomId: roomId ?? this.roomId,
     name: name ?? this.name,
     currency: currency ?? this.currency,
+    updatedAt: updatedAt ?? this.updatedAt,
   );
   Group copyWithCompanion(GroupsCompanion data) {
     return Group(
       roomId: data.roomId.present ? data.roomId.value : this.roomId,
       name: data.name.present ? data.name.value : this.name,
       currency: data.currency.present ? data.currency.value : this.currency,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -169,37 +204,42 @@ class Group extends DataClass implements Insertable<Group> {
     return (StringBuffer('Group(')
           ..write('roomId: $roomId, ')
           ..write('name: $name, ')
-          ..write('currency: $currency')
+          ..write('currency: $currency, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(roomId, name, currency);
+  int get hashCode => Object.hash(roomId, name, currency, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Group &&
           other.roomId == this.roomId &&
           other.name == this.name &&
-          other.currency == this.currency);
+          other.currency == this.currency &&
+          other.updatedAt == this.updatedAt);
 }
 
 class GroupsCompanion extends UpdateCompanion<Group> {
   final Value<String> roomId;
   final Value<String> name;
   final Value<String> currency;
+  final Value<int> updatedAt;
   final Value<int> rowid;
   const GroupsCompanion({
     this.roomId = const Value.absent(),
     this.name = const Value.absent(),
     this.currency = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupsCompanion.insert({
     required String roomId,
     required String name,
     this.currency = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : roomId = Value(roomId),
        name = Value(name);
@@ -207,12 +247,14 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Expression<String>? roomId,
     Expression<String>? name,
     Expression<String>? currency,
+    Expression<int>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (roomId != null) 'room_id': roomId,
       if (name != null) 'name': name,
       if (currency != null) 'currency': currency,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -221,12 +263,14 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Value<String>? roomId,
     Value<String>? name,
     Value<String>? currency,
+    Value<int>? updatedAt,
     Value<int>? rowid,
   }) {
     return GroupsCompanion(
       roomId: roomId ?? this.roomId,
       name: name ?? this.name,
       currency: currency ?? this.currency,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -243,6 +287,9 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     if (currency.present) {
       map['currency'] = Variable<String>(currency.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -255,6 +302,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
           ..write('roomId: $roomId, ')
           ..write('name: $name, ')
           ..write('currency: $currency, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -359,6 +407,33 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -370,6 +445,8 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     paidBy,
     splitsJson,
     createdAt,
+    updatedAt,
+    deleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -459,6 +536,18 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
     return context;
   }
 
@@ -504,6 +593,14 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
     );
   }
 
@@ -523,6 +620,8 @@ class Expense extends DataClass implements Insertable<Expense> {
   final String paidBy;
   final String splitsJson;
   final int createdAt;
+  final int updatedAt;
+  final bool deleted;
   const Expense({
     required this.id,
     required this.roomId,
@@ -533,6 +632,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     required this.paidBy,
     required this.splitsJson,
     required this.createdAt,
+    required this.updatedAt,
+    required this.deleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -548,6 +649,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     map['paid_by'] = Variable<String>(paidBy);
     map['splits_json'] = Variable<String>(splitsJson);
     map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
     return map;
   }
 
@@ -564,6 +667,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       paidBy: Value(paidBy),
       splitsJson: Value(splitsJson),
       createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
     );
   }
 
@@ -582,6 +687,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       paidBy: serializer.fromJson<String>(json['paidBy']),
       splitsJson: serializer.fromJson<String>(json['splitsJson']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
     );
   }
   @override
@@ -597,6 +704,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       'paidBy': serializer.toJson<String>(paidBy),
       'splitsJson': serializer.toJson<String>(splitsJson),
       'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
     };
   }
 
@@ -610,6 +719,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     String? paidBy,
     String? splitsJson,
     int? createdAt,
+    int? updatedAt,
+    bool? deleted,
   }) => Expense(
     id: id ?? this.id,
     roomId: roomId ?? this.roomId,
@@ -622,6 +733,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     paidBy: paidBy ?? this.paidBy,
     splitsJson: splitsJson ?? this.splitsJson,
     createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
   );
   Expense copyWithCompanion(ExpensesCompanion data) {
     return Expense(
@@ -642,6 +755,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           ? data.splitsJson.value
           : this.splitsJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
     );
   }
 
@@ -656,7 +771,9 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('currency: $currency, ')
           ..write('paidBy: $paidBy, ')
           ..write('splitsJson: $splitsJson, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted')
           ..write(')'))
         .toString();
   }
@@ -672,6 +789,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     paidBy,
     splitsJson,
     createdAt,
+    updatedAt,
+    deleted,
   );
   @override
   bool operator ==(Object other) =>
@@ -685,7 +804,9 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.currency == this.currency &&
           other.paidBy == this.paidBy &&
           other.splitsJson == this.splitsJson &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted);
 }
 
 class ExpensesCompanion extends UpdateCompanion<Expense> {
@@ -698,6 +819,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<String> paidBy;
   final Value<String> splitsJson;
   final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<bool> deleted;
   final Value<int> rowid;
   const ExpensesCompanion({
     this.id = const Value.absent(),
@@ -709,6 +832,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.paidBy = const Value.absent(),
     this.splitsJson = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ExpensesCompanion.insert({
@@ -721,6 +846,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     required String paidBy,
     required String splitsJson,
     required int createdAt,
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        roomId = Value(roomId),
@@ -740,6 +867,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<String>? paidBy,
     Expression<String>? splitsJson,
     Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<bool>? deleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -752,6 +881,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       if (paidBy != null) 'paid_by': paidBy,
       if (splitsJson != null) 'splits_json': splitsJson,
       if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -766,6 +897,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Value<String>? paidBy,
     Value<String>? splitsJson,
     Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<bool>? deleted,
     Value<int>? rowid,
   }) {
     return ExpensesCompanion(
@@ -778,6 +911,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       paidBy: paidBy ?? this.paidBy,
       splitsJson: splitsJson ?? this.splitsJson,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -812,6 +947,12 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -830,6 +971,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('paidBy: $paidBy, ')
           ..write('splitsJson: $splitsJson, ')
           ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -924,6 +1067,33 @@ class $SettlementsTable extends Settlements
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -934,6 +1104,8 @@ class $SettlementsTable extends Settlements
     fromUser,
     toUser,
     createdAt,
+    updatedAt,
+    deleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1012,6 +1184,18 @@ class $SettlementsTable extends Settlements
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
     return context;
   }
 
@@ -1053,6 +1237,14 @@ class $SettlementsTable extends Settlements
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
     );
   }
 
@@ -1071,6 +1263,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
   final String fromUser;
   final String toUser;
   final int createdAt;
+  final int updatedAt;
+  final bool deleted;
   const Settlement({
     required this.id,
     required this.roomId,
@@ -1080,6 +1274,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     required this.fromUser,
     required this.toUser,
     required this.createdAt,
+    required this.updatedAt,
+    required this.deleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1094,6 +1290,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     map['from_user'] = Variable<String>(fromUser);
     map['to_user'] = Variable<String>(toUser);
     map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
     return map;
   }
 
@@ -1109,6 +1307,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       fromUser: Value(fromUser),
       toUser: Value(toUser),
       createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
     );
   }
 
@@ -1126,6 +1326,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       fromUser: serializer.fromJson<String>(json['fromUser']),
       toUser: serializer.fromJson<String>(json['toUser']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
     );
   }
   @override
@@ -1140,6 +1342,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       'fromUser': serializer.toJson<String>(fromUser),
       'toUser': serializer.toJson<String>(toUser),
       'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
     };
   }
 
@@ -1152,6 +1356,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     String? fromUser,
     String? toUser,
     int? createdAt,
+    int? updatedAt,
+    bool? deleted,
   }) => Settlement(
     id: id ?? this.id,
     roomId: roomId ?? this.roomId,
@@ -1163,6 +1369,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     fromUser: fromUser ?? this.fromUser,
     toUser: toUser ?? this.toUser,
     createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
   );
   Settlement copyWithCompanion(SettlementsCompanion data) {
     return Settlement(
@@ -1178,6 +1386,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       fromUser: data.fromUser.present ? data.fromUser.value : this.fromUser,
       toUser: data.toUser.present ? data.toUser.value : this.toUser,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
     );
   }
 
@@ -1191,7 +1401,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           ..write('currency: $currency, ')
           ..write('fromUser: $fromUser, ')
           ..write('toUser: $toUser, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted')
           ..write(')'))
         .toString();
   }
@@ -1206,6 +1418,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     fromUser,
     toUser,
     createdAt,
+    updatedAt,
+    deleted,
   );
   @override
   bool operator ==(Object other) =>
@@ -1218,7 +1432,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           other.currency == this.currency &&
           other.fromUser == this.fromUser &&
           other.toUser == this.toUser &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted);
 }
 
 class SettlementsCompanion extends UpdateCompanion<Settlement> {
@@ -1230,6 +1446,8 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
   final Value<String> fromUser;
   final Value<String> toUser;
   final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<bool> deleted;
   final Value<int> rowid;
   const SettlementsCompanion({
     this.id = const Value.absent(),
@@ -1240,6 +1458,8 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     this.fromUser = const Value.absent(),
     this.toUser = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettlementsCompanion.insert({
@@ -1251,6 +1471,8 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     required String fromUser,
     required String toUser,
     required int createdAt,
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        roomId = Value(roomId),
@@ -1268,6 +1490,8 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     Expression<String>? fromUser,
     Expression<String>? toUser,
     Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<bool>? deleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1279,6 +1503,8 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       if (fromUser != null) 'from_user': fromUser,
       if (toUser != null) 'to_user': toUser,
       if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1292,6 +1518,8 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     Value<String>? fromUser,
     Value<String>? toUser,
     Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<bool>? deleted,
     Value<int>? rowid,
   }) {
     return SettlementsCompanion(
@@ -1303,6 +1531,8 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       fromUser: fromUser ?? this.fromUser,
       toUser: toUser ?? this.toUser,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1334,6 +1564,12 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1351,6 +1587,8 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
           ..write('fromUser: $fromUser, ')
           ..write('toUser: $toUser, ')
           ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1665,6 +1903,331 @@ class MembersCompanion extends UpdateCompanion<Member> {
   }
 }
 
+class $PeerSyncStatesTable extends PeerSyncStates
+    with TableInfo<$PeerSyncStatesTable, PeerSyncState> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PeerSyncStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastInSyncAtMeta = const VerificationMeta(
+    'lastInSyncAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastInSyncAt = GeneratedColumn<int>(
+    'last_in_sync_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastDigestSentAtMeta = const VerificationMeta(
+    'lastDigestSentAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastDigestSentAt = GeneratedColumn<int>(
+    'last_digest_sent_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    groupId,
+    userId,
+    lastInSyncAt,
+    lastDigestSentAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'peer_sync_states';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PeerSyncState> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('last_in_sync_at')) {
+      context.handle(
+        _lastInSyncAtMeta,
+        lastInSyncAt.isAcceptableOrUnknown(
+          data['last_in_sync_at']!,
+          _lastInSyncAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_digest_sent_at')) {
+      context.handle(
+        _lastDigestSentAtMeta,
+        lastDigestSentAt.isAcceptableOrUnknown(
+          data['last_digest_sent_at']!,
+          _lastDigestSentAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupId, userId};
+  @override
+  PeerSyncState map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PeerSyncState(
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      lastInSyncAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_in_sync_at'],
+      )!,
+      lastDigestSentAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_digest_sent_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PeerSyncStatesTable createAlias(String alias) {
+    return $PeerSyncStatesTable(attachedDatabase, alias);
+  }
+}
+
+class PeerSyncState extends DataClass implements Insertable<PeerSyncState> {
+  final String groupId;
+  final String userId;
+  final int lastInSyncAt;
+  final int lastDigestSentAt;
+  const PeerSyncState({
+    required this.groupId,
+    required this.userId,
+    required this.lastInSyncAt,
+    required this.lastDigestSentAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_id'] = Variable<String>(groupId);
+    map['user_id'] = Variable<String>(userId);
+    map['last_in_sync_at'] = Variable<int>(lastInSyncAt);
+    map['last_digest_sent_at'] = Variable<int>(lastDigestSentAt);
+    return map;
+  }
+
+  PeerSyncStatesCompanion toCompanion(bool nullToAbsent) {
+    return PeerSyncStatesCompanion(
+      groupId: Value(groupId),
+      userId: Value(userId),
+      lastInSyncAt: Value(lastInSyncAt),
+      lastDigestSentAt: Value(lastDigestSentAt),
+    );
+  }
+
+  factory PeerSyncState.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PeerSyncState(
+      groupId: serializer.fromJson<String>(json['groupId']),
+      userId: serializer.fromJson<String>(json['userId']),
+      lastInSyncAt: serializer.fromJson<int>(json['lastInSyncAt']),
+      lastDigestSentAt: serializer.fromJson<int>(json['lastDigestSentAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupId': serializer.toJson<String>(groupId),
+      'userId': serializer.toJson<String>(userId),
+      'lastInSyncAt': serializer.toJson<int>(lastInSyncAt),
+      'lastDigestSentAt': serializer.toJson<int>(lastDigestSentAt),
+    };
+  }
+
+  PeerSyncState copyWith({
+    String? groupId,
+    String? userId,
+    int? lastInSyncAt,
+    int? lastDigestSentAt,
+  }) => PeerSyncState(
+    groupId: groupId ?? this.groupId,
+    userId: userId ?? this.userId,
+    lastInSyncAt: lastInSyncAt ?? this.lastInSyncAt,
+    lastDigestSentAt: lastDigestSentAt ?? this.lastDigestSentAt,
+  );
+  PeerSyncState copyWithCompanion(PeerSyncStatesCompanion data) {
+    return PeerSyncState(
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      lastInSyncAt: data.lastInSyncAt.present
+          ? data.lastInSyncAt.value
+          : this.lastInSyncAt,
+      lastDigestSentAt: data.lastDigestSentAt.present
+          ? data.lastDigestSentAt.value
+          : this.lastDigestSentAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PeerSyncState(')
+          ..write('groupId: $groupId, ')
+          ..write('userId: $userId, ')
+          ..write('lastInSyncAt: $lastInSyncAt, ')
+          ..write('lastDigestSentAt: $lastDigestSentAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(groupId, userId, lastInSyncAt, lastDigestSentAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PeerSyncState &&
+          other.groupId == this.groupId &&
+          other.userId == this.userId &&
+          other.lastInSyncAt == this.lastInSyncAt &&
+          other.lastDigestSentAt == this.lastDigestSentAt);
+}
+
+class PeerSyncStatesCompanion extends UpdateCompanion<PeerSyncState> {
+  final Value<String> groupId;
+  final Value<String> userId;
+  final Value<int> lastInSyncAt;
+  final Value<int> lastDigestSentAt;
+  final Value<int> rowid;
+  const PeerSyncStatesCompanion({
+    this.groupId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.lastInSyncAt = const Value.absent(),
+    this.lastDigestSentAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PeerSyncStatesCompanion.insert({
+    required String groupId,
+    required String userId,
+    this.lastInSyncAt = const Value.absent(),
+    this.lastDigestSentAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : groupId = Value(groupId),
+       userId = Value(userId);
+  static Insertable<PeerSyncState> custom({
+    Expression<String>? groupId,
+    Expression<String>? userId,
+    Expression<int>? lastInSyncAt,
+    Expression<int>? lastDigestSentAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (groupId != null) 'group_id': groupId,
+      if (userId != null) 'user_id': userId,
+      if (lastInSyncAt != null) 'last_in_sync_at': lastInSyncAt,
+      if (lastDigestSentAt != null) 'last_digest_sent_at': lastDigestSentAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PeerSyncStatesCompanion copyWith({
+    Value<String>? groupId,
+    Value<String>? userId,
+    Value<int>? lastInSyncAt,
+    Value<int>? lastDigestSentAt,
+    Value<int>? rowid,
+  }) {
+    return PeerSyncStatesCompanion(
+      groupId: groupId ?? this.groupId,
+      userId: userId ?? this.userId,
+      lastInSyncAt: lastInSyncAt ?? this.lastInSyncAt,
+      lastDigestSentAt: lastDigestSentAt ?? this.lastDigestSentAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (lastInSyncAt.present) {
+      map['last_in_sync_at'] = Variable<int>(lastInSyncAt.value);
+    }
+    if (lastDigestSentAt.present) {
+      map['last_digest_sent_at'] = Variable<int>(lastDigestSentAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PeerSyncStatesCompanion(')
+          ..write('groupId: $groupId, ')
+          ..write('userId: $userId, ')
+          ..write('lastInSyncAt: $lastInSyncAt, ')
+          ..write('lastDigestSentAt: $lastDigestSentAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1672,6 +2235,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ExpensesTable expenses = $ExpensesTable(this);
   late final $SettlementsTable settlements = $SettlementsTable(this);
   late final $MembersTable members = $MembersTable(this);
+  late final $PeerSyncStatesTable peerSyncStates = $PeerSyncStatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1681,6 +2245,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     expenses,
     settlements,
     members,
+    peerSyncStates,
   ];
 }
 
@@ -1689,6 +2254,7 @@ typedef $$GroupsTableCreateCompanionBuilder =
       required String roomId,
       required String name,
       Value<String> currency,
+      Value<int> updatedAt,
       Value<int> rowid,
     });
 typedef $$GroupsTableUpdateCompanionBuilder =
@@ -1696,6 +2262,7 @@ typedef $$GroupsTableUpdateCompanionBuilder =
       Value<String> roomId,
       Value<String> name,
       Value<String> currency,
+      Value<int> updatedAt,
       Value<int> rowid,
     });
 
@@ -1720,6 +2287,11 @@ class $$GroupsTableFilterComposer
 
   ColumnFilters<String> get currency => $composableBuilder(
     column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1747,6 +2319,11 @@ class $$GroupsTableOrderingComposer
     column: $table.currency,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GroupsTableAnnotationComposer
@@ -1766,6 +2343,9 @@ class $$GroupsTableAnnotationComposer
 
   GeneratedColumn<String> get currency =>
       $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$GroupsTableTableManager
@@ -1799,11 +2379,13 @@ class $$GroupsTableTableManager
                 Value<String> roomId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> currency = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion(
                 roomId: roomId,
                 name: name,
                 currency: currency,
+                updatedAt: updatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1811,11 +2393,13 @@ class $$GroupsTableTableManager
                 required String roomId,
                 required String name,
                 Value<String> currency = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion.insert(
                 roomId: roomId,
                 name: name,
                 currency: currency,
+                updatedAt: updatedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -1851,6 +2435,8 @@ typedef $$ExpensesTableCreateCompanionBuilder =
       required String paidBy,
       required String splitsJson,
       required int createdAt,
+      Value<int> updatedAt,
+      Value<bool> deleted,
       Value<int> rowid,
     });
 typedef $$ExpensesTableUpdateCompanionBuilder =
@@ -1864,6 +2450,8 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
       Value<String> paidBy,
       Value<String> splitsJson,
       Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<bool> deleted,
       Value<int> rowid,
     });
 
@@ -1918,6 +2506,16 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1975,6 +2573,16 @@ class $$ExpensesTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ExpensesTableAnnotationComposer
@@ -2020,6 +2628,12 @@ class $$ExpensesTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
 }
 
 class $$ExpensesTableTableManager
@@ -2059,6 +2673,8 @@ class $$ExpensesTableTableManager
                 Value<String> paidBy = const Value.absent(),
                 Value<String> splitsJson = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion(
                 id: id,
@@ -2070,6 +2686,8 @@ class $$ExpensesTableTableManager
                 paidBy: paidBy,
                 splitsJson: splitsJson,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2083,6 +2701,8 @@ class $$ExpensesTableTableManager
                 required String paidBy,
                 required String splitsJson,
                 required int createdAt,
+                Value<int> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion.insert(
                 id: id,
@@ -2094,6 +2714,8 @@ class $$ExpensesTableTableManager
                 paidBy: paidBy,
                 splitsJson: splitsJson,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2128,6 +2750,8 @@ typedef $$SettlementsTableCreateCompanionBuilder =
       required String fromUser,
       required String toUser,
       required int createdAt,
+      Value<int> updatedAt,
+      Value<bool> deleted,
       Value<int> rowid,
     });
 typedef $$SettlementsTableUpdateCompanionBuilder =
@@ -2140,6 +2764,8 @@ typedef $$SettlementsTableUpdateCompanionBuilder =
       Value<String> fromUser,
       Value<String> toUser,
       Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<bool> deleted,
       Value<int> rowid,
     });
 
@@ -2189,6 +2815,16 @@ class $$SettlementsTableFilterComposer
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2241,6 +2877,16 @@ class $$SettlementsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettlementsTableAnnotationComposer
@@ -2279,6 +2925,12 @@ class $$SettlementsTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
 }
 
 class $$SettlementsTableTableManager
@@ -2320,6 +2972,8 @@ class $$SettlementsTableTableManager
                 Value<String> fromUser = const Value.absent(),
                 Value<String> toUser = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettlementsCompanion(
                 id: id,
@@ -2330,6 +2984,8 @@ class $$SettlementsTableTableManager
                 fromUser: fromUser,
                 toUser: toUser,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2342,6 +2998,8 @@ class $$SettlementsTableTableManager
                 required String fromUser,
                 required String toUser,
                 required int createdAt,
+                Value<int> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettlementsCompanion.insert(
                 id: id,
@@ -2352,6 +3010,8 @@ class $$SettlementsTableTableManager
                 fromUser: fromUser,
                 toUser: toUser,
                 createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2554,6 +3214,193 @@ typedef $$MembersTableProcessedTableManager =
       Member,
       PrefetchHooks Function()
     >;
+typedef $$PeerSyncStatesTableCreateCompanionBuilder =
+    PeerSyncStatesCompanion Function({
+      required String groupId,
+      required String userId,
+      Value<int> lastInSyncAt,
+      Value<int> lastDigestSentAt,
+      Value<int> rowid,
+    });
+typedef $$PeerSyncStatesTableUpdateCompanionBuilder =
+    PeerSyncStatesCompanion Function({
+      Value<String> groupId,
+      Value<String> userId,
+      Value<int> lastInSyncAt,
+      Value<int> lastDigestSentAt,
+      Value<int> rowid,
+    });
+
+class $$PeerSyncStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $PeerSyncStatesTable> {
+  $$PeerSyncStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastInSyncAt => $composableBuilder(
+    column: $table.lastInSyncAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastDigestSentAt => $composableBuilder(
+    column: $table.lastDigestSentAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PeerSyncStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PeerSyncStatesTable> {
+  $$PeerSyncStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastInSyncAt => $composableBuilder(
+    column: $table.lastInSyncAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastDigestSentAt => $composableBuilder(
+    column: $table.lastDigestSentAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PeerSyncStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PeerSyncStatesTable> {
+  $$PeerSyncStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<int> get lastInSyncAt => $composableBuilder(
+    column: $table.lastInSyncAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastDigestSentAt => $composableBuilder(
+    column: $table.lastDigestSentAt,
+    builder: (column) => column,
+  );
+}
+
+class $$PeerSyncStatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PeerSyncStatesTable,
+          PeerSyncState,
+          $$PeerSyncStatesTableFilterComposer,
+          $$PeerSyncStatesTableOrderingComposer,
+          $$PeerSyncStatesTableAnnotationComposer,
+          $$PeerSyncStatesTableCreateCompanionBuilder,
+          $$PeerSyncStatesTableUpdateCompanionBuilder,
+          (
+            PeerSyncState,
+            BaseReferences<_$AppDatabase, $PeerSyncStatesTable, PeerSyncState>,
+          ),
+          PeerSyncState,
+          PrefetchHooks Function()
+        > {
+  $$PeerSyncStatesTableTableManager(
+    _$AppDatabase db,
+    $PeerSyncStatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PeerSyncStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PeerSyncStatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PeerSyncStatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> groupId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<int> lastInSyncAt = const Value.absent(),
+                Value<int> lastDigestSentAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PeerSyncStatesCompanion(
+                groupId: groupId,
+                userId: userId,
+                lastInSyncAt: lastInSyncAt,
+                lastDigestSentAt: lastDigestSentAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String groupId,
+                required String userId,
+                Value<int> lastInSyncAt = const Value.absent(),
+                Value<int> lastDigestSentAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PeerSyncStatesCompanion.insert(
+                groupId: groupId,
+                userId: userId,
+                lastInSyncAt: lastInSyncAt,
+                lastDigestSentAt: lastDigestSentAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PeerSyncStatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PeerSyncStatesTable,
+      PeerSyncState,
+      $$PeerSyncStatesTableFilterComposer,
+      $$PeerSyncStatesTableOrderingComposer,
+      $$PeerSyncStatesTableAnnotationComposer,
+      $$PeerSyncStatesTableCreateCompanionBuilder,
+      $$PeerSyncStatesTableUpdateCompanionBuilder,
+      (
+        PeerSyncState,
+        BaseReferences<_$AppDatabase, $PeerSyncStatesTable, PeerSyncState>,
+      ),
+      PeerSyncState,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2566,4 +3413,6 @@ class $AppDatabaseManager {
       $$SettlementsTableTableManager(_db, _db.settlements);
   $$MembersTableTableManager get members =>
       $$MembersTableTableManager(_db, _db.members);
+  $$PeerSyncStatesTableTableManager get peerSyncStates =>
+      $$PeerSyncStatesTableTableManager(_db, _db.peerSyncStates);
 }

@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/expense_model.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 
+/// Add (default) or edit an expense — pass [initial] to prefill the form and
+/// save the submit as an LWW edit of the same record.
 class AddExpensePage extends ConsumerStatefulWidget {
   final String roomId;
-  const AddExpensePage({super.key, required this.roomId});
+  final ExpenseModel? initial;
+  const AddExpensePage({super.key, required this.roomId, this.initial});
 
   @override
   ConsumerState<AddExpensePage> createState() => _AddExpensePageState();
@@ -18,6 +22,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   final _descCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
 
+  bool get _isEdit => widget.initial != null;
+
   // null = still loading. Loaded from the local DB (roomless).
   List<String>? _memberIds;
   String _currency = 'EUR';
@@ -25,6 +31,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   @override
   void initState() {
     super.initState();
+    final initial = widget.initial;
+    if (initial != null) {
+      _descCtrl.text = initial.description;
+      _amountCtrl.text = (initial.amountCents / 100).toStringAsFixed(2);
+    }
     _loadData();
   }
 
@@ -52,18 +63,32 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
     final amountCents =
         (double.parse(_amountCtrl.text.replaceAll(',', '.')) * 100).round();
-    final paidBy = ref.read(currentUserIdProvider);
     final share = (amountCents / members.length).round();
     final splits = {for (final m in members) m: share};
 
-    await ref.read(expenseAdderProvider.notifier).addExpense(
-          roomId: widget.roomId,
-          description: _descCtrl.text.trim(),
-          amountCents: amountCents,
-          currency: _currency,
-          paidBy: paidBy,
-          splits: splits,
-        );
+    final initial = widget.initial;
+    if (initial != null) {
+      // Edit: same record id (and original payer/creation time), fresh clock.
+      await ref.read(expenseAdderProvider.notifier).updateExpense(
+            id: initial.id,
+            roomId: widget.roomId,
+            description: _descCtrl.text.trim(),
+            amountCents: amountCents,
+            currency: _currency,
+            paidBy: initial.paidBy,
+            splits: splits,
+            createdAt: initial.createdAt,
+          );
+    } else {
+      await ref.read(expenseAdderProvider.notifier).addExpense(
+            roomId: widget.roomId,
+            description: _descCtrl.text.trim(),
+            amountCents: amountCents,
+            currency: _currency,
+            paidBy: ref.read(currentUserIdProvider),
+            splits: splits,
+          );
+    }
 
     final error = ref.read(expenseAdderProvider).error;
     if (error != null && mounted) {
@@ -80,7 +105,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final members = _memberIds;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add expense')),
+      appBar: AppBar(title: Text(_isEdit ? 'Edit expense' : 'Add expense')),
       body: members == null
           ? const Center(child: CircularProgressIndicator())
           : Padding(
@@ -130,7 +155,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Add'),
+                          : Text(_isEdit ? 'Save' : 'Add'),
                     ),
                   ],
                 ),

@@ -71,7 +71,9 @@ class LedgerSyncer {
     final id = content['id'] as String?;
     final group = content['group'] as String?;
     if (id == null || group == null) return;
-    dao.upsertExpense(ExpensesCompanion(
+    final createdAt =
+        content['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch;
+    dao.upsertExpenseLww(ExpensesCompanion(
       id: Value(id),
       roomId: Value(group),
       description: Value(content['description'] as String? ?? ''),
@@ -79,8 +81,9 @@ class LedgerSyncer {
       currency: Value(content['currency'] as String? ?? 'EUR'),
       paidBy: Value(content['paid_by'] as String? ?? ''),
       splitsJson: Value(jsonEncode(content['split'] ?? {})),
-      createdAt: Value(
-          content['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch),
+      createdAt: Value(createdAt),
+      updatedAt: Value(content['updated_at'] as int? ?? createdAt),
+      deleted: Value(content['deleted'] as bool? ?? false),
     ));
   }
 
@@ -89,15 +92,18 @@ class LedgerSyncer {
     final id = content['id'] as String?;
     final group = content['group'] as String?;
     if (id == null || group == null) return;
-    dao.upsertSettlement(SettlementsCompanion(
+    final createdAt =
+        content['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch;
+    dao.upsertSettlementLww(SettlementsCompanion(
       id: Value(id),
       roomId: Value(group),
       amountCents: Value(content['amount'] as int? ?? 0),
       currency: Value(content['currency'] as String? ?? 'EUR'),
       fromUser: Value(content['from'] as String? ?? ''),
       toUser: Value(content['to'] as String? ?? ''),
-      createdAt: Value(
-          content['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch),
+      createdAt: Value(createdAt),
+      updatedAt: Value(content['updated_at'] as int? ?? createdAt),
+      deleted: Value(content['deleted'] as bool? ?? false),
     ));
   }
 
@@ -105,10 +111,13 @@ class LedgerSyncer {
   static void processGroupMeta(Map<String, dynamic> content, GroupsDao dao) {
     final group = content['group'] as String?;
     if (group == null) return;
-    dao.upsertGroup(GroupsCompanion(
+    // Missing clock means a pre-v1 payload: treat as oldest (0) so it can
+    // create the group but never overwrite a newer local rename.
+    dao.upsertGroupLww(GroupsCompanion(
       roomId: Value(group),
       name: Value(content['name'] as String? ?? group),
       currency: Value(content['currency'] as String? ?? 'EUR'),
+      updatedAt: Value(content['updated_at'] as int? ?? 0),
     ));
   }
 

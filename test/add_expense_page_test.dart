@@ -8,6 +8,7 @@ import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/features/expenses/add_expense_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
+import 'package:money_ledger/models/expense_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
@@ -19,8 +20,11 @@ void main() {
     // shared in-memory DB, and returns it plus the fake network.
     Future<(AppDatabase, FakeMatrixNetwork)> seedGroup() async {
       final db = openTestDatabase();
-      await GroupsDao(db).upsertGroup(const GroupsCompanion(
-          roomId: Value('g1'), name: Value('Trip'), currency: Value('CHF')));
+      await GroupsDao(db).upsertGroupLww(const GroupsCompanion(
+          roomId: Value('g1'),
+          name: Value('Trip'),
+          currency: Value('CHF'),
+          updatedAt: Value(1000)));
       final memberDao = MembersDao(db);
       for (final u in ['@alice:x.org', '@bob:x.org']) {
         await memberDao.upsertMemberLww(MembersCompanion(
@@ -90,6 +94,59 @@ void main() {
       // Split equally across the two members.
       expect(received.first.content['split'],
           {'@alice:x.org': 1000, '@bob:x.org': 1000});
+    });
+
+    testWidgets('edit mode prefills the form and saves as the same record',
+        (tester) async {
+      final (db, net) = await seedGroup();
+      final bob = net.clientFor('@bob:x.org');
+      final received = <TransportMessage>[];
+      bob.onMessage.listen(received.add);
+
+      const initial = ExpenseModel(
+        id: 'e1',
+        roomId: 'g1',
+        description: 'Dinner',
+        amountCents: 4200,
+        currency: 'CHF',
+        paidBy: '@alice:x.org',
+        splitsJson: '{"@alice:x.org":2100,"@bob:x.org":2100}',
+        createdAt: 1000,
+        updatedAt: 1000,
+      );
+
+      await tester.pumpWidget(testRouterApp(
+        const AddExpensePage(roomId: 'g1', initial: initial),
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => db),
+          ledgerTransportProvider
+              .overrideWith((ref) => net.clientFor('@alice:x.org')),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      // Prefilled from the initial expense, with edit labels.
+      expect(find.text('Edit expense'), findsOneWidget);
+      expect(find.text('Dinner'), findsOneWidget);
+      expect(find.text('42.00'), findsOneWidget);
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Description'), 'Dinner v2');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Amount'), '50');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+
+      // Relayed as an edit: same record id, original payer, new content.
+      expect(received, hasLength(1));
+      expect(received.first.type, expenseEventType);
+      expect(received.first.content['id'], 'e1');
+      expect(received.first.content['paid_by'], '@alice:x.org');
+      expect(received.first.content['description'], 'Dinner v2');
+      expect(received.first.content['amount'], 5000);
+      expect(received.first.content['deleted'], false);
     });
   });
 }

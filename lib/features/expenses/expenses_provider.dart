@@ -9,8 +9,10 @@ import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
+import '../../core/database/daos/sync_states_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/sync/ledger_payloads.dart';
 import '../../models/expense_model.dart';
 
 part 'expenses_provider.g.dart';
@@ -27,6 +29,10 @@ GroupsDao groupsDao(Ref ref) => GroupsDao(ref.watch(appDatabaseProvider));
 
 @Riverpod(keepAlive: true)
 MembersDao membersDao(Ref ref) => MembersDao(ref.watch(appDatabaseProvider));
+
+@Riverpod(keepAlive: true)
+SyncStatesDao syncStatesDao(Ref ref) =>
+    SyncStatesDao(ref.watch(appDatabaseProvider));
 
 @riverpod
 Stream<List<ExpenseModel>> expensesForRoom(Ref ref, String roomId) {
@@ -53,30 +59,24 @@ class ExpenseAdder extends _$ExpenseAdder {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final id = const Uuid().v7();
       final createdAt = DateTime.now().millisecondsSinceEpoch;
+      final expense = ExpenseModel(
+        id: const Uuid().v7(),
+        roomId: roomId,
+        description: description,
+        amountCents: amountCents,
+        currency: currency,
+        paidBy: paidBy,
+        splitsJson: jsonEncode(splits),
+        createdAt: createdAt,
+        updatedAt: createdAt,
+      );
       // Local-first: persist to Drift immediately so the expense is saved and
       // visible even offline. Replication is best-effort afterwards.
-      await ref.read(expensesDaoProvider).upsertExpense(ExpensesCompanion(
-            id: Value(id),
-            roomId: Value(roomId),
-            description: Value(description),
-            amountCents: Value(amountCents),
-            currency: Value(currency),
-            paidBy: Value(paidBy),
-            splitsJson: Value(jsonEncode(splits)),
-            createdAt: Value(createdAt),
-          ));
-      await _replicate(roomId, expenseEventType, {
-        'id': id,
-        'group': roomId,
-        'description': description,
-        'amount': amountCents,
-        'currency': currency,
-        'paid_by': paidBy,
-        'split': splits,
-        'created_at': createdAt,
-      });
+      await ref
+          .read(expensesDaoProvider)
+          .upsertExpenseLww(_toCompanion(expense));
+      await _replicate(roomId, expenseEventType, expensePayload(expense));
     });
   }
 
@@ -89,27 +89,107 @@ class ExpenseAdder extends _$ExpenseAdder {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final id = const Uuid().v7();
       final createdAt = DateTime.now().millisecondsSinceEpoch;
+      final settlement = SettlementModel(
+        id: const Uuid().v7(),
+        roomId: roomId,
+        amountCents: amountCents,
+        currency: currency,
+        fromUser: fromUser,
+        toUser: toUser,
+        createdAt: createdAt,
+        updatedAt: createdAt,
+      );
       // Local-first: persist before replicating (see addExpense).
-      await ref.read(expensesDaoProvider).upsertSettlement(SettlementsCompanion(
-            id: Value(id),
-            roomId: Value(roomId),
-            amountCents: Value(amountCents),
-            currency: Value(currency),
-            fromUser: Value(fromUser),
-            toUser: Value(toUser),
-            createdAt: Value(createdAt),
-          ));
-      await _replicate(roomId, settlementEventType, {
-        'id': id,
-        'group': roomId,
-        'amount': amountCents,
-        'currency': currency,
-        'from': fromUser,
-        'to': toUser,
-        'created_at': createdAt,
-      });
+      await ref
+          .read(expensesDaoProvider)
+          .upsertSettlementLww(_toSettlementCompanion(settlement));
+      await _replicate(
+          roomId, settlementEventType, settlementPayload(settlement));
+    });
+  }
+
+  /// Edits an existing expense: the full record is re-written with a fresh
+  /// LWW clock and replicated whole — concurrent edits of the same expense
+  /// converge to the latest writer on every device.
+  Future<void> updateExpense({
+    required String id,
+    required String roomId,
+    required String description,
+    required int amountCents,
+    required String currency,
+    required String paidBy,
+    required Map<String, int> splits,
+    required int createdAt,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final expense = ExpenseModel(
+        id: id,
+        roomId: roomId,
+        description: description,
+        amountCents: amountCents,
+        currency: currency,
+        paidBy: paidBy,
+        splitsJson: jsonEncode(splits),
+        createdAt: createdAt,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await ref
+          .read(expensesDaoProvider)
+          .upsertExpenseLww(_toCompanion(expense));
+      await _replicate(roomId, expenseEventType, expensePayload(expense));
+    });
+  }
+
+  /// Deletes an expense as a tombstone: the row is kept (deleted = true, fresh
+  /// LWW clock) and replicated, so anti-entropy propagates the deletion and a
+  /// stale peer can never resurrect it.
+  Future<void> deleteExpense(String id, String roomId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final dao = ref.read(expensesDaoProvider);
+      final current = await dao.getExpenseById(id);
+      if (current == null) return;
+      final tombstone = ExpenseModel(
+        id: current.id,
+        roomId: current.roomId,
+        description: current.description,
+        amountCents: current.amountCents,
+        currency: current.currency,
+        paidBy: current.paidBy,
+        splitsJson: current.splitsJson,
+        createdAt: current.createdAt,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+        deleted: true,
+      );
+      await dao.upsertExpenseLww(_toCompanion(tombstone));
+      await _replicate(roomId, expenseEventType, expensePayload(tombstone));
+    });
+  }
+
+  /// Deletes a settlement as a tombstone (see [deleteExpense]). Settlements
+  /// have no edit — correcting one is delete + re-create.
+  Future<void> deleteSettlement(String id, String roomId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final dao = ref.read(expensesDaoProvider);
+      final current = await dao.getSettlementById(id);
+      if (current == null) return;
+      final tombstone = SettlementModel(
+        id: current.id,
+        roomId: current.roomId,
+        amountCents: current.amountCents,
+        currency: current.currency,
+        fromUser: current.fromUser,
+        toUser: current.toUser,
+        createdAt: current.createdAt,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+        deleted: true,
+      );
+      await dao.upsertSettlementLww(_toSettlementCompanion(tombstone));
+      await _replicate(
+          roomId, settlementEventType, settlementPayload(tombstone));
     });
   }
 
@@ -129,4 +209,30 @@ class ExpenseAdder extends _$ExpenseAdder {
       debugPrint('[ledger] saved locally; replication deferred: $e');
     }
   }
+
+  static ExpensesCompanion _toCompanion(ExpenseModel e) => ExpensesCompanion(
+        id: Value(e.id),
+        roomId: Value(e.roomId),
+        description: Value(e.description),
+        amountCents: Value(e.amountCents),
+        currency: Value(e.currency),
+        paidBy: Value(e.paidBy),
+        splitsJson: Value(e.splitsJson),
+        createdAt: Value(e.createdAt),
+        updatedAt: Value(e.updatedAt),
+        deleted: Value(e.deleted),
+      );
+
+  static SettlementsCompanion _toSettlementCompanion(SettlementModel s) =>
+      SettlementsCompanion(
+        id: Value(s.id),
+        roomId: Value(s.roomId),
+        amountCents: Value(s.amountCents),
+        currency: Value(s.currency),
+        fromUser: Value(s.fromUser),
+        toUser: Value(s.toUser),
+        createdAt: Value(s.createdAt),
+        updatedAt: Value(s.updatedAt),
+        deleted: Value(s.deleted),
+      );
 }

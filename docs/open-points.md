@@ -1,7 +1,7 @@
 # MoneyLedger — Open Points
 
 A living overview of known gaps, risks, and unfinished work. Grouped by category
-and roughly ordered by priority within each. Last reviewed: 2026-06-03.
+and roughly ordered by priority within each. Last reviewed: 2026-06-13.
 
 ---
 
@@ -14,14 +14,15 @@ greedy simplification independently per currency; each `DebtEntry` carries its
 tests in `test/balance_calculator_test.dart` (mixed currencies not summed; a
 settlement only clears debt in its own currency). _Done 2026-06-03._
 
-### 2. Historical expenses may be incomplete after joining — ✅ RESOLVED
-The transport now exposes `loadHistory(roomId)` (real adapter pages back via
-`loadRoomHistory`), and `LedgerSyncer._reconcileTimeline` calls it before replay.
-Crucially, the syncer now also reconciles a ledger room the **first time it sees
-it live** (not only at startup), so a user who joins mid-session backfills the
-full pre-join history — tracked per-room in `_reconciled` to avoid re-paging.
-Covered by `test/integration/...: 'a second user sees expenses that predate their
-join'`. _Done 2026-06-03._
+### 2. Historical expenses may be incomplete after joining — ✅ RESOLVED (then superseded)
+_Original (room era):_ the transport exposed `loadHistory(roomId)` and
+`LedgerSyncer._reconcileTimeline` paged back through the room timeline before
+replay. **Obsolete since Phase B/C:** there are no rooms or timelines to page —
+groups live only in local Drift and replication is the digest-based
+anti-entropy engine (`lib/core/sync/sync_engine.dart`). Backfill after joining
+is now a `bootstrap` payload on add, and any gap is repaired by the periodic
+digest cycle (`test/integration/anti_entropy_test.dart`,
+`test/integration/multi_device_test.dart`). _Stale; left for history._
 
 ### 3. SSO on native platforms doesn't actually launch — ✅ RESOLVED (needs device verification)
 Native now opens the system browser via `url_launcher` (`launchExternalUrl`) and
@@ -94,12 +95,13 @@ router. Not exercised by a test.
 
 ## Security
 
-### 12. Rooms are unencrypted — by design, but note the consequence
-`createLedgerGroup` uses the raw `createRoom` with `privateChat`, which does **not**
-enable E2EE. Expense/settlement events are plaintext on the homeserver. If
-encryption is ever enabled, the syncer/transport must handle decryption and key
-sharing (currently `NativeImplementations.dummy`). Decide explicitly whether
-ledgers should be E2EE.
+### 12. Rooms are unencrypted — ✅ OBSOLETE (roomless + E2EE since Phase B)
+This described the old room-based design. **No longer applies:** there are no
+ledger rooms. Groups are local-only and replication goes over **encrypted
+to-device** messages (E2EE enabled, vodozemac) — the homeserver retains no
+ledger data and sees only ciphertext. See the Phase B commits and the
+project memory note on the local-first direction. The remaining security gap is
+the trust model, not transport encryption — see _Known limitations_ below.
 
 ---
 
@@ -123,6 +125,47 @@ Added mixed-currency and per-currency-settlement tests to
 
 ---
 
+## Phase C — sync reliability + expense edit/delete — ✅ DONE (2026-06-13)
+
+Record-digest anti-entropy plus editable/deletable expenses landed across
+milestones M1–M7 (see `plan.md`):
+
+- **Anti-entropy engine** (`lib/core/sync/sync_engine.dart`): peers periodically
+  exchange per-group **digests** (`{recordId: updatedAt}`, tombstones included)
+  and re-send exactly the records the other side lacks. The Drift DB is the
+  replication log — no sequence numbers, no outbox. A lost to-device message,
+  a new device, or a reinstall is repaired by the next digest cycle instead of
+  diverging forever.
+- **Per-record LWW + tombstones**: every record carries an `updatedAt` clock and
+  a `deleted` flag; all merges are last-writer-wins (`upsert*Lww`). Edit = full
+  re-send with a higher `updatedAt`; delete = a permanent tombstone that
+  propagates so a stale peer can never resurrect it.
+- **Edit/delete** of expenses (and delete of settlements) in the data layer,
+  replication, and UI (`add_expense_page.dart` prefill, `expenses_page.dart`
+  tap-to-edit + delete confirmation).
+- **New-device / reinstall recovery**: empty DB → `resync_request{scope: all}`
+  to the user's own MXID (answered by another of their devices); a peer's digest
+  naming an unknown group triggers organic bootstrap.
+- **Sync-status UI** (`lib/core/sync/sync_status_provider.dart`): app-bar
+  `cloud_done`/`cloud_queue` and per-tile pending indicators driven by
+  `PeerSyncStates.lastInSyncAt`.
+- ~2,100→2,600 lines of tests incl. `test/integration/{anti_entropy,
+  edit_delete_convergence,multi_device}_test.dart` with message-loss injection.
+
+### Known limitations (carried into release hardening)
+
+- **Trust model unchanged** — any sender can forge state. Inbound records are
+  applied LWW with no membership/authorship check (TOFU); only `resync_request`
+  is gated by a membership check. Fix deferred to public-release hardening.
+- **Digest ceiling** — a digest is O(records in group); fine to ~1,000
+  records/group under to-device size limits. The `"v"` protocol-version field on
+  every payload enables sharding later.
+- **Wall-clock LWW** — a skewed clock can win edits; merge granularity is the
+  whole record. Consistent with the existing Members LWW; optional future clamp
+  of inbound `updated_at` to `now + 5 min`.
+
+---
+
 ## Architecture status (for context)
 
 The port migration is essentially complete:
@@ -136,6 +179,9 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: the remaining features — **#7 virtual users** and **#9
-offline demo mode** — plus small items #8, #15, and the auth edge cases #10/#11.
-Resolved so far: #1, #2, #3 (needs device smoke test), #4, #5, #6, #13, #14.
+Suggested next focus (post Phase C): **#7 virtual users**, then Phase D
+(CSV export/import), custom splits, and public-release hardening (membership
+check on inbound records, onboarding, device-verification UX). Smaller items:
+#8, #15, auth edge cases #10/#11, #9 offline demo mode.
+Resolved / superseded: #1, #2 (superseded by Phase C), #3 (needs device smoke
+test), #4, #5, #6, #12 (obsolete — roomless + E2EE), #13, #14.

@@ -8,6 +8,8 @@ class Groups extends Table {
   TextColumn get roomId => text()();
   TextColumn get name => text()();
   TextColumn get currency => text().withDefault(const Constant('EUR'))();
+  IntColumn get updatedAt =>
+      integer().withDefault(const Constant(0))(); // ms epoch, LWW clock
 
   @override
   Set<Column> get primaryKey => {roomId};
@@ -23,6 +25,11 @@ class Expenses extends Table {
   TextColumn get paidBy => text()(); // Matrix user ID (@user:server)
   TextColumn get splitsJson => text()(); // JSON: {"@user:server": cents}
   IntColumn get createdAt => integer()(); // ms epoch
+  IntColumn get updatedAt =>
+      integer().withDefault(const Constant(0))(); // ms epoch, LWW clock
+  // Tombstone: deleted records are kept forever so anti-entropy can never
+  // resurrect them on another device.
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -37,6 +44,9 @@ class Settlements extends Table {
   TextColumn get fromUser => text()();
   TextColumn get toUser => text()();
   IntColumn get createdAt => integer()(); // ms epoch
+  IntColumn get updatedAt =>
+      integer().withDefault(const Constant(0))(); // ms epoch, LWW clock
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -57,13 +67,26 @@ class Members extends Table {
   Set<Column> get primaryKey => {groupId, userId};
 }
 
-@DriftDatabase(tables: [Groups, Expenses, Settlements, Members])
+/// Per-peer sync bookkeeping for the anti-entropy digest exchange (Phase C).
+/// [lastInSyncAt] is the last time a digest from [userId] matched our local
+/// state exactly for [groupId]; it backs the sync-status UI.
+class PeerSyncStates extends Table {
+  TextColumn get groupId => text()();
+  TextColumn get userId => text()(); // Matrix ID (@user:server)
+  IntColumn get lastInSyncAt => integer().withDefault(const Constant(0))();
+  IntColumn get lastDigestSentAt => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {groupId, userId};
+}
+
+@DriftDatabase(tables: [Groups, Expenses, Settlements, Members, PeerSyncStates])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,6 +97,19 @@ class AppDatabase extends _$AppDatabase {
           // roomless — old room-based groups simply stop syncing).
           if (from < 2) {
             await m.createTable(members);
+          }
+          // v3 (Phase C): per-record LWW clocks + tombstones for edit/delete
+          // and digest anti-entropy, plus per-peer sync bookkeeping.
+          if (from < 3) {
+            await m.addColumn(groups, groups.updatedAt);
+            await m.addColumn(expenses, expenses.updatedAt);
+            await m.addColumn(expenses, expenses.deleted);
+            await m.addColumn(settlements, settlements.updatedAt);
+            await m.addColumn(settlements, settlements.deleted);
+            await m.createTable(peerSyncStates);
+            await customStatement('UPDATE expenses SET updated_at = created_at');
+            await customStatement(
+                'UPDATE settlements SET updated_at = created_at');
           }
         },
       );

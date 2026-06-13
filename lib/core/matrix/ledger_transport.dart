@@ -20,6 +20,9 @@ const settlementEventType = 'com.moneyledger.settlement';
 const groupMetaEventType = 'com.moneyledger.group';
 const memberEventType = 'com.moneyledger.member';
 const bootstrapEventType = 'com.moneyledger.bootstrap';
+// Phase C anti-entropy: per-group record digests + full-state resync requests.
+const digestEventType = 'com.moneyledger.digest';
+const resyncRequestEventType = 'com.moneyledger.resync_request';
 
 /// Common prefix for every app to-device payload (used to filter inbound).
 const moneyLedgerTypePrefix = 'com.moneyledger.';

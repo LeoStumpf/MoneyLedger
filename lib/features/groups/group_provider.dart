@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -7,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/app_database.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/sync/ledger_payloads.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
@@ -40,17 +39,19 @@ class GroupCreator extends _$GroupCreator {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final groupId = const Uuid().v7();
+      final now = DateTime.now().millisecondsSinceEpoch;
       final me = (await ref.read(ledgerTransportProvider.future)).userId;
-      await ref.read(groupsDaoProvider).upsertGroup(GroupsCompanion(
+      await ref.read(groupsDaoProvider).upsertGroupLww(GroupsCompanion(
             roomId: Value(groupId),
             name: Value(name),
             currency: Value(currency),
+            updatedAt: Value(now),
           ));
       await ref.read(membersDaoProvider).upsertMemberLww(MembersCompanion(
             groupId: Value(groupId),
             userId: Value(me),
             status: const Value('active'),
-            updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+            updatedAt: Value(now),
           ));
     });
   }
@@ -86,58 +87,29 @@ class MemberAdder extends _$MemberAdder {
       final others = (await memberDao.activeMemberIds(groupId))
           .where((m) => m != userId)
           .toSet();
-      await transport.sendToUsers(others, memberEventType, {
-        'group': groupId,
-        'user': userId,
-        'status': 'active',
-        'updated_at': now,
-      });
+      await transport.sendToUsers(
+          others,
+          memberEventType,
+          memberPayload(MemberModel(
+            groupId: groupId,
+            userId: userId,
+            status: 'active',
+            updatedAt: now,
+          )));
     });
   }
 
   Future<Map<String, dynamic>> _buildBootstrap(String groupId) async {
-    final group = await ref.read(groupsDaoProvider).getGroup(groupId);
-    final members = await ref.read(membersDaoProvider).getMembers(groupId);
-    final expenses =
-        await ref.read(expensesDaoProvider).getExpensesForRoom(groupId);
-    final settlements =
-        await ref.read(expensesDaoProvider).getSettlementsForRoom(groupId);
-    return {
-      'group': groupId,
-      'name': group?.name ?? groupId,
-      'currency': group?.currency ?? 'EUR',
-      'members': members
-          .map((m) => {
-                'group': groupId,
-                'user': m.userId,
-                'status': m.status,
-                'updated_at': m.updatedAt,
-              })
-          .toList(),
-      'expenses': expenses
-          .map((e) => {
-                'group': groupId,
-                'id': e.id,
-                'description': e.description,
-                'amount': e.amountCents,
-                'currency': e.currency,
-                'paid_by': e.paidBy,
-                'split': jsonDecode(e.splitsJson),
-                'created_at': e.createdAt,
-              })
-          .toList(),
-      'settlements': settlements
-          .map((s) => {
-                'group': groupId,
-                'id': s.id,
-                'amount': s.amountCents,
-                'currency': s.currency,
-                'from': s.fromUser,
-                'to': s.toUser,
-                'created_at': s.createdAt,
-              })
-          .toList(),
-    };
+    final expDao = ref.read(expensesDaoProvider);
+    return buildBootstrapContent(
+      groupId,
+      await ref.read(groupsDaoProvider).getGroup(groupId),
+      await ref.read(membersDaoProvider).getMembers(groupId),
+      // Tombstones included: the new member must learn about deletions too,
+      // or they would re-gossip dead records via anti-entropy.
+      await expDao.getAllExpensesForGroup(groupId),
+      await expDao.getAllSettlementsForGroup(groupId),
+    );
   }
 }
 
@@ -164,12 +136,15 @@ class MemberRemover extends _$MemberRemover {
       final targets =
           (await memberDao.getMembers(groupId)).map((m) => m.userId).toSet();
       final transport = await ref.read(ledgerTransportProvider.future);
-      await transport.sendToUsers(targets, memberEventType, {
-        'group': groupId,
-        'user': userId,
-        'status': 'removed',
-        'updated_at': now,
-      });
+      await transport.sendToUsers(
+          targets,
+          memberEventType,
+          memberPayload(MemberModel(
+            groupId: groupId,
+            userId: userId,
+            status: 'removed',
+            updatedAt: now,
+          )));
     });
   }
 }

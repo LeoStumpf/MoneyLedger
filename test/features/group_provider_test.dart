@@ -54,10 +54,11 @@ void main() {
       final c = makeContainer();
       addTearDown(c.dispose);
 
-      await dao.upsertGroup(const GroupsCompanion(
+      await dao.upsertGroupLww(const GroupsCompanion(
         roomId: Value('!abc:matrix.org'),
         name: Value('Road Trip'),
         currency: Value('EUR'),
+        updatedAt: Value(1000),
       ));
 
       final groups = await firstEmission(c);
@@ -71,15 +72,17 @@ void main() {
       final c = makeContainer();
       addTearDown(c.dispose);
 
-      await dao.upsertGroup(const GroupsCompanion(
+      await dao.upsertGroupLww(const GroupsCompanion(
         roomId: Value('!r1:m.org'),
         name: Value('G1'),
         currency: Value('EUR'),
+        updatedAt: Value(1000),
       ));
-      await dao.upsertGroup(const GroupsCompanion(
+      await dao.upsertGroupLww(const GroupsCompanion(
         roomId: Value('!r2:m.org'),
         name: Value('G2'),
         currency: Value('USD'),
+        updatedAt: Value(1000),
       ));
 
       final groups = await firstEmission(c);

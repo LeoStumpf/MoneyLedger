@@ -203,7 +203,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'cc07b295bfeee01e5a1dd9470a5fe53a541a794f';
+String _$groupCreatorHash() => r'd9c6cfdeef4551bc01fe25dedd59d9a0b310d09f';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -255,7 +255,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'5e10d1315b366f05f9d79076cf647ca67b23a7bc';
+String _$memberAdderHash() => r'c67d9c5e0a0d202526078bad783555f69b323e28';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -307,7 +307,7 @@ final class MemberRemoverProvider
   }
 }
 
-String _$memberRemoverHash() => r'1a998db297884d6f90cb7a2a48bf2ab2f0efeb5c';
+String _$memberRemoverHash() => r'9bbad059fe1f26be221d581a250cf05b7ffc5027';
 
 abstract class _$MemberRemover extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
