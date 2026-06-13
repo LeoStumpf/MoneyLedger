@@ -5,6 +5,7 @@ import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
+import 'package:money_ledger/core/sync/sync_health.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
@@ -114,6 +115,29 @@ void main() {
 
       expect(find.byIcon(Icons.cloud_done_outlined), findsOneWidget);
       expect(find.byIcon(Icons.cloud_queue), findsNothing);
+    });
+
+    testWidgets('app bar shows the error cloud and a retry sheet when sync fails',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const ExpensesPage(roomId: _roomId),
+        overrides: [
+          ...testOverrides(isLoggedIn: true),
+          syncHealthProvider.overrideWith(_FailingSyncHealth.new),
+        ],
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      // Error state wins over the synced/pending clouds and is tappable.
+      expect(find.byIcon(Icons.cloud_off), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_done_outlined), findsNothing);
+
+      await tester.tap(find.byIcon(Icons.cloud_off));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sync problem'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Retry now'), findsOneWidget);
     });
 
     testWidgets(
@@ -288,4 +312,14 @@ void main() {
       expect(find.text('Keep me'), findsOneWidget);
     });
   });
+}
+
+/// Overrides [syncHealthProvider] with a sustained-failure state.
+class _FailingSyncHealth extends SyncHealth {
+  @override
+  SyncHealthState build() => const SyncHealthState(
+        consecutiveFailures: kSyncFailureThreshold,
+        lastError: 'offline',
+        lastSuccessAt: 1,
+      );
 }

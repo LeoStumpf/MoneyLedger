@@ -13,6 +13,7 @@ import '../../core/database/daos/sync_states_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/ledger_payloads.dart';
+import '../../core/sync/sync_health.dart';
 import '../../models/expense_model.dart';
 
 part 'expenses_provider.g.dart';
@@ -208,7 +209,9 @@ class ExpenseAdder extends _$ExpenseAdder {
       if (targets.isEmpty) return;
       final transport = await ref.read(ledgerTransportProvider.future);
       await transport.sendToUsers(targets.toSet(), type, content);
+      ref.read(syncHealthProvider.notifier).reportSuccess();
     } catch (e) {
+      ref.read(syncHealthProvider.notifier).reportFailure(e);
       debugPrint('[ledger] saved locally; replication deferred: $e');
     }
   }

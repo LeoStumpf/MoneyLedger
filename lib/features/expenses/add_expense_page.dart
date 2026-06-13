@@ -136,7 +136,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       appBar: AppBar(title: Text(_isEdit ? 'Edit expense' : 'Add expense')),
       body: members == null
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,

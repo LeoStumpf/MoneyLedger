@@ -12,6 +12,7 @@ import '../database/app_database.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
 import 'ledger_payloads.dart';
+import 'sync_health.dart';
 
 /// How often each group's digest is broadcast to its members. Injectable so
 /// tests can disable/shorten it.
@@ -177,7 +178,9 @@ class SyncEngine {
       for (final t in targets) {
         await syncStates.markDigestSent(groupId, t, now);
       }
+      _ref.read(syncHealthProvider.notifier).reportSuccess();
     } catch (e) {
+      _ref.read(syncHealthProvider.notifier).reportFailure(e);
       debugPrint('[sync] digest send failed for $groupId: $e');
     }
   }

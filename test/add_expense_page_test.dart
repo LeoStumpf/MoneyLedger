@@ -121,7 +121,8 @@ void main() {
           find.widgetWithText(TextFormField, 'Description'), 'Pizza');
       await tester.enterText(
           find.widgetWithText(TextFormField, 'Amount'), '20');
-      // Switch the payer from alice (default) to bob.
+      // Switch the payer from alice (default) to bob (the form scrolls).
+      await tester.ensureVisible(find.text('Paid by'));
       await tester.tap(find.text('Paid by'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('@bob:x.org').last);

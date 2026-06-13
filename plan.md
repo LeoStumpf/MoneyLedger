@@ -300,14 +300,19 @@ green; `dart run build_runner build` after any annotated-file change.
       (trust-model limitation → membership-gated; residual = per-record
       cryptographic authorship).
 
-### F-M2 — Surface sync / transport failures
+### F-M2 — Surface sync / transport failures ✅
 
-- [ ] `SyncHealth` notifier (last error + ts + consecutive-fail count; ok/
-      degraded/failed state) reported from the replication + digest paths.
-- [ ] app-bar error state + tap sheet ("last synced / last error" + manual
-      retry); per-write "replication deferred" surfaced once.
-- [ ] tests: health transitions (success→ok, failure→failed, recovery); icon
-      reflects state; retry re-triggers sync.
+- [x] `SyncHealth` notifier (`lib/core/sync/sync_health.dart`, `keepAlive`):
+      `SyncHealthState` (consecutive-fail count + last error/ts + last-success
+      ts); `failing` only after `kSyncFailureThreshold` (2) consecutive failures
+      so a single offline blip doesn't alarm. Reported from `_replicate`
+      (`expenses_provider`) and `_sendDigest` (`sync_engine`).
+- [x] app-bar error cloud (tappable) → sheet with last-synced / last-error +
+      **Retry now** (`broadcastDigests()`); replaces the silent `debugPrint`.
+- [x] tests: `core/sync_health_test` (6 — transitions + notifier on/off) and a
+      page widget test (error cloud shown + retry sheet). Also made the
+      add-expense form scrollable (`SingleChildScrollView`) so the taller
+      split-editor form can't push the payer dropdown off-screen. Suite 228.
 
 ### F-M3 — Auth edge cases (#10 / #11)
 

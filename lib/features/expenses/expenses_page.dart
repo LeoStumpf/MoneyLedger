@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/sync/sync_engine.dart';
+import '../../core/sync/sync_health.dart';
 import '../../core/sync/sync_status_provider.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
@@ -278,15 +279,25 @@ class ExpensesPage extends ConsumerWidget {
   }
 }
 
-/// App-bar indicator: a filled cloud once every active peer has acknowledged
-/// the group's latest record, an outlined cloud (with the first waiting peer in
-/// the tooltip) while replication is still pending.
-class _SyncStatusIcon extends StatelessWidget {
+/// App-bar indicator. **Error** (tappable) when background sync has failed
+/// repeatedly (`SyncHealth.failing`) — opens a sheet with the last error / last
+/// sync and a manual retry. Otherwise a filled cloud once every active peer has
+/// acknowledged the group's latest record, or an outlined cloud (with the first
+/// waiting peer in the tooltip) while replication is still pending.
+class _SyncStatusIcon extends ConsumerWidget {
   final GroupSyncStatus status;
   const _SyncStatusIcon({required this.status});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final health = ref.watch(syncHealthProvider);
+    if (health.failing) {
+      return IconButton(
+        icon: Icon(Icons.cloud_off, color: Theme.of(context).colorScheme.error),
+        tooltip: 'Sync problem — tap for details',
+        onPressed: () => _showHealthSheet(context, ref, health),
+      );
+    }
     if (status.synced) {
       return const IconButton(
         icon: Icon(Icons.cloud_done_outlined),
@@ -301,6 +312,57 @@ class _SyncStatusIcon extends StatelessWidget {
       onPressed: null,
     );
   }
+
+  void _showHealthSheet(
+      BuildContext context, WidgetRef ref, SyncHealthState health) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Sync problem',
+                  style: Theme.of(sheetCtx).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              const Text(
+                  'Could not reach other members. Your changes are saved on '
+                  'this device and will sync once the connection recovers.'),
+              const SizedBox(height: 12),
+              if (health.lastSuccessAt != null)
+                Text('Last synced ${_ago(health.lastSuccessAt!)}',
+                    style: Theme.of(sheetCtx).textTheme.bodySmall),
+              if (health.lastError != null)
+                Text('Last error: ${health.lastError}',
+                    style: Theme.of(sheetCtx).textTheme.bodySmall),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () {
+                  ref.read(syncEngineProvider).broadcastDigests();
+                  Navigator.pop(sheetCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Retrying sync…')));
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry now'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A coarse "x ago" for the last-synced line (minutes / hours / days).
+String _ago(int msEpoch) {
+  final d = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(msEpoch));
+  if (d.inMinutes < 1) return 'just now';
+  if (d.inHours < 1) return '${d.inMinutes} min ago';
+  if (d.inDays < 1) return '${d.inHours} h ago';
+  return '${d.inDays} d ago';
 }
 
 class _ExpenseTile extends StatelessWidget {

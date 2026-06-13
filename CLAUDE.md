@@ -177,6 +177,17 @@ clamped to `now + 5 min` (`clampInboundClock`) to bound clock-skew LWW wins. Not
 yet covered: per-record cryptographic authorship (a member can still forge
 another member's record) — see `docs/open-points.md`.
 
+**Sync health (Phase F).** Replication/digest errors used to only `debugPrint`.
+`SyncHealth` (`lib/core/sync/sync_health.dart`, a `keepAlive` Riverpod notifier)
+now collects `reportSuccess()`/`reportFailure()` from `_replicate`
+(`expenses_provider.dart`) and `_sendDigest` (`sync_engine.dart`). It flips to
+`failing` only after `kSyncFailureThreshold` (2) **consecutive** failures — a
+single offline blip is normal (the homeserver queues to-device messages and
+anti-entropy repairs). The expenses app-bar `_SyncStatusIcon` shows a tappable
+error cloud when failing (sheet with last error / last-synced + a **Retry now**
+that calls `broadcastDigests()`); otherwise the existing `cloud_done`/
+`cloud_queue` states.
+
 ### Anti-entropy (Phase C)
 
 Replication is **not** fire-and-forget. `SyncEngine`
