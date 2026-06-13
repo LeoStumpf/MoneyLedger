@@ -206,5 +206,24 @@ void main() {
       expect(names['p1'], '@x:y.org'); // empty name → matrixId fallback
       sub.close();
     });
+
+    test('names still resolve for removed participants (balances/history, #8)',
+        () async {
+      final groupId = await createTrip();
+      // A removed member is hidden from the roster but keeps their history, so
+      // their name must still resolve where old splits reference them.
+      await c.read(membersDaoProvider).upsertMemberLww(MembersCompanion(
+            groupId: Value(groupId),
+            userId: const Value('p-gone'),
+            displayName: const Value('Old Pal'),
+            matrixId: const Value('@gone:x.org'),
+            status: const Value('removed'),
+            updatedAt: const Value(1),
+          ));
+      final sub = c.listen(participantNamesProvider(groupId), (_, _) {});
+      await c.read(groupMembersProvider(groupId).future);
+      expect(c.read(participantNamesProvider(groupId))['p-gone'], 'Old Pal');
+      sub.close();
+    });
   });
 }

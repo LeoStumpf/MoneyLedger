@@ -132,11 +132,14 @@ green, `dart run build_runner build` after any annotated-file change.
       (addLocal/claim/unclaim/rename/resolver); add_expense payer dropdown. Full
       suite green (160).
 
-### M5 — Removed/unclaimed display (#8) + docs
+### M5 — Removed/unclaimed display (#8) + docs ✅
 
-- [ ] removed / unclaimed participants still render by name in balances + history.
-- [ ] `CLAUDE.md` + `docs/open-points.md`: mark #7 done and #8 resolved; update
-      the data-model + protocol sections for participant identity.
+- [x] removed / unclaimed participants still render by name in balances +
+      history (`participantNames` is built from the full members stream, removed
+      included); locked by a `group_provider_test` case.
+- [x] `CLAUDE.md`: Participant identity section + roomless table + member/digest
+      wire format + structure tree updated.
+- [x] `docs/open-points.md`: #7 marked done, #8 resolved, footer updated.
 
 ### M6 — (later) Auto self-claim on join
 

@@ -59,15 +59,22 @@ it. _Done 2026-06-03._
 
 ## Features (planned / unfinished)
 
-### 7. Virtual users (Tricount-style local participants) — planned
-Local users (name + optional Matrix ID), claimable when a real user joins;
-removing a member should clear only their Matrix ID, keeping their ledger
-history. Today member removal is a Matrix `kick` and the UI shows raw MXIDs.
-This also improves the post-kick display (#8). See the project memory note.
+### 7. Virtual users (Tricount-style local participants) — ✅ DONE (2026-06-13)
+A participant is now a stable per-group entity with a `displayName` and an
+**optional** `matrixId` (the "claim"); records reference the participant id, not
+the MXID. You can add a local person (name, no account), link/detach a Matrix
+account at any time (history is kept), and rename. Routing targets only claimed
+participants. Design + milestones (M1–M4) in `plan.md`; covered by
+`members_dao_test`, `group_provider_test`, `group_members_page_test`, and the
+add-expense payer test. **Remaining:** automatic self-claim-on-join handshake
+(plan M6, deferred — manual link covers it); see also the trust-model limitation
+under Phase C.
 
-### 8. Removed members show as raw MXIDs — LOW
-After a kick, their historical splits still reference `@user:server`, displayed
-verbatim in balances. Virtual users (#7) would give them a stable display name.
+### 8. Removed members show as raw MXIDs — ✅ RESOLVED (with #7)
+Balances and history resolve participant ids through `participantNames`
+(`group_provider.dart`), which is built from the full members stream (removed
+included), so a removed or detached participant still renders by their display
+name. Covered by a `group_provider_test` case.
 
 ### 9. Offline demo runnable mode (`OFFLINE_DEMO`) — nice-to-have
 The fakes (`FakeLedgerNetwork`, `FakeAuthGateway`) exist for tests. A
@@ -179,9 +186,11 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus (post Phase C): **#7 virtual users**, then Phase D
-(CSV export/import), custom splits, and public-release hardening (membership
-check on inbound records, onboarding, device-verification UX). Smaller items:
-#8, #15, auth edge cases #10/#11, #9 offline demo mode.
+Suggested next focus (post virtual users): the **self-claim-on-join handshake**
+(plan M6), then Phase D (CSV export/import), custom splits, and public-release
+hardening (membership check on inbound records, onboarding,
+device-verification UX). Smaller items: #15, auth edge cases #10/#11, #9 offline
+demo mode.
 Resolved / superseded: #1, #2 (superseded by Phase C), #3 (needs device smoke
-test), #4, #5, #6, #12 (obsolete — roomless + E2EE), #13, #14.
+test), #4, #5, #6, #7 (virtual users), #8 (with #7), #12 (obsolete — roomless +
+E2EE), #13, #14.

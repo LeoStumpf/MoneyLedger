@@ -70,7 +70,7 @@ lib/
       daos/
         expenses_dao.dart      # Expenses + Settlements queries (LWW upserts, tombstone-aware)
         groups_dao.dart        # Groups table queries → GroupModel (LWW upsert)
-        members_dao.dart       # Members (MXID + active/removed status, LWW upsert)
+        members_dao.dart       # Participants (id + name + optional matrixId; LWW; activeClaimedMatrixIds)
         sync_states_dao.dart   # PeerSyncStates: per-(group,peer) anti-entropy bookkeeping
     matrix/
       ledger_transport.dart       # LedgerTransport port + TransportMessage + event-type constants
@@ -129,12 +129,27 @@ is obsolete.)
 | Concept | MoneyLedger (roomless) |
 |---------|------------------------|
 | Expense group | Local Drift row (`Groups`), UUIDv7 id; **not** a Matrix room |
-| Group participants | `Members` rows (MXID + `active`/`removed` status, LWW) |
+| Group participant | `Members` row — a stable participant id + `displayName` + optional `matrixId` (the "claim"); `active`/`removed` status, LWW |
 | Expense / settlement | `Expenses` / `Settlements` rows (LWW clock + tombstone) |
 | Sync / transport | Encrypted **to-device** messages via `LedgerTransport` |
 | Replication log | The Drift DB itself — digests drive anti-entropy |
 
 Authentication is pure Matrix — no separate auth system. Users connect to their own homeserver (self-hosted, matrix.org, etc.). The single transport seam is `LedgerTransport` (real adapter `MatrixLedgerTransport`); fakes back all tests.
+
+### Participant identity (virtual users)
+
+A participant's **ledger identity is decoupled from their Matrix account.** The
+`Members` table's `userId` column is the **stable participant id** — for a
+from-scratch / claimed user it equals the MXID, for a Tricount-style local
+person it's a UUID. `matrixId` (nullable) is the claimed account; `null` = a
+pure-local participant (ledger data only, never a sync/replication target).
+Expenses (`paid_by`, `split` keys) and settlements (`from`/`to`) reference the
+**participant id**, so linking/detaching a Matrix account (claim/unclaim) or
+removing a member never rewrites history. Replication targets
+`MembersDao.activeClaimedMatrixIds`; "who am I in this group" is
+`currentParticipant` (the participant whose `matrixId` is this device's MXID);
+the UI resolves ids → names via `participantNames(groupId)`
+(`group_provider.dart`).
 
 ### Data Flow
 
@@ -204,16 +219,20 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 }
 ```
 
-**`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted" }`.
+`paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs.
 
-**`com.moneyledger.digest`** (anti-entropy) — sent per group to all active members *including self*. Maps are `id → updated_at`, **tombstones included**; the `members` map doubles as membership gossip. A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
+**`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted" }` (`from`/`to` are participant ids).
+
+**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.)
+
+**`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → updated_at`, **tombstones included**; the `members` map (keyed by participant id) doubles as membership/identity gossip. A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
 ```json
 {
   "v": 1,
   "group": "<groupId>",
   "reply": false,
   "meta_updated_at": 1760000000000,
-  "members": { "@alice:x.org": {"status": "active", "updated_at": 1759990000000} },
+  "members": { "<participantId>": {"status": "active", "updated_at": 1759990000000, "name": "Alex", "matrix_id": "@alice:x.org"} },
   "expenses":    { "<uuid>": 1760000050000 },
   "settlements": { "<uuid>": 1759995000000 }
 }
