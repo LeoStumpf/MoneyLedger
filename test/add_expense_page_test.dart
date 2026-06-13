@@ -30,6 +30,7 @@ void main() {
         await memberDao.upsertMemberLww(MembersCompanion(
           groupId: const Value('g1'),
           userId: Value(u),
+          matrixId: Value(u), // real members, claimed by their own account
           status: const Value('active'),
           updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
         ));

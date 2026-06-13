@@ -171,6 +171,106 @@ final class CurrentUserIdProvider
 
 String _$currentUserIdHash() => r'76f65c8883f46092cc228dc1ff6c8a26b9366446';
 
+/// The participant in [groupId] that this device's account has claimed, if any
+/// — i.e. "who am I in this group". Its `userId` is the participant id to use
+/// as `paid_by` / split key for the current user (equals the MXID for a
+/// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+
+@ProviderFor(currentParticipant)
+final currentParticipantProvider = CurrentParticipantFamily._();
+
+/// The participant in [groupId] that this device's account has claimed, if any
+/// — i.e. "who am I in this group". Its `userId` is the participant id to use
+/// as `paid_by` / split key for the current user (equals the MXID for a
+/// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+
+final class CurrentParticipantProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<MemberModel?>,
+          MemberModel?,
+          FutureOr<MemberModel?>
+        >
+    with $FutureModifier<MemberModel?>, $FutureProvider<MemberModel?> {
+  /// The participant in [groupId] that this device's account has claimed, if any
+  /// — i.e. "who am I in this group". Its `userId` is the participant id to use
+  /// as `paid_by` / split key for the current user (equals the MXID for a
+  /// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+  CurrentParticipantProvider._({
+    required CurrentParticipantFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'currentParticipantProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$currentParticipantHash();
+
+  @override
+  String toString() {
+    return r'currentParticipantProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<MemberModel?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<MemberModel?> create(Ref ref) {
+    final argument = this.argument as String;
+    return currentParticipant(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CurrentParticipantProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$currentParticipantHash() =>
+    r'd66a50848fa9de0b49116a164384f41da9597008';
+
+/// The participant in [groupId] that this device's account has claimed, if any
+/// — i.e. "who am I in this group". Its `userId` is the participant id to use
+/// as `paid_by` / split key for the current user (equals the MXID for a
+/// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+
+final class CurrentParticipantFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<MemberModel?>, String> {
+  CurrentParticipantFamily._()
+    : super(
+        retry: null,
+        name: r'currentParticipantProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The participant in [groupId] that this device's account has claimed, if any
+  /// — i.e. "who am I in this group". Its `userId` is the participant id to use
+  /// as `paid_by` / split key for the current user (equals the MXID for a
+  /// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+
+  CurrentParticipantProvider call(String groupId) =>
+      CurrentParticipantProvider._(argument: groupId, from: this);
+
+  @override
+  String toString() => r'currentParticipantProvider';
+}
+
 @ProviderFor(GroupCreator)
 final groupCreatorProvider = GroupCreatorProvider._();
 
@@ -203,7 +303,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'd9c6cfdeef4551bc01fe25dedd59d9a0b310d09f';
+String _$groupCreatorHash() => r'519a2d56aa1c25f701b567380323f50274fe2b31';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -255,7 +355,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'c67d9c5e0a0d202526078bad783555f69b323e28';
+String _$memberAdderHash() => r'86483d0469483672b53ebe31e72a2a71229217bb';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -307,7 +407,7 @@ final class MemberRemoverProvider
   }
 }
 
-String _$memberRemoverHash() => r'9bbad059fe1f26be221d581a250cf05b7ffc5027';
+String _$memberRemoverHash() => r'3f0329e80c5e39dc57dcfd29d619b4932ce7bce3';
 
 abstract class _$MemberRemover extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

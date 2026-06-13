@@ -1620,6 +1620,29 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _matrixIdMeta = const VerificationMeta(
+    'matrixId',
+  );
+  @override
+  late final GeneratedColumn<String> matrixId = GeneratedColumn<String>(
+    'matrix_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -1642,7 +1665,14 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [groupId, userId, status, updatedAt];
+  List<GeneratedColumn> get $columns => [
+    groupId,
+    userId,
+    displayName,
+    matrixId,
+    status,
+    updatedAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1670,6 +1700,21 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
       );
     } else if (isInserting) {
       context.missing(_userIdMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('matrix_id')) {
+      context.handle(
+        _matrixIdMeta,
+        matrixId.isAcceptableOrUnknown(data['matrix_id']!, _matrixIdMeta),
+      );
     }
     if (data.containsKey('status')) {
       context.handle(
@@ -1702,6 +1747,14 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
         DriftSqlType.string,
         data['${effectivePrefix}user_id'],
       )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      matrixId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}matrix_id'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -1722,11 +1775,15 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
 class Member extends DataClass implements Insertable<Member> {
   final String groupId;
   final String userId;
+  final String displayName;
+  final String? matrixId;
   final String status;
   final int updatedAt;
   const Member({
     required this.groupId,
     required this.userId,
+    required this.displayName,
+    this.matrixId,
     required this.status,
     required this.updatedAt,
   });
@@ -1735,6 +1792,10 @@ class Member extends DataClass implements Insertable<Member> {
     final map = <String, Expression>{};
     map['group_id'] = Variable<String>(groupId);
     map['user_id'] = Variable<String>(userId);
+    map['display_name'] = Variable<String>(displayName);
+    if (!nullToAbsent || matrixId != null) {
+      map['matrix_id'] = Variable<String>(matrixId);
+    }
     map['status'] = Variable<String>(status);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -1744,6 +1805,10 @@ class Member extends DataClass implements Insertable<Member> {
     return MembersCompanion(
       groupId: Value(groupId),
       userId: Value(userId),
+      displayName: Value(displayName),
+      matrixId: matrixId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(matrixId),
       status: Value(status),
       updatedAt: Value(updatedAt),
     );
@@ -1757,6 +1822,8 @@ class Member extends DataClass implements Insertable<Member> {
     return Member(
       groupId: serializer.fromJson<String>(json['groupId']),
       userId: serializer.fromJson<String>(json['userId']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      matrixId: serializer.fromJson<String?>(json['matrixId']),
       status: serializer.fromJson<String>(json['status']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -1767,6 +1834,8 @@ class Member extends DataClass implements Insertable<Member> {
     return <String, dynamic>{
       'groupId': serializer.toJson<String>(groupId),
       'userId': serializer.toJson<String>(userId),
+      'displayName': serializer.toJson<String>(displayName),
+      'matrixId': serializer.toJson<String?>(matrixId),
       'status': serializer.toJson<String>(status),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -1775,11 +1844,15 @@ class Member extends DataClass implements Insertable<Member> {
   Member copyWith({
     String? groupId,
     String? userId,
+    String? displayName,
+    Value<String?> matrixId = const Value.absent(),
     String? status,
     int? updatedAt,
   }) => Member(
     groupId: groupId ?? this.groupId,
     userId: userId ?? this.userId,
+    displayName: displayName ?? this.displayName,
+    matrixId: matrixId.present ? matrixId.value : this.matrixId,
     status: status ?? this.status,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1787,6 +1860,10 @@ class Member extends DataClass implements Insertable<Member> {
     return Member(
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       userId: data.userId.present ? data.userId.value : this.userId,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      matrixId: data.matrixId.present ? data.matrixId.value : this.matrixId,
       status: data.status.present ? data.status.value : this.status,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1797,6 +1874,8 @@ class Member extends DataClass implements Insertable<Member> {
     return (StringBuffer('Member(')
           ..write('groupId: $groupId, ')
           ..write('userId: $userId, ')
+          ..write('displayName: $displayName, ')
+          ..write('matrixId: $matrixId, ')
           ..write('status: $status, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1804,13 +1883,16 @@ class Member extends DataClass implements Insertable<Member> {
   }
 
   @override
-  int get hashCode => Object.hash(groupId, userId, status, updatedAt);
+  int get hashCode =>
+      Object.hash(groupId, userId, displayName, matrixId, status, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Member &&
           other.groupId == this.groupId &&
           other.userId == this.userId &&
+          other.displayName == this.displayName &&
+          other.matrixId == this.matrixId &&
           other.status == this.status &&
           other.updatedAt == this.updatedAt);
 }
@@ -1818,12 +1900,16 @@ class Member extends DataClass implements Insertable<Member> {
 class MembersCompanion extends UpdateCompanion<Member> {
   final Value<String> groupId;
   final Value<String> userId;
+  final Value<String> displayName;
+  final Value<String?> matrixId;
   final Value<String> status;
   final Value<int> updatedAt;
   final Value<int> rowid;
   const MembersCompanion({
     this.groupId = const Value.absent(),
     this.userId = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.matrixId = const Value.absent(),
     this.status = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1831,6 +1917,8 @@ class MembersCompanion extends UpdateCompanion<Member> {
   MembersCompanion.insert({
     required String groupId,
     required String userId,
+    this.displayName = const Value.absent(),
+    this.matrixId = const Value.absent(),
     this.status = const Value.absent(),
     required int updatedAt,
     this.rowid = const Value.absent(),
@@ -1840,6 +1928,8 @@ class MembersCompanion extends UpdateCompanion<Member> {
   static Insertable<Member> custom({
     Expression<String>? groupId,
     Expression<String>? userId,
+    Expression<String>? displayName,
+    Expression<String>? matrixId,
     Expression<String>? status,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -1847,6 +1937,8 @@ class MembersCompanion extends UpdateCompanion<Member> {
     return RawValuesInsertable({
       if (groupId != null) 'group_id': groupId,
       if (userId != null) 'user_id': userId,
+      if (displayName != null) 'display_name': displayName,
+      if (matrixId != null) 'matrix_id': matrixId,
       if (status != null) 'status': status,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1856,6 +1948,8 @@ class MembersCompanion extends UpdateCompanion<Member> {
   MembersCompanion copyWith({
     Value<String>? groupId,
     Value<String>? userId,
+    Value<String>? displayName,
+    Value<String?>? matrixId,
     Value<String>? status,
     Value<int>? updatedAt,
     Value<int>? rowid,
@@ -1863,6 +1957,8 @@ class MembersCompanion extends UpdateCompanion<Member> {
     return MembersCompanion(
       groupId: groupId ?? this.groupId,
       userId: userId ?? this.userId,
+      displayName: displayName ?? this.displayName,
+      matrixId: matrixId ?? this.matrixId,
       status: status ?? this.status,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1877,6 +1973,12 @@ class MembersCompanion extends UpdateCompanion<Member> {
     }
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (matrixId.present) {
+      map['matrix_id'] = Variable<String>(matrixId.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -1895,6 +1997,8 @@ class MembersCompanion extends UpdateCompanion<Member> {
     return (StringBuffer('MembersCompanion(')
           ..write('groupId: $groupId, ')
           ..write('userId: $userId, ')
+          ..write('displayName: $displayName, ')
+          ..write('matrixId: $matrixId, ')
           ..write('status: $status, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -3043,6 +3147,8 @@ typedef $$MembersTableCreateCompanionBuilder =
     MembersCompanion Function({
       required String groupId,
       required String userId,
+      Value<String> displayName,
+      Value<String?> matrixId,
       Value<String> status,
       required int updatedAt,
       Value<int> rowid,
@@ -3051,6 +3157,8 @@ typedef $$MembersTableUpdateCompanionBuilder =
     MembersCompanion Function({
       Value<String> groupId,
       Value<String> userId,
+      Value<String> displayName,
+      Value<String?> matrixId,
       Value<String> status,
       Value<int> updatedAt,
       Value<int> rowid,
@@ -3072,6 +3180,16 @@ class $$MembersTableFilterComposer
 
   ColumnFilters<String> get userId => $composableBuilder(
     column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get matrixId => $composableBuilder(
+    column: $table.matrixId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3105,6 +3223,16 @@ class $$MembersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get matrixId => $composableBuilder(
+    column: $table.matrixId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -3130,6 +3258,14 @@ class $$MembersTableAnnotationComposer
 
   GeneratedColumn<String> get userId =>
       $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get matrixId =>
+      $composableBuilder(column: $table.matrixId, builder: (column) => column);
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -3168,12 +3304,16 @@ class $$MembersTableTableManager
               ({
                 Value<String> groupId = const Value.absent(),
                 Value<String> userId = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<String?> matrixId = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MembersCompanion(
                 groupId: groupId,
                 userId: userId,
+                displayName: displayName,
+                matrixId: matrixId,
                 status: status,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -3182,12 +3322,16 @@ class $$MembersTableTableManager
               ({
                 required String groupId,
                 required String userId,
+                Value<String> displayName = const Value.absent(),
+                Value<String?> matrixId = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 required int updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => MembersCompanion.insert(
                 groupId: groupId,
                 userId: userId,
+                displayName: displayName,
+                matrixId: matrixId,
                 status: status,
                 updatedAt: updatedAt,
                 rowid: rowid,

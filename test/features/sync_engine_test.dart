@@ -69,8 +69,18 @@ void main() {
       expect(content['expenses'], {'e1': 10, 'e2': 20}); // tombstone included
       expect(content['settlements'], {'s1': 30});
       expect(content['members'], {
-        '@a:x.org': {'status': 'active', 'updated_at': 1},
-        '@b:y.org': {'status': 'removed', 'updated_at': 2},
+        '@a:x.org': {
+          'status': 'active',
+          'updated_at': 1,
+          'name': '',
+          'matrix_id': null,
+        },
+        '@b:y.org': {
+          'status': 'removed',
+          'updated_at': 2,
+          'name': '',
+          'matrix_id': null,
+        },
       });
     });
   });

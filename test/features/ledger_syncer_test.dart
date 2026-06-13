@@ -151,6 +151,47 @@ void main() {
       final members = await memberDao.getMembers('g1');
       expect(members.single.status, 'removed');
     });
+
+    test('reads participant_id + name + matrix_id (virtual-users shape)',
+        () async {
+      LedgerSyncer.processMember({
+        'group': 'g1',
+        'participant_id': 'p-uuid',
+        'name': 'Cash',
+        'matrix_id': null, // pure-local participant
+        'status': 'active',
+        'updated_at': 100,
+      }, memberDao);
+      final m = (await memberDao.getMembers('g1')).single;
+      expect(m.userId, 'p-uuid');
+      expect(m.displayName, 'Cash');
+      expect(m.matrixId, isNull);
+      expect(m.isClaimed, false);
+    });
+
+    test('a newer payload claims a participant (sets matrixId via LWW)',
+        () async {
+      LedgerSyncer.processMember({
+        'group': 'g1',
+        'participant_id': 'p-uuid',
+        'name': 'Bob',
+        'matrix_id': null,
+        'status': 'active',
+        'updated_at': 100,
+      }, memberDao);
+      // Bob joins and claims the slot.
+      LedgerSyncer.processMember({
+        'group': 'g1',
+        'participant_id': 'p-uuid',
+        'name': 'Bob',
+        'matrix_id': '@bob:y.org',
+        'status': 'active',
+        'updated_at': 200,
+      }, memberDao);
+      final m = (await memberDao.getMembers('g1')).single;
+      expect(m.matrixId, '@bob:y.org');
+      expect(m.userId, 'p-uuid'); // identity unchanged by the claim
+    });
   });
 
   group('LedgerSyncer.processBootstrap', () {

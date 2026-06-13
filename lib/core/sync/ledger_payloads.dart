@@ -48,10 +48,16 @@ Map<String, dynamic> groupMetaPayload(GroupModel g) => {
       'updated_at': g.updatedAt,
     };
 
+/// Member/participant wire format. `participant_id` is the stable per-group id
+/// (not necessarily an MXID); `matrix_id` is the optional claimed account (null
+/// for a pure-local participant); `name` is the display name. (`user` is the
+/// pre-virtual-users key, still read on the receiver for forward-compat.)
 Map<String, dynamic> memberPayload(MemberModel m) => {
       'v': protocolVersion,
       'group': m.groupId,
-      'user': m.userId,
+      'participant_id': m.userId,
+      'name': m.displayName,
+      'matrix_id': m.matrixId,
       'status': m.status,
       'updated_at': m.updatedAt,
     };

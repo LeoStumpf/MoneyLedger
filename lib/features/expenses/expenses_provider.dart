@@ -201,10 +201,13 @@ class ExpenseAdder extends _$ExpenseAdder {
   Future<void> _replicate(
       String groupId, String type, Map<String, dynamic> content) async {
     try {
-      final members = await ref.read(membersDaoProvider).activeMemberIds(groupId);
-      if (members.isEmpty) return;
+      // Targets are the claimed participants' Matrix accounts; pure-local
+      // participants have no account to send to.
+      final targets =
+          await ref.read(membersDaoProvider).activeClaimedMatrixIds(groupId);
+      if (targets.isEmpty) return;
       final transport = await ref.read(ledgerTransportProvider.future);
-      await transport.sendToUsers(members.toSet(), type, content);
+      await transport.sendToUsers(targets.toSet(), type, content);
     } catch (e) {
       debugPrint('[ledger] saved locally; replication deferred: $e');
     }

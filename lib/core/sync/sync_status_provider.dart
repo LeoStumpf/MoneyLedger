@@ -45,9 +45,11 @@ GroupSyncStatus computeSyncStatus({
   required Map<String, int> peerInSyncAt,
   required int maxRecordUpdatedAt,
 }) {
+  // Peers are the *claimed* participants reachable by Matrix account, minus
+  // self; pure-local participants can't sync, so they never count as pending.
   final activePeers = [
     for (final m in members)
-      if (m.isActive && m.userId != selfId) m.userId
+      if (m.isActive && m.matrixId != null && m.matrixId != selfId) m.matrixId!
   ];
   if (activePeers.isEmpty) {
     return const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null);

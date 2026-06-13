@@ -7,9 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
+import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 
+import '../helpers/fake_ledger_network.dart';
 import '../helpers/in_memory_database.dart';
 
 void main() {
@@ -89,6 +91,56 @@ void main() {
       expect(groups.length, 2);
       final roomIds = groups.map((g) => g.roomId).toSet();
       expect(roomIds, containsAll(['!r1:m.org', '!r2:m.org']));
+    });
+  });
+
+  group('participant identity', () {
+    late AppDatabase db;
+    late ProviderContainer c;
+
+    setUp(() {
+      db = openTestDatabase();
+      final net = FakeMatrixNetwork();
+      c = ProviderContainer(overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider
+            .overrideWith((ref) => net.clientFor('@alice:x.org')),
+      ]);
+    });
+    tearDown(() {
+      c.dispose();
+      db.close();
+    });
+
+    Future<String> createTrip() async {
+      await c.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
+      return (await c.read(groupsDaoProvider).getAllGroups()).single.roomId;
+    }
+
+    test('create seeds a self-participant claimed by the creator', () async {
+      final groupId = await createTrip();
+      final self = (await c.read(membersDaoProvider).getMembers(groupId)).single;
+      expect(self.matrixId, '@alice:x.org');
+      expect(self.displayName, 'alice');
+      expect(self.userId, '@alice:x.org'); // from-scratch invariant
+      expect(self.isClaimed, true);
+
+      final cp = await c.read(currentParticipantProvider(groupId).future);
+      expect(cp?.userId, self.userId);
+    });
+
+    test('a pure-local participant is never a sync target', () async {
+      final groupId = await createTrip();
+      await c.read(membersDaoProvider).upsertMemberLww(MembersCompanion(
+            groupId: Value(groupId),
+            userId: const Value('p-local'),
+            displayName: const Value('Cash'),
+            status: const Value('active'),
+            updatedAt: const Value(1),
+          ));
+      final targets =
+          await c.read(membersDaoProvider).activeClaimedMatrixIds(groupId);
+      expect(targets, ['@alice:x.org']); // only the claimed self
     });
   });
 }

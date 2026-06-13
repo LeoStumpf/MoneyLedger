@@ -124,11 +124,15 @@ class LedgerSyncer {
   @visibleForTesting
   static void processMember(Map<String, dynamic> content, MembersDao dao) {
     final group = content['group'] as String?;
-    final userId = content['user'] as String?;
-    if (group == null || userId == null) return;
+    // `participant_id` is the virtual-users key; `user` is the older key.
+    final participantId =
+        content['participant_id'] as String? ?? content['user'] as String?;
+    if (group == null || participantId == null) return;
     dao.upsertMemberLww(MembersCompanion(
       groupId: Value(group),
-      userId: Value(userId),
+      userId: Value(participantId),
+      displayName: Value(content['name'] as String? ?? ''),
+      matrixId: Value(content['matrix_id'] as String?),
       status: Value(content['status'] as String? ?? 'active'),
       updatedAt: Value(
           content['updated_at'] as int? ?? DateTime.now().millisecondsSinceEpoch),

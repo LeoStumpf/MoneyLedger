@@ -27,6 +27,17 @@ Stream<List<MemberModel>> groupMembers(Ref ref, String groupId) {
 String currentUserId(Ref ref) =>
     ref.watch(ledgerTransportProvider).value?.userId ?? '';
 
+/// The participant in [groupId] that this device's account has claimed, if any
+/// — i.e. "who am I in this group". Its `userId` is the participant id to use
+/// as `paid_by` / split key for the current user (equals the MXID for a
+/// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+@riverpod
+Future<MemberModel?> currentParticipant(Ref ref, String groupId) {
+  final myId = ref.watch(currentUserIdProvider);
+  if (myId.isEmpty) return Future.value(null);
+  return ref.watch(membersDaoProvider).memberByMatrixId(groupId, myId);
+}
+
 @riverpod
 class GroupCreator extends _$GroupCreator {
   @override
@@ -47,11 +58,17 @@ class GroupCreator extends _$GroupCreator {
             currency: Value(currency),
             updatedAt: Value(now),
           ));
-      await ref.read(membersDaoProvider).upsertMemberLww(MembersCompanion(
-            groupId: Value(groupId),
-            userId: Value(me),
-            status: const Value('active'),
-            updatedAt: Value(now),
+      // The creator is the first participant, claimed by their own account
+      // (participant id == their MXID, the invariant for from-scratch users).
+      await ref.read(membersDaoProvider).upsertMemberLww(memberCompanion(
+            MemberModel(
+              groupId: groupId,
+              userId: me,
+              displayName: localpartOf(me),
+              matrixId: me,
+              status: 'active',
+              updatedAt: now,
+            ),
           ));
     });
   }
@@ -70,12 +87,16 @@ class MemberAdder extends _$MemberAdder {
     state = await AsyncValue.guard(() async {
       final now = DateTime.now().millisecondsSinceEpoch;
       final memberDao = ref.read(membersDaoProvider);
-      await memberDao.upsertMemberLww(MembersCompanion(
-        groupId: Value(groupId),
-        userId: Value(userId),
-        status: const Value('active'),
-        updatedAt: Value(now),
-      ));
+      // Added by Matrix ID → a claimed participant (id == MXID for now).
+      final member = MemberModel(
+        groupId: groupId,
+        userId: userId,
+        displayName: localpartOf(userId),
+        matrixId: userId,
+        status: 'active',
+        updatedAt: now,
+      );
+      await memberDao.upsertMemberLww(memberCompanion(member));
 
       final transport = await ref.read(ledgerTransportProvider.future);
 
@@ -84,18 +105,10 @@ class MemberAdder extends _$MemberAdder {
           {userId}, bootstrapEventType, await _buildBootstrap(groupId));
 
       // 2) Tell the existing active members about the new member.
-      final others = (await memberDao.activeMemberIds(groupId))
+      final others = (await memberDao.activeClaimedMatrixIds(groupId))
           .where((m) => m != userId)
           .toSet();
-      await transport.sendToUsers(
-          others,
-          memberEventType,
-          memberPayload(MemberModel(
-            groupId: groupId,
-            userId: userId,
-            status: 'active',
-            updatedAt: now,
-          )));
+      await transport.sendToUsers(others, memberEventType, memberPayload(member));
     });
   }
 
@@ -127,24 +140,44 @@ class MemberRemover extends _$MemberRemover {
     state = await AsyncValue.guard(() async {
       final now = DateTime.now().millisecondsSinceEpoch;
       final memberDao = ref.read(membersDaoProvider);
-      await memberDao.upsertMemberLww(MembersCompanion(
-        groupId: Value(groupId),
-        userId: Value(userId),
-        status: const Value('removed'),
-        updatedAt: Value(now),
-      ));
+      final members = await memberDao.getMembers(groupId);
+      MemberModel? current;
+      for (final m in members) {
+        if (m.userId == userId) {
+          current = m;
+          break;
+        }
+      }
+      if (current == null) return;
+      // Keep the participant's identity (name + claim) — only flip status, so
+      // their history stays attributed and the relay doesn't wipe peers' copies.
+      final updated = MemberModel(
+        groupId: groupId,
+        userId: userId,
+        displayName: current.displayName,
+        matrixId: current.matrixId,
+        status: 'removed',
+        updatedAt: now,
+      );
+      await memberDao.upsertMemberLww(memberCompanion(updated));
+      // Relay to every claimed account, including the removed member's own
+      // device so it learns of the removal.
       final targets =
-          (await memberDao.getMembers(groupId)).map((m) => m.userId).toSet();
+          members.map((m) => m.matrixId).whereType<String>().toSet();
       final transport = await ref.read(ledgerTransportProvider.future);
       await transport.sendToUsers(
-          targets,
-          memberEventType,
-          memberPayload(MemberModel(
-            groupId: groupId,
-            userId: userId,
-            status: 'removed',
-            updatedAt: now,
-          )));
+          targets, memberEventType, memberPayload(updated));
     });
   }
 }
+
+/// Maps a [MemberModel] to a fully-populated companion (all columns set) for an
+/// LWW upsert.
+MembersCompanion memberCompanion(MemberModel m) => MembersCompanion(
+      groupId: Value(m.groupId),
+      userId: Value(m.userId),
+      displayName: Value(m.displayName),
+      matrixId: Value(m.matrixId),
+      status: Value(m.status),
+      updatedAt: Value(m.updatedAt),
+    );

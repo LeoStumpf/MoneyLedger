@@ -151,8 +151,9 @@ class SyncEngine {
       final members = await _ref.read(membersDaoProvider).getMembers(groupId);
       // A device that knows itself to be removed stops broadcasting digests —
       // this also bounds the rule-6 exchange (removed member's digest →
-      // member-tombstone payload → poke) to a single round.
-      final self = _memberOf(members, transport.userId);
+      // member-tombstone payload → poke) to a single round. Self is the
+      // participant claimed by this device's account.
+      final self = _claimedBy(members, transport.userId);
       if (self == null || !self.isActive) return;
       final expenses =
           await _ref.read(expensesDaoProvider).getAllExpensesForGroup(groupId);
@@ -160,10 +161,14 @@ class SyncEngine {
           .read(expensesDaoProvider)
           .getAllSettlementsForGroup(groupId);
       // Self is included (like _replicate): the digest reaches the user's own
-      // other devices too, which is what repairs a stale second device.
+      // other devices too, which is what repairs a stale second device. Targets
+      // are the claimed accounts only — pure-local participants are unreachable.
       final targets = onlyTo != null
           ? {onlyTo}
-          : members.where((m) => m.isActive).map((m) => m.userId).toSet();
+          : members
+              .where((m) => m.isActive && m.matrixId != null)
+              .map((m) => m.matrixId!)
+              .toSet();
       if (targets.isEmpty) return;
       await transport.sendToUsers(targets, digestEventType,
           buildDigestContent(group, members, expenses, settlements, reply: reply));
@@ -194,7 +199,7 @@ class SyncEngine {
 
       final memberDao = _ref.read(membersDaoProvider);
       final members = await memberDao.getMembers(groupId);
-      final senderRec = _memberOf(members, msg.senderId);
+      final senderRec = _claimedBy(members, msg.senderId);
       if (senderRec != null && !senderRec.isActive) {
         // Rule 6: the sender was removed — tell their device, nothing else.
         await transport.sendToUsers(
@@ -227,6 +232,8 @@ class SyncEngine {
         await memberDao.upsertMemberLww(MembersCompanion(
           groupId: Value(groupId),
           userId: Value(entry.key as String),
+          displayName: Value(m['name'] as String? ?? ''),
+          matrixId: Value(m['matrix_id'] as String?),
           status: Value(m['status'] as String? ?? 'active'),
           updatedAt: Value(m['updated_at'] as int? ?? 0),
         ));
@@ -294,15 +301,18 @@ class SyncEngine {
     if (requester != transport.userId) {
       final members =
           await _ref.read(membersDaoProvider).getMembers(groupId);
-      final rec = _memberOf(members, requester);
+      final rec = _claimedBy(members, requester);
       if (rec == null || !rec.isActive) return; // not a member — no data
     }
     await _sendBootstrap(transport, groupId, requester);
   }
 
-  static MemberModel? _memberOf(List<MemberModel> members, String userId) {
+  /// The participant claimed by the Matrix account [matrixId], if any. All the
+  /// engine's "who is this account?" lookups go through here — senders and self
+  /// are identified by their MXID, not the (possibly local) participant id.
+  static MemberModel? _claimedBy(List<MemberModel> members, String matrixId) {
     for (final m in members) {
-      if (m.userId == userId) return m;
+      if (m.matrixId == matrixId) return m;
     }
     return null;
   }
@@ -338,7 +348,12 @@ Map<String, dynamic> buildDigestContent(
       'meta_updated_at': group.updatedAt,
       'members': {
         for (final m in members)
-          m.userId: {'status': m.status, 'updated_at': m.updatedAt}
+          m.userId: {
+            'status': m.status,
+            'updated_at': m.updatedAt,
+            'name': m.displayName,
+            'matrix_id': m.matrixId,
+          }
       },
       'expenses': {for (final e in expenses) e.id: e.updatedAt},
       'settlements': {for (final s in settlements) s.id: s.updatedAt},

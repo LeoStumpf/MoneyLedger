@@ -30,6 +30,7 @@ void main() {
         await dao.upsertMemberLww(MembersCompanion(
           groupId: Value(group),
           userId: Value(u),
+          matrixId: Value(u), // claimed members are the replication targets
           status: const Value('active'),
           updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
         ));

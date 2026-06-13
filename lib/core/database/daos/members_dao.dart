@@ -13,11 +13,33 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
           .watch()
           .map((rows) => rows.map(_toModel).toList());
 
-  /// MXIDs of the group's currently-active members (for relaying changes).
+  /// Participant ids of the group's currently-active participants. NOTE: these
+  /// are participant ids, not necessarily MXIDs — use [activeClaimedMatrixIds]
+  /// for replication targets.
   Future<List<String>> activeMemberIds(String groupId) => (select(members)
         ..where((t) => t.groupId.equals(groupId) & t.status.equals('active')))
       .get()
       .then((rows) => rows.map((r) => r.userId).toList());
+
+  /// Matrix IDs of the active, **claimed** participants — i.e. the reachable
+  /// to-device sync targets. Pure-local participants (no [matrixId]) are
+  /// skipped; they are ledger data only.
+  Future<List<String>> activeClaimedMatrixIds(String groupId) =>
+      (select(members)
+            ..where((t) =>
+                t.groupId.equals(groupId) &
+                t.status.equals('active') &
+                t.matrixId.isNotNull()))
+          .get()
+          .then((rows) => rows.map((r) => r.matrixId!).toList());
+
+  /// The participant in [groupId] claimed by [matrixId], if any.
+  Future<MemberModel?> memberByMatrixId(String groupId, String matrixId) =>
+      (select(members)
+            ..where(
+                (t) => t.groupId.equals(groupId) & t.matrixId.equals(matrixId)))
+          .getSingleOrNull()
+          .then((row) => row == null ? null : _toModel(row));
 
   Future<List<MemberModel>> getMembers(String groupId) =>
       (select(members)..where((t) => t.groupId.equals(groupId)))
@@ -40,6 +62,8 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
   static MemberModel _toModel(Member m) => MemberModel(
         groupId: m.groupId,
         userId: m.userId,
+        displayName: m.displayName,
+        matrixId: m.matrixId,
         status: m.status,
         updatedAt: m.updatedAt,
       );
