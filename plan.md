@@ -1,8 +1,9 @@
 # MoneyLedger — Implementation Plan
 
-Active phase: **Phase E — Custom splits** (see design + milestones at the
-bottom). Phase D (CSV export/import, M1–M4) and virtual users (M1–M6) are done;
-detail is in git history, `docs/open-points.md`, and `CLAUDE.md`.
+Active phase: **none** — **Phase E — Custom splits is done** (M1–M3), alongside
+Phase D (CSV export/import) and virtual users. Detail is in git history,
+`docs/open-points.md`, and `CLAUDE.md`. Next up the roadmap: public-release
+hardening.
 
 Status legend: `[ ]` open · `[x]` done. Update this file as milestones land.
 Workflow: commit + push after each milestone (tests green first).
@@ -14,9 +15,9 @@ Workflow: commit + push after each milestone (tests green first).
 1. ~~Phase C — sync reliability + edit/delete~~ ✅
 2. ~~Virtual users~~ ✅
 3. ~~Phase D — CSV export/import~~ ✅
-4. **Phase E — Custom splits — per-person amounts/shares** ← this plan
-5. Public-release hardening — registration, onboarding, device-verification UX,
-   membership check on inbound records, surfacing sync failures
+4. ~~Phase E — Custom splits — per-person amounts/shares~~ ✅
+5. **Public-release hardening** — registration, onboarding, device-verification
+   UX, membership check on inbound records, surfacing sync failures ← next
 6. Nice-to-haves: offline demo mode, group rename/currency edit, avatars
 
 ---
@@ -182,16 +183,17 @@ green; `dart run build_runner build` after any annotated-file change.
       an unbalanced exact split disables Add (shows Remaining); editing an
       unequal expense opens Exact prefilled. Suite 204.
 
-### M3 — Round-trip + docs
+### M3 — Round-trip + docs ✅
 
-- [ ] confirm an unequal split round-trips through CSV export/import (blank
-      column = excluded) and through replication/edit; add a CSV test for an
-      unequal split if not already covered.
-- [ ] `CLAUDE.md`: "Custom splits" notes (four modes, cents-only persistence,
-      largest-remainder rounding, edit-mode inference, excluded = absent) +
-      `split_calculator.dart`/`split_editor.dart` in the structure tree.
-- [ ] `docs/open-points.md`: custom-splits item done; note settlements still
-      split-free and that mode/raw-inputs aren't persisted.
+- [x] confirmed an unequal split round-trips through CSV export/import (blank
+      column = excluded participant): new `csv_import_test` case covers an
+      unequal both-present split and an excluded participant. Replication/edit
+      need no change — the wire `split` map was already arbitrary.
+- [x] `CLAUDE.md`: "Custom splits (Phase E)" section (four modes, cents-only
+      persistence, largest-remainder rounding, edit-mode inference, excluded =
+      absent) + `split_calculator.dart`/`split_editor.dart` in the structure tree.
+- [x] `docs/open-points.md`: item #17 (settlements still split-free;
+      mode/raw-inputs not persisted); roadmap/footer updated.
 
 ## Verification (Phase E)
 

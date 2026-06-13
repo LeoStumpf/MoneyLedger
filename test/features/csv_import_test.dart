@@ -109,6 +109,30 @@ void main() {
     expect(e.amountCents, 5000);
   });
 
+  test('an unequal split round-trips, including an excluded participant',
+      () async {
+    // Alex covers 30.00, Sam 12.00; a third expense leaves Sam out entirely.
+    final csv = buildGroupCsv(grp, members, [
+      exp(id: 'e1', split: const {'pa': 3000, 'pb': 1200}),
+      exp(id: 'e2', amount: 4200, split: const {'pa': 4200}), // Sam excluded
+    ]);
+    await import(csv);
+
+    final imported = await c.read(membersDaoProvider).getMembers('g1');
+    final pid = {for (final m in imported) m.displayName: m.userId};
+    final expenses = await c.read(expensesDaoProvider).getExpensesForRoom('g1');
+    final byId = {for (final e in expenses) e.id: e};
+
+    final unequal = jsonDecode(byId['e1']!.splitsJson) as Map;
+    expect(unequal[pid['Alex']], 3000);
+    expect(unequal[pid['Sam']], 1200);
+
+    // The excluded participant's blank column stays out of the split.
+    final excluded = jsonDecode(byId['e2']!.splitsJson) as Map;
+    expect(excluded[pid['Alex']], 4200);
+    expect(excluded.containsKey(pid['Sam']), isFalse);
+  });
+
   test('unknown participant names become local participants', () async {
     // A CSV referencing a payer/split name not present locally.
     final csv = buildGroupCsv(grp, members, [exp()]);

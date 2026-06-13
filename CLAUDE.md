@@ -89,6 +89,8 @@ lib/
     expenses/                  # Expense list, add/edit/delete, ledger sync
       ledger_syncer.dart       # LedgerSyncer: subscribes to to-device onMessage → writes to Drift
                                # Static @visibleForTesting methods for unit-testable event processing
+      split_calculator.dart    # Pure-Dart split math (largest-remainder) — see "Custom splits"
+      split_editor.dart        # SplitEditor widget: Equal/Exact/Shares/% modes → SplitPlan
     balance/
       balance_calculator.dart  # Pure function: List<Expense> + settlements → List<DebtEntry>
       balance_provider.dart    # Riverpod: watches Drift streams, recomputes on change
@@ -216,6 +218,36 @@ only, and a deleted expense simply isn't exported (so it won't re-delete on a
 peer via CSV). Participant identity is **by name, not stable id** — a name
 collision merges two people and a rename splits one. A future full-fidelity
 format could add settlements, tombstones, and id-based identity.
+
+### Custom splits (Phase E)
+
+An expense can be divided **unequally**. The split is already a
+`{participantId: cents}` map *everywhere* (DB `splitsJson`, wire `split`, balance
+calc, CSV) — so custom splits is a **UI + split-math feature, not a protocol
+change.** Only the add/edit form changed.
+
+- **`split_calculator.dart`** (pure Dart, no Flutter/DB): `splitEqually`,
+  `splitByShares`, `splitByPercent` all route through one `distributeByWeights`
+  **largest-remainder** core — floor each share, then hand leftover cents to the
+  largest fractional remainders (deterministic by insertion order). Every mode
+  **sums to the total exactly** (this also fixed the old equal-split cent loss,
+  where `round()` per person could drop a cent on e.g. 100¢ ÷ 3). Also
+  `isEqualSplit(map)` (edit-mode inference) and `remainingForExact`.
+- **`split_editor.dart`** — the `SplitEditor` widget: a `SegmentedButton` with
+  four modes (**Equal** + per-person include checkboxes · **Exact** amounts ·
+  **Shares**/integer weights · **Percent**), live per-person previews and a
+  status line. It surfaces an immutable **`SplitPlan`** (mode + raw inputs) via
+  `onPlanChanged`; the **parent (`AddExpensePage`) resolves it against the live
+  amount** on demand — so editing the amount never strands a stale split, and no
+  `didUpdateWidget` round-trip is needed.
+- **Persistence is cents-only** — only the resolved map is stored; the mode and
+  raw inputs (weights/percents) are **not** persisted. On **edit** the opening
+  mode is inferred: `isEqualSplit` → Equal, otherwise Exact prefilled with the
+  stored cents (a shares/percent expense thus reopens as exact amounts — same
+  result, different knobs). **Excluded participants are absent from the map**
+  (not stored as `0`); the editor's included set on edit = the map's keys.
+- **Out of scope:** itemised receipts, per-item assignment, tax/tip lines,
+  saving a default split per group; settlements remain split-free.
 
 ### Key Implementation Notes
 

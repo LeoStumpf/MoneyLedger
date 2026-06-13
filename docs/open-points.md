@@ -99,6 +99,21 @@ unknown names — so a name collision merges and a rename splits). A future
 full-fidelity format could add settlements, tombstones, and id-based identity.
 Design + milestones (M1–M4) in `plan.md`.
 
+### 17. Custom splits (unequal expenses, Phase E) — ✅ DONE (2026-06-13)
+The add/edit form now divides an expense four ways — **Equal** (with per-person
+include checkboxes), **Exact** amounts, **Shares**/weights, and **Percent** —
+via the `SplitEditor` widget; the pure-Dart `split_calculator.dart` resolves
+every mode with **largest-remainder** rounding so shares always sum to the total
+exactly (this also fixed a latent equal-split cent loss). Persistence is
+**cents-only** (no protocol change — the split was already a
+`{participant: cents}` map everywhere); the mode/raw inputs aren't stored, so on
+edit an unequal expense reopens in Exact mode (`isEqualSplit` inference) and
+excluded participants are absent from the map. Covered by
+`split_calculator_test` (21), `add_expense_page_test` (+5) and a CSV unequal
+round-trip. **Limitations:** settlements remain split-free; itemised receipts /
+per-item assignment / saved default splits are out of scope. Design + milestones
+(M1–M3) in `plan.md`.
+
 ---
 
 ## Auth / session
@@ -203,10 +218,10 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: with virtual users (M6) and Phase D (CSV export/import)
-landed, the open ground is custom splits and public-release hardening
+Suggested next focus: with virtual users (M6), Phase D (CSV export/import) and
+Phase E (custom splits) all landed, the open ground is public-release hardening
 (membership check on inbound records, onboarding, device-verification UX).
 Smaller items: #15, auth edge cases #10/#11, #9 offline demo mode.
 Resolved / superseded: #1, #2 (superseded by Phase C), #3 (needs device smoke
 test), #4, #5, #6, #7 (virtual users), #8 (with #7), #12 (obsolete — roomless +
-E2EE), #13, #14, #16 (CSV backup).
+E2EE), #13, #14, #16 (CSV backup), #17 (custom splits).
