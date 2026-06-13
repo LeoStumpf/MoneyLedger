@@ -7,6 +7,7 @@ import '../models/expense_model.dart';
 import 'error_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/register_page.dart';
+import '../features/devices/devices_page.dart';
 import '../features/onboarding/onboarding_page.dart';
 import '../features/onboarding/onboarding_provider.dart';
 import '../features/balance/balance_page.dart';
@@ -64,6 +65,7 @@ GoRouter router(Ref ref) {
       GoRoute(
           path: '/onboarding', builder: (_, _) => const OnboardingPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
+      GoRoute(path: '/devices', builder: (_, _) => const DevicesPage()),
       GoRoute(
           path: '/groups/create',
           builder: (_, _) => const CreateGroupPage()),

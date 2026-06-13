@@ -28,6 +28,11 @@ class GroupsPage extends ConsumerWidget {
             onPressed: () => _importCsv(context, ref),
           ),
           IconButton(
+            icon: const Icon(Icons.devices),
+            tooltip: 'Devices & security',
+            onPressed: () => context.push('/devices'),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authProvider.notifier).logout(),
             tooltip: 'Sign out',

@@ -101,6 +101,8 @@ lib/
       csv_export.dart          # DB → CSV seam (buildGroupCsvForExport) + csvFileName
       csv_import.dart          # CsvImporter: LWW merge-by-id back into Drift
       csv_files.dart           # file_picker glue (web download / native save+pick)
+    onboarding/                # First-run intro (OnboardingPage) + onboarding_seen flag
+    devices/                   # Device list + SAS verification UI (DevicesPage)
 test/
   flutter_test_config.dart     # Loads bundled sqlite3 FFI before every test file
   helpers/
@@ -146,6 +148,8 @@ is obsolete.)
 Authentication is pure Matrix — no separate auth system. Users connect to their own homeserver (self-hosted, matrix.org, etc.). The single transport seam is `LedgerTransport` (real adapter `MatrixLedgerTransport`); fakes back all tests. Login (password + SSO) and **in-app registration** go through `AuthGateway` (`auth_provider.dart`'s `AuthNotifier`).
 
 **Registration (Phase F).** `RegisterPage` → `AuthGateway.register`. The real adapter attempts `client.register`, and on a UIA challenge classifies the flows with the pure `register_flows.dart`: a flow needing only `m.login.dummy` is completed in-app; anything requiring a CAPTCHA / email / phone / terms / token throws `RegistrationRequiresWebException` (with friendly labels) and the page shows a **web-registration fallback** (we don't reimplement every UIA stage). `/register` is reachable while signed out (see `routerRedirect`).
+
+**Device verification (Phase F).** `DeviceGateway` (`core/matrix/device_gateway.dart`, matrix-free port; real adapter `matrix_device_gateway.dart`) lists the user's own devices and runs an SAS (emoji) verification. `DevicesPage` (`/devices`, from the groups app bar) shows each device's verified status and an emoji-compare dialog driven by a `VerificationSession` stream. **MVP scope: visibility + manual verification only — not enforced** (replication still reaches unverified devices). The pure view-model (`DeviceInfo`, `sortDevices`, `deviceTrustSummary`) is unit-tested; the SDK SAS round-trip needs a second real device + olm and is **manual-smoke** (like the SSO deep link). The real adapter imports `package:matrix/matrix.dart` **`hide DeviceInfo`** (the SDK exports a same-named type) plus `package:matrix/encryption.dart` (for `KeyVerification`).
 
 ### Participant identity (virtual users)
 

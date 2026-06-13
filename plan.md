@@ -1,8 +1,9 @@
 # MoneyLedger — Implementation Plan
 
-Active phase: **Phase F — Public-release hardening** (see design + milestones at
-the bottom). Phases C/D/E and virtual users are done; detail is in git history,
-`docs/open-points.md`, and `CLAUDE.md`.
+Active phase: **none** — **Phase F — Public-release hardening is done** (M1–M6),
+alongside Phases C/D/E and virtual users. Detail is in git history,
+`docs/open-points.md`, and `CLAUDE.md`. Open ground (no active plan): per-record
+cryptographic authorship, device-verification enforcement, offline demo mode.
 
 Status legend: `[ ]` open · `[x]` done. Update this file as milestones land.
 Workflow: commit + push after each milestone (tests green first).
@@ -15,8 +16,8 @@ Workflow: commit + push after each milestone (tests green first).
 2. ~~Virtual users~~ ✅
 3. ~~Phase D — CSV export/import~~ ✅
 4. ~~Phase E — Custom splits — per-person amounts/shares~~ ✅
-5. **Phase F — Public-release hardening** — membership-gated records, surfacing
-   sync failures, registration + onboarding, device-verification UX ← this plan
+5. ~~Phase F — Public-release hardening~~ ✅ — membership-gated records, surfacing
+   sync failures, registration + onboarding, device-verification UX
 6. Nice-to-haves: offline demo mode, group rename/currency edit, avatars
 
 ---
@@ -350,12 +351,18 @@ green; `dart run build_runner build` after any annotated-file change.
       (2 — starts unseen, idempotent mark), `onboarding_page_test` (2 — renders,
       Get-started marks seen + navigates). Suite 255.
 
-### F-M6 — Device-verification UX
+### F-M6 — Device-verification UX ✅
 
-- [ ] device list with verified/unverified status; SAS (emoji) verification;
-      cross-signing bootstrap. Verified-only replication stays off by default.
-- [ ] unit-test the pure bits; the SDK round-trip is manual-smoke on a real
-      homeserver (documented like the SSO caveat).
+- [x] `DeviceGateway` port (`device_gateway.dart`, matrix-free) + real adapter
+      (`matrix_device_gateway.dart`, manual-smoke): list own devices + run an SAS
+      session. `DevicesPage` (`/devices`, from the groups app bar) shows verified
+      status + an emoji-compare dialog driven by a `VerificationSession` stream.
+      **Visibility + manual verification only — not enforced** (replication still
+      reaches unverified devices; verified-only replication stays out of scope).
+- [x] tests: `device_gateway_test` (7 — `DeviceInfo`, `sortDevices`,
+      `deviceTrustSummary`) + `devices_page_test` (3 — list/badges, verify→emoji→
+      verified, "don't match" cancels) against a `FakeDeviceGateway`. The SDK SAS
+      round-trip is manual-smoke (real second device + olm). Suite 265.
 
 ## Verification (Phase F)
 

@@ -230,10 +230,14 @@ The port migration is essentially complete:
   feature provider.
 - Fakes exist for both ports, enabling offline multi-user + login tests.
 
-Suggested next focus: Phase F (public-release hardening) is nearly done —
+Suggested next focus: Phase F (public-release hardening) is **complete** —
 membership-gated records (M1), sync-failure surfacing (M2), auth edge cases
-#10/#11 (M3), in-app registration (M4) and first-run onboarding (M5) landed.
-Remaining: device-verification UX (M6). Smaller items: #15, #9 offline demo mode.
+#10/#11 (M3), in-app registration (M4), first-run onboarding (M5) and
+device-verification UX (M6) all landed. Open ground: per-record cryptographic
+authorship (the residual trust-model gap), device-verification *enforcement*
+(verified-only replication, deliberately out of MVP scope), and the smaller
+items: #15, #9 offline demo mode. Several flows need a real-device smoke test
+(SSO deep link, registration UIA, SAS verification round-trip).
 Resolved / superseded: #1, #2 (superseded by Phase C), #3 (needs device smoke
 test), #4, #5, #6, #7 (virtual users), #8 (with #7), #10/#11 (auth edge cases),
 #12 (obsolete — roomless + E2EE), #13, #14, #16 (CSV backup), #17 (custom
