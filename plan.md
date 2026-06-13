@@ -1,9 +1,8 @@
 # MoneyLedger — Implementation Plan
 
-Active phase: **none** — **Phase E — Custom splits is done** (M1–M3), alongside
-Phase D (CSV export/import) and virtual users. Detail is in git history,
-`docs/open-points.md`, and `CLAUDE.md`. Next up the roadmap: public-release
-hardening.
+Active phase: **Phase F — Public-release hardening** (see design + milestones at
+the bottom). Phases C/D/E and virtual users are done; detail is in git history,
+`docs/open-points.md`, and `CLAUDE.md`.
 
 Status legend: `[ ]` open · `[x]` done. Update this file as milestones land.
 Workflow: commit + push after each milestone (tests green first).
@@ -16,8 +15,8 @@ Workflow: commit + push after each milestone (tests green first).
 2. ~~Virtual users~~ ✅
 3. ~~Phase D — CSV export/import~~ ✅
 4. ~~Phase E — Custom splits — per-person amounts/shares~~ ✅
-5. **Public-release hardening** — registration, onboarding, device-verification
-   UX, membership check on inbound records, surfacing sync failures ← next
+5. **Phase F — Public-release hardening** — membership-gated records, surfacing
+   sync failures, registration + onboarding, device-verification UX ← this plan
 6. Nice-to-haves: offline demo mode, group rename/currency edit, avatars
 
 ---
@@ -201,3 +200,145 @@ green; `dart run build_runner build` after any annotated-file change.
 phase end. Manual smoke: add an expense, switch modes, confirm the live preview
 sums to the total; save an unequal split → balances reflect it; edit it →
 reopens prefilled; export → re-import → unchanged.
+
+---
+
+# Phase F — Public-release hardening
+
+**Goal.** Close the gaps that stand between "works for the developer" and "safe
+to hand to strangers": a sender can't forge another group's ledger, sync
+failures are visible instead of silent, new users can create an account and
+get oriented, and E2EE between devices can be verified rather than blind-trusted.
+
+## Phase F — design
+
+The four areas are independent and ship in order of value/risk: security and
+reliability first, then the product/onboarding surface, then the heaviest
+(device verification) last. Decisions (locked):
+
+### 1. Membership-gated inbound records (the trust model)
+
+Today `LedgerSyncer._onMessage` applies every inbound `expense` / `settlement` /
+`member` / `bootstrap` with **no sender check** — any Matrix user who knows your
+MXID can forge a record. To-device messages are **E2EE**, so `msg.senderId` is
+already cryptographically authenticated; the only missing step is checking that
+the authenticated sender is a **member of the group they're writing to**.
+`SyncEngine` already does this for `resync_request` (`_claimedBy` + rule 5/6);
+`LedgerSyncer` will do the analogous check.
+
+- **Expense / settlement:** apply only if `senderId` ∈ the group's **active
+  claimed** members. Group/members unknown → drop (a digest/bootstrap will
+  establish membership first, then repair).
+- **Bootstrap:** first contact for an **unknown** group is **TOFU-accepted** (the
+  inviter/own-device defines the group + its membership). A bootstrap for a group
+  we **already know** is honoured only from an active member — a stranger can't
+  rewrite an existing group wholesale.
+- **Member (claim/membership) gossip:** apply if `senderId` ∈ active members,
+  **or** it is a **self-claim** — `payload.matrix_id == senderId` for a
+  `participant_id` that already exists in the group (this is how an invited
+  account legitimately joins; it can only claim itself onto an existing local
+  participant, never invent membership). Removing/unclaiming *another*
+  participant requires being an active member.
+- **Clock clamp:** clamp inbound `updated_at` to `min(updated_at, now + 5min)`
+  before LWW, so a skewed/hostile clock can't future-date a record and win every
+  merge forever.
+- The check is a **pure function** (`isSenderAuthorized(type, senderId, content,
+  members, groupKnown)`) for unit-testing; `_onMessage` becomes async, fetches
+  the group's members from Drift, and only calls the (still-pure) processor when
+  authorized. **Out of scope:** per-record cryptographic signatures (a future
+  phase) — membership gating over E2EE-authenticated senders is the MVP.
+
+### 2. Surface sync / transport failures
+
+Replication and digest errors are currently swallowed into `debugPrint`, so a
+user can silently diverge. Add a `SyncHealth` Riverpod notifier the transport /
+sync layer reports success/failure to (last error + timestamp, consecutive-fail
+count). Drive a **third app-bar state** (`cloud_off` / error colour) beside the
+existing `cloud_done` / `cloud_queue`, tappable to show "last synced … / last
+error …" with a **manual retry** (re-run `broadcastDigests` + re-replicate).
+Keep the health model a pure/testable seam; the icon + sheet are thin UI.
+
+### 3. In-app registration + onboarding
+
+- **Registration:** support **password registration** against homeservers whose
+  UIA offers `m.login.dummy` (no captcha). Servers requiring reCAPTCHA / email /
+  terms get a clear message pointing to web registration (don't reimplement
+  every UIA stage). Parsing the flows / building the request is a pure,
+  unit-tested function (mirrors `sso_url.dart` / `sso_callback.dart`).
+- **Onboarding:** a first-run flow (shown once, gated by a local flag) explaining
+  the decentralized model — your data is local, groups sync peer-to-peer, no
+  central server — and the basics of adding members/expenses.
+
+### 4. Device-verification UX
+
+Heaviest, Matrix-SDK-specific, last. **MVP = visibility + manual verification,
+not enforcement:** list a user's own + members' devices with verified/unverified
+status, allow **SAS (emoji) verification**, and bootstrap cross-signing. A
+verified-only replication toggle is **off by default / out of scope for MVP**
+(it can strand legitimate unverified devices). Much of this is manual-smoke on a
+real homeserver (like the SSO deep link); unit-test whatever is pure.
+
+## Milestones
+
+Each milestone is one commit: code + tests, `flutter test --reporter compact`
+green; `dart run build_runner build` after any annotated-file change.
+
+### F-M1 — Inbound membership gate + clock clamp
+
+- [ ] `isSenderAuthorized(...)` pure function (expense/settlement/member/
+      bootstrap rules + self-claim + unknown-group TOFU); clamp helper for
+      inbound `updated_at`.
+- [ ] wire into `LedgerSyncer._onMessage` (async membership fetch from
+      `MembersDao`; drop unauthorized, log at debug); apply clamp in the
+      processors.
+- [ ] tests: forged record from a non-member dropped; member record applied;
+      self-claim accepted, third-party claim rejected; bootstrap TOFU for unknown
+      group vs. dropped for a known group from a non-member; removed sender's
+      records dropped; clamp bounds a future-dated `updated_at`. Update
+      `open-points.md` (trust-model limitation → resolved).
+
+### F-M2 — Surface sync / transport failures
+
+- [ ] `SyncHealth` notifier (last error + ts + consecutive-fail count; ok/
+      degraded/failed state) reported from the replication + digest paths.
+- [ ] app-bar error state + tap sheet ("last synced / last error" + manual
+      retry); per-write "replication deferred" surfaced once.
+- [ ] tests: health transitions (success→ok, failure→failed, recovery); icon
+      reflects state; retry re-triggers sync.
+
+### F-M3 — Auth edge cases (#10 / #11)
+
+- [ ] re-login after logout on the same client (gateway clears/rebuilds the
+      client as needed); external login-state change (token expiry / remote
+      logout) propagates to the router.
+- [ ] tests via the fake auth gateway: logout→login round-trip; an injected
+      `loginStateChanges` event redirects. Resolves open-points #10/#11.
+
+### F-M4 — In-app registration
+
+- [ ] pure flow-parse / request-build function (UIA `m.login.dummy` path);
+      `RegisterPage` reusing the login plumbing, with a clear fallback message
+      for captcha/email/terms servers.
+- [ ] tests for the pure function (dummy succeeds; captcha/email → fallback
+      signalled); a widget smoke test for the page.
+
+### F-M5 — First-run onboarding
+
+- [ ] one-time onboarding flow gated by a local flag (intro to the decentralized
+      model + add members/expenses); entry from first launch / post-register.
+- [ ] tests: shows on first run, suppressed thereafter (flag persisted).
+
+### F-M6 — Device-verification UX
+
+- [ ] device list with verified/unverified status; SAS (emoji) verification;
+      cross-signing bootstrap. Verified-only replication stays off by default.
+- [ ] unit-test the pure bits; the SDK round-trip is manual-smoke on a real
+      homeserver (documented like the SSO caveat).
+
+## Verification (Phase F)
+
+`flutter test --reporter compact` green per milestone; `./build.sh` green at
+phase end. Manual smoke: forge a record from a non-member device → it's ignored;
+kill connectivity mid-write → the error surfaces and retry recovers; register a
+new account on a dummy-UIA homeserver; complete onboarding once; verify a second
+device by emoji.
