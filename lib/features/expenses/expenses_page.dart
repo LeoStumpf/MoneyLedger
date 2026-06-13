@@ -5,6 +5,8 @@ import '../../core/sync/sync_engine.dart';
 import '../../core/sync/sync_status_provider.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
+import '../backup/csv_export.dart';
+import '../backup/csv_files.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 import 'ledger_syncer.dart';
@@ -54,6 +56,11 @@ class ExpensesPage extends ConsumerWidget {
             icon: const Icon(Icons.balance),
             tooltip: 'Balance',
             onPressed: () => context.push('/groups/$roomId/balance'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.save_alt),
+            tooltip: 'Export CSV',
+            onPressed: () => _exportCsv(context, ref),
           ),
         ],
       ),
@@ -111,6 +118,21 @@ class ExpensesPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final group = await ref.read(groupsDaoProvider).getGroup(roomId);
+    if (group == null) return;
+    final csv = await buildGroupCsvForExport(
+      ref.read(groupsDaoProvider),
+      ref.read(membersDaoProvider),
+      ref.read(expensesDaoProvider),
+      roomId,
+    );
+    await saveCsvFile(csvFileName(group.name), csv);
+    messenger.showSnackBar(
+        SnackBar(content: Text('Exported ${csvFileName(group.name)}')));
   }
 
   /// Lets a just-invited user say which participant they are: pick an existing

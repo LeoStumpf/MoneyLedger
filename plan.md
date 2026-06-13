@@ -79,13 +79,17 @@ green; `dart run build_runner build` after any annotated-file change.
       group + participants + expenses; idempotent re-import; LWW merge (newer
       wins, stale ignored); unknown names → local participants. Suite green (175).
 
-### M3 — Export/import UI + platform glue
+### M3 — Export/import UI + platform glue ✅
 
-- [ ] export action on the group/expenses screen → build CSV → save/share
-      (web download; Android share/save). Add the minimal plugin(s) needed.
-- [ ] import action → pick a `.csv` → `CsvImporter`; success/error feedback.
-- [ ] tests: the wiring that is testable (the codec + importer are covered in
-      M1/M2); file pick/share is manual-smoke only (like SSO deep-link).
+- [x] export action on the expenses screen → `buildGroupCsvForExport` →
+      `saveCsvFile` (web download / native save via `file_picker`).
+- [x] import action on the groups screen → `pickCsvText` → `CsvImporter`;
+      snackbar success/error feedback.
+- [x] `lib/features/backup/csv_export.dart` (DB→CSV seam + `csvFileName`) and
+      `csv_files.dart` (file_picker glue, manual-smoke only).
+- [x] tests (`test/features/csv_export_test.dart`, 3): export round-trips back
+      to expenses; missing group → empty; file-name sanitising. Import seam
+      covered in M2; file pick/share is manual-smoke only (like SSO deep-link).
 
 ### M4 — Docs
 

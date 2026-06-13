@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../auth/auth_provider.dart';
+import '../backup/csv_files.dart';
+import '../backup/csv_import.dart';
 import '../expenses/ledger_syncer.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../models/group_model.dart';
@@ -21,6 +23,11 @@ class GroupsPage extends ConsumerWidget {
         title: const Text('Groups'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.upload_file),
+            tooltip: 'Import CSV',
+            onPressed: () => _importCsv(context, ref),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authProvider.notifier).logout(),
             tooltip: 'Sign out',
@@ -32,7 +39,30 @@ class GroupsPage extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('New group'),
       ),
-      body: groupsAsync.when(
+      body: _GroupsBody(groupsAsync: groupsAsync),
+    );
+  }
+
+  Future<void> _importCsv(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final text = await pickCsvText();
+    if (text == null) return; // cancelled
+    final count = await ref.read(csvImporterProvider.notifier).importCsv(text);
+    final error = ref.read(csvImporterProvider).error;
+    messenger.showSnackBar(SnackBar(
+        content: Text(error != null
+            ? 'Import failed: $error'
+            : 'Imported $count expense(s)')));
+  }
+}
+
+class _GroupsBody extends StatelessWidget {
+  final AsyncValue<List<GroupModel>> groupsAsync;
+  const _GroupsBody({required this.groupsAsync});
+
+  @override
+  Widget build(BuildContext context) {
+    return groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (groups) {
@@ -59,7 +89,6 @@ class GroupsPage extends ConsumerWidget {
             },
           );
         },
-      ),
-    );
+      );
   }
 }

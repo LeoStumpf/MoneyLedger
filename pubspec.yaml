@@ -30,6 +30,8 @@ dependencies:
   # Native SSO: open the system browser and receive the moneyledger:// callback
   url_launcher: ^6.3.0
   app_links: ^6.3.0
+  # CSV backup: pick a file to import / save the exported sheet (web + native)
+  file_picker: ^8.1.2
   # Utilities
   uuid: ^4.5.3
   flutter_vodozemac: ^0.5.0
