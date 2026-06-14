@@ -1,15 +1,30 @@
 # MoneyLedger
 
 A decentralized expense-sharing app (a Splitwise / Tricount alternative) with
-**no central server**. MoneyLedger uses the [Matrix](https://matrix.org) network
-as its sync and transport layer: you sign in with your Matrix ID, each expense
-group is a Matrix room, and expenses / settlements are custom Matrix timeline
-events. Computed balances and ledger state live locally on each device.
+**no central server**. You sign in with your [Matrix](https://matrix.org)
+account, and all ledger data — groups, members, expenses, settlements — lives
+**only in a local SQLite (Drift) database on each device**. There are no ledger
+rooms: Matrix is used purely as an **end-to-end-encrypted to-device relay** to
+replicate records between members, so the homeserver retains no financial data
+and sees only ciphertext.
 
 - **Cross-platform:** Android, iOS, and web (Flutter).
 - **No backend to run:** bring your own Matrix homeserver (matrix.org, self-hosted, …).
-- **Local source of truth:** Matrix is transport only; balances are computed from
-  a local SQLite (Drift) database.
+- **Local source of truth:** every device holds the full ledger and computes
+  balances locally; peers reconcile via digest-based anti-entropy.
+- **Private by design:** records are E2EE (vodozemac); inbound records are
+  membership-gated so only group members can write to a group's ledger.
+
+### Features
+
+- Local-only expense **groups** with Matrix-account or **local (name-only)**
+  participants; link a Matrix account to a local person at any time.
+- **Custom splits**: equal (pick who), exact amounts, shares/weights, or
+  percentages — always summing to the total exactly.
+- Multi-currency **balances** with greedy debt simplification, plus settlements.
+- **CSV export/import** for backup and sharing (idempotent merge-by-id).
+- **In-app registration** (open / dummy-UIA homeservers) and **SSO** login.
+- **Device verification** (SAS emoji) and a sync-health indicator.
 
 ## Tech stack
 

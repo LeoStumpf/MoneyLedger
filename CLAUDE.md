@@ -210,7 +210,8 @@ recovery: an empty DB sends `resync_request{scope: all}` to the user's own MXID
 (another of their devices answers with bootstraps); an unknown group named in a
 peer's digest triggers organic bootstrap. Sync status (`cloud_done`/
 `cloud_queue` icons) is derived from `PeerSyncStates.lastInSyncAt`
-(`lib/core/sync/sync_status_provider.dart`). Full design: `plan.md`.
+(`lib/core/sync/sync_status_provider.dart`). Full receiver rules: the `SyncEngine`
+doc comment.
 
 ### Backup (CSV export/import — Phase D)
 
@@ -346,4 +347,4 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 
 **`com.moneyledger.bootstrap`** — whole-group snapshot (group meta + members + expenses + settlements), each record with `updated_at`/`deleted`, **tombstones included** (so a stale device can't keep a live copy of a deleted record). Sent when adding a member and in response to a `resync_request`.
 
-The receiver rules for digests (targeted repair, membership gossip, reply bounding, sync-status marking, unknown-group/removed-sender handling) are documented in full on `SyncEngine` (`lib/core/sync/sync_engine.dart`) and in `plan.md` §3.1.
+The receiver rules for digests (targeted repair, membership gossip, reply bounding, sync-status marking, unknown-group/removed-sender handling) are documented in full on `SyncEngine` (`lib/core/sync/sync_engine.dart`).
