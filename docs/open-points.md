@@ -2,7 +2,8 @@
 
 Known gaps, risks, and durable design limitations. Resolved work is summarised at
 the bottom; the architecture itself is documented in [`CLAUDE.md`](../CLAUDE.md).
-Last reviewed: 2026-06-14.
+Last reviewed: 2026-10-15. **The prioritised, actionable list (major/minor)
+lives in [`plan.md`](../plan.md) → Phase G**; this file keeps the background.
 
 ---
 
@@ -35,6 +36,15 @@ Three flows can only be verified on a real device + homeserver, not in
 - **Registration** UIA on a real homeserver (dummy path + the captcha/email/terms
   fallback).
 - **SAS device verification** round-trip (needs a second device + olm).
+
+### Found in the 2026-10-15 audit (see plan.md)
+- **Android release build has no INTERNET permission** (only debug/profile
+  manifests have it) — release APK can't reach a homeserver. (G1)
+- **Release signing uses the debug key.** (G3)
+- **Local ledger is shared across accounts** on one device: the Drift DB is
+  global and logout doesn't touch it. (G4)
+- **Settlements can't be listed or undone** — `deleteSettlement` has no UI caller. (G8)
+- **No delete/leave group** — `GroupsDao.deleteGroup` is unused. (G9)
 
 ### Smaller items
 - The `router` provider's `refreshListenable`/redirect wiring (against

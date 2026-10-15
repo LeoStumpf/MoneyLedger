@@ -1,13 +1,184 @@
 # MoneyLedger — Implementation Plan
 
-**No active plan.** All planned phases through public-release hardening have
-shipped. This file is the home for the *next* implementation plan; the
-architecture and design decisions live in [`CLAUDE.md`](CLAUDE.md), and known
-gaps in [`docs/open-points.md`](docs/open-points.md).
+**Active plan: Phase G — release readiness.** A full audit of open points
+(2026-10-15), sorted **major → minor**. Each item states *what's wrong*, *why it
+matters*, and commit-sized `[ ]` substeps. Architecture and design decisions live
+in [`CLAUDE.md`](CLAUDE.md); durable limitations in
+[`docs/open-points.md`](docs/open-points.md).
 
-When starting new work, add a `## Phase …` section here with `[ ]`/`[x]`
-checkbox milestones, and tick them off as they land. Convention: one milestone =
-one commit (tests green first), then commit + push.
+Convention: one milestone = one commit (tests green first), then commit + push.
+Tick boxes as milestones land.
+
+Severity legend:
+- **Major** — blocks a public release, loses/leaks data, or breaks a platform.
+- **Minor** — UX gaps, polish, test/tooling debt; ship-able without them.
+
+---
+
+## Phase G — Major
+
+### G1. Android release build has no network access 🔴 (blocker)
+`android/app/src/main/AndroidManifest.xml` has **no**
+`<uses-permission android:name="android.permission.INTERNET"/>` — Flutter only
+adds it in the `debug/` and `profile/` manifests. Every device test so far ran a
+debug build, so this never surfaced; a `flutter build apk --release` cannot reach
+any homeserver (login + sync dead).
+- [ ] Add the INTERNET permission to `src/main/AndroidManifest.xml`
+- [ ] Build a release APK and smoke-test login + one sync round-trip on a phone
+
+### G2. Android E2EE build depends on out-of-repo pub-cache patches 🔴
+`flutter_vodozemac` 0.5.0 only builds on Android with two hand-patches in
+`~/.pub-cache` (`cargokit/gradle/plugin.gradle`: `Project.exec` → injected
+`ExecOperations` for Gradle 9; `android/build.gradle`: `compileSdkVersion 33 → 36`).
+A `pub cache repair`, version bump, fresh clone or CI machine loses them →
+Android stops building. Not reproducible by anyone but this machine.
+- [ ] Vendor `flutter_vodozemac` into the repo (e.g. `third_party/flutter_vodozemac/`)
+      as a `path:` dependency with both patches committed
+- [ ] Document the Rust toolchain requirement (nightly? targets
+      aarch64/armv7/x86_64/i686-linux-android) in README + CLAUDE.md
+- [ ] Verify a clean clone builds an APK after `flutter pub cache clean`
+- [ ] Check upstream for a release that fixes Gradle 9 / compileSdk — drop the
+      vendored copy if so
+
+### G3. Release signing uses the debug key 🔴
+`android/app/build.gradle*` → `release { signingConfig = signingConfigs.getByName("debug") }`.
+A Play-Store upload is rejected; a sideloaded debug-signed APK can't be upgraded
+by a properly signed one later (users would have to reinstall → lose local data,
+see G5).
+- [ ] Create an upload keystore (outside the repo), `key.properties` + gitignore
+- [ ] Wire a `release` signingConfig that reads `key.properties`
+- [ ] Document the signing setup (where the keystore lives, backup!)
+
+### G4. Local ledger is shared across Matrix accounts on one device 🟠 (privacy)
+The Drift DB is a single global file (`money_ledger_db`); `logout()` only calls
+`client.logout()` and never touches Drift. `ledgerGroupsProvider` shows **all**
+groups. If user A logs out and user B logs in on the same device/browser, B sees
+all of A's groups, expenses and member list, and B's `SyncEngine` starts sending
+digests for A's groups (dropped by peers' membership gate, but still leaks
+metadata to A's peers and spams them).
+- [ ] Decide: per-account DB file (`money_ledger_db_<hash(mxid)>`) **or** wipe
+      on logout with a "export CSV first?" warning. Recommendation: per-account DB
+      (logout stays non-destructive; re-login restores instantly)
+- [ ] Implement + make `appDatabaseProvider` depend on the logged-in MXID
+- [ ] Test: two accounts on one device never see each other's groups
+
+### G5. No recovery when the last device is lost 🟠 (data loss)
+Ledger data exists only on members' devices. Recovery relies on *another device*
+(own or a peer's) answering `resync_request`. A single-device user who uninstalls
+or loses their phone **and** has no group peers online loses everything; even with
+peers, only groups that have peers are recoverable — solo/local-only groups
+(all participants virtual) are gone. CSV backup is manual and lossy (no
+settlements/tombstones).
+- [ ] Onboarding / settings: explain "your data lives only on your devices"
+      and recommend a second device or regular export
+- [ ] Full-fidelity backup format (JSON/zip: settlements, tombstones, stable
+      participant ids) — export + import, reuse `bootstrap` codec
+- [ ] Optional: periodic "you haven't backed up in N days" nudge for groups
+      with no claimed peer
+
+### G6. Per-record cryptographic authorship 🟠 (trust model)
+Membership gating authenticates the *relaying sender*, not the *author*: any
+active member can create/edit/delete an expense or settlement "as" another
+member (e.g. delete someone else's expense, record a fake settlement from them).
+Digest membership gossip is likewise gated only by sender membership.
+- [ ] Design doc: sign each record (author MXID + device Ed25519 key, the
+      vodozemac identity key is already there) over a canonical payload encoding;
+      record `author` field; protocol `v: 2` with v1 read-compat
+- [ ] Policy: who may edit/delete what (author-only? any member + audit trail?)
+- [ ] Implement signing + verification in `ledger_payloads.dart` / `LedgerSyncer`
+- [ ] Key distribution/rotation: handle device changes, logged-out devices
+- [ ] Tests: forged record from another member is rejected; legit edit accepted
+
+### G7. Never verified on real devices: SSO, registration, SAS, iOS 🟠
+Covered only by unit/widget tests against fakes:
+- SSO native deep link `moneyledger://sso-callback` (Android + iOS)
+- Registration UIA on a real homeserver (dummy path + captcha/email/terms fallback)
+- SAS emoji verification round-trip (needs two devices + olm)
+- **iOS has never been built or run at all** (no vodozemac/Rust setup documented
+  for iOS, `ios/Runner` is template-level)
+- [ ] Manual smoke checklist in `docs/smoke-test.md` (steps + expected result)
+- [ ] Run it on Android release build (after G1–G3)
+- [ ] Run it on web release build
+- [ ] iOS: build vodozemac for iOS, run on simulator/device, record findings
+      (or explicitly declare iOS unsupported for v1)
+
+---
+
+## Phase G — Minor
+
+### G8. Settlements can't be viewed, edited or undone in the UI 🟡
+`addSettlement` is reachable from the balance page, but there is **no list of
+settlements** anywhere and `ExpenseAdder.deleteSettlement` has **no caller**. A
+mistyped settlement is permanent from the user's perspective.
+- [ ] Show settlements in the expenses list (or a "Payments" section) with
+      date / from → to / amount
+- [ ] Delete (tombstone) via the existing `deleteSettlement`; optional edit
+- [ ] Widget test
+
+### G9. No way to delete/leave/archive a group 🟡
+`GroupsDao.deleteGroup` exists but is unused. Groups only accumulate.
+- [ ] "Leave group" = mark own participant `removed` + stop syncing + hide locally
+- [ ] "Delete locally" for groups that are only on this device
+- [ ] Decide archive vs. delete semantics for settled-up groups
+
+### G10. Group rename + default currency edit 🟡
+Group meta is LWW-synced already (`meta_updated_at`), only the UI is missing.
+- [ ] Edit dialog on the expenses screen; replicate meta update
+- [ ] Test convergence of a rename across two devices
+
+### G11. Device-verification enforcement (opt-in) 🟡
+SAS exists for visibility only; replication still reaches unverified devices.
+- [ ] Per-user setting "only replicate to verified devices" (default off)
+- [ ] Warn in the members page when a peer has unverified devices
+
+### G12. Polish & app identity 🟡
+- [ ] App name is `money_ledger` on Android (`android:label`) and web
+      (`<title>`, `apple-mobile-web-app-title`, `manifest.json`) → "MoneyLedger"
+- [ ] Custom launcher icons + web favicon (currently Flutter defaults)
+- [ ] Localization: all UI strings are hard-coded English `Text('…')` — add
+      `flutter_localizations` + ARB files (at least EN + DE)
+- [ ] Amount/date formatting per locale (`intl`), currency symbols
+- [ ] Privacy policy / about page (needed for store listing)
+
+### G13. CSV backup limitations 🟡
+Documented in CLAUDE.md: no settlements / tombstones, participant identity by
+display name (collision merges, rename splits). Largely superseded by the
+full-fidelity backup in G5 — keep CSV as the human-readable export only.
+- [ ] Add settlements as a second section or separate file (if G5 isn't done)
+- [ ] Warn on import when a name matches multiple/zero existing participants
+
+### G14. Scalability limits 🟡 (not urgent)
+- Digest is O(records/group) — fine to ~1,000 records, then hits to-device size
+  limits. Needs sharding (hash-bucketed digests) using the `"v"` field.
+- Wall-clock LWW: within the 5-min clamp a skewed clock can still win.
+- [ ] Add a test that measures digest size at 1k / 5k records to know the real ceiling
+- [ ] Bucketed digest design (only if real groups approach the limit)
+
+### G15. Test & tooling debt 🟡
+- [ ] Test the `routerProvider` `refreshListenable` wiring (login + onboarding
+      flag changes actually re-run the redirect)
+- [ ] Offline demo mode `--dart-define=OFFLINE_DEMO=true` (override transport +
+      auth gateway with seeded fakes) for screenshots / manual multi-user checks
+- [ ] CI (GitHub Actions): `./build.sh` on push — needs G2 first for Android
+- [ ] Audit the ~30 `debugPrint` / swallowed `catch` sites in `lib/` — route
+      user-relevant failures into `SyncHealth` or a snackbar
+
+### G16. Nice-to-have features
+- [ ] Participant avatars
+- [ ] Expense categories / notes / receipt photo
+- [ ] "Simplify debts" toggle explanation + settle-up suggestions per currency
+- [ ] Search/filter in the expense list
+
+---
+
+## Suggested order
+
+1. **G1 → G3 → G2** (Android release actually works and is reproducible)
+2. **G4** (privacy on shared devices) and **G8** (settlement undo) — small, high value
+3. **G7** smoke pass on real devices → fix what breaks
+4. **G5** full-fidelity backup
+5. **G6** record signing (largest item — own design phase)
+6. Minor items as time allows
 
 ---
 
@@ -23,21 +194,3 @@ Design rationale for each lives in `CLAUDE.md`; full detail is in git history.
 | **Virtual users** | Participant identity decoupled from the Matrix account: local participants (name, no account), claim/unclaim, self-claim on join. |
 | **C — Sync reliability + edit/delete** | Digest-based anti-entropy; per-record LWW clocks + tombstones; edit/delete; new-device/reinstall recovery; sync-status UI. |
 | **B — Roomless local-first** | Dropped ledger rooms; Matrix is an encrypted to-device relay; Drift is the local source of truth. |
-
----
-
-## Open ground (no active plan)
-
-Candidate next work, roughly by value — see `docs/open-points.md` for detail:
-
-- **Per-record cryptographic authorship** — the residual trust-model gap: a
-  group member can still forge *another member's* record (membership gating only
-  authenticates the relaying sender, not the authoring participant).
-- **Device-verification enforcement** — an opt-in "replicate only to verified
-  devices" mode (deliberately out of the M6 MVP).
-- **Offline demo mode** (`--dart-define=OFFLINE_DEMO=true`) — drive the real UI
-  off pre-seeded fakes for screenshots / manual multi-user inspection.
-- **Real-device smoke tests** — SSO deep link, registration UIA, and the SAS
-  verification round-trip can only be verified on a real device + homeserver.
-- Smaller / nice-to-have: group rename + currency edit, avatars, the `router`
-  provider's `refreshListenable` wiring test.
