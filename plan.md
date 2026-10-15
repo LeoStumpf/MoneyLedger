@@ -205,7 +205,7 @@ Both `matrix` (Famedly) and `flutter_vodozemac` are **AGPL-3.0**; the repo has *
 LICENSE file**. Distributing the APK (Play Store) almost certainly requires the app
 to be AGPL-compatible: publish the source, ship the license, list third-party
 notices. **Decision for Leo.**
-- [ ] Leo decides: license the app AGPL-3.0 (public repo) — or replace the SDK
+- [x] Leo decided (2026-10-15): license the app **AGPL-3.0**
 - [ ] Add `LICENSE`, `THIRD_PARTY_NOTICES.md` (cf. ZoneCraft/PositioningInfo), in-app
       licenses page (`showLicensePage`) + source link in About (G12)
 
@@ -243,7 +243,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G1 — INTERNET permission
 - [x] G3 — release keystore
 - [x] G2 — vodozemac build reproducible (upgrade to 0.6.0)
-- [ ] CP-accounts — create test accounts A/B with Leo (`~/.config/moneyledger-test/accounts.env`)
+- [x] CP-accounts — test accounts `@moneyledger-test-{a,b}-c725:matrix.org` (`~/.config/moneyledger-test/accounts.env`)
 - [x] G4 — per-account database
 - [~] G19 — SyncEngine ref-after-dispose + flaky integration tests (pulled forward)
 - [ ] G8 — settlements list + undo
@@ -260,7 +260,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G14 — digest size measurement
 - [ ] G16 — nice-to-haves
 - [ ] G20 — friendly login error messages
-- [ ] G21 — licensing (AGPL) — needs Leo's decision
+- [ ] G21 — licensing: AGPL-3.0 decided → LICENSE, notices, licenses page
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] *(G23+ — newly discovered points)*
 - [ ] G18 — final release review
