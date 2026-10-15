@@ -63,9 +63,16 @@ class SyncHealth extends _$SyncHealth {
     return const SyncHealthState();
   }
 
-  void reportSuccess() =>
-      state = state.afterSuccess(DateTime.now().millisecondsSinceEpoch);
+  // Reports may arrive from async work that outlived its container; drop them
+  // instead of throwing (callers additionally skip reports once their account
+  // DB is closed, so a stale report never lands in the next account's state).
+  void reportSuccess() {
+    if (!ref.mounted) return;
+    state = state.afterSuccess(DateTime.now().millisecondsSinceEpoch);
+  }
 
-  void reportFailure(Object error) =>
-      state = state.afterFailure(error, DateTime.now().millisecondsSinceEpoch);
+  void reportFailure(Object error) {
+    if (!ref.mounted) return;
+    state = state.afterFailure(error, DateTime.now().millisecondsSinceEpoch);
+  }
 }

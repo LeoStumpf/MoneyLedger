@@ -41,12 +41,10 @@ void main() {
     return container;
   }
 
-  Future<void> pump() =>
-      Future<void>.delayed(const Duration(milliseconds: 50));
 
   Future<String> seedTripGroup(
       ProviderContainer alice, FakeMatrixNetwork net) async {
-    await pump();
+    await net.settle();
     await alice.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
     final groupId =
         (await alice.read(groupsDaoProvider).watchAllGroups().first)
@@ -61,7 +59,7 @@ void main() {
       paidBy: '@alice:x.org',
       splits: {'@alice:x.org': 2000, '@bob:y.org': 2000},
     );
-    await pump();
+    await net.settle();
     return groupId;
   }
 
@@ -75,7 +73,7 @@ void main() {
     // Alice signs in on a brand-new device: empty DB → resync_request
     // {scope: all} to her own MXID → device 1 answers with bootstraps.
     final aliceD2 = makeDevice(net, '@alice:x.org', device: 'D2');
-    await pump();
+    await net.settle();
 
     final d2Groups =
         await aliceD2.read(groupsDaoProvider).watchAllGroups().first;
@@ -97,7 +95,7 @@ void main() {
     makeDevice(net, '@bob:y.org');
     final groupId = await seedTripGroup(aliceD1, net);
     final aliceD2 = makeDevice(net, '@alice:x.org', device: 'D2');
-    await pump();
+    await net.settle();
 
     await aliceD2.read(expenseAdderProvider.notifier).addExpense(
       roomId: groupId,
@@ -107,7 +105,7 @@ void main() {
       paidBy: '@alice:x.org',
       splits: {'@alice:x.org': 500, '@bob:y.org': 500},
     );
-    await pump();
+    await net.settle();
 
     final d1Expenses =
         await aliceD1.read(expensesDaoProvider).getExpensesForRoom(groupId);
@@ -130,13 +128,13 @@ void main() {
     // device). Recovery must come organically from Alice's next digest:
     // unknown group → resync_request → membership check → bootstrap.
     final bobNew = makeDevice(net, '@bob:y.org', device: 'D2');
-    await pump();
+    await net.settle();
     expect(await bobNew.read(groupsDaoProvider).watchAllGroups().first,
         isEmpty,
         reason: 'sanity: nothing answered the self resync');
 
     await alice.read(syncEngineProvider).broadcastDigests();
-    await pump();
+    await net.settle();
 
     final bobGroups =
         await bobNew.read(groupsDaoProvider).watchAllGroups().first;

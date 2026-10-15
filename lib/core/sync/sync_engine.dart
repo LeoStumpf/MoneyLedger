@@ -9,6 +9,10 @@ import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../database/app_database.dart';
+import '../database/daos/expenses_dao.dart';
+import '../database/daos/groups_dao.dart';
+import '../database/daos/members_dao.dart';
+import '../database/daos/sync_states_dao.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
 import 'ledger_payloads.dart';
@@ -57,23 +61,46 @@ final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
 ///    member-tombstone payload so their device learns of the removal.
 class SyncEngine {
   final Ref _ref;
+
+  /// The account DB this engine was built for and its DAOs, captured once at
+  /// construction: every async path uses these instead of re-reading providers
+  /// after an await, so a mid-flight account switch (G4) can never make an
+  /// old engine read from / write to the *new* account's DB.
+  final AppDatabase _db;
+  final GroupsDao _groups;
+  final MembersDao _members;
+  final ExpensesDao _expenses;
+  final SyncStatesDao _syncStates;
+
   LedgerTransport? _transport;
   StreamSubscription<TransportMessage>? _sub;
   Timer? _periodic;
   final Map<String, Timer> _pokes = {};
   bool _disposed = false;
 
-  SyncEngine(this._ref);
+  SyncEngine(Ref ref)
+      : _ref = ref,
+        _db = ref.read(appDatabaseProvider),
+        _groups = ref.read(groupsDaoProvider),
+        _members = ref.read(membersDaoProvider),
+        _expenses = ref.read(expensesDaoProvider),
+        _syncStates = ref.read(syncStatesDaoProvider);
+
+  /// Whether async work may continue. Checked after **every** await: the
+  /// engine may have been disposed (logout / account switch / container
+  /// teardown) or its DB closed — on an account switch Riverpod closes the old
+  /// DB eagerly, before this engine's own `onDispose` has run.
+  bool get _alive => !_disposed && !_db.isClosed;
 
   Future<void> start() async {
     final LedgerTransport transport;
     try {
       transport = await _ref.read(ledgerTransportProvider.future);
     } catch (e) {
-      debugPrint('[sync] engine inactive, no transport: $e');
+      if (_alive) debugPrint('[sync] engine inactive, no transport: $e');
       return;
     }
-    if (_disposed) return;
+    if (!_alive) return;
     _transport = transport;
     _sub = transport.onMessage.listen(_onMessage);
     _periodic = Timer.periodic(
@@ -82,13 +109,15 @@ class SyncEngine {
       // New or reinstalled device (empty local DB): ask our own other devices
       // for everything. Groups shared by peers are additionally recovered
       // organically — their digests name groups we don't know (rule 5).
-      final groups = await _ref.read(groupsDaoProvider).getAllGroups();
+      final groups = await _groups.getAllGroups();
+      if (!_alive) return;
       if (groups.isEmpty) {
         await transport.sendToUsers({transport.userId}, resyncRequestEventType,
             {'v': protocolVersion, 'scope': 'all'});
         return;
       }
     } catch (e) {
+      if (!_alive) return;
       debugPrint('[sync] self-resync check failed: $e');
     }
     await broadcastDigests();
@@ -106,21 +135,22 @@ class SyncEngine {
 
   /// Sends a digest for every local group to its active members.
   Future<void> broadcastDigests() async {
-    if (_disposed) return;
+    if (!_alive) return;
     try {
-      final groups = await _ref.read(groupsDaoProvider).getAllGroups();
+      final groups = await _groups.getAllGroups();
       for (final g in groups) {
+        if (!_alive) return;
         await _sendDigest(g.roomId);
       }
     } catch (e) {
-      debugPrint('[sync] digest broadcast failed: $e');
+      if (_alive) debugPrint('[sync] digest broadcast failed: $e');
     }
   }
 
   /// Debounced "something changed in [groupId]": coalesces a burst of inbound
   /// payloads into one digest, which acts as the delivery ack to the writer.
   void pokeGroup(String groupId) {
-    if (_disposed) return;
+    if (!_alive) return;
     _pokes[groupId]?.cancel();
     _pokes[groupId] = Timer(_ref.read(pokeDebounceProvider), () {
       _pokes.remove(groupId);
@@ -129,7 +159,7 @@ class SyncEngine {
   }
 
   void _onMessage(TransportMessage msg) {
-    if (_disposed) return;
+    if (!_alive) return;
     switch (msg.type) {
       case digestEventType:
         _onDigest(msg);
@@ -145,26 +175,41 @@ class SyncEngine {
     }
   }
 
+  /// Health reports go to the (account-scoped, G4) [SyncHealth] — but only
+  /// while this engine is still the live one, so a stale engine can't leak the
+  /// previous account's failures into the next account's state.
+  void _reportSuccess() {
+    if (_alive && _ref.mounted) {
+      _ref.read(syncHealthProvider.notifier).reportSuccess();
+    }
+  }
+
+  void _reportFailure(Object e) {
+    if (_alive && _ref.mounted) {
+      _ref.read(syncHealthProvider.notifier).reportFailure(e);
+    }
+  }
+
   Future<void> _sendDigest(String groupId,
       {String? onlyTo, bool reply = false}) async {
     final transport = _transport;
-    if (transport == null || _disposed) return;
+    if (transport == null || !_alive) return;
     try {
-      final group = await _ref.read(groupsDaoProvider).getGroup(groupId);
-      if (group == null) return;
-      final members = await _ref.read(membersDaoProvider).getMembers(groupId);
+      final group = await _groups.getGroup(groupId);
+      if (group == null || !_alive) return;
+      final members = await _members.getMembers(groupId);
+      if (!_alive) return;
       // A device that knows itself to be removed stops broadcasting digests —
       // this also bounds the rule-6 exchange (removed member's digest →
       // member-tombstone payload → poke) to a single round. Self is the
       // participant claimed by this device's account.
       final self = _claimedBy(members, transport.userId);
       if (self == null || !self.isActive) return;
-      final expenses =
-          await _ref.read(expensesDaoProvider).getAllExpensesForGroup(groupId);
-      final settlements = await _ref
-          .read(expensesDaoProvider)
-          .getAllSettlementsForGroup(groupId);
-      // Self is included (like _replicate): the digest reaches the user's own
+      final expenses = await _expenses.getAllExpensesForGroup(groupId);
+      if (!_alive) return;
+      final settlements = await _expenses.getAllSettlementsForGroup(groupId);
+      if (!_alive) return;
+      // Self is included (like ExpenseAdder replication): the digest reaches the user's own
       // other devices too, which is what repairs a stale second device. Targets
       // are the claimed accounts only — pure-local participants are unreachable.
       final targets = onlyTo != null
@@ -177,13 +222,15 @@ class SyncEngine {
       await transport.sendToUsers(targets, digestEventType,
           buildDigestContent(group, members, expenses, settlements, reply: reply));
       final now = DateTime.now().millisecondsSinceEpoch;
-      final syncStates = _ref.read(syncStatesDaoProvider);
       for (final t in targets) {
-        await syncStates.markDigestSent(groupId, t, now);
+        if (!_alive) return;
+        await _syncStates.markDigestSent(groupId, t, now);
       }
-      _ref.read(syncHealthProvider.notifier).reportSuccess();
+      _reportSuccess();
     } catch (e) {
-      _ref.read(syncHealthProvider.notifier).reportFailure(e);
+      // After dispose / DB close an error is expected noise, not a sync fault.
+      if (!_alive) return;
+      _reportFailure(e);
       debugPrint('[sync] digest send failed for $groupId: $e');
     }
   }
@@ -195,7 +242,8 @@ class SyncEngine {
     final transport = _transport;
     if (transport == null) return;
     try {
-      final group = await _ref.read(groupsDaoProvider).getGroup(groupId);
+      final group = await _groups.getGroup(groupId);
+      if (!_alive) return;
       if (group == null) {
         // Rule 5: we don't know this group — ask the sender to bootstrap us.
         await transport.sendToUsers({msg.senderId}, resyncRequestEventType,
@@ -203,8 +251,8 @@ class SyncEngine {
         return;
       }
 
-      final memberDao = _ref.read(membersDaoProvider);
-      final members = await memberDao.getMembers(groupId);
+      final members = await _members.getMembers(groupId);
+      if (!_alive) return;
       final senderRec = _claimedBy(members, msg.senderId);
       if (senderRec != null && !senderRec.isActive) {
         // Rule 6: the sender was removed — tell their device, nothing else.
@@ -213,9 +261,10 @@ class SyncEngine {
         return;
       }
 
-      final expDao = _ref.read(expensesDaoProvider);
-      final expenses = await expDao.getAllExpensesForGroup(groupId);
-      final settlements = await expDao.getAllSettlementsForGroup(groupId);
+      final expenses = await _expenses.getAllExpensesForGroup(groupId);
+      if (!_alive) return;
+      final settlements = await _expenses.getAllSettlementsForGroup(groupId);
+      if (!_alive) return;
 
       // Compare against pre-merge state: "identical" must mean the sender had
       // everything we had at this moment.
@@ -234,8 +283,9 @@ class SyncEngine {
       // payloads — see LedgerSyncer.processMember).
       for (final entry
           in (content['members'] as Map? ?? const {}).entries) {
+        if (!_alive) return;
         final m = entry.value as Map;
-        await memberDao.upsertMemberLww(MembersCompanion(
+        await _members.upsertMemberLww(MembersCompanion(
           groupId: Value(groupId),
           userId: Value(entry.key as String),
           displayName: Value(m['name'] as String? ?? ''),
@@ -247,28 +297,33 @@ class SyncEngine {
 
       // Rule 1: targeted repair of records the sender lacks or has stale.
       for (final id in diff.expenseIdsToSend) {
-        final e = await expDao.getExpenseById(id);
-        if (e != null) {
+        if (!_alive) return;
+        final e = await _expenses.getExpenseById(id);
+        if (e != null && _alive) {
           await transport.sendToUsers(
               {msg.senderId}, expenseEventType, expensePayload(e));
         }
       }
       for (final id in diff.settlementIdsToSend) {
-        final s = await expDao.getSettlementById(id);
-        if (s != null) {
+        if (!_alive) return;
+        final s = await _expenses.getSettlementById(id);
+        if (s != null && _alive) {
           await transport.sendToUsers(
               {msg.senderId}, settlementEventType, settlementPayload(s));
         }
       }
+      if (!_alive) return;
       if (diff.sendGroupMeta) {
         await transport.sendToUsers(
             {msg.senderId}, groupMetaEventType, groupMetaPayload(group));
+        if (!_alive) return;
       }
 
       // Rule 4: an exact match proves the sender has everything we have.
       if (diff.identical) {
-        await _ref.read(syncStatesDaoProvider).markInSync(
+        await _syncStates.markInSync(
             groupId, msg.senderId, DateTime.now().millisecondsSinceEpoch);
+        if (!_alive) return;
       }
 
       // Rule 3: always answer a primary digest; never answer a reply.
@@ -276,7 +331,7 @@ class SyncEngine {
         await _sendDigest(groupId, onlyTo: msg.senderId, reply: true);
       }
     } catch (e) {
-      debugPrint('[sync] digest handling failed for $groupId: $e');
+      if (_alive) debugPrint('[sync] digest handling failed for $groupId: $e');
     }
   }
 
@@ -292,24 +347,25 @@ class SyncEngine {
       } else if (scope == 'all') {
         // Full resync is for the user's own (new/reinstalled) devices only.
         if (msg.senderId != transport.userId) return;
-        final groups = await _ref.read(groupsDaoProvider).getAllGroups();
+        final groups = await _groups.getAllGroups();
         for (final g in groups) {
+          if (!_alive) return;
           await _sendBootstrap(transport, g.roomId, msg.senderId);
         }
       }
     } catch (e) {
-      debugPrint('[sync] resync handling failed: $e');
+      if (_alive) debugPrint('[sync] resync handling failed: $e');
     }
   }
 
   Future<void> _sendBootstrapIfMember(
       LedgerTransport transport, String groupId, String requester) async {
     if (requester != transport.userId) {
-      final members =
-          await _ref.read(membersDaoProvider).getMembers(groupId);
+      final members = await _members.getMembers(groupId);
       final rec = _claimedBy(members, requester);
       if (rec == null || !rec.isActive) return; // not a member — no data
     }
+    if (!_alive) return;
     await _sendBootstrap(transport, groupId, requester);
   }
 
@@ -325,14 +381,14 @@ class SyncEngine {
 
   Future<void> _sendBootstrap(
       LedgerTransport transport, String groupId, String to) async {
-    final expDao = _ref.read(expensesDaoProvider);
     final content = buildBootstrapContent(
       groupId,
-      await _ref.read(groupsDaoProvider).getGroup(groupId),
-      await _ref.read(membersDaoProvider).getMembers(groupId),
-      await expDao.getAllExpensesForGroup(groupId),
-      await expDao.getAllSettlementsForGroup(groupId),
+      await _groups.getGroup(groupId),
+      await _members.getMembers(groupId),
+      await _expenses.getAllExpensesForGroup(groupId),
+      await _expenses.getAllSettlementsForGroup(groupId),
     );
+    if (!_alive) return;
     await transport.sendToUsers({to}, bootstrapEventType, content);
   }
 }

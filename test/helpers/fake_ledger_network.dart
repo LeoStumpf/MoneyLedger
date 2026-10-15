@@ -25,6 +25,10 @@ class FakeMatrixNetwork {
   /// exact failure anti-entropy must repair. Set back to null to "reconnect".
   bool Function(String sender, String target, String type)? dropWhere;
 
+  /// Bumped on every send and every delivery — [settle] waits until this stops
+  /// moving.
+  int _activity = 0;
+
   /// Returns (creating on first use) the transport view for one device of
   /// [userId], e.g. `@alice:x.org`. Create a user's transport before they
   /// need to receive payloads so delivery has somewhere to go.
@@ -39,6 +43,7 @@ class FakeMatrixNetwork {
     Map<String, dynamic> content,
   ) {
     final sender = senderDevice.userId;
+    _activity++;
     for (final target in targets) {
       if (dropWhere?.call(sender, target, type) ?? false) continue;
       for (final device in (_clients[target] ?? const {}).values) {
@@ -51,11 +56,34 @@ class FakeMatrixNetwork {
     }
   }
 
-  /// Lets queued stream events propagate to listeners. Call after each action
-  /// before asserting on derived provider state.
-  Future<void> settle() async {
-    for (var i = 0; i < 5; i++) {
-      await Future<void>.delayed(Duration.zero);
+  /// Waits until the relay is **quiescent**: [quietTicks] consecutive short
+  /// timer ticks during which nothing was sent or delivered. Call after each
+  /// action before asserting on derived state.
+  ///
+  /// Deterministic under CPU load (unlike a fixed sleep): each tick is a 2 ms
+  /// timer, and Dart runs every pending microtask (in-memory Drift work, stream
+  /// deliveries) and every earlier-due timer (the 1 ms poke debounce used by
+  /// the SyncEngine tests) before it — so a chain that is still producing
+  /// messages always resets the count, however slow the machine is. Throws if
+  /// the network never goes quiet within [timeout] (a ping-pong bug).
+  Future<void> settle({
+    int quietTicks = 5,
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final sw = Stopwatch()..start();
+    var seen = _activity;
+    var quiet = 0;
+    while (quiet < quietTicks) {
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      if (_activity != seen) {
+        seen = _activity;
+        quiet = 0;
+      } else {
+        quiet++;
+      }
+      if (sw.elapsed > timeout) {
+        throw TimeoutException('fake network never went quiet', timeout);
+      }
     }
   }
 }
@@ -70,6 +98,7 @@ class FakeTransport implements LedgerTransport {
   FakeTransport(this._net, this.userId);
 
   void _emit(TransportMessage m) {
+    _net._activity++;
     if (!_controller.isClosed) _controller.add(m);
   }
 

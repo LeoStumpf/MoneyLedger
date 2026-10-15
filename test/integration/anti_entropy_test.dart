@@ -39,21 +39,17 @@ void main() {
     return container;
   }
 
-  /// Real-clock settle: lets poke debounce timers (1 ms) fire and the
-  /// resulting digest chains play out.
-  Future<void> pump() =>
-      Future<void>.delayed(const Duration(milliseconds: 50));
 
   Future<String> seedGroupWithBob(
       ProviderContainer alice, FakeMatrixNetwork net) async {
-    await pump();
+    await net.settle();
     await alice.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
     final groupId =
         (await alice.read(groupsDaoProvider).watchAllGroups().first)
             .first
             .roomId;
     await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
-    await pump();
+    await net.settle();
     return groupId;
   }
 
@@ -77,7 +73,7 @@ void main() {
     // The live relay of the expense is lost in transit.
     net.dropWhere = (_, _, type) => type == expenseEventType;
     await addExpenseAs(alice, groupId, 'Lost dinner', '@alice:x.org');
-    await pump();
+    await net.settle();
     expect(await bob.read(expensesDaoProvider).getExpensesForRoom(groupId),
         isEmpty,
         reason: 'sanity: the live relay was dropped');
@@ -85,7 +81,7 @@ void main() {
     // Network heals; the next digest cycle must repair Bob.
     net.dropWhere = null;
     await alice.read(syncEngineProvider).broadcastDigests();
-    await pump();
+    await net.settle();
 
     final bobExpenses =
         await bob.read(expensesDaoProvider).getExpensesForRoom(groupId);
@@ -93,7 +89,7 @@ void main() {
     expect(bobExpenses.single.description, 'Lost dinner');
 
     // The follow-up digests prove convergence to both sides (sync-status UI).
-    await pump();
+    await net.settle();
     final aliceStates =
         await alice.read(syncStatesDaoProvider).getSyncStates(groupId);
     final bobSeenByAlice =
@@ -109,7 +105,7 @@ void main() {
     final groupId = await seedGroupWithBob(alice, net);
 
     await addExpenseAs(alice, groupId, 'Mistake', '@alice:x.org');
-    await pump();
+    await net.settle();
     final expense = (await alice
             .read(expensesDaoProvider)
             .getExpensesForRoom(groupId))
@@ -120,7 +116,7 @@ void main() {
     await alice
         .read(expenseAdderProvider.notifier)
         .deleteExpense(expense.id, groupId);
-    await pump();
+    await net.settle();
     expect(await bob.read(expensesDaoProvider).getExpensesForRoom(groupId),
         hasLength(1),
         reason: 'sanity: bob still has the stale live copy');
@@ -129,7 +125,7 @@ void main() {
     // the tombstone, and Bob must never re-instate the record.
     net.dropWhere = null;
     await bob.read(syncEngineProvider).broadcastDigests();
-    await pump();
+    await net.settle();
 
     final bobDao = bob.read(expensesDaoProvider);
     expect(await bobDao.getExpensesForRoom(groupId), isEmpty);
@@ -152,7 +148,7 @@ void main() {
     await alice
         .read(memberRemoverProvider.notifier)
         .remove(groupId, '@bob:y.org');
-    await pump();
+    await net.settle();
     final bobSelfBefore = (await bob
             .read(membersDaoProvider)
             .getMembers(groupId))
@@ -164,7 +160,7 @@ void main() {
     // member tombstone.
     net.dropWhere = null;
     await bob.read(syncEngineProvider).broadcastDigests();
-    await pump();
+    await net.settle();
 
     final bobSelf = (await bob.read(membersDaoProvider).getMembers(groupId))
         .firstWhere((m) => m.userId == '@bob:y.org');
@@ -176,7 +172,7 @@ void main() {
     final net = FakeMatrixNetwork();
     final alice = makeUser(net, '@alice:x.org');
     final bob = makeUser(net, '@bob:y.org');
-    await pump();
+    await net.settle();
 
     await alice.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
     final groupId =
@@ -188,7 +184,7 @@ void main() {
     // Bob is added but the bootstrap payload is lost — he knows nothing.
     net.dropWhere = (_, _, type) => type == bootstrapEventType;
     await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
-    await pump();
+    await net.settle();
     expect(await bob.read(groupsDaoProvider).watchAllGroups().first, isEmpty,
         reason: 'sanity: the bootstrap was dropped');
 
@@ -196,7 +192,7 @@ void main() {
     // → Alice verifies membership and re-sends the bootstrap.
     net.dropWhere = null;
     await alice.read(syncEngineProvider).broadcastDigests();
-    await pump();
+    await net.settle();
 
     final bobGroups = await bob.read(groupsDaoProvider).watchAllGroups().first;
     expect(bobGroups, hasLength(1));
@@ -212,8 +208,8 @@ void main() {
     final bob = makeUser(net, '@bob:y.org');
     final groupId = await seedGroupWithBob(alice, net);
     await addExpenseAs(alice, groupId, 'Dinner', '@alice:x.org');
-    await pump();
-    await pump(); // drain post-receipt ack digests before counting
+    await net.settle();
+    await net.settle(); // drain post-receipt ack digests before counting
 
     final digests = <TransportMessage>[];
     net.clientFor('@alice:x.org').onMessage.listen((m) {
@@ -224,8 +220,8 @@ void main() {
     });
 
     await alice.read(syncEngineProvider).broadcastDigests();
-    await pump();
-    await pump();
+    await net.settle();
+    await net.settle();
 
     // Exactly alice→bob (primary) and bob→alice (reply); states are in sync
     // so nothing further is triggered.

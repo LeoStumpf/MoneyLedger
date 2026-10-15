@@ -166,6 +166,7 @@ class ExpensesPage extends ConsumerWidget {
           .selfClaim(roomId, choice.userId);
     } else {
       // "Someone new" — ask for a name, then join as a fresh participant.
+      if (!context.mounted) return;
       final name = await _promptName(context);
       if (name == null || name.isEmpty) return;
       await ref.read(memberAdderProvider.notifier).joinAsNew(roomId, name);

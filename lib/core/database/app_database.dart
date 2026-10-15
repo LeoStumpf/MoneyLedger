@@ -115,6 +115,21 @@ class AppDatabase extends _$AppDatabase {
   /// Hook run after migrations on every open — see [AppDatabase.named].
   final Future<void> Function(AppDatabase db)? onOpen;
 
+  bool _closed = false;
+
+  /// Whether [close] has been called. Long-running async work (SyncEngine,
+  /// LedgerSyncer, replication) checks this after each await: on an account
+  /// switch (G4) the previous account's DB is closed *before* the providers
+  /// that captured it are disposed, and any further query on it would throw
+  /// "Can't re-open a database after closing it".
+  bool get isClosed => _closed;
+
+  @override
+  Future<void> close() {
+    _closed = true;
+    return super.close();
+  }
+
   @override
   int get schemaVersion => 5;
 

@@ -30,7 +30,7 @@ void main() {
 
   group('LedgerSyncer.processExpense', () {
     test('writes expense row to DB', () async {
-      LedgerSyncer.processExpense({
+      await LedgerSyncer.processExpense({
         'id': 'uuid-1',
         'group': 'g1',
         'description': 'Pizza',
@@ -51,8 +51,8 @@ void main() {
     });
 
     test('missing id or group — no row written', () async {
-      LedgerSyncer.processExpense({'description': 'No id'}, expDao);
-      LedgerSyncer.processExpense({'id': 'x', 'description': 'No group'}, expDao);
+      await LedgerSyncer.processExpense({'description': 'No id'}, expDao);
+      await LedgerSyncer.processExpense({'id': 'x', 'description': 'No group'}, expDao);
       final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows, isEmpty);
     });
@@ -68,8 +68,8 @@ void main() {
         'split': <String, int>{},
         'created_at': 0,
       };
-      LedgerSyncer.processExpense(content, expDao);
-      LedgerSyncer.processExpense(content, expDao);
+      await LedgerSyncer.processExpense(content, expDao);
+      await LedgerSyncer.processExpense(content, expDao);
       final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows.length, 1);
     });
@@ -77,7 +77,7 @@ void main() {
 
   group('LedgerSyncer.processSettlement', () {
     test('writes settlement row to DB', () async {
-      LedgerSyncer.processSettlement({
+      await LedgerSyncer.processSettlement({
         'id': 'settle-1',
         'group': 'g1',
         'amount': 1500,
@@ -96,7 +96,7 @@ void main() {
     });
 
     test('missing id — no row written', () async {
-      LedgerSyncer.processSettlement({'group': 'g1', 'amount': 100}, expDao);
+      await LedgerSyncer.processSettlement({'group': 'g1', 'amount': 100}, expDao);
       final rows = await expDao.watchSettlementsForRoom('g1').first;
       expect(rows, isEmpty);
     });
@@ -104,7 +104,7 @@ void main() {
 
   group('LedgerSyncer.processGroupMeta', () {
     test('writes group row to DB', () async {
-      LedgerSyncer.processGroupMeta(
+      await LedgerSyncer.processGroupMeta(
           {'group': 'g1', 'name': 'Alpine Hut', 'currency': 'CHF'}, groupDao);
       final groups = await groupDao.watchAllGroups().first;
       expect(groups.length, 1);
@@ -114,7 +114,7 @@ void main() {
     });
 
     test('missing currency falls back to EUR', () async {
-      LedgerSyncer.processGroupMeta({'group': 'g1', 'name': 'X'}, groupDao);
+      await LedgerSyncer.processGroupMeta({'group': 'g1', 'name': 'X'}, groupDao);
       final groups = await groupDao.watchAllGroups().first;
       expect(groups.first.currency, 'EUR');
     });
@@ -122,7 +122,7 @@ void main() {
 
   group('LedgerSyncer.processMember', () {
     test('writes member row (active)', () async {
-      LedgerSyncer.processMember({
+      await LedgerSyncer.processMember({
         'group': 'g1',
         'user': '@bob:m.org',
         'status': 'active',
@@ -135,14 +135,14 @@ void main() {
     });
 
     test('older update is ignored (last-writer-wins)', () async {
-      LedgerSyncer.processMember({
+      await LedgerSyncer.processMember({
         'group': 'g1',
         'user': '@bob:m.org',
         'status': 'removed',
         'updated_at': 200,
       }, memberDao);
       // An older "active" must not overwrite the newer "removed".
-      LedgerSyncer.processMember({
+      await LedgerSyncer.processMember({
         'group': 'g1',
         'user': '@bob:m.org',
         'status': 'active',
@@ -154,7 +154,7 @@ void main() {
 
     test('reads participant_id + name + matrix_id (virtual-users shape)',
         () async {
-      LedgerSyncer.processMember({
+      await LedgerSyncer.processMember({
         'group': 'g1',
         'participant_id': 'p-uuid',
         'name': 'Cash',
@@ -171,7 +171,7 @@ void main() {
 
     test('a newer payload claims a participant (sets matrixId via LWW)',
         () async {
-      LedgerSyncer.processMember({
+      await LedgerSyncer.processMember({
         'group': 'g1',
         'participant_id': 'p-uuid',
         'name': 'Bob',
@@ -180,7 +180,7 @@ void main() {
         'updated_at': 100,
       }, memberDao);
       // Bob joins and claims the slot.
-      LedgerSyncer.processMember({
+      await LedgerSyncer.processMember({
         'group': 'g1',
         'participant_id': 'p-uuid',
         'name': 'Bob',
@@ -196,7 +196,7 @@ void main() {
 
   group('LedgerSyncer.processBootstrap', () {
     test('applies group meta, members and ledger in one payload', () async {
-      LedgerSyncer.processBootstrap({
+      await LedgerSyncer.processBootstrap({
         'group': 'g1',
         'name': 'Trip',
         'currency': 'USD',
@@ -237,7 +237,7 @@ void main() {
 
     test('bootstrap containing a tombstone deletes the local live copy',
         () async {
-      LedgerSyncer.processExpense({
+      await LedgerSyncer.processExpense({
         'id': 'e1',
         'group': 'g1',
         'description': 'Hotel',
@@ -249,7 +249,7 @@ void main() {
         'updated_at': 5,
       }, expDao);
 
-      LedgerSyncer.processBootstrap({
+      await LedgerSyncer.processBootstrap({
         'group': 'g1',
         'name': 'Trip',
         'currency': 'EUR',
@@ -297,9 +297,9 @@ void main() {
         };
 
     test('a stale edit does not overwrite a newer row', () async {
-      LedgerSyncer.processExpense(
+      await LedgerSyncer.processExpense(
           expenseContent(updatedAt: 2000, description: 'current'), expDao);
-      LedgerSyncer.processExpense(
+      await LedgerSyncer.processExpense(
           expenseContent(updatedAt: 1500, description: 'stale'), expDao);
 
       final rows = await expDao.watchExpensesForRoom('g1').first;
@@ -307,9 +307,9 @@ void main() {
     });
 
     test('a newer edit wins', () async {
-      LedgerSyncer.processExpense(
+      await LedgerSyncer.processExpense(
           expenseContent(updatedAt: 1000, description: 'v1'), expDao);
-      LedgerSyncer.processExpense(
+      await LedgerSyncer.processExpense(
           expenseContent(updatedAt: 2000, description: 'v2'), expDao);
 
       final rows = await expDao.watchExpensesForRoom('g1').first;
@@ -317,17 +317,17 @@ void main() {
     });
 
     test('a delete payload tombstones the expense', () async {
-      LedgerSyncer.processExpense(expenseContent(updatedAt: 1000), expDao);
-      LedgerSyncer.processExpense(
+      await LedgerSyncer.processExpense(expenseContent(updatedAt: 1000), expDao);
+      await LedgerSyncer.processExpense(
           expenseContent(updatedAt: 2000, deleted: true), expDao);
 
       expect(await expDao.watchExpensesForRoom('g1').first, isEmpty);
     });
 
     test('an older live payload cannot resurrect a tombstone', () async {
-      LedgerSyncer.processExpense(
+      await LedgerSyncer.processExpense(
           expenseContent(updatedAt: 2000, deleted: true), expDao);
-      LedgerSyncer.processExpense(expenseContent(updatedAt: 1000), expDao);
+      await LedgerSyncer.processExpense(expenseContent(updatedAt: 1000), expDao);
 
       expect(await expDao.watchExpensesForRoom('g1').first, isEmpty);
       expect((await expDao.getAllExpensesForGroup('g1')).single.deleted, true);
@@ -335,7 +335,7 @@ void main() {
 
     test('payload without updated_at falls back to created_at (pre-v1 peer)',
         () async {
-      LedgerSyncer.processExpense({
+      await LedgerSyncer.processExpense({
         'id': 'e1',
         'group': 'g1',
         'description': 'Legacy',
@@ -351,13 +351,13 @@ void main() {
     });
 
     test('stale group meta does not overwrite a newer rename', () async {
-      LedgerSyncer.processGroupMeta({
+      await LedgerSyncer.processGroupMeta({
         'group': 'g1',
         'name': 'New Name',
         'currency': 'EUR',
         'updated_at': 2000,
       }, groupDao);
-      LedgerSyncer.processGroupMeta({
+      await LedgerSyncer.processGroupMeta({
         'group': 'g1',
         'name': 'Old Name',
         'currency': 'USD',
@@ -385,7 +385,7 @@ void main() {
 
       final payload = expensePayload(expense);
       expect(payload['v'], protocolVersion);
-      LedgerSyncer.processExpense(payload, expDao);
+      await LedgerSyncer.processExpense(payload, expDao);
 
       final row = (await expDao.watchExpensesForRoom('g1').first).single;
       expect(row.id, expense.id);
@@ -410,7 +410,7 @@ void main() {
         updatedAt: 2500,
       );
 
-      LedgerSyncer.processSettlement(settlementPayload(settlement), expDao);
+      await LedgerSyncer.processSettlement(settlementPayload(settlement), expDao);
 
       final row = (await expDao.watchSettlementsForRoom('g1').first).single;
       expect(row.id, settlement.id);

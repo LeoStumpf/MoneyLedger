@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/settings_dao.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/onboarding/onboarding_page.dart';
@@ -46,7 +47,7 @@ void main() {
   });
 }
 
-Widget _app(db) {
+Widget _app(AppDatabase db) {
   final router = GoRouter(
     initialLocation: '/onboarding',
     routes: [

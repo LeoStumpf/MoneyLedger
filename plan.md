@@ -185,13 +185,16 @@ Found in G1: with the CPU busy (emulator running), `test/integration/anti_entrop
 ("a lost delete is repaired…") and `multi_device_test.dart` ("a second device populates
 itself…") fail intermittently; `-j 2` is green. The suite also logs "Bad state: Can't
 re-open a database after closing it" from the digest handler → async work outlives teardown.
-- [ ] `SyncEngine` uses its `Ref` after an await without a `mounted` check
+- [x] `SyncEngine` uses its `Ref` after an await without a `mounted` check
       ("Cannot use the Ref of SyncEngine after it has been disposed" in
       `_sendDigest`) — with per-account DBs this can now happen in production on
       an account switch; guard every post-await `_ref` use
-- [ ] Make the sync tests deterministic (await/flush instead of timing; cancel
-      timers/subscriptions before closing the DB)
-- [ ] Run the full suite 5× at default concurrency with the emulator running — all green
+- [x] Make the sync tests deterministic: `FakeMatrixNetwork.settle()` waits for
+      quiescence instead of fixed `pump()` sleeps
+- [x] SyncEngine/LedgerSyncer capture DB+DAOs once and stop when `!_alive`
+      (`AppDatabase.isClosed`); ExpenseAdder `_WriteContext`; SyncHealth ignores
+      reports once unmounted; 4 account-switch regression tests
+- [x] Full suite 6× at default concurrency with the emulator running — all green (286)
 
 ### G20. Raw exception text in login errors 🟡
 `lib/features/auth/login_page.dart:186` shows e.g. "ClientException with SocketException: …"
@@ -216,6 +219,12 @@ against SDK 36 natively (the G1 gradle override could go).
 - [ ] Assess the matrix SDK major upgrade (API changes in to-device/encryption,
       DB init) — do it only if low-risk; rebuild web wasm
 - [ ] Upgrade file_picker to 10.x; drop the compileSdk override if no longer needed
+
+### G23. Same ref-after-await pattern in group mutators 🟡
+`lib/features/groups/group_provider.dart` (GroupCreator, MemberAdder, MemberRemover)
+read `ref` after awaits and set `state` without a `ref.mounted` check (cf. the G19
+`_WriteContext` fix in `expenses_provider.dart`).
+- [ ] Apply the same capture-before-await pattern + test
 
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
@@ -245,7 +254,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G2 — vodozemac build reproducible (upgrade to 0.6.0)
 - [x] CP-accounts — test accounts `@moneyledger-test-{a,b}-c725:matrix.org` (`~/.config/moneyledger-test/accounts.env`)
 - [x] G4 — per-account database
-- [~] G19 — SyncEngine ref-after-dispose + flaky integration tests (pulled forward)
+- [x] G19 — SyncEngine ref-after-dispose + flaky integration tests (pulled forward)
+- [~] G7a — first real-device sync: phone (A) ↔ emulator (B) (pulled forward)
 - [ ] G8 — settlements list + undo
 - [ ] G9 — leave/delete group
 - [ ] G10 — rename group / currency
@@ -262,7 +272,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G20 — friendly login error messages
 - [ ] G21 — licensing: AGPL-3.0 decided → LICENSE, notices, licenses page
 - [ ] G22 — dependency upgrades (matrix, file_picker)
-- [ ] *(G23+ — newly discovered points)*
+- [ ] G23 — group mutators ref-after-await
+- [ ] *(G24+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---
