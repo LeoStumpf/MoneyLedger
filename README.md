@@ -8,7 +8,8 @@ rooms: Matrix is used purely as an **end-to-end-encrypted to-device relay** to
 replicate records between members, so the homeserver retains no financial data
 and sees only ciphertext.
 
-- **Cross-platform:** Android, iOS, and web (Flutter).
+- **Platforms:** Android and web. **iOS is not supported for v1** (see
+  [Platform support](#platform-support)).
 - **No backend to run:** bring your own Matrix homeserver (matrix.org, self-hosted, …).
 - **Local source of truth:** every device holds the full ledger and computes
   balances locally; peers reconcile via digest-based anti-entropy.
@@ -25,6 +26,19 @@ and sees only ciphertext.
 - **CSV export/import** for backup and sharing (idempotent merge-by-id).
 - **In-app registration** (open / dummy-UIA homeservers) and **SSO** login.
 - **Device verification** (SAS emoji) and a sync-health indicator.
+
+## Platform support
+
+| Platform | Status |
+|----------|--------|
+| Android | supported (release APK, tested on device + emulator) |
+| Web | supported |
+| iOS | **not supported for v1** |
+
+iOS has never been built: development happens on Linux (no macOS to build or
+sign), and E2EE via `flutter_vodozemac` would need an iOS Rust/XCFramework build
+that has not been set up. `ios/Runner` is template level only. The manual
+smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
 
 ## Tech stack
 
@@ -50,7 +64,7 @@ and sees only ciphertext.
   (cargokit tries to `rustup target add` missing targets itself, but
   pre-installing them keeps offline/CI builds deterministic.) Web needs no Rust:
   it uses the prebuilt wasm checked in under `web/pkg/`.
-- iOS: Xcode (macOS only).
+- iOS: not supported for v1 (see [Platform support](#platform-support)).
 - A Matrix account on any homeserver to actually sign in.
 
 ## Setup
@@ -79,9 +93,6 @@ flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0
 
 # Android (a device/emulator must be connected)
 flutter run -d android
-
-# iOS (macOS + simulator/device)
-flutter run -d ios
 
 flutter devices                  # list available run targets
 ```
@@ -118,7 +129,6 @@ Per-platform release builds:
 ```bash
 flutter build web --release      # → build/web/
 flutter build apk --release      # → build/app/outputs/flutter-apk/
-flutter build ios --release      # macOS only
 ```
 
 > The web build needs `web/sqlite3.wasm` and `web/drift_worker.js` (checked in,

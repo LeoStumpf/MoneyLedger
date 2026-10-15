@@ -15,7 +15,7 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 
 ## Tech Stack
 
-- **Flutter 3.44+** — cross-platform UI (Android, iOS, web)
+- **Flutter 3.44+** — cross-platform UI (Android + web; **iOS not supported for v1** — see below)
 - [`matrix`](https://pub.dev/packages/matrix) 7.x — Matrix protocol: auth, room management, event sync
 - [`flutter_riverpod`](https://pub.dev/packages/flutter_riverpod) 3.x + `riverpod_annotation` 4.x — state management (code-gen style)
 - [`drift`](https://pub.dev/packages/drift) 2.x + `drift_flutter` — type-safe SQLite ORM for local ledger state
@@ -37,6 +37,13 @@ Output lands in `build/web/`.
 
 Android E2EE: `flutter_vodozemac` (**≥ 0.6.0** — older versions break on Gradle 9 / compileSdk < 36) compiles the vodozemac Rust crate during the Gradle build via cargokit, so Android builds need `rustup` (**stable** toolchain) with targets `aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android`. No pub-cache patches are needed (0.5.0 required hand-patches; don't downgrade). Web uses the prebuilt wasm committed in `web/pkg/` (no Rust needed).
 
+**iOS is not supported for v1**: development is on Linux (no macOS to build/sign),
+and `flutter_vodozemac` needs an iOS Rust/XCFramework build that has never been
+done; `ios/Runner` is template level. Don't spend effort on iOS unless asked.
+
+Manual smoke checklist (real devices, real homeserver): `docs/smoke-test.md` —
+update its "Last run" table after a device pass.
+
 Android release signing: `android/app/build.gradle.kts` signs `release` with the upload keystore (`~/moneyledger-upload-keystore.jks`) configured via the gitignored `android/key.properties`; without that file it falls back to the debug key. Never commit `key.properties` or keystores — see README "Release signing".
 
 ## Commands
@@ -44,12 +51,10 @@ Android release signing: `android/app/build.gradle.kts` signs `release` with the
 ```bash
 flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0   # dev web server
 flutter run -d android               # run on a connected Android device/emulator
-flutter run -d ios                   # run on iOS simulator/device (macOS only)
 flutter devices                      # list available run targets
 flutter test --reporter compact      # run all tests (exit 0 = green)
 flutter test test/foo_test.dart      # run a single test file
 flutter build apk                    # Android release build
-flutter build ios                    # iOS release build
 flutter build web                    # web build
 dart run build_runner build          # regenerate Drift + Riverpod code-gen files
 dart run build_runner watch          # watch mode for code generation
@@ -157,7 +162,7 @@ is obsolete.)
 
 Authentication is pure Matrix — no separate auth system. Users connect to their own homeserver (self-hosted, matrix.org, etc.). The single transport seam is `LedgerTransport` (real adapter `MatrixLedgerTransport`); fakes back all tests. Login (password + SSO) and **in-app registration** go through `AuthGateway` (`auth_provider.dart`'s `AuthNotifier`).
 
-**Registration (Phase F).** `RegisterPage` → `AuthGateway.register`. The real adapter attempts `client.register`, and on a UIA challenge classifies the flows with the pure `register_flows.dart`: a flow needing only `m.login.dummy` is completed in-app; anything requiring a CAPTCHA / email / phone / terms / token throws `RegistrationRequiresWebException` (with friendly labels) and the page shows a **web-registration fallback** (we don't reimplement every UIA stage). `/register` is reachable while signed out (see `routerRedirect`).
+**Registration (Phase F).** `RegisterPage` → `AuthGateway.register`. The real adapter attempts `client.register`, and on a UIA challenge classifies the flows with the pure `register_flows.dart`: a flow needing only `m.login.dummy` is completed in-app; anything requiring a CAPTCHA / email / phone / terms / token throws `RegistrationRequiresWebException` (with friendly labels) and the page shows a **web-registration fallback**; so does an `M_FORBIDDEN` with no UIA flows (`isClientRegistrationDisabled` — e.g. matrix.org, whose sign-up moved to MAS/OIDC) (we don't reimplement every UIA stage). `/register` is reachable while signed out (see `routerRedirect`).
 
 **Device verification (Phase F).** `DeviceGateway` (`core/matrix/device_gateway.dart`, matrix-free port; real adapter `matrix_device_gateway.dart`) lists the user's own devices and runs an SAS (emoji) verification. `DevicesPage` (`/devices`, from the groups app bar) shows each device's verified status and an emoji-compare dialog driven by a `VerificationSession` stream. **MVP scope: visibility + manual verification only — not enforced** (replication still reaches unverified devices). The pure view-model (`DeviceInfo`, `sortDevices`, `deviceTrustSummary`) is unit-tested; the SDK SAS round-trip needs a second real device + olm and is **manual-smoke** (like the SSO deep link). The real adapter imports `package:matrix/matrix.dart` **`hide DeviceInfo`** (the SDK exports a same-named type) plus `package:matrix/encryption.dart` (for `KeyVerification`).
 
@@ -264,7 +269,7 @@ nothing. Removed by **another** member → the group stays as read-only history
 (`currentParticipant` is inactive): banner "You were removed from this group"
 + *Delete from this device*; no add-expense / settle / edit / member changes.
 The members page lists removed participants greyed under **Former members**
-(claimed ones get *Re-add*). Who removed whom isn't recorded, so a removal
+(*Re-add*: claimed ones via `add`, local people via `MemberAdder.reactivate` — same participant, never a duplicate). Who removed whom isn't recorded, so a removal
 learned only via a peer's digest gossip (our own leave notice lost) also shows
 as "removed".
 

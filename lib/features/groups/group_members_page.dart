@@ -214,8 +214,9 @@ class GroupMembersPage extends ConsumerWidget {
 
 /// A removed / left participant (G26), greyed. Leaving and being removed both
 /// store `status: removed` (who did it isn't recorded), hence the neutral
-/// "former member". A claimed one can be re-added through the normal add
-/// path, which reactivates this same participant (id, name, history kept).
+/// "former member". Re-add reactivates this same participant (id, name,
+/// history kept) — a claimed one via the normal add path (which also
+/// bootstraps their account), a local one in place.
 class _FormerMemberTile extends ConsumerWidget {
   final MemberModel member;
   final String myId;
@@ -244,22 +245,25 @@ class _FormerMemberTile extends ConsumerWidget {
             : 'Local · former member'),
         trailing: isSelf
             ? const Chip(label: Text('You'))
-            : mxid == null
-                ? null
-                : TextButton(
-                    onPressed: canReadd
-                        ? () => _readd(context, ref, mxid, title)
-                        : null,
-                    child: const Text('Re-add'),
-                  ),
+            : TextButton(
+                onPressed: canReadd
+                    ? () => _readd(context, ref, mxid, title)
+                    : null,
+                child: const Text('Re-add'),
+              ),
       ),
     );
   }
 
   Future<void> _readd(
-      BuildContext context, WidgetRef ref, String mxid, String name) async {
+      BuildContext context, WidgetRef ref, String? mxid, String name) async {
     final messenger = ScaffoldMessenger.of(context);
-    await ref.read(memberAdderProvider.notifier).add(roomId, mxid);
+    final adder = ref.read(memberAdderProvider.notifier);
+    // A claimed participant goes through add() (reactivates + bootstraps their
+    // account); a local person is just reactivated in place.
+    await (mxid != null
+        ? adder.add(roomId, mxid)
+        : adder.reactivate(roomId, member.userId));
     final error = ref.read(memberAdderProvider).error;
     messenger.showSnackBar(SnackBar(
         content: Text(error != null ? 'Failed: $error' : 'Re-added $name')));

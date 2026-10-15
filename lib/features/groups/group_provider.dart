@@ -258,6 +258,15 @@ class MemberAdder extends _$MemberAdder {
         await _relayToClaimed(w, groupId, member);
       });
 
+  /// Re-adds a removed **local** participant (G7): reactivates the same
+  /// participant id + name so their history stays attributed — re-adding via
+  /// "Add person" would mint a second, unrelated participant of the same name.
+  /// (A claimed former member is re-added through [add], which also
+  /// bootstraps their account.)
+  Future<void> reactivate(String groupId, String participantId) =>
+      _editParticipant(groupId, participantId,
+          (m) => _copyWith(m, status: 'active'));
+
   /// Renames a participant (LWW edit), then replicates.
   Future<void> rename(String groupId, String participantId, String name) =>
       _editParticipant(groupId, participantId,
@@ -344,13 +353,13 @@ class MemberAdder extends _$MemberAdder {
   }
 
   static MemberModel _copyWith(MemberModel m,
-          {String? displayName, Object? matrixId = _unset}) =>
+          {String? displayName, Object? matrixId = _unset, String? status}) =>
       MemberModel(
         groupId: m.groupId,
         userId: m.userId,
         displayName: displayName ?? m.displayName,
         matrixId: identical(matrixId, _unset) ? m.matrixId : matrixId as String?,
-        status: m.status,
+        status: status ?? m.status,
         updatedAt: nextLwwClock(m.updatedAt),
       );
 }

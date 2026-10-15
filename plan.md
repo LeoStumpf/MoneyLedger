@@ -105,11 +105,12 @@ Covered only by unit/widget tests against fakes:
 - SAS emoji verification round-trip (needs two devices + olm)
 - **iOS has never been built or run at all** (no vodozemac/Rust setup documented
   for iOS, `ios/Runner` is template-level)
-- [ ] Manual smoke checklist in `docs/smoke-test.md` (steps + expected result)
-- [ ] Run it on Android release build (after G1–G3)
+- [x] Manual smoke checklist in `docs/smoke-test.md` (62 items, tagged emu/phone/2dev/Leo)
+- [x] Run it on Android release build: ~45 pass, 2 bugs fixed (matrix.org registration
+      → web fallback; re-adding a removed local person), 9 not run (Leo/SAS/web)
 - [ ] Run it on web release build
-- [ ] iOS: build vodozemac for iOS, run on simulator/device, record findings
-      (or explicitly declare iOS unsupported for v1)
+- [x] iOS declared unsupported for v1 (no macOS) — README/CLAUDE.md/smoke-test
+- [ ] Leo-only items: real SSO login, SAS verify (→ G11), web build run (→ G18)
 
 ---
 
@@ -207,6 +208,8 @@ re-open a database after closing it" from the digest handler → async work outl
 ### G20. Raw exception text in login errors 🟡
 `lib/features/auth/login_page.dart:186` shows e.g. "ClientException with SocketException: …"
 or "M_FORBIDDEN: …" in the snackbar.
+- [ ] matrix.org: "Open homeserver website" should open the sign-up portal (auth
+      metadata / MAS account URL), not the home page
 - [ ] Map common failures (network, wrong password, unknown server, rate limit) to
       friendly, localized messages; keep details expandable
 - [ ] Widget tests
@@ -278,6 +281,21 @@ G7a: on the emulator the groups page showed first and onboarding replaced it
 Two edits with the exact same ms clock stay divergent (digests see them as equal).
 - [ ] Deterministic tie-break (e.g. compare a content hash) in all LWW upserts + digest compare
 
+### G28. Settling debts of local persons / payments received 🟠
+`balance_page.dart:71` only lets the debtor tap their own row. A local person's
+debt (no account) can never be settled, and a creditor can't record "X paid me".
+Decision (conductor, Splitwise-style): **any active member may record a payment
+between any two participants**; default from/to = the tapped debt row.
+- [ ] Settle any debt row (incl. local persons); "Record payment" with from/to pickers
+- [ ] Tests (widget + replication)
+
+### G29. Expense-form gaps (G7) 🟡
+- [ ] Per-expense currency picker (defaults to the group currency)
+- [ ] Sign-out confirmation dialog
+- [ ] Sync status lag: A showed "Waiting for B…" ~1 min after B's own change →
+      mark peer in-sync when a fresh inbound record/digest proves convergence
+- [ ] SSO button label: show the server name stably (not the raw client host)
+
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
 - [ ] Empty states, spacing, list/card styling for groups, expenses, balances
@@ -317,8 +335,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G24 — silent no-op sends + startup message loss (pulled forward)
 - [x] G9 — leave/delete group (+ G23 group mutators)
 - [x] G10 — rename group / currency (+ G26 member lifecycle)
-- [~] G7 — smoke checklist + emulator pass (iOS: document unsupported — no macOS)
-- [ ] G12 — app identity, i18n EN+DE, privacy/about
+- [x] G7 — smoke checklist + device pass (iOS documented unsupported)
+- [~] G12 — app identity, i18n EN+DE, privacy/about
 - [ ] G17 — design pass
 - [ ] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup
@@ -332,7 +350,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G25 — late onboarding redirect
 - [ ] G27 — LWW tie-break
-- [ ] *(G28+ — newly discovered points)*
+- [ ] G28 — settle any debt incl. local persons
+- [ ] G29 — expense-form gaps (currency picker, sign-out confirm, status lag, SSO label)
+- [ ] *(G30+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---

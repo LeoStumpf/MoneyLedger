@@ -115,6 +115,11 @@ class MatrixAuthGateway implements AuthGateway {
       );
     } on MatrixException catch (e) {
       final flows = e.authenticationFlows;
+      if (isClientRegistrationDisabled(e.errcode, hasFlows: flows != null)) {
+        // e.g. matrix.org (MAS/OIDC): sign-up only on the website.
+        throw RegistrationRequiresWebException(
+            homeserver, const [kWebSignupRequirement]);
+      }
       if (flows == null) rethrow; // not a UIA challenge (e.g. username taken)
       final plan =
           classifyRegistrationFlows([for (final f in flows) f.stages]);

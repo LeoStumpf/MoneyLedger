@@ -48,6 +48,18 @@ RegistrationPlan classifyRegistrationFlows(List<List<String>> flows) {
   );
 }
 
+/// Requirement label shown when the server refuses client registration
+/// outright (see [isClientRegistrationDisabled]).
+const kWebSignupRequirement = 'signing up on its own website';
+
+/// True when a `/register` attempt was refused without a UIA challenge because
+/// the server disabled client-side registration (`M_FORBIDDEN`, no flows) —
+/// e.g. matrix.org, which moved sign-up to its OIDC account portal (MAS). The
+/// user must sign up on the web, so this maps to the web fallback rather than a
+/// raw error. Other errors (`M_USER_IN_USE`, `M_INVALID_USERNAME`, …) don't.
+bool isClientRegistrationDisabled(String? errcode, {required bool hasFlows}) =>
+    !hasFlows && errcode == 'M_FORBIDDEN';
+
 /// A friendly label for a registration UIA stage id.
 String registrationRequirementLabel(String stage) {
   switch (stage) {

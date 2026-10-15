@@ -80,7 +80,7 @@ void main() {
     });
 
     testWidgets('removed members are listed greyed under "Former members" '
-        'with a re-add action for claimed ones (G26)', (tester) async {
+        'with a re-add action (G26; local people too, G7)', (tester) async {
       await tester.pumpWidget(testApp(
         const GroupMembersPage(roomId: 'g1'),
         overrides: overridesFor(
@@ -112,8 +112,9 @@ void main() {
       expect(
           find.ancestor(of: find.text('Bob'), matching: find.byType(Opacity)),
           findsOneWidget);
-      // Only the claimed former member can be re-added; no options menus.
-      expect(find.widgetWithText(TextButton, 'Re-add'), findsOneWidget);
+      // Both the claimed and the local former member can be re-added; no
+      // options menus.
+      expect(find.widgetWithText(TextButton, 'Re-add'), findsNWidgets(2));
       expect(find.byType(PopupMenuButton<String>), findsNothing);
     });
 

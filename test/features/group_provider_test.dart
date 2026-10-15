@@ -176,6 +176,25 @@ void main() {
       expect(after.displayName, 'Bob'); // identity + history preserved
     });
 
+    test('reactivate re-adds a removed local person in place (G7)', () async {
+      final groupId = await createTrip();
+      await c.read(memberAdderProvider.notifier).addLocal(groupId, 'Carl');
+      final carl = (await c.read(membersDaoProvider).getMembers(groupId))
+          .firstWhere((m) => m.displayName == 'Carl');
+      await c.read(memberRemoverProvider.notifier).remove(groupId, carl.userId);
+      final removed = (await c.read(membersDaoProvider).getMembers(groupId))
+          .firstWhere((m) => m.userId == carl.userId);
+      expect(removed.isActive, isFalse);
+
+      await c.read(memberAdderProvider.notifier).reactivate(groupId, carl.userId);
+      final members = await c.read(membersDaoProvider).getMembers(groupId);
+      final carls = members.where((m) => m.displayName == 'Carl').toList();
+      expect(carls, hasLength(1)); // no duplicate participant
+      expect(carls.single.userId, carl.userId); // same identity → history kept
+      expect(carls.single.isActive, isTrue);
+      expect(carls.single.updatedAt, greaterThan(removed.updatedAt));
+    });
+
     test('rename updates the display name', () async {
       final groupId = await createTrip();
       await c.read(memberAdderProvider.notifier).addLocal(groupId, 'Cassh');

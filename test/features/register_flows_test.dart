@@ -68,4 +68,25 @@ void main() {
     expect(registrationRequirementLabel('m.login.registration_token'),
         'a registration token');
   });
+
+  group('isClientRegistrationDisabled', () {
+    test('M_FORBIDDEN without flows (e.g. matrix.org / MAS) → web sign-up', () {
+      expect(isClientRegistrationDisabled('M_FORBIDDEN', hasFlows: false),
+          isTrue);
+    });
+
+    test('a UIA challenge is classified by its flows instead', () {
+      expect(isClientRegistrationDisabled('M_FORBIDDEN', hasFlows: true),
+          isFalse);
+    });
+
+    test('other errors stay errors (username taken / invalid)', () {
+      expect(isClientRegistrationDisabled('M_USER_IN_USE', hasFlows: false),
+          isFalse);
+      expect(
+          isClientRegistrationDisabled('M_INVALID_USERNAME', hasFlows: false),
+          isFalse);
+      expect(isClientRegistrationDisabled(null, hasFlows: false), isFalse);
+    });
+  });
 }
