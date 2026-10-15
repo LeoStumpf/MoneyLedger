@@ -95,59 +95,91 @@ final class OnboardingSeenStreamProvider
 String _$onboardingSeenStreamHash() =>
     r'8321bd1094cec9dc52da00c31de0dc557e7ccab5';
 
-/// Synchronous view used by the router. Defaults to **seen** until the flag
-/// loads, so the common case (returning user) never flashes the onboarding
-/// screen; a genuine first-run user is routed there one frame later when the
-/// flag resolves to false and the router's refresh listener re-evaluates.
+/// Router-facing onboarding state. Signed out → [OnboardingStatus.seen] (the
+/// router never forces onboarding then). Signed in → [OnboardingStatus.unknown]
+/// until the account's flag loads; a flag still *reloading* after an account
+/// switch counts as unknown too, so the previous account's (or the signed-out
+/// placeholder's) value is never reused. After [kOnboardingFlagTimeout] (or a
+/// stream error) the answer latches to seen for that account — a late "not
+/// seen" then no longer yanks the user to onboarding mid-use; it shows on the
+/// next start instead.
 
-@ProviderFor(onboardingSeen)
-final onboardingSeenProvider = OnboardingSeenProvider._();
+@ProviderFor(OnboardingGate)
+final onboardingGateProvider = OnboardingGateProvider._();
 
-/// Synchronous view used by the router. Defaults to **seen** until the flag
-/// loads, so the common case (returning user) never flashes the onboarding
-/// screen; a genuine first-run user is routed there one frame later when the
-/// flag resolves to false and the router's refresh listener re-evaluates.
-
-final class OnboardingSeenProvider extends $FunctionalProvider<bool, bool, bool>
-    with $Provider<bool> {
-  /// Synchronous view used by the router. Defaults to **seen** until the flag
-  /// loads, so the common case (returning user) never flashes the onboarding
-  /// screen; a genuine first-run user is routed there one frame later when the
-  /// flag resolves to false and the router's refresh listener re-evaluates.
-  OnboardingSeenProvider._()
+/// Router-facing onboarding state. Signed out → [OnboardingStatus.seen] (the
+/// router never forces onboarding then). Signed in → [OnboardingStatus.unknown]
+/// until the account's flag loads; a flag still *reloading* after an account
+/// switch counts as unknown too, so the previous account's (or the signed-out
+/// placeholder's) value is never reused. After [kOnboardingFlagTimeout] (or a
+/// stream error) the answer latches to seen for that account — a late "not
+/// seen" then no longer yanks the user to onboarding mid-use; it shows on the
+/// next start instead.
+final class OnboardingGateProvider
+    extends $NotifierProvider<OnboardingGate, OnboardingStatus> {
+  /// Router-facing onboarding state. Signed out → [OnboardingStatus.seen] (the
+  /// router never forces onboarding then). Signed in → [OnboardingStatus.unknown]
+  /// until the account's flag loads; a flag still *reloading* after an account
+  /// switch counts as unknown too, so the previous account's (or the signed-out
+  /// placeholder's) value is never reused. After [kOnboardingFlagTimeout] (or a
+  /// stream error) the answer latches to seen for that account — a late "not
+  /// seen" then no longer yanks the user to onboarding mid-use; it shows on the
+  /// next start instead.
+  OnboardingGateProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'onboardingSeenProvider',
+        name: r'onboardingGateProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$onboardingSeenHash();
+  String debugGetCreateSourceHash() => _$onboardingGateHash();
 
   @$internal
   @override
-  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  bool create(Ref ref) {
-    return onboardingSeen(ref);
-  }
+  OnboardingGate create() => OnboardingGate();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(bool value) {
+  Override overrideWithValue(OnboardingStatus value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<bool>(value),
+      providerOverride: $SyncValueProvider<OnboardingStatus>(value),
     );
   }
 }
 
-String _$onboardingSeenHash() => r'98fabe07c4d4d40d34f58033e6d6be6765f561e9';
+String _$onboardingGateHash() => r'e132f1e9d4ceae8cf7d01843ef1ea7001cbda027';
+
+/// Router-facing onboarding state. Signed out → [OnboardingStatus.seen] (the
+/// router never forces onboarding then). Signed in → [OnboardingStatus.unknown]
+/// until the account's flag loads; a flag still *reloading* after an account
+/// switch counts as unknown too, so the previous account's (or the signed-out
+/// placeholder's) value is never reused. After [kOnboardingFlagTimeout] (or a
+/// stream error) the answer latches to seen for that account — a late "not
+/// seen" then no longer yanks the user to onboarding mid-use; it shows on the
+/// next start instead.
+
+abstract class _$OnboardingGate extends $Notifier<OnboardingStatus> {
+  OnboardingStatus build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<OnboardingStatus, OnboardingStatus>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<OnboardingStatus, OnboardingStatus>,
+              OnboardingStatus,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
 
 @ProviderFor(OnboardingController)
 final onboardingControllerProvider = OnboardingControllerProvider._();

@@ -171,8 +171,7 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
 - [ ] Bucketed digest design (only if real groups approach the limit)
 
 ### G15. Test & tooling debt 🟡
-- [ ] Test the `routerProvider` `refreshListenable` wiring (login + onboarding
-      flag changes actually re-run the redirect)
+- [x] Test the `routerProvider` `refreshListenable` wiring (done in G25)
 - [ ] Offline demo mode `--dart-define=OFFLINE_DEMO=true` (override transport +
       auth gateway with seeded fakes) for screenshots / manual multi-user checks
 - [ ] CI (GitHub Actions): `./build.sh` on push — needs G2 first for Android
@@ -208,11 +207,10 @@ re-open a database after closing it" from the digest handler → async work outl
 ### G20. Raw exception text in login errors 🟡
 `lib/features/auth/login_page.dart:186` shows e.g. "ClientException with SocketException: …"
 or "M_FORBIDDEN: …" in the snackbar.
-- [ ] matrix.org: "Open homeserver website" should open the sign-up portal (auth
-      metadata / MAS account URL), not the home page
-- [ ] Map common failures (network, wrong password, unknown server, rate limit) to
-      friendly, localized messages; keep details expandable
-- [ ] Widget tests
+- [x] Sign-up link from OIDC auth metadata / MSC2965 → `account.matrix.org/register`
+- [x] `describeAuthError` + inline `AuthErrorCard` (offline vs. unreachable server vs.
+      not-a-homeserver, wrong password, rate limit, SSO token, username taken…)
+- [x] Widget + unit tests; verified on a spare emulator
 
 ### G21. Licensing — matrix SDK + flutter_vodozemac are AGPL-3.0 🟠
 Both `matrix` (Famedly) and `flutter_vodozemac` are **AGPL-3.0**; the repo has **no
@@ -259,7 +257,8 @@ Found in G7a (real devices):
 ### G25. Onboarding flag loads late → onboarding pops up minutes after login 🟡
 G7a: on the emulator the groups page showed first and onboarding replaced it
 ~2–3 min later (flag defaults to "seen" until loaded; per-account DB opens late).
-- [ ] Show a neutral splash until the flag is known (or decide onboarding at login)
+- [x] `OnboardingGate` (unknown/seen/notSeen) + `/splash`; 8 s timeout → seen
+- [x] routerProvider refreshListenable wiring tested end-to-end (G15 item)
 
 ### G26. Member lifecycle gaps (found in G9) 🟠
 - **Bug:** `MemberAdder.add(groupId, mxid)` for an MXID that already claimed a UUID
@@ -297,6 +296,15 @@ between any two participants**; default from/to = the tapped debt row.
 - [x] SSO button label: the typed server name / IdP names
 - [ ] Writer side still pending ~27 s after own change (ack = digest after 5 s poke
       debounce + relay hop) → faster ack (shorter debounce or per-record ack)
+
+### G30. Auth/first-login robustness (found in G20) 🟠
+- A fresh login of A on a new emulator showed "No groups yet" although the phone
+  has A's groups — check new-device recovery timing (resync_request scope all →
+  own devices); was ~3 s in G7. Reproduce + fix or explain (show a "restoring…"
+  state while the first resync is outstanding).
+- `checkHomeserver` / `login` have no timeout → the button can spin ~20 s+.
+- [ ] Investigate first-login recovery; "Restoring your groups…" empty state
+- [ ] Timeouts (e.g. 15 s) on discovery/login/register with a friendly message
 
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
@@ -339,8 +347,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G10 — rename group / currency (+ G26 member lifecycle)
 - [x] G7 — smoke checklist + device pass (iOS documented unsupported)
 - [x] G28+G29 — settle any debt; currency picker, sign-out confirm, status lag, SSO label (pulled forward: features before i18n)
-- [~] G20+G25 — friendly login errors, matrix.org sign-up link, late onboarding
-- [ ] G12 — app identity, i18n EN+DE, privacy/about
+- [x] G20+G25 — friendly login errors, matrix.org sign-up link, late onboarding
+- [~] G30 — first-login recovery + auth timeouts
+- [ ] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
 - [ ] G17 — design pass
 - [ ] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup
@@ -349,7 +358,6 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [ ] G14 — digest size measurement
 - [ ] G16 — nice-to-haves
-- [ ] G21 — licensing: AGPL-3.0 decided → LICENSE, notices, licenses page
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G27 — LWW tie-break
 - [ ] *(G30+ — newly discovered points)*

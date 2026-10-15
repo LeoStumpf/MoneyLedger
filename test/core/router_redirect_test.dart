@@ -1,10 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/router.dart';
+import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
 
-// Most cases assume onboarding is already done; the onboarding group covers the
-// first-run branch explicitly.
-String? redirect(bool isLoggedIn, String location, {bool onboardingSeen = true}) =>
-    routerRedirect(isLoggedIn, onboardingSeen, location);
+// Most cases assume onboarding is already done; the onboarding groups cover the
+// first-run and still-loading branches explicitly.
+String? redirect(bool isLoggedIn, String location,
+        {bool onboardingSeen = true,
+        OnboardingStatus? status}) =>
+    routerRedirect(
+        isLoggedIn,
+        status ??
+            (onboardingSeen ? OnboardingStatus.seen : OnboardingStatus.notSeen),
+        location);
 
 void main() {
   group('routerRedirect — not logged in', () {
@@ -77,6 +84,45 @@ void main() {
 
     test('stays on /onboarding (no redirect)', () {
       expect(redirect(true, '/onboarding', onboardingSeen: false), isNull);
+    });
+  });
+
+  group('routerRedirect — signed out, splash', () {
+    test('redirects /splash to /login', () {
+      expect(redirect(false, '/splash'), '/login');
+    });
+
+    test('an unknown flag is irrelevant while signed out', () {
+      expect(redirect(false, '/login', status: OnboardingStatus.unknown),
+          isNull);
+    });
+  });
+
+  group('routerRedirect — logged in, onboarding flag still loading (G25)', () {
+    const unknown = OnboardingStatus.unknown;
+
+    test('shows the splash instead of the groups list', () {
+      expect(redirect(true, '/groups', status: unknown), '/splash');
+    });
+
+    test('shows the splash right after login (from /login)', () {
+      expect(redirect(true, '/login', status: unknown), '/splash');
+    });
+
+    test('shows the splash instead of onboarding', () {
+      expect(redirect(true, '/onboarding', status: unknown), '/splash');
+    });
+
+    test('stays on /splash (no redirect loop)', () {
+      expect(redirect(true, '/splash', status: unknown), isNull);
+    });
+
+    test('leaves the splash for /groups once the flag is seen', () {
+      expect(redirect(true, '/splash'), '/groups');
+    });
+
+    test('leaves the splash for /onboarding once the flag is not seen', () {
+      expect(redirect(true, '/splash', onboardingSeen: false), '/onboarding');
     });
   });
 }

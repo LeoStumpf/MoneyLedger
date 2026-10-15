@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 
+import '../../features/auth/auth_errors.dart';
 import '../../features/auth/register_flows.dart';
+import '../../features/auth/sign_up_url.dart';
 import '../../models/login_flows_result.dart';
 import 'auth_gateway.dart';
 
@@ -75,36 +77,42 @@ class MatrixAuthGateway implements AuthGateway {
     required String homeserver,
     required String username,
     required String password,
-  }) async {
-    await _client.checkHomeserver(Uri.parse(homeserver));
-    await _client.login(
-      AuthenticationTypes.password,
-      identifier: AuthenticationUserIdentifier(user: username),
-      password: password,
-      initialDeviceDisplayName: 'MoneyLedger',
-    );
-  }
+  }) =>
+      _translated(homeserver, () async {
+        await _checkHomeserver(homeserver);
+        await _client.login(
+          AuthenticationTypes.password,
+          identifier: AuthenticationUserIdentifier(user: username),
+          password: password,
+          initialDeviceDisplayName: 'MoneyLedger',
+        );
+      });
 
   @override
   Future<void> loginWithToken({
     required String homeserver,
     required String token,
-  }) async {
-    await _client.checkHomeserver(Uri.parse(homeserver));
-    await _client.login(
-      AuthenticationTypes.token,
-      token: token,
-      initialDeviceDisplayName: 'MoneyLedger',
-    );
-  }
+  }) =>
+      _translated(homeserver, () async {
+        await _checkHomeserver(homeserver);
+        await _client.login(
+          AuthenticationTypes.token,
+          token: token,
+          initialDeviceDisplayName: 'MoneyLedger',
+        );
+      });
 
   @override
   Future<void> register({
     required String homeserver,
     required String username,
     required String password,
-  }) async {
-    await _client.checkHomeserver(Uri.parse(homeserver));
+  }) =>
+      _translated(homeserver, () => _register(homeserver, username, password));
+
+  Future<void> _register(
+      String homeserver, String username, String password) async {
+    await _checkHomeserver(homeserver);
     try {
       // First attempt with no auth: an open server completes immediately;
       // otherwise it answers with a UIA challenge (flows + session).
@@ -118,7 +126,8 @@ class MatrixAuthGateway implements AuthGateway {
       if (isClientRegistrationDisabled(e.errcode, hasFlows: flows != null)) {
         // e.g. matrix.org (MAS/OIDC): sign-up only on the website.
         throw RegistrationRequiresWebException(
-            homeserver, const [kWebSignupRequirement]);
+            homeserver, const [kWebSignupRequirement],
+            signUpUrl: await _signUpUrl(homeserver));
       }
       if (flows == null) rethrow; // not a UIA challenge (e.g. username taken)
       final plan =
@@ -126,7 +135,8 @@ class MatrixAuthGateway implements AuthGateway {
       final session = e.session;
       if (!plan.canRegisterInApp || session == null) {
         throw RegistrationRequiresWebException(
-            homeserver, plan.blockingRequirements);
+            homeserver, plan.blockingRequirements,
+            signUpUrl: await _signUpUrl(homeserver));
       }
       // Complete the no-op dummy stage to finish sign-up.
       await _client.register(
@@ -141,6 +151,107 @@ class MatrixAuthGateway implements AuthGateway {
 
   @override
   Future<void> logout() => _client.logout();
+
+  // ── error translation (G20) ───────────────────────────────────────────────
+
+  /// Reference server probed when the homeserver is unreachable, to tell "the
+  /// device is offline" from "that server is down / doesn't exist".
+  static final _connectivityProbe = Uri.parse('https://matrix.org');
+  static const _probeTimeout = Duration(seconds: 5);
+
+  /// `checkHomeserver`, with any non-network failure (no `/versions`, HTML
+  /// instead of JSON, …) reported as [NotAHomeserverException].
+  Future<void> _checkHomeserver(String homeserver) async {
+    try {
+      await _client.checkHomeserver(Uri.parse(homeserver));
+    } catch (e) {
+      if (isNetworkError(e) || e is BadServerLoginTypesException) rethrow;
+      if (e is MatrixException && e.errcode != 'M_UNRECOGNIZED') rethrow;
+      throw NotAHomeserverException(_host(homeserver), e);
+    }
+  }
+
+  /// Runs [body], translating SDK / transport errors into the plain-Dart
+  /// failures of the auth port so the UI's pure `describeAuthError` can
+  /// classify them without `package:matrix`.
+  Future<void> _translated(
+      String homeserver, Future<void> Function() body) async {
+    try {
+      await body();
+    } on MatrixException catch (e) {
+      throw AuthServerException(e.errcode,
+          serverMessage: e.errorMessage, retryAfterMs: e.retryAfterMs);
+    } catch (e) {
+      if (e is AuthServerException ||
+          e is NotAHomeserverException ||
+          e is RegistrationRequiresWebException ||
+          !isNetworkError(e)) {
+        rethrow;
+      }
+      throw AuthNetworkException(_host(homeserver),
+          deviceOffline: !await _referenceServerReachable(), cause: e);
+    }
+  }
+
+  static Future<bool> _referenceServerReachable() async {
+    final api = MatrixApi(homeserver: _connectivityProbe);
+    try {
+      await api.getVersions().timeout(_probeTimeout);
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      api.httpClient.close();
+    }
+  }
+
+  static String _host(String homeserver) {
+    final uri = Uri.tryParse(homeserver);
+    return (uri == null || uri.host.isEmpty) ? homeserver : uri.host;
+  }
+
+  /// Best-effort sign-up page for [homeserver] (see `sign_up_url.dart`):
+  /// fetches the OIDC auth metadata + `.well-known`, never throws.
+  Future<String> _signUpUrl(String homeserver) async {
+    final entered = Uri.parse(homeserver);
+    final base = _client.homeserver ?? entered;
+    Map<String, Object?>? metadata;
+    Map<String, Object?>? wellKnown;
+    final api = MatrixApi(homeserver: base);
+    try {
+      for (final path in const [
+        '/client/v1/auth_metadata',
+        '/client/unstable/org.matrix.msc2965/auth_metadata',
+      ]) {
+        try {
+          metadata = await api
+              .request(RequestType.GET, path)
+              .timeout(_lookupTimeout);
+          break;
+        } catch (_) {}
+      }
+    } finally {
+      api.httpClient.close();
+    }
+    if (metadata == null) {
+      final probe = MatrixApi(homeserver: entered);
+      try {
+        final wk = await probe.getWellknown().timeout(_lookupTimeout);
+        wellKnown = wk.toJson();
+      } catch (_) {
+      } finally {
+        probe.httpClient.close();
+      }
+    }
+    final url = resolveSignUpUrl(
+      homeserverUrl: homeserver,
+      resolvedBaseUrl: base.toString(),
+      authMetadata: metadata,
+      wellKnown: wellKnown,
+    );
+    debugPrint('[register] sign-up url for $homeserver -> $url');
+    return url;
+  }
 
   // ── login-flows parsing helpers ───────────────────────────────────────────
 

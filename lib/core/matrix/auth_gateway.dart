@@ -56,11 +56,73 @@ class RegistrationRequiresWebException implements Exception {
   /// Human-readable requirements of the easiest flow (e.g. `['a CAPTCHA']`).
   final List<String> requirements;
 
-  const RegistrationRequiresWebException(this.homeserverUrl, this.requirements);
+  /// Where the user can create an account: the server's advertised sign-up /
+  /// account-management page when known (see `sign_up_url.dart`), else null —
+  /// then the UI falls back to [homeserverUrl].
+  final String? signUpUrl;
+
+  const RegistrationRequiresWebException(this.homeserverUrl, this.requirements,
+      {this.signUpUrl});
+
+  /// The page "Open homeserver website" opens.
+  String get webUrl => signUpUrl ?? homeserverUrl;
 
   @override
   String toString() => requirements.isEmpty
       ? 'This homeserver requires registering on its website.'
       : 'This homeserver requires ${requirements.join(' and ')} — '
           'please register on its website.';
+}
+
+// ── Plain-Dart auth failures (G20) ──────────────────────────────────────────
+// The real gateway translates SDK / transport errors into these so the UI's
+// pure error mapper (`features/auth/auth_errors.dart`) can classify them
+// without importing `package:matrix`.
+
+/// The homeserver answered with a Matrix error (`errcode`), e.g. `M_FORBIDDEN`
+/// for a wrong password or `M_LIMIT_EXCEEDED` when rate limited.
+class AuthServerException implements Exception {
+  final String errcode;
+
+  /// The server's own (English, technical) error text, if any.
+  final String? serverMessage;
+
+  /// `retry_after_ms` of an `M_LIMIT_EXCEEDED` response.
+  final int? retryAfterMs;
+
+  const AuthServerException(this.errcode,
+      {this.serverMessage, this.retryAfterMs});
+
+  @override
+  String toString() =>
+      serverMessage == null ? errcode : '$errcode: $serverMessage';
+}
+
+/// The homeserver couldn't be reached at all (DNS failure, refused connection,
+/// timeout). [deviceOffline] is true when a reference server was unreachable
+/// too — i.e. the device has no working internet connection.
+class AuthNetworkException implements Exception {
+  /// Host the app tried to reach (e.g. `matrix.org`).
+  final String host;
+  final bool deviceOffline;
+
+  /// The underlying error (shown only behind "Details").
+  final Object cause;
+
+  const AuthNetworkException(this.host,
+      {required this.deviceOffline, required this.cause});
+
+  @override
+  String toString() => cause.toString();
+}
+
+/// The server answered, but not like a Matrix homeserver (no `/versions`,
+/// HTML instead of JSON, …) — usually a typo in the homeserver address.
+class NotAHomeserverException implements Exception {
+  final String host;
+  final Object cause;
+  const NotAHomeserverException(this.host, this.cause);
+
+  @override
+  String toString() => cause.toString();
 }

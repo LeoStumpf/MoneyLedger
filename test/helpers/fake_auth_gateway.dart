@@ -19,6 +19,9 @@ class FakeAuthGateway implements AuthGateway {
   /// requirements — simulates a CAPTCHA/email/terms homeserver.
   List<String>? registerRequiresWeb;
 
+  /// The sign-up page carried by that [RegistrationRequiresWebException].
+  String? registerSignUpUrl;
+
   final StreamController<bool> _controller = StreamController.broadcast();
 
   FakeAuthGateway({
@@ -75,7 +78,8 @@ class FakeAuthGateway implements AuthGateway {
   }) async {
     if (failWith != null) throw failWith!;
     if (registerRequiresWeb != null) {
-      throw RegistrationRequiresWebException(homeserver, registerRequiresWeb!);
+      throw RegistrationRequiresWebException(homeserver, registerRequiresWeb!,
+          signUpUrl: registerSignUpUrl);
     }
     _setUser('@$username:${Uri.parse(homeserver).host}');
   }

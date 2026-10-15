@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../features/auth/auth_provider.dart';
 import '../models/expense_model.dart';
 import 'error_page.dart';
+import 'splash_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/register_page.dart';
 import '../features/devices/devices_page.dart';
@@ -22,18 +23,30 @@ part 'router.g.dart';
 /// Pages reachable while signed out (login + in-app registration).
 const _authPages = {'/login', '/register'};
 
-String? routerRedirect(bool isLoggedIn, bool onboardingSeen, String location) {
+/// Neutral loading route shown while signed in but the per-account onboarding
+/// flag is still unknown (G25).
+const kSplashLocation = '/splash';
+
+/// Pure redirect rule (unit-tested). Signed out → only the auth pages. Signed
+/// in: flag [OnboardingStatus.unknown] → the splash (never guess either page);
+/// not seen → forced onboarding; seen → bounce off the auth pages, bare root,
+/// splash and stale onboarding screen to the groups list.
+String? routerRedirect(
+    bool isLoggedIn, OnboardingStatus onboarding, String location) {
   if (!isLoggedIn) {
     return _authPages.contains(location) ? null : '/login';
   }
-  // Logged in but hasn't completed the one-time onboarding → force it.
-  if (!onboardingSeen) {
-    return location == '/onboarding' ? null : '/onboarding';
+  switch (onboarding) {
+    case OnboardingStatus.unknown:
+      return location == kSplashLocation ? null : kSplashLocation;
+    case OnboardingStatus.notSeen:
+      return location == '/onboarding' ? null : '/onboarding';
+    case OnboardingStatus.seen:
+      break;
   }
-  // Logged in and onboarded: bounce off the auth pages, bare root, and the
-  // now-stale onboarding screen to the groups list.
   if (_authPages.contains(location) ||
       location == '/' ||
+      location == kSplashLocation ||
       location == '/onboarding') {
     return '/groups';
   }
@@ -47,7 +60,7 @@ GoRouter router(Ref ref) {
   final listenable = ValueNotifier<bool>(false);
   void bump() => listenable.value = !listenable.value;
   ref.listen<bool>(isLoggedInProvider, (_, _) => bump());
-  ref.listen<bool>(onboardingSeenProvider, (_, _) => bump());
+  ref.listen<OnboardingStatus>(onboardingGateProvider, (_, _) => bump());
   ref.onDispose(listenable.dispose);
 
   return GoRouter(
@@ -55,13 +68,15 @@ GoRouter router(Ref ref) {
     refreshListenable: listenable,
     redirect: (_, state) => routerRedirect(
       ref.read(isLoggedInProvider),
-      ref.read(onboardingSeenProvider),
+      ref.read(onboardingGateProvider),
       state.matchedLocation,
     ),
     errorBuilder: (_, state) => ErrorPage(error: state.error),
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
+      GoRoute(
+          path: kSplashLocation, builder: (_, _) => const SplashPage()),
       GoRoute(
           path: '/onboarding', builder: (_, _) => const OnboardingPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),

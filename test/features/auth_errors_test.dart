@@ -1,0 +1,149 @@
+/// describeAuthError (G20): friendly login / SSO / registration messages.
+/// Pure — no matrix import; SDK errors arrive as the auth port's plain types
+/// (or as raw text the mapper falls back on).
+library;
+
+import 'dart:async';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/core/matrix/auth_gateway.dart';
+import 'package:money_ledger/features/auth/auth_errors.dart';
+
+AuthErrorKind kindOf(Object e, [AuthAction action = AuthAction.login]) =>
+    describeAuthError(e, action: action).kind;
+
+void main() {
+  group('network', () {
+    test('device offline', () {
+      final m = describeAuthError(AuthNetworkException('matrix.org',
+          deviceOffline: true,
+          cause: Exception("Failed host lookup: 'matrix.org'")));
+      expect(m.kind, AuthErrorKind.offline);
+      expect(m.title, AuthErrorStrings.offlineTitle);
+      expect(m.detail, contains('Failed host lookup'));
+    });
+
+    test('server unreachable names the host', () {
+      final m = describeAuthError(AuthNetworkException('nope.example',
+          deviceOffline: false, cause: Exception('Connection refused')));
+      expect(m.kind, AuthErrorKind.serverUnreachable);
+      expect(m.title, contains('nope.example'));
+    });
+
+    test('timeout (wrapped or raw)', () {
+      expect(
+          kindOf(AuthNetworkException('x.org',
+              deviceOffline: false, cause: TimeoutException('slow'))),
+          AuthErrorKind.timeout);
+      expect(kindOf(TimeoutException('slow')), AuthErrorKind.timeout);
+    });
+
+    test('raw ClientException / SocketException text is a network error', () {
+      final e = Exception('ClientException with SocketException: Failed host '
+          "lookup: 'matrix.org' (OS Error: No address associated with "
+          'hostname, errno = 7)');
+      expect(isNetworkError(e), isTrue);
+      final m = describeAuthError(e);
+      expect(m.kind, AuthErrorKind.offline);
+      expect(m.title, isNot(contains('ClientException')));
+      expect(m.detail, contains('ClientException'));
+    });
+
+    test('browser fetch failures are network errors', () {
+      expect(isNetworkError(Exception('XMLHttpRequest error.')), isTrue);
+      expect(isNetworkError(Exception('http error response')), isFalse);
+    });
+  });
+
+  test('not a Matrix homeserver', () {
+    final m = describeAuthError(
+        NotAHomeserverException('example.com', const FormatException('<html')));
+    expect(m.kind, AuthErrorKind.notAHomeserver);
+    expect(m.title, contains('example.com'));
+  });
+
+  group('errcodes', () {
+    test('M_FORBIDDEN on login = wrong username or password', () {
+      final m = describeAuthError(const AuthServerException('M_FORBIDDEN',
+          serverMessage: 'Invalid username or password'));
+      expect(m.kind, AuthErrorKind.wrongCredentials);
+      expect(m.title, AuthErrorStrings.wrongCredentialsTitle);
+      expect(m.detail, 'M_FORBIDDEN: Invalid username or password');
+    });
+
+    test('M_FORBIDDEN on the SSO callback = invalid/expired token', () {
+      expect(kindOf(const AuthServerException('M_FORBIDDEN'), AuthAction.sso),
+          AuthErrorKind.ssoTokenInvalid);
+      expect(
+          kindOf(const AuthServerException('M_UNKNOWN_TOKEN'), AuthAction.sso),
+          AuthErrorKind.ssoTokenInvalid);
+    });
+
+    test('M_FORBIDDEN on register = sign-up disabled', () {
+      expect(
+          kindOf(const AuthServerException('M_FORBIDDEN'), AuthAction.register),
+          AuthErrorKind.registrationDisabled);
+    });
+
+    test('M_USER_DEACTIVATED', () {
+      expect(kindOf(const AuthServerException('M_USER_DEACTIVATED')),
+          AuthErrorKind.userDeactivated);
+    });
+
+    test('M_LIMIT_EXCEEDED shows retry-after when present', () {
+      final m = describeAuthError(
+          const AuthServerException('M_LIMIT_EXCEEDED', retryAfterMs: 12300));
+      expect(m.kind, AuthErrorKind.rateLimited);
+      expect(m.hint, contains('13 seconds'));
+      expect(
+          describeAuthError(const AuthServerException('M_LIMIT_EXCEEDED'))
+              .hint,
+          AuthErrorStrings.rateLimitedHint);
+      expect(
+          describeAuthError(const AuthServerException('M_LIMIT_EXCEEDED',
+                  retryAfterMs: 400))
+              .hint,
+          contains('1 second '));
+    });
+
+    test('registration errors', () {
+      const r = AuthAction.register;
+      expect(kindOf(const AuthServerException('M_USER_IN_USE'), r),
+          AuthErrorKind.usernameTaken);
+      expect(kindOf(const AuthServerException('M_INVALID_USERNAME'), r),
+          AuthErrorKind.invalidUsername);
+      expect(kindOf(const AuthServerException('M_WEAK_PASSWORD'), r),
+          AuthErrorKind.weakPassword);
+      expect(kindOf(const AuthServerException('M_PASSWORD_TOO_SHORT'), r),
+          AuthErrorKind.weakPassword);
+    });
+
+    test('an errcode inside an unwrapped error text is still recognized', () {
+      expect(kindOf(Exception('M_FORBIDDEN: Invalid username/password')),
+          AuthErrorKind.wrongCredentials);
+      expect(kindOf(Exception('SSO login failed: M_FORBIDDEN'), AuthAction.sso),
+          AuthErrorKind.ssoTokenInvalid);
+    });
+
+    test('an unknown errcode falls back to "Something went wrong"', () {
+      final m = describeAuthError(
+          const AuthServerException('M_UNRECOGNIZED', serverMessage: 'nope'));
+      expect(m.kind, AuthErrorKind.unknown);
+      expect(m.detail, 'M_UNRECOGNIZED: nope');
+    });
+  });
+
+  test('registration needing the web', () {
+    expect(
+        kindOf(const RegistrationRequiresWebException('https://x.org', []),
+            AuthAction.register),
+        AuthErrorKind.registrationDisabled);
+  });
+
+  test('anything else: generic title + the raw text as detail', () {
+    final m = describeAuthError(StateError('boom'));
+    expect(m.kind, AuthErrorKind.unknown);
+    expect(m.title, AuthErrorStrings.unknownTitle);
+    expect(m.detail, contains('boom'));
+  });
+}

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/platform/url_helper.dart';
 import '../../models/login_flows_result.dart';
+import 'auth_error_card.dart';
+import 'auth_errors.dart';
 import 'auth_provider.dart';
 import 'sso_callback.dart';
 import 'sso_provider.dart';
@@ -24,6 +26,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
+
+  /// The last sign-in failure, shown inline as a friendly card (G20).
+  AuthErrorMessage? _error;
 
   /// The input currently being used to look up login flows.
   String _lookupInput = 'matrix.org';
@@ -84,6 +89,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // "provider … disposed during loading state".
     final hs = rawHs.startsWith('http') ? rawHs : 'https://$rawHs';
     debugPrint('[sso] exchanging token (len=${token.length}) on hs=$hs');
+    if (mounted) setState(() => _error = null);
 
     await ref
         .read(authProvider.notifier)
@@ -94,8 +100,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     debugPrint('[sso] token exchange done; error=$err');
     if (err != null) {
       _exchangingToken = null; // allow a retry after a failed exchange
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('SSO login failed: $err')));
+      setState(() => _error = describeAuthError(err, action: AuthAction.sso));
     } else {
       context.go('/groups');
     }
@@ -174,6 +179,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _submitPassword(String resolvedHomeserver) async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _error = null);
     await ref.read(authProvider.notifier).login(
           resolvedHomeserver: resolvedHomeserver,
           username: _usernameCtrl.text.trim(),
@@ -182,8 +188,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!mounted) return;
     final err = ref.read(authProvider).error;
     if (err != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(err.toString())));
+      setState(() => _error = describeAuthError(err));
     } else {
       context.go('/groups');
     }
@@ -255,6 +260,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           ?.copyWith(color: Colors.grey),
                       textAlign: TextAlign.center),
                   const SizedBox(height: 32),
+
+                  if (_error != null) ...[
+                    AuthErrorCard(message: _error!),
+                    const SizedBox(height: 16),
+                  ],
 
                   // ── Server field ───────────────────────────────────────
                   TextFormField(

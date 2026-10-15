@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/matrix/auth_gateway.dart';
 import '../../core/platform/url_helper.dart';
+import 'auth_error_card.dart';
+import 'auth_errors.dart';
 import 'auth_provider.dart';
 
 /// In-app account creation (Phase F). Works against homeservers that allow open
@@ -28,6 +30,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   /// Set when the homeserver needs interactive registration we can't do in-app.
   RegistrationRequiresWebException? _needsWeb;
 
+  /// Any other registration failure, shown as a friendly card (G20).
+  AuthErrorMessage? _error;
+
   @override
   void dispose() {
     _serverCtrl.dispose();
@@ -43,7 +48,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _needsWeb = null);
+    setState(() {
+      _needsWeb = null;
+      _error = null;
+    });
     await ref.read(authProvider.notifier).register(
           resolvedHomeserver: _resolvedHomeserver,
           username: _usernameCtrl.text.trim(),
@@ -56,8 +64,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     } else if (err is RegistrationRequiresWebException) {
       setState(() => _needsWeb = err);
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Registration failed: $err')));
+      setState(() =>
+          _error = describeAuthError(err, action: AuthAction.register));
     }
   }
 
@@ -133,6 +141,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             )
                           : const Text('Create account'),
                     ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 20),
+                      AuthErrorCard(message: _error!),
+                    ],
                     if (_needsWeb != null) ...[
                       const SizedBox(height: 20),
                       _WebFallbackCard(info: _needsWeb!),
@@ -179,7 +191,8 @@ class _WebFallbackCard extends StatelessWidget {
                 'and sign in.'),
             const SizedBox(height: 12),
             FilledButton.tonalIcon(
-              onPressed: () => launchExternalUrl(info.homeserverUrl),
+              key: const Key('openSignUpWebsiteBtn'),
+              onPressed: () => launchExternalUrl(info.webUrl),
               icon: const Icon(Icons.open_in_new),
               label: const Text('Open homeserver website'),
             ),
