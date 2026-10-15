@@ -24,6 +24,9 @@ final pokeDebounceProvider =
     Provider<Duration>((ref) => const Duration(seconds: 5));
 
 final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
+  // Rebuild (dispose + restart) when the signed-in account's ledger DB is
+  // swapped (G4), so it never keeps reading/writing a closed or foreign DB.
+  ref.watch(appDatabaseProvider);
   final engine = SyncEngine(ref);
   engine.start();
   ref.onDispose(engine.dispose);

@@ -3,7 +3,9 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../helpers/in_memory_database.dart';
 import 'package:money_ledger/core/sync/sync_health.dart';
 
 void main() {
@@ -55,7 +57,11 @@ void main() {
 
   group('SyncHealth notifier', () {
     test('repeated failures then a success drive failing on and off', () {
-      final c = ProviderContainer();
+      final db = openTestDatabase();
+      addTearDown(db.close);
+      final c = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWith((ref) => db)],
+      );
       addTearDown(c.dispose);
       final notifier = c.read(syncHealthProvider.notifier);
 
@@ -68,6 +74,33 @@ void main() {
       notifier.reportSuccess();
       expect(c.read(syncHealthProvider).failing, isFalse);
       expect(c.read(syncHealthProvider).lastSuccessAt, isNotNull);
+    });
+
+    test("account A's failure state is gone after switching to B (G4)", () {
+      // appDatabaseProvider is swapped exactly on an account switch.
+      final dbA = openTestDatabase();
+      final dbB = openTestDatabase();
+      addTearDown(dbA.close);
+      addTearDown(dbB.close);
+      var account = dbA;
+      final c = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWith((ref) => account)],
+      );
+      addTearDown(c.dispose);
+      c.listen(syncHealthProvider, (_, _) {});
+
+      final notifier = c.read(syncHealthProvider.notifier);
+      for (var i = 0; i < kSyncFailureThreshold; i++) {
+        notifier.reportFailure(Exception('offline'));
+      }
+      expect(c.read(syncHealthProvider).failing, isTrue);
+
+      account = dbB; // switch to account B
+      c.invalidate(appDatabaseProvider);
+      final s = c.read(syncHealthProvider);
+      expect(s.failing, isFalse);
+      expect(s.lastError, isNull);
+      expect(s.lastErrorAt, isNull);
     });
   });
 }

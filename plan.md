@@ -61,11 +61,15 @@ groups. If user A logs out and user B logs in on the same device/browser, B sees
 all of A's groups, expenses and member list, and B's `SyncEngine` starts sending
 digests for A's groups (dropped by peers' membership gate, but still leaks
 metadata to A's peers and spams them).
-- [ ] Decide: per-account DB file (`money_ledger_db_<hash(mxid)>`) **or** wipe
-      on logout with a "export CSV first?" warning. Recommendation: per-account DB
-      (logout stays non-destructive; re-login restores instantly)
-- [ ] Implement + make `appDatabaseProvider` depend on the logged-in MXID
-- [ ] Test: two accounts on one device never see each other's groups
+- [x] Per-account DB `money_ledger_<FNV-64 hex of mxid>` (`account_database.dart`);
+      logout non-destructive; signed-out = `SignedOutExecutor` (no DB opened)
+- [x] `appDatabaseProvider` watches `accountUserIdProvider`; SyncEngine, LedgerSyncer,
+      SyncHealth rebuild on account switch; onboarding flag is now per account
+- [x] One-time legacy adoption of `money_ledger_db` (only by a plausible owner;
+      INSERT OR IGNORE, marked on both sides; native + web)
+- [x] Tests: 17 new (naming, adoption, A→B→A switch, SyncHealth reset) — 282 green
+- [ ] Real-account switch on device → G7 smoke checklist
+- [ ] Later: delete the adopted legacy DB once adoption is confirmed (G18)
 
 ### G5. No recovery when the last device is lost 🟠 (data loss)
 Ledger data exists only on members' devices. Recovery relies on *another device*
@@ -181,6 +185,10 @@ Found in G1: with the CPU busy (emulator running), `test/integration/anti_entrop
 ("a lost delete is repaired…") and `multi_device_test.dart` ("a second device populates
 itself…") fail intermittently; `-j 2` is green. The suite also logs "Bad state: Can't
 re-open a database after closing it" from the digest handler → async work outlives teardown.
+- [ ] `SyncEngine` uses its `Ref` after an await without a `mounted` check
+      ("Cannot use the Ref of SyncEngine after it has been disposed" in
+      `_sendDigest`) — with per-account DBs this can now happen in production on
+      an account switch; guard every post-await `_ref` use
 - [ ] Make the sync tests deterministic (await/flush instead of timing; cancel
       timers/subscriptions before closing the DB)
 - [ ] Run the full suite 5× at default concurrency with the emulator running — all green
@@ -236,7 +244,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G3 — release keystore
 - [x] G2 — vodozemac build reproducible (upgrade to 0.6.0)
 - [ ] CP-accounts — create test accounts A/B with Leo (`~/.config/moneyledger-test/accounts.env`)
-- [ ] G4 — per-account database
+- [x] G4 — per-account database
+- [~] G19 — SyncEngine ref-after-dispose + flaky integration tests (pulled forward)
 - [ ] G8 — settlements list + undo
 - [ ] G9 — leave/delete group
 - [ ] G10 — rename group / currency
@@ -250,7 +259,6 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [ ] G14 — digest size measurement
 - [ ] G16 — nice-to-haves
-- [ ] G19 — flaky integration tests
 - [ ] G20 — friendly login error messages
 - [ ] G21 — licensing (AGPL) — needs Leo's decision
 - [ ] G22 — dependency upgrades (matrix, file_picker)

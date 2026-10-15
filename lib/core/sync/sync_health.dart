@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/expenses/expenses_provider.dart';
+
 part 'sync_health.g.dart';
 
 /// How many consecutive replication/digest failures before the UI flips to the
@@ -36,11 +38,11 @@ class SyncHealthState {
   bool get failing => consecutiveFailures >= kSyncFailureThreshold;
 
   SyncHealthState afterFailure(Object error, int now) => SyncHealthState(
-        consecutiveFailures: consecutiveFailures + 1,
-        lastError: error.toString(),
-        lastErrorAt: now,
-        lastSuccessAt: lastSuccessAt,
-      );
+    consecutiveFailures: consecutiveFailures + 1,
+    lastError: error.toString(),
+    lastErrorAt: now,
+    lastSuccessAt: lastSuccessAt,
+  );
 
   SyncHealthState afterSuccess(int now) =>
       SyncHealthState(lastSuccessAt: now); // resets failures + clears the error
@@ -52,7 +54,14 @@ class SyncHealthState {
 @Riverpod(keepAlive: true)
 class SyncHealth extends _$SyncHealth {
   @override
-  SyncHealthState build() => const SyncHealthState();
+  SyncHealthState build() {
+    // Per account (G4): the ledger DB is swapped exactly on an account switch,
+    // so the new account starts from a clean slate instead of showing the
+    // previous account's failures / last error. (Watching the DB rather than
+    // the account id keeps this off the auth/Matrix-client chain.)
+    ref.watch(appDatabaseProvider);
+    return const SyncHealthState();
+  }
 
   void reportSuccess() =>
       state = state.afterSuccess(DateTime.now().millisecondsSinceEpoch);

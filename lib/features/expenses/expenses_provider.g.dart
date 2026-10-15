@@ -8,13 +8,41 @@ part of 'expenses_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// The **current account's** ledger database (Phase G4: one DB per Matrix
+/// account, see `account_database.dart`). Rebuilds when the signed-in account
+/// changes: the previous account's DB is closed and every DAO / stream /
+/// SyncEngine / LedgerSyncer that watches it rebuilds against the new one.
+///
+/// While signed out no database is opened: a [SignedOutExecutor] placeholder
+/// (reads → no rows, writes → error) keeps the provider non-nullable for the
+/// many synchronous consumers; a widget still mounted during the logout
+/// transition sees an empty ledger, never another account's data.
 
 @ProviderFor(appDatabase)
 final appDatabaseProvider = AppDatabaseProvider._();
 
+/// The **current account's** ledger database (Phase G4: one DB per Matrix
+/// account, see `account_database.dart`). Rebuilds when the signed-in account
+/// changes: the previous account's DB is closed and every DAO / stream /
+/// SyncEngine / LedgerSyncer that watches it rebuilds against the new one.
+///
+/// While signed out no database is opened: a [SignedOutExecutor] placeholder
+/// (reads → no rows, writes → error) keeps the provider non-nullable for the
+/// many synchronous consumers; a widget still mounted during the logout
+/// transition sees an empty ledger, never another account's data.
+
 final class AppDatabaseProvider
     extends $FunctionalProvider<AppDatabase, AppDatabase, AppDatabase>
     with $Provider<AppDatabase> {
+  /// The **current account's** ledger database (Phase G4: one DB per Matrix
+  /// account, see `account_database.dart`). Rebuilds when the signed-in account
+  /// changes: the previous account's DB is closed and every DAO / stream /
+  /// SyncEngine / LedgerSyncer that watches it rebuilds against the new one.
+  ///
+  /// While signed out no database is opened: a [SignedOutExecutor] placeholder
+  /// (reads → no rows, writes → error) keeps the provider non-nullable for the
+  /// many synchronous consumers; a widget still mounted during the logout
+  /// transition sees an empty ledger, never another account's data.
   AppDatabaseProvider._()
     : super(
         from: null,
@@ -48,7 +76,7 @@ final class AppDatabaseProvider
   }
 }
 
-String _$appDatabaseHash() => r'98a09c6cfd43966155dfbdb0787fa18c85438e13';
+String _$appDatabaseHash() => r'663e21d172f630ed922d941b7c9f4df2da1d7cff';
 
 @ProviderFor(expensesDao)
 final expensesDaoProvider = ExpensesDaoProvider._();

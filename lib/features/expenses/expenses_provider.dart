@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/database/account_database.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
@@ -14,12 +16,34 @@ import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/sync_health.dart';
+import '../auth/auth_provider.dart';
 import '../../models/expense_model.dart';
 
 part 'expenses_provider.g.dart';
 
+/// Opens the ledger DB for a signed-in MXID. Injectable so tests can back
+/// accounts with temp-file / in-memory databases keyed by name.
+final accountDatabaseOpenerProvider =
+    Provider<AppDatabase Function(String mxid)>((ref) => openAccountDatabase);
+
+/// The **current account's** ledger database (Phase G4: one DB per Matrix
+/// account, see `account_database.dart`). Rebuilds when the signed-in account
+/// changes: the previous account's DB is closed and every DAO / stream /
+/// SyncEngine / LedgerSyncer that watches it rebuilds against the new one.
+///
+/// While signed out no database is opened: a [SignedOutExecutor] placeholder
+/// (reads → no rows, writes → error) keeps the provider non-nullable for the
+/// many synchronous consumers; a widget still mounted during the logout
+/// transition sees an empty ledger, never another account's data.
 @Riverpod(keepAlive: true)
-AppDatabase appDatabase(Ref ref) => AppDatabase();
+AppDatabase appDatabase(Ref ref) {
+  final mxid = ref.watch(accountUserIdProvider);
+  final db = mxid == null
+      ? AppDatabase.forTesting(SignedOutExecutor())
+      : ref.read(accountDatabaseOpenerProvider)(mxid);
+  ref.onDispose(db.close);
+  return db;
+}
 
 @Riverpod(keepAlive: true)
 ExpensesDao expensesDao(Ref ref) =>

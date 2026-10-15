@@ -102,8 +102,18 @@ class AppSettings extends Table {
 @DriftDatabase(
     tables: [Groups, Expenses, Settlements, Members, PeerSyncStates, AppSettings])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
-  AppDatabase.forTesting(super.e);
+  /// Opens the on-device database file/store called [name] (per-account ledger
+  /// DBs are named via `accountDatabaseName` — see `account_database.dart`).
+  /// [onOpen] runs once per open, after migrations, inside drift's
+  /// `beforeOpen` (used to adopt the pre-per-account legacy ledger).
+  AppDatabase.named(String name, {this.onOpen})
+      : super(openNamedConnection(name));
+
+  /// Wraps an arbitrary executor (in-memory / temp-file DBs in tests).
+  AppDatabase.forTesting(super.e, {this.onOpen});
+
+  /// Hook run after migrations on every open — see [AppDatabase.named].
+  final Future<void> Function(AppDatabase db)? onOpen;
 
   @override
   int get schemaVersion => 5;
@@ -155,12 +165,19 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(appSettings);
           }
         },
+        beforeOpen: (_) async {
+          final hook = onOpen;
+          if (hook != null) await hook(this);
+        },
       );
 }
 
-QueryExecutor _openConnection() {
+/// The platform executor for the database called [name]: a `<name>.sqlite`
+/// file in the app documents dir on native, OPFS/IndexedDB on web
+/// (drift_flutter picks the best available web storage).
+QueryExecutor openNamedConnection(String name) {
   return driftDatabase(
-    name: 'money_ledger_db',
+    name: name,
     web: kIsWeb ? DriftWebOptions(sqlite3Wasm: Uri.parse('sqlite3.wasm'), driftWorker: Uri.parse('drift_worker.js')) : null,
   );
 }

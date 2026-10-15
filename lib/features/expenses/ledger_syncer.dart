@@ -29,6 +29,9 @@ const _recordTypes = {
 };
 
 final ledgerSyncerProvider = Provider.autoDispose<LedgerSyncer>((ref) {
+  // Rebuild (dispose + restart) when the signed-in account's ledger DB is
+  // swapped (G4), so it never keeps reading/writing a closed or foreign DB.
+  ref.watch(appDatabaseProvider);
   final syncer = LedgerSyncer(ref);
   syncer.start();
   ref.onDispose(syncer.dispose);

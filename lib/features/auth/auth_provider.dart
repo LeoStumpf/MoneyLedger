@@ -59,6 +59,18 @@ bool isLoggedIn(Ref ref) {
   return ref.watch(loginStateProvider).value ?? false;
 }
 
+/// The signed-in account's MXID, or `null` while signed out / still loading.
+/// Selects the per-account ledger database (`appDatabaseProvider`), so it only
+/// notifies when the account actually changes (Riverpod filters equal values) —
+/// re-validating the login state doesn't reopen the DB.
+@Riverpod(keepAlive: true)
+String? accountUserId(Ref ref) {
+  final loggedIn = ref.watch(loginStateProvider).value ?? false;
+  if (!loggedIn) return null;
+  final id = ref.watch(authGatewayProvider).value?.userId;
+  return (id == null || id.isEmpty) ? null : id;
+}
+
 /// Resolves a homeserver (with .well-known discovery) and returns its login
 /// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
 @riverpod

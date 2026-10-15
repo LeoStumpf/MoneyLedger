@@ -167,6 +167,61 @@ final class IsLoggedInProvider extends $FunctionalProvider<bool, bool, bool>
 
 String _$isLoggedInHash() => r'a517a967b551e17d5537c8bd4aafdd7d7ab8cf9c';
 
+/// The signed-in account's MXID, or `null` while signed out / still loading.
+/// Selects the per-account ledger database (`appDatabaseProvider`), so it only
+/// notifies when the account actually changes (Riverpod filters equal values) —
+/// re-validating the login state doesn't reopen the DB.
+
+@ProviderFor(accountUserId)
+final accountUserIdProvider = AccountUserIdProvider._();
+
+/// The signed-in account's MXID, or `null` while signed out / still loading.
+/// Selects the per-account ledger database (`appDatabaseProvider`), so it only
+/// notifies when the account actually changes (Riverpod filters equal values) —
+/// re-validating the login state doesn't reopen the DB.
+
+final class AccountUserIdProvider
+    extends $FunctionalProvider<String?, String?, String?>
+    with $Provider<String?> {
+  /// The signed-in account's MXID, or `null` while signed out / still loading.
+  /// Selects the per-account ledger database (`appDatabaseProvider`), so it only
+  /// notifies when the account actually changes (Riverpod filters equal values) —
+  /// re-validating the login state doesn't reopen the DB.
+  AccountUserIdProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountUserIdProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountUserIdHash();
+
+  @$internal
+  @override
+  $ProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  String? create(Ref ref) {
+    return accountUserId(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String?>(value),
+    );
+  }
+}
+
+String _$accountUserIdHash() => r'c48b55af220f09787c66082538f3ffa99d81f2a5';
+
 /// Resolves a homeserver (with .well-known discovery) and returns its login
 /// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
 

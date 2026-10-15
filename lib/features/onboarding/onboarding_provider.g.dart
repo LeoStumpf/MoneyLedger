@@ -50,12 +50,23 @@ final class SettingsDaoProvider
 
 String _$settingsDaoHash() => r'3fb5dd0a2aeb1dba479a4ba86b8afa7e36b58827';
 
+/// The flag lives in the **per-account** ledger DB (G4), so onboarding is
+/// shown once per account on a device. Signed out there is no DB to read and
+/// the router never forces onboarding anyway → report "seen".
+
 @ProviderFor(onboardingSeenStream)
 final onboardingSeenStreamProvider = OnboardingSeenStreamProvider._();
+
+/// The flag lives in the **per-account** ledger DB (G4), so onboarding is
+/// shown once per account on a device. Signed out there is no DB to read and
+/// the router never forces onboarding anyway → report "seen".
 
 final class OnboardingSeenStreamProvider
     extends $FunctionalProvider<AsyncValue<bool>, bool, Stream<bool>>
     with $FutureModifier<bool>, $StreamProvider<bool> {
+  /// The flag lives in the **per-account** ledger DB (G4), so onboarding is
+  /// shown once per account on a device. Signed out there is no DB to read and
+  /// the router never forces onboarding anyway → report "seen".
   OnboardingSeenStreamProvider._()
     : super(
         from: null,
@@ -82,7 +93,7 @@ final class OnboardingSeenStreamProvider
 }
 
 String _$onboardingSeenStreamHash() =>
-    r'c1c35dfd71954e4f63f03aff88e01d83de52024f';
+    r'8321bd1094cec9dc52da00c31de0dc557e7ccab5';
 
 /// Synchronous view used by the router. Defaults to **seen** until the flag
 /// loads, so the common case (returning user) never flashes the onboarding
