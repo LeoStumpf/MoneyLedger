@@ -367,8 +367,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G28+G29 — settle any debt; currency picker, sign-out confirm, status lag, SSO label (pulled forward: features before i18n)
 - [x] G20+G25 — friendly login errors, matrix.org sign-up link, late onboarding
 - [x] G30 — first-login recovery + auth timeouts
-- [ ] G31 — background sync on Android
-- [~] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
+- [~] G31 — background sync on Android (feature before i18n)
+- [ ] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
 - [ ] G17 — design pass
 - [ ] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup
