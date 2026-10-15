@@ -378,10 +378,16 @@ class _SyncStatusIcon extends ConsumerWidget {
         onPressed: null,
       );
     }
-    final waitingFor = status.pendingPeers.first;
+    // A pending peer with no logged-in device isn't a sync error — say so
+    // instead of "waiting" forever (G24).
+    final noDevice =
+        status.pendingPeers.where(health.unreachablePeers.contains).firstOrNull;
+    final waitingFor = noDevice ?? status.pendingPeers.first;
     return IconButton(
       icon: const Icon(Icons.cloud_queue),
-      tooltip: 'Waiting for $waitingFor…',
+      tooltip: noDevice != null
+          ? '$noDevice has no active device — will sync when they sign in'
+          : 'Waiting for $waitingFor…',
       onPressed: null,
     );
   }

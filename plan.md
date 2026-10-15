@@ -239,10 +239,13 @@ Found in G7a (real devices):
   until the next digest (≤10 min). Subscribe before the first sync, or buffer.
 - Duplicate startup sends: resync_request ×3 within ~200 ms, digest ×2 at
   start (SyncEngine rebuilt during the per-account DB switch-over).
-- [ ] Treat "no target device reached" / encryption disabled as a failure
-- [ ] Guarantee the to-device listener is attached before the first sync
-- [ ] De-duplicate startup resync/digest sends
-- [ ] Tests with the fake transport
+- [x] `TransportUnavailableException` (not logged in / encryption off) = failure;
+      `SendResult.unreachableUsers` = peer without device → shown, not a failure
+- [x] `MatrixLedgerTransport.forClient` subscribes before `client.init`;
+      `BufferedInbox` (500, account-tagged) replays to late listeners
+- [x] De-dup: engines don't start on the signed-out placeholder DB;
+      `kGroupResyncCooldown` (30 s) — exactly one initial digest/resync per group
+- [x] 24 new tests (317 green); verified on phone + emulator
 
 ### G25. Onboarding flag loads late → onboarding pops up minutes after login 🟡
 G7a: on the emulator the groups page showed first and onboarding replaced it
@@ -285,8 +288,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G19 — SyncEngine ref-after-dispose + flaky integration tests (pulled forward)
 - [x] G7a — first real-device sync: phone (A) ↔ emulator (B) — all 10 steps pass after fixing app-wide sync host
 - [x] G8 — settlements list + undo
-- [~] G24 — silent no-op sends + startup message loss (pulled forward)
-- [ ] G9 — leave/delete group
+- [x] G24 — silent no-op sends + startup message loss (pulled forward)
+- [~] G9 — leave/delete group
 - [ ] G10 — rename group / currency
 - [ ] G7 — smoke checklist + emulator pass (iOS: document unsupported — no macOS)
 - [ ] G12 — app identity, i18n EN+DE, privacy/about

@@ -68,6 +68,9 @@ class LedgerSyncer {
   bool get _alive => !_disposed && !_db.isClosed;
 
   Future<void> start() async {
+    // Signed out: nothing to sync into. Not subscribing also lets the
+    // transport buffer inbound messages until the account's syncer attaches.
+    if (_db.isSignedOutPlaceholder) return;
     final LedgerTransport transport;
     try {
       transport = await _ref.read(ledgerTransportProvider.future);

@@ -12,5 +12,6 @@ part 'transport_provider.g.dart';
 @Riverpod(keepAlive: true)
 Future<LedgerTransport> ledgerTransport(Ref ref) async {
   final client = await ref.watch(matrixClientProvider.future);
-  return MatrixLedgerTransport(client);
+  // Same instance whose inbound listener matrixClient attached before init.
+  return MatrixLedgerTransport.forClient(client);
 }

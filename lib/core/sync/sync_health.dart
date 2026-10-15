@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/expenses/expenses_provider.dart';
+import '../matrix/ledger_transport.dart';
 
 part 'sync_health.g.dart';
 
@@ -27,11 +28,18 @@ class SyncHealthState {
   /// When sync last provably succeeded (ms epoch); null until the first success.
   final int? lastSuccessAt;
 
+  /// Peers (MXIDs) that had **no device** at our last send to them — not a
+  /// transport error (they're simply not logged in anywhere right now), so it
+  /// never counts towards [failing]; the UI says "X has no active device".
+  /// Cleared per peer as soon as a later send finds one of their devices.
+  final Set<String> unreachablePeers;
+
   const SyncHealthState({
     this.consecutiveFailures = 0,
     this.lastError,
     this.lastErrorAt,
     this.lastSuccessAt,
+    this.unreachablePeers = const {},
   });
 
   /// Whether the UI should surface a sync problem.
@@ -42,10 +50,23 @@ class SyncHealthState {
     lastError: error.toString(),
     lastErrorAt: now,
     lastSuccessAt: lastSuccessAt,
+    unreachablePeers: unreachablePeers,
   );
 
-  SyncHealthState afterSuccess(int now) =>
-      SyncHealthState(lastSuccessAt: now); // resets failures + clears the error
+  /// A send went through. Resets failures and clears the error; [reached]
+  /// targets leave [unreachablePeers], [unreachable] ones join it.
+  SyncHealthState afterSuccess(
+    int now, {
+    Set<String> reached = const {},
+    Set<String> unreachable = const {},
+  }) =>
+      SyncHealthState(
+        lastSuccessAt: now,
+        unreachablePeers: {
+          ...unreachablePeers.difference(reached),
+          ...unreachable,
+        },
+      );
 }
 
 /// Holds [SyncHealthState] for the whole session. `keepAlive` so it survives
@@ -69,6 +90,17 @@ class SyncHealth extends _$SyncHealth {
   void reportSuccess() {
     if (!ref.mounted) return;
     state = state.afterSuccess(DateTime.now().millisecondsSinceEpoch);
+  }
+
+  /// A send to [targets] completed with [result]: success for the transport,
+  /// plus per-peer "has a device / has none" bookkeeping.
+  void reportDelivery(Set<String> targets, SendResult result) {
+    if (!ref.mounted) return;
+    state = state.afterSuccess(
+      DateTime.now().millisecondsSinceEpoch,
+      reached: targets.difference(result.unreachableUsers),
+      unreachable: result.unreachableUsers,
+    );
   }
 
   void reportFailure(Object error) {

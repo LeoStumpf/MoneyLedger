@@ -40,18 +40,105 @@ class TransportMessage {
   });
 }
 
+/// Thrown by [LedgerTransport.sendToUsers] when nothing can be sent at all:
+/// the relay isn't signed in, or end-to-end encryption isn't set up (the
+/// Matrix SDK silently drops to-device sends when encryption is disabled).
+/// A real transport failure — it counts against `SyncHealth`.
+class TransportUnavailableException implements Exception {
+  final String reason;
+  const TransportUnavailableException(this.reason);
+
+  @override
+  String toString() => 'Transport unavailable: $reason';
+}
+
+/// What one [LedgerTransport.sendToUsers] call reached.
+///
+/// "No device found" for **another** user is not a transport error — that
+/// person may simply have no logged-in device right now (the message can't be
+/// queued for a device that doesn't exist yet; anti-entropy catches them up
+/// once they sign in). It is reported here, distinctly, so the UI can say
+/// "B has no active device" instead of showing a scary error. The sender's
+/// **own** account is never listed: having no *other* own device is normal.
+class SendResult {
+  /// Targets (other than the sender's own MXID) with no device to send to.
+  final Set<String> unreachableUsers;
+
+  /// How many devices the payload was handed to for delivery.
+  final int deviceCount;
+
+  const SendResult({this.unreachableUsers = const {}, this.deviceCount = 0});
+
+  static const nothingToSend = SendResult();
+}
+
+/// One candidate device of a target user, as seen by the transport adapter.
+typedef TransportDevice = ({String deviceId, bool blocked});
+
+/// The pure delivery decision behind every real send (plain Dart so it is
+/// unit-testable without the Matrix SDK).
+class DevicePlan {
+  /// userId → device ids to send to (blocked devices and the sender's current
+  /// device removed — exactly what the SDK itself would skip).
+  final Map<String, List<String>> devices;
+
+  /// Targets other than [planDeviceSend]'s `selfUserId` with no sendable device.
+  final Set<String> unreachableUsers;
+
+  const DevicePlan({required this.devices, required this.unreachableUsers});
+
+  int get deviceCount =>
+      devices.values.fold(0, (sum, ids) => sum + ids.length);
+}
+
+/// Decides which devices of [targets] to send to, given every target's known
+/// [devicesByUser]. The sender's current device ([selfUserId]/[selfDeviceId])
+/// and blocked devices are excluded. A target other than [selfUserId] left
+/// with no device is *unreachable*; self with no other device is normal (a
+/// single-device user's digest/resync to self) and never reported.
+DevicePlan planDeviceSend({
+  required Set<String> targets,
+  required String selfUserId,
+  required String? selfDeviceId,
+  required Map<String, Iterable<TransportDevice>> devicesByUser,
+}) {
+  final devices = <String, List<String>>{};
+  final unreachable = <String>{};
+  for (final user in targets) {
+    if (user.isEmpty) continue;
+    final ids = [
+      for (final d in devicesByUser[user] ?? const <TransportDevice>[])
+        if (!d.blocked && !(user == selfUserId && d.deviceId == selfDeviceId))
+          d.deviceId
+    ];
+    if (ids.isNotEmpty) {
+      devices[user] = ids;
+    } else if (user != selfUserId) {
+      unreachable.add(user);
+    }
+  }
+  return DevicePlan(devices: devices, unreachableUsers: unreachable);
+}
+
 /// The operations the app needs from its relay layer.
 abstract interface class LedgerTransport {
   /// This device's own Matrix ID.
   String get userId;
 
   /// Inbound decrypted app payloads. Broadcast — multiple listeners supported.
+  /// Messages that arrive while **nobody** listens (app start before the sync
+  /// components attach, an account-DB switch) are buffered and replayed to the
+  /// next listeners — see `BufferedInbox`.
   Stream<TransportMessage> get onMessage;
 
   /// Encrypts and relays [content] (tagged [type]) to every device of every
-  /// MXID in [userIds]. Best-effort: the homeserver queues undelivered
-  /// to-device messages, and the SDK retries failed sends.
-  Future<void> sendToUsers(
+  /// MXID in [userIds]. Best-effort once handed over: the homeserver queues
+  /// undelivered to-device messages, and the SDK retries failed sends.
+  ///
+  /// Throws [TransportUnavailableException] when nothing can be sent at all
+  /// (signed out / encryption not ready). Targets without any device are
+  /// reported in [SendResult.unreachableUsers] rather than thrown.
+  Future<SendResult> sendToUsers(
     Set<String> userIds,
     String type,
     Map<String, dynamic> content,

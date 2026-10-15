@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
-import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/expenses/expenses_provider.dart';
@@ -26,6 +26,13 @@ final syncIntervalProvider =
 /// Debounce between receiving a ledger payload and sending the "ack" digest.
 final pokeDebounceProvider =
     Provider<Duration>((ref) => const Duration(seconds: 5));
+
+/// Rule 5 asks a digest's sender to bootstrap us into a group we don't know.
+/// A burst of digests naming the same unknown group (several peers / devices
+/// answering at once) must not fan out into one resync_request each: per group
+/// we ask at most once per this window (the bootstrap answer makes the group
+/// known; a lost answer is retried by the next digest after the window).
+const kGroupResyncCooldown = Duration(seconds: 30);
 
 final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
   // Rebuild (dispose + restart) when the signed-in account's ledger DB is
@@ -76,6 +83,7 @@ class SyncEngine {
   StreamSubscription<TransportMessage>? _sub;
   Timer? _periodic;
   final Map<String, Timer> _pokes = {};
+  final Map<String, int> _groupResyncAskedAt = {};
   bool _disposed = false;
 
   SyncEngine(Ref ref)
@@ -93,6 +101,10 @@ class SyncEngine {
   bool get _alive => !_disposed && !_db.isClosed;
 
   Future<void> start() async {
+    // Signed out: there is no account ledger to sync. (Pages that watch this
+    // provider directly may still build it during a login/logout transition;
+    // starting here would send a spurious empty-DB resync_request — G24.)
+    if (_db.isSignedOutPlaceholder) return;
     final LedgerTransport transport;
     try {
       transport = await _ref.read(ledgerTransportProvider.future);
@@ -101,6 +113,7 @@ class SyncEngine {
       return;
     }
     if (!_alive) return;
+    if (kDebugMode) debugPrint('[sync] engine started for ${transport.userId}');
     _transport = transport;
     _sub = transport.onMessage.listen(_onMessage);
     _periodic = Timer.periodic(
@@ -178,9 +191,9 @@ class SyncEngine {
   /// Health reports go to the (account-scoped, G4) [SyncHealth] — but only
   /// while this engine is still the live one, so a stale engine can't leak the
   /// previous account's failures into the next account's state.
-  void _reportSuccess() {
+  void _reportDelivery(Set<String> targets, SendResult result) {
     if (_alive && _ref.mounted) {
-      _ref.read(syncHealthProvider.notifier).reportSuccess();
+      _ref.read(syncHealthProvider.notifier).reportDelivery(targets, result);
     }
   }
 
@@ -219,14 +232,16 @@ class SyncEngine {
               .map((m) => m.matrixId!)
               .toSet();
       if (targets.isEmpty) return;
-      await transport.sendToUsers(targets, digestEventType,
+      final result = await transport.sendToUsers(targets, digestEventType,
           buildDigestContent(group, members, expenses, settlements, reply: reply));
+      if (!_alive) return;
       final now = DateTime.now().millisecondsSinceEpoch;
-      for (final t in targets) {
+      // Only targets that had a device were actually sent to.
+      for (final t in targets.difference(result.unreachableUsers)) {
         if (!_alive) return;
         await _syncStates.markDigestSent(groupId, t, now);
       }
-      _reportSuccess();
+      _reportDelivery(targets, result);
     } catch (e) {
       // After dispose / DB close an error is expected noise, not a sync fault.
       if (!_alive) return;
@@ -245,7 +260,15 @@ class SyncEngine {
       final group = await _groups.getGroup(groupId);
       if (!_alive) return;
       if (group == null) {
-        // Rule 5: we don't know this group — ask the sender to bootstrap us.
+        // Rule 5: we don't know this group — ask the sender to bootstrap us
+        // (at most once per group per cooldown window).
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final askedAt = _groupResyncAskedAt[groupId];
+        if (askedAt != null &&
+            now - askedAt < kGroupResyncCooldown.inMilliseconds) {
+          return;
+        }
+        _groupResyncAskedAt[groupId] = now;
         await transport.sendToUsers({msg.senderId}, resyncRequestEventType,
             {'v': protocolVersion, 'scope': 'group', 'group': groupId});
         return;

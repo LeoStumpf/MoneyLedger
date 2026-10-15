@@ -81,7 +81,9 @@ lib/
         settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, per account); never synced
     matrix/
       ledger_transport.dart       # LedgerTransport port + TransportMessage + event-type constants
-      matrix_ledger_transport.dart # Real adapter — encrypted to-device send/receive
+                                  #   + SendResult, TransportUnavailableException, pure planDeviceSend
+      matrix_ledger_transport.dart # Real adapter — encrypted to-device send/receive (forClient)
+      buffered_inbox.dart         # BufferedInbox: holds inbound payloads while nobody listens, replays
     sync/
       ledger_payloads.dart     # Plain-Dart payload codec (protocol v1) + bootstrap builder
       sync_engine.dart         # Anti-entropy: digest exchange + targeted repair + resync
@@ -186,8 +188,11 @@ re-validating login doesn't reopen) and opens the DB via the injectable
 (`ref.onDispose`) and every DAO / stream / `SyncEngine` / `LedgerSyncer` (both
 `ref.watch(appDatabaseProvider)`) rebuilds. **Logout is non-destructive**:
 re-login reopens the same DB. **Signed out, no DB is opened**: the provider
-returns an `AppDatabase` over `SignedOutExecutor` (reads → no rows, writes →
-`StateError`). `AppSettings` lives in the per-account DB, so the **onboarding
+returns `AppDatabase.signedOut(SignedOutExecutor())` (reads → no rows, writes →
+`StateError`; `isSignedOutPlaceholder` is true). `SyncEngine`/`LedgerSyncer`
+**don't start** on the placeholder — pages watching `syncEngineProvider` during a
+login/logout transition would otherwise send a spurious empty-DB `resync_request`
+(G24). `AppSettings` lives in the per-account DB, so the **onboarding
 flag is per account** (signed out, `onboardingSeenStream` reports `true`).
 
 **Legacy migration.** Pre-G4 installs kept everything in one global
@@ -223,8 +228,14 @@ another member's record) — see `docs/open-points.md`.
 
 **Sync health (Phase F).** Replication/digest errors used to only `debugPrint`.
 `SyncHealth` (`lib/core/sync/sync_health.dart`, a `keepAlive` Riverpod notifier)
-now collects `reportSuccess()`/`reportFailure()` from `_replicate`
-(`expenses_provider.dart`) and `_sendDigest` (`sync_engine.dart`). It flips to
+now collects `reportDelivery(targets, SendResult)`/`reportFailure()` from
+`replicate` (`expenses_provider.dart`) and `_sendDigest` (`sync_engine.dart`).
+**"Nothing sent" is observable (G24):** `sendToUsers` throws
+`TransportUnavailableException` when signed out / encryption is off (a failure),
+and returns a `SendResult` whose `unreachableUsers` lists targets (never self)
+with **no device** — not a failure, tracked in `SyncHealthState.unreachablePeers`
+(cleared once a later send reaches them; the pending cloud's tooltip says "X has
+no active device"). Digests are only marked sent to peers that had a device. It flips to
 `failing` only after `kSyncFailureThreshold` (2) **consecutive** failures — a
 single offline blip is normal (the homeserver queues to-device messages and
 anti-entropy repairs). The expenses app-bar `_SyncStatusIcon` shows a tappable
@@ -244,7 +255,8 @@ a `deleted` tombstone flag; all merges are last-writer-wins. Edit = full
 re-send with a higher `updatedAt`; delete = a permanent tombstone. New-device
 recovery: an empty DB sends `resync_request{scope: all}` to the user's own MXID
 (another of their devices answers with bootstraps); an unknown group named in a
-peer's digest triggers organic bootstrap. Sync status (`cloud_done`/
+peer's digest triggers organic bootstrap (at most one `resync_request` per group
+per `kGroupResyncCooldown`, 30 s — a burst of digests doesn't fan out). Sync status (`cloud_done`/
 `cloud_queue` icons) is derived from `PeerSyncStates.lastInSyncAt`
 (`lib/core/sync/sync_status_provider.dart`). Full receiver rules: the `SyncEngine`
 doc comment.
@@ -349,9 +361,9 @@ provider's `.future` in a `ProviderContainer` test.
 - `MatrixSdkDatabase.init(name, database: openedDb, sqfliteFactory: databaseFactory)` — on **native you MUST pass an already-opened sqflite `Database`** via `database:` (open it with `sqflite.openDatabase(path)` first). `sqfliteFactory` alone is **not** enough: `BoxCollection` throws `You must provide a Database 'sqfliteDatabase' for use on native` (the factory is only used for high-level ops like delete). On web, call `MatrixSdkDatabase.init(name)` with no DB (it uses IndexedDB). See `buildMatrixClient()` in `lib/core/matrix/matrix_service.dart`.
 - `client.init(waitForFirstSync: false)` — **always pass `false`.** The default `true` makes `init()` block on the first network `/sync` when a session is restored, which hangs app startup indefinitely on a stalled sync. Drift is the local source of truth; sync runs in the background.
 - **Roomless to-device** is the only transport (no rooms). See `MatrixLedgerTransport` (`lib/core/matrix/matrix_ledger_transport.dart`):
-  - `client.onToDeviceEvent.stream` — inbound encrypted to-device events; filter by the `com.moneyledger.*` type prefix.
+  - `client.onToDeviceEvent.stream` — inbound encrypted to-device events; filter by the `com.moneyledger.*` type prefix. It is **not buffered** (an event emitted with no subscriber is lost until the next digest), so `matrixClientProvider` calls `MatrixLedgerTransport.forClient(client)` (one transport per client, via `Expando`) **before `client.init()`**: it subscribes immediately and feeds a `BufferedInbox`, which holds payloads while nobody listens (app start, account-DB switch; bounded 500, per-account tagged) and replays them to the next listeners after a short delay. `transport_provider` reuses the same instance.
   - `client.updateUserDeviceKeys(additionalUsers: targets)` before each send — roomless device lists aren't persisted (the SDK evicts device keys for users you share no encrypted room with), so re-resolve every time (cheap, idempotent).
-  - `client.sendToDeviceEncryptedChunked(devices, type, content)` — encrypts + sends to every target device; your own current device is auto-excluded, and other devices of the sender **do** receive (the fake relay mirrors this).
+  - `client.sendToDeviceEncryptedChunked(devices, type, content)` — encrypts + sends to every target device; your own current device is auto-excluded, and other devices of the sender **do** receive (the fake relay mirrors this). It **returns silently** when `!client.encryptionEnabled` or no device remains — so the adapter checks `isLogged()`/`encryptionEnabled` first (→ `TransportUnavailableException`) and picks devices via the pure `planDeviceSend`, returning a `SendResult`. The fake (`FakeMatrixNetwork(bufferInbound:)`, `FakeTransport.unavailable`, `removeDevice`, `sent` log) simulates both cases.
 
 ### Data Model & wire protocol (v1)
 

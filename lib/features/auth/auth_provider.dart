@@ -3,6 +3,7 @@ import 'package:matrix/matrix.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/matrix/auth_gateway.dart';
 import '../../core/matrix/matrix_auth_gateway.dart';
+import '../../core/matrix/matrix_ledger_transport.dart';
 import '../../core/matrix/matrix_service.dart';
 import '../../models/login_flows_result.dart';
 
@@ -20,6 +21,11 @@ Future<Client> matrixClient(Ref ref) async {
     rethrow;
   }
   debugPrint('[client] buildMatrixClient ${sw.elapsedMilliseconds}ms');
+  // Attach the ledger transport's inbound listener BEFORE init(): init starts
+  // the background /sync, and the SDK's to-device stream isn't buffered — an
+  // event emitted before anyone subscribes is lost until the next digest
+  // cycle. The transport buffers until LedgerSyncer/SyncEngine attach (G24).
+  MatrixLedgerTransport.forClient(client);
   // waitForFirstSync: false — never block app startup on a network sync. With
   // the default (true), init() awaits the first /sync when a session is
   // restored, so a stalled sync hangs the whole provider chain forever (the

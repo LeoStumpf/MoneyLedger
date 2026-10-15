@@ -181,6 +181,35 @@ void main() {
       expect(find.byTooltip('Waiting for @bob:y.org…'), findsOneWidget);
     });
 
+    testWidgets(
+        'pending cloud says a peer has no active device (not an error)',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const ExpensesPage(roomId: _roomId),
+        overrides: [
+          expensesForRoomProvider
+              .overrideWith((ref, roomId) => Stream.value(const [])),
+          settlementsForRoomProvider
+              .overrideWith((ref, roomId) => Stream.value(const [])),
+          groupMembersProvider
+              .overrideWith((ref, groupId) => Stream.value(const [])),
+          groupSyncStatusProvider.overrideWith(
+            (ref, groupId) => const GroupSyncStatus(
+                pendingPeers: {'@bob:y.org'}, minPeerInSyncAt: 0),
+          ),
+          syncHealthProvider.overrideWith(_NoDeviceSyncHealth.new),
+        ],
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byIcon(Icons.cloud_off), findsNothing);
+      expect(
+          find.byTooltip(
+              '@bob:y.org has no active device — will sync when they sign in'),
+          findsOneWidget);
+    });
+
     testWidgets('shows a self-claim banner when not yet a participant',
         (tester) async {
       await tester.pumpWidget(testApp(
@@ -497,5 +526,14 @@ class _FailingSyncHealth extends SyncHealth {
         consecutiveFailures: kSyncFailureThreshold,
         lastError: 'offline',
         lastSuccessAt: 1,
+      );
+}
+
+/// Overrides [syncHealthProvider]: healthy, but @bob:y.org had no device.
+class _NoDeviceSyncHealth extends SyncHealth {
+  @override
+  SyncHealthState build() => const SyncHealthState(
+        lastSuccessAt: 1,
+        unreachablePeers: {'@bob:y.org'},
       );
 }

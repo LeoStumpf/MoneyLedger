@@ -39,7 +39,7 @@ final accountDatabaseOpenerProvider =
 AppDatabase appDatabase(Ref ref) {
   final mxid = ref.watch(accountUserIdProvider);
   final db = mxid == null
-      ? AppDatabase.forTesting(SignedOutExecutor())
+      ? AppDatabase.signedOut(SignedOutExecutor())
       : ref.read(accountDatabaseOpenerProvider)(mxid);
   ref.onDispose(db.close);
   return db;
@@ -109,8 +109,8 @@ class _WriteContext {
       if (targets.isEmpty || db.isClosed) return;
       final t = await transport;
       if (db.isClosed) return;
-      await t.sendToUsers(targets.toSet(), type, content);
-      if (!db.isClosed) health.reportSuccess();
+      final result = await t.sendToUsers(targets.toSet(), type, content);
+      if (!db.isClosed) health.reportDelivery(targets.toSet(), result);
     } catch (e) {
       if (db.isClosed) return;
       health.reportFailure(e);

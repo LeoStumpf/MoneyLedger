@@ -17,7 +17,7 @@ class _OfflineTransport implements LedgerTransport {
   @override
   Stream<TransportMessage> get onMessage => const Stream.empty();
   @override
-  Future<void> sendToUsers(
+  Future<SendResult> sendToUsers(
           Set<String> userIds, String type, Map<String, dynamic> content) async =>
       throw Exception('offline');
 }

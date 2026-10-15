@@ -55,6 +55,30 @@ void main() {
     });
   });
 
+  group('unreachable peers (G24)', () {
+    test('a peer with no device is tracked but is not a failure', () {
+      final s = const SyncHealthState()
+          .afterSuccess(10, reached: {'@a:x'}, unreachable: {'@b:y'});
+      expect(s.unreachablePeers, {'@b:y'});
+      expect(s.failing, isFalse);
+      expect(s.consecutiveFailures, 0);
+    });
+
+    test('a peer leaves the set once a send reaches one of its devices', () {
+      final s = const SyncHealthState()
+          .afterSuccess(10, unreachable: {'@b:y', '@c:z'})
+          .afterSuccess(20, reached: {'@b:y'});
+      expect(s.unreachablePeers, {'@c:z'});
+    });
+
+    test('a failure keeps the unreachable set', () {
+      final s = const SyncHealthState()
+          .afterSuccess(10, unreachable: {'@b:y'})
+          .afterFailure('boom', 20);
+      expect(s.unreachablePeers, {'@b:y'});
+    });
+  });
+
   group('SyncHealth notifier', () {
     test('repeated failures then a success drive failing on and off', () {
       final db = openTestDatabase();

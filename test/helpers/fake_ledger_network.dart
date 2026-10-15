@@ -9,14 +9,31 @@
 /// `net.clientFor(userId)` (or `clientFor(userId, device: 'D2')` for a
 /// second device of the same account).
 ///
+/// Send semantics match the real adapter (G24): a target user with no device
+/// is reported in [SendResult.unreachableUsers] (never the sender's own MXID),
+/// and a transport with [FakeTransport.unavailable] set throws
+/// [TransportUnavailableException] (signed out / encryption off).
+///
+/// With `bufferInbound: true` every device's inbound stream goes through a
+/// [BufferedInbox] like the real transport: payloads delivered while nothing
+/// listens are replayed to the next listeners. Off by default, so a device
+/// without listeners keeps "missing" payloads as before (several tests rely
+/// on that to simulate an offline device).
+///
 /// No `package:matrix` import — it only depends on the plain-Dart transport port.
 library;
 
 import 'dart:async';
 
+import 'package:money_ledger/core/matrix/buffered_inbox.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 
 class FakeMatrixNetwork {
+  FakeMatrixNetwork({this.bufferInbound = false});
+
+  /// Whether devices buffer inbound payloads while nobody listens.
+  final bool bufferInbound;
+
   // userId → (deviceId → transport)
   final Map<String, Map<String, FakeTransport>> _clients = {};
 
@@ -34,9 +51,15 @@ class FakeMatrixNetwork {
   /// need to receive payloads so delivery has somewhere to go.
   FakeTransport clientFor(String userId, {String device = 'D1'}) =>
       _clients.putIfAbsent(userId, () => {}).putIfAbsent(
-          device, () => FakeTransport(this, userId));
+          device, () => FakeTransport(this, userId, device));
 
-  void _send(
+  /// Simulates a device signing out: it no longer receives anything, and a
+  /// user left with no devices becomes unreachable for senders.
+  void removeDevice(String userId, {String device = 'D1'}) {
+    _clients[userId]?.remove(device)?.dispose();
+  }
+
+  SendResult _send(
     FakeTransport senderDevice,
     Set<String> targets,
     String type,
@@ -44,17 +67,41 @@ class FakeMatrixNetwork {
   ) {
     final sender = senderDevice.userId;
     _activity++;
-    for (final target in targets) {
+    sent.add((sender: sender, targets: targets, type: type, content: content));
+    // Same decision as the real adapter (sender's current device excluded —
+    // the sender's *other* devices do receive the payload).
+    final plan = planDeviceSend(
+      targets: targets,
+      selfUserId: sender,
+      selfDeviceId: senderDevice.deviceId,
+      devicesByUser: {
+        for (final t in targets)
+          t: [
+            for (final id in (_clients[t] ?? const {}).keys)
+              (deviceId: id, blocked: false)
+          ]
+      },
+    );
+    for (final MapEntry(key: target, value: ids) in plan.devices.entries) {
       if (dropWhere?.call(sender, target, type) ?? false) continue;
-      for (final device in (_clients[target] ?? const {}).values) {
-        // A real homeserver excludes only the sender's *current* device —
-        // the sender's other devices do receive the payload.
-        if (identical(device, senderDevice)) continue;
-        device._emit(
+      for (final id in ids) {
+        _clients[target]?[id]?._emit(
             TransportMessage(senderId: sender, type: type, content: content));
       }
     }
+    return SendResult(
+        unreachableUsers: plan.unreachableUsers, deviceCount: plan.deviceCount);
   }
+
+  /// Every send attempted on this network (a log for count assertions).
+  final List<
+          ({
+            String sender,
+            Set<String> targets,
+            String type,
+            Map<String, dynamic> content
+          })>
+      sent = [];
 
   /// Waits until the relay is **quiescent**: [quietTicks] consecutive short
   /// timer ticks during which nothing was sent or delivered. Call after each
@@ -92,26 +139,48 @@ class FakeTransport implements LedgerTransport {
   final FakeMatrixNetwork _net;
   @override
   final String userId;
+  final String deviceId;
   final StreamController<TransportMessage> _controller =
       StreamController.broadcast();
+  late final BufferedInbox? _inbox = _net.bufferInbound
+      ? BufferedInbox(
+          replayDelay: Duration.zero, onReplay: () => _net._activity++)
+      : null;
 
-  FakeTransport(this._net, this.userId);
+  /// When set, every send throws [TransportUnavailableException] — simulates
+  /// a signed-out client / encryption not enabled.
+  bool unavailable = false;
+
+  FakeTransport(this._net, this.userId, this.deviceId);
 
   void _emit(TransportMessage m) {
     _net._activity++;
-    if (!_controller.isClosed) _controller.add(m);
+    final inbox = _inbox;
+    if (inbox != null) {
+      inbox.add(m);
+    } else if (!_controller.isClosed) {
+      _controller.add(m);
+    }
   }
 
-  void dispose() => _controller.close();
+  void dispose() {
+    _controller.close();
+    _inbox?.close();
+  }
 
   @override
-  Stream<TransportMessage> get onMessage => _controller.stream;
+  Stream<TransportMessage> get onMessage =>
+      _inbox?.stream ?? _controller.stream;
 
   @override
-  Future<void> sendToUsers(
+  Future<SendResult> sendToUsers(
     Set<String> userIds,
     String type,
     Map<String, dynamic> content,
-  ) async =>
-      _net._send(this, userIds, type, content);
+  ) async {
+    if (unavailable) {
+      throw const TransportUnavailableException('encryption is not enabled');
+    }
+    return _net._send(this, userIds, type, content);
+  }
 }

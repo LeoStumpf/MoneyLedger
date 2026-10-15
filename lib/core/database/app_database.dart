@@ -107,10 +107,24 @@ class AppDatabase extends _$AppDatabase {
   /// [onOpen] runs once per open, after migrations, inside drift's
   /// `beforeOpen` (used to adopt the pre-per-account legacy ledger).
   AppDatabase.named(String name, {this.onOpen})
-      : super(openNamedConnection(name));
+      : isSignedOutPlaceholder = false,
+        super(openNamedConnection(name));
 
   /// Wraps an arbitrary executor (in-memory / temp-file DBs in tests).
-  AppDatabase.forTesting(super.e, {this.onOpen});
+  AppDatabase.forTesting(super.e, {this.onOpen})
+      : isSignedOutPlaceholder = false;
+
+  /// The storage-less placeholder behind `appDatabaseProvider` while signed
+  /// out (executor: `SignedOutExecutor`).
+  AppDatabase.signedOut(super.e)
+      : onOpen = null,
+        isSignedOutPlaceholder = true;
+
+  /// True for the signed-out placeholder: there is no account, so sync
+  /// components (SyncEngine / LedgerSyncer) must not start against it — an
+  /// engine on the always-empty placeholder would e.g. send a spurious
+  /// "new device" `resync_request` (G24).
+  final bool isSignedOutPlaceholder;
 
   /// Hook run after migrations on every open — see [AppDatabase.named].
   final Future<void> Function(AppDatabase db)? onOpen;
