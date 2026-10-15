@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
+import '../groups/create_group_page.dart' show kGroupCurrencies;
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 import 'split_editor.dart';
@@ -32,6 +33,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   List<MemberModel>? _members;
   String? _paidBy; // participant id of the payer
   String _currency = 'EUR';
+  String _initialCurrency = 'EUR'; // as loaded — stays selectable
 
   // The SplitEditor's current mode + inputs; resolved against the live amount.
   SplitPlan? _plan;
@@ -72,7 +74,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     if (mounted) {
       setState(() {
         _members = members;
-        _currency = group?.currency ?? 'EUR';
+        // Edit keeps the expense's own currency; new ones default to the
+        // group's (G29 — each expense may use any currency).
+        _currency = widget.initial?.currency ?? group?.currency ?? 'EUR';
+        _initialCurrency = _currency;
         _paidBy = defaultPayer;
       });
     }
@@ -151,22 +156,50 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                           (v == null || v.isEmpty) ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _amountCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Amount',
-                        suffixText: _currency,
-                      ),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}), // re-split on amount edit
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Required';
-                        if (double.tryParse(v.replaceAll(',', '.')) == null) {
-                          return 'Invalid number';
-                        }
-                        return null;
-                      },
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _amountCtrl,
+                            decoration:
+                                const InputDecoration(labelText: 'Amount'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            // re-split on amount edit
+                            onChanged: (_) => setState(() {}),
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Required';
+                              if (double.tryParse(v.replaceAll(',', '.')) ==
+                                  null) {
+                                return 'Invalid number';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 100,
+                          child: DropdownButtonFormField<String>(
+                            key: const Key('expenseCurrency'),
+                            initialValue: _currency,
+                            decoration:
+                                const InputDecoration(labelText: 'Currency'),
+                            items: [
+                              for (final c in [
+                                ...kGroupCurrencies,
+                                // Keep an unlisted currency (edit / group).
+                                if (!kGroupCurrencies.contains(_initialCurrency))
+                                  _initialCurrency,
+                              ])
+                                DropdownMenuItem(value: c, child: Text(c)),
+                            ],
+                            onChanged: (v) =>
+                                setState(() => _currency = v ?? _currency),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(

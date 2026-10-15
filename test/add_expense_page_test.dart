@@ -358,5 +358,85 @@ void main() {
       expect(received.first.content['amount'], 5000);
       expect(received.first.content['deleted'], false);
     });
+
+    // G29: per-expense currency, defaulting to the group's.
+    testWidgets('the currency picker defaults to the group and sets currency',
+        (tester) async {
+      final (db, net) = await seedGroup();
+      final received = <TransportMessage>[];
+      net.clientFor('@bob:x.org').onMessage.listen(received.add);
+
+      await tester.pumpWidget(testRouterApp(
+        const AddExpensePage(roomId: 'g1'),
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => db),
+          ledgerTransportProvider
+              .overrideWith((ref) => net.clientFor('@alice:x.org')),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      final picker = find.byKey(const Key('expenseCurrency'));
+      expect(
+          find.descendant(of: picker, matching: find.text('CHF')),
+          findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Description'), 'Souvenir');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Amount'), '10');
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('USD').last);
+      await tester.pumpAndSettle();
+      // The split previews follow the chosen currency.
+      expect(find.textContaining('USD'), findsWidgets);
+      await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+
+      expect(received, hasLength(1));
+      expect(received.first.content['currency'], 'USD');
+      expect(received.first.content['amount'], 1000);
+    });
+
+    testWidgets('editing keeps the expense\'s own (unlisted) currency',
+        (tester) async {
+      final (db, net) = await seedGroup();
+      final received = <TransportMessage>[];
+      net.clientFor('@bob:x.org').onMessage.listen(received.add);
+      const initial = ExpenseModel(
+        id: 'e1',
+        roomId: 'g1',
+        description: 'Noodles',
+        amountCents: 2000,
+        currency: 'THB', // not in kGroupCurrencies; group is CHF
+        paidBy: '@alice:x.org',
+        splitsJson: '{"@alice:x.org":1000,"@bob:x.org":1000}',
+        createdAt: 1000,
+        updatedAt: 1000,
+      );
+
+      await tester.pumpWidget(testRouterApp(
+        const AddExpensePage(roomId: 'g1', initial: initial),
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => db),
+          ledgerTransportProvider
+              .overrideWith((ref) => net.clientFor('@alice:x.org')),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('expenseCurrency')),
+              matching: find.text('THB')),
+          findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+      expect(received.single.content['currency'], 'THB');
+    });
   });
 }

@@ -302,8 +302,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _SsoButton(
                           key: const Key('ssoBtn'),
-                          label:
-                              'Continue with ${Uri.tryParse(result.resolvedUrl)?.host ?? _lookupInput}',
+                          // The entered server name, stable while discovery
+                          // resolves it (G29); providers above use their names.
+                          label: 'Continue with ${ssoServerLabel(_lookupInput)}',
                           onTap: authBusy ? null : () => _startSso(),
                         ),
                       ),

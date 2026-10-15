@@ -34,7 +34,7 @@ class GroupsPage extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).logout(),
+            onPressed: () => _confirmSignOut(context, ref),
             tooltip: 'Sign out',
           ),
         ],
@@ -46,6 +46,32 @@ class GroupsPage extends ConsumerWidget {
       ),
       body: _GroupsBody(groupsAsync: groupsAsync),
     );
+  }
+
+  /// Sign-out confirmation (G29). Signing out is non-destructive: this
+  /// account's ledger DB stays on the device (per-account DB, G4) and is
+  /// reopened on the next sign-in with the same account.
+  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+            'Your groups and expenses stay on this device and are back when '
+            'you sign in again with this account. While signed out, this '
+            'device doesn\'t sync — other members\' changes arrive once you '
+            'sign back in.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sign out')),
+        ],
+      ),
+    );
+    if (ok == true) await ref.read(authProvider.notifier).logout();
   }
 
   Future<void> _importCsv(BuildContext context, WidgetRef ref) async {

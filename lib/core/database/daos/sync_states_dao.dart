@@ -22,13 +22,22 @@ class SyncStatesDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsertSyncState(PeerSyncStatesCompanion state) =>
       into(peerSyncStates).insertOnConflictUpdate(state);
 
-  /// Records that a digest from [userId] matched our state for [groupId].
+  /// Records that [userId] was proven to hold our whole state for [groupId]
+  /// at [at] (a matching digest, or the G29 inbound-record proof). Monotonic:
+  /// never moves an existing `lastInSyncAt` backwards.
   Future<void> markInSync(String groupId, String userId, int at) =>
-      upsertSyncState(PeerSyncStatesCompanion(
-        groupId: Value(groupId),
-        userId: Value(userId),
-        lastInSyncAt: Value(at),
-      ));
+      transaction(() async {
+        final existing = await (select(peerSyncStates)
+              ..where((t) =>
+                  t.groupId.equals(groupId) & t.userId.equals(userId)))
+            .getSingleOrNull();
+        if (existing != null && existing.lastInSyncAt >= at) return;
+        await upsertSyncState(PeerSyncStatesCompanion(
+          groupId: Value(groupId),
+          userId: Value(userId),
+          lastInSyncAt: Value(at),
+        ));
+      });
 
   Future<void> markDigestSent(String groupId, String userId, int at) =>
       upsertSyncState(PeerSyncStatesCompanion(

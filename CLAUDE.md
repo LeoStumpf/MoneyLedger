@@ -94,6 +94,7 @@ lib/
       sync_engine.dart         # Anti-entropy: digest exchange + targeted repair + resync
       left_groups.dart         # LeftGroupTombstone + pure classifyPeerViewOfMe (G9 leave/delete)
       sync_status_provider.dart # groupSyncStatusProvider — drives the cloud icons
+      peer_convergence.dart    # G29 fast in-sync proof from an inbound record (pure)
   models/
     expense_model.dart         # Plain Dart models (ExpenseModel, SettlementModel)
     group_model.dart           # Plain Dart model (GroupModel)
@@ -111,6 +112,7 @@ lib/
     balance/
       balance_calculator.dart  # Pure function: List<Expense> + settlements → List<DebtEntry>
       balance_provider.dart    # Riverpod: watches Drift streams, recomputes on change
+      record_payment_dialog.dart # G28 "X paid Y" dialog (any two participants)
     backup/                    # CSV export/import (Phase D) — see "Backup (CSV)" below
       ledger_csv.dart          # Pure-Dart RFC4180 codec: buildGroupCsv / parseGroupCsv
       csv_export.dart          # DB → CSV seam (buildGroupCsvForExport) + csvFileName
@@ -194,7 +196,7 @@ re-validating login doesn't reopen) and opens the DB via the injectable
 `accountDatabaseOpenerProvider`; on an account switch the old DB is closed
 (`ref.onDispose`) and every DAO / stream / `SyncEngine` / `LedgerSyncer` (both
 `ref.watch(appDatabaseProvider)`) rebuilds. **Logout is non-destructive**:
-re-login reopens the same DB. **Signed out, no DB is opened**: the provider
+re-login reopens the same DB (the sign-out button asks first and says so — G29). **Signed out, no DB is opened**: the provider
 returns `AppDatabase.signedOut(SignedOutExecutor())` (reads → no rows, writes →
 `StateError`; `isSignedOutPlaceholder` is true). `SyncEngine`/`LedgerSyncer`
 **don't start** on the placeholder — pages watching `syncEngineProvider` during a
@@ -314,7 +316,14 @@ peer's digest triggers organic bootstrap (at most one `resync_request` per group
 per `kGroupResyncCooldown`, 30 s — a burst of digests doesn't fan out); never for a group we left/deleted unless we were re-added — G9). Sync status (`cloud_done`/
 `cloud_queue` icons) is derived from `PeerSyncStates.lastInSyncAt`
 (`lib/core/sync/sync_status_provider.dart`). Full receiver rules: the `SyncEngine`
-doc comment.
+doc comment. **Fast proof (G29):** a matching digest needs the poke debounce +
+two relay hops (~20 s on matrix.org), so after a peer's *own* change we showed
+"Waiting for …" though we held exactly its state. `LedgerSyncer` now marks a
+peer in sync right after applying a record **from that peer** when every
+record we hold newer than its `lastInSyncAt` is one that peer itself sent us
+at the same revision (`peer_convergence.dart`, in-memory per peer; bootstrap /
+gossip / our own writes block the proof). `markInSync` is monotonic and always
+stamps our wall clock (never a peer's possibly skewed record clock).
 
 ### Backup (CSV export/import — Phase D)
 
@@ -352,6 +361,19 @@ only, and a deleted expense simply isn't exported (so it won't re-delete on a
 peer via CSV). Participant identity is **by name, not stable id** — a name
 collision merges two people and a rename splits one. A future full-fidelity
 format could add settlements, tombstones, and id-based identity.
+
+### Settlements / recording payments (G28)
+
+Any **active** member may record a payment between **any two participants**
+(Splitwise-style), incl. local persons: every debt row on the balance page is
+tappable (dialog prefilled debtor → creditor, the debt amount + currency;
+amount editable, warns if it exceeds the debt), and the app-bar *Record
+payment* action opens the same `RecordPaymentDialog` with from/to pickers
+(active participants), amount and currency (default: group currency). Removed
+(read-only, G26) → no recording. Wire/replication unchanged (a settlement's
+`from`/`to` were always arbitrary participant ids). Expenses likewise carry
+their own currency (G29 picker on the add/edit form, default = group
+currency; balances are per currency).
 
 ### Custom splits (Phase E)
 

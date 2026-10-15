@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/features/auth/sso_url.dart';
 import 'package:money_ledger/features/auth/login_page.dart';
 import 'package:money_ledger/models/login_flows_result.dart';
 
@@ -167,7 +168,8 @@ void main() {
 
       expect(find.byKey(const Key('ssoBtn')), findsOneWidget);
       expect(find.byKey(const Key('signInBtn')), findsOneWidget);
-      expect(find.text('Continue with mozilla.modular.im'), findsOneWidget);
+      // Labelled with the entered server name (default matrix.org here).
+      expect(find.text('Continue with matrix.org'), findsOneWidget);
     });
 
     testWidgets(
@@ -214,6 +216,38 @@ void main() {
       await tester.pump();
 
       expect(find.text('or'), findsOneWidget);
+    });
+
+    // G29: the generic SSO label is the entered server name — the same while
+    // discovery runs and after it resolved to the client host.
+    for (final loading in [true, false]) {
+      testWidgets('SSO label is the entered server name, not the client host '
+          '(discovery ${loading ? 'running' : 'resolved'})', (tester) async {
+        await tester.pumpWidget(testApp(
+          const LoginPage(),
+          overrides: testOverrides(
+            isLoggedIn: false,
+            loginFlowsLoading: loading,
+            loginFlows: LoginFlowsResult(
+              resolvedUrl: 'https://matrix-client.matrix.org',
+              hasSso: true,
+              hasPassword: true,
+              ssoProviders: const [],
+            ),
+          ),
+        ));
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('Continue with matrix.org'), findsOneWidget);
+        expect(find.text('Continue with matrix-client.matrix.org'),
+            findsNothing);
+      });
+    }
+
+    test('ssoServerLabel strips scheme, path and slashes', () {
+      expect(ssoServerLabel('matrix.org'), 'matrix.org');
+      expect(ssoServerLabel(' https://Example.org/ '), 'example.org');
+      expect(ssoServerLabel('http://localhost:8008/'), 'localhost:8008');
     });
   });
 }

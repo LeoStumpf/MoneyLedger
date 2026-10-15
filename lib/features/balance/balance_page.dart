@@ -5,6 +5,7 @@ import '../expenses/expenses_provider.dart';
 import '../groups/group_provider.dart';
 import 'balance_calculator.dart';
 import 'balance_provider.dart';
+import 'record_payment_dialog.dart';
 
 class BalancePage extends ConsumerStatefulWidget {
   final String roomId;
@@ -24,13 +25,29 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     // MXID once a local slot has been claimed); fall back to the raw MXID.
     final me = ref.watch(currentParticipantProvider(widget.roomId)).value;
     final myId = me?.userId ?? transport?.userId ?? '';
-    // G26: removed from the group → read-only, no new settlements.
-    final canSettle = me?.isActive ?? true;
+    // G28: any active member may record a payment between any two
+    // participants. G26: removed from the group → read-only, nothing to record.
+    final canRecord = me?.isActive ?? true;
     final adderState = ref.watch(expenseAdderProvider);
+    final busy = adderState.isLoading;
+    // Kept alive for the dialog: members (choices) + group (default currency).
+    ref.watch(groupMembersProvider(widget.roomId));
+    ref.watch(ledgerGroupsProvider);
     String nameOf(String id) => names[id] ?? id;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Balance')),
+      appBar: AppBar(
+        title: const Text('Balance'),
+        actions: [
+          if (canRecord)
+            IconButton(
+              key: const Key('recordPayment'),
+              icon: const Icon(Icons.payments_outlined),
+              tooltip: 'Record payment',
+              onPressed: busy ? null : () => _recordPayment(context, myId),
+            ),
+        ],
+      ),
       body: Stack(
         children: [
           debts.isEmpty
@@ -68,16 +85,17 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                                       ? Colors.red
                                       : Colors.grey[700]),
                         ),
-                        // Only the current user can settle their own debts.
-                        onTap: isMine && canSettle && !adderState.isLoading
-                            ? () => _settle(context, d, myId)
+                        // Any debt — ours, a local person's, or one owed to
+                        // us — can be settled by recording the payment.
+                        onTap: canRecord && !busy
+                            ? () => _recordPayment(context, myId, debt: d)
                             : null,
                       ),
                     );
                   },
                 ),
           // Overlay spinner while the settlement event is being sent.
-          if (adderState.isLoading)
+          if (busy)
             const ColoredBox(
               color: Colors.black26,
               child: Center(child: CircularProgressIndicator()),
@@ -87,49 +105,57 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     );
   }
 
-  Future<void> _settle(
-    BuildContext context,
-    DebtEntry debt,
-    String myId,
-  ) async {
+  /// Opens the payment dialog — prefilled from [debt] (debtor → creditor, the
+  /// owed amount) or, from the app-bar action, with us as the payer — and
+  /// records the confirmed payment as a settlement.
+  Future<void> _recordPayment(BuildContext context, String myId,
+      {DebtEntry? debt}) async {
     final messenger = ScaffoldMessenger.of(context);
-    final currency = debt.currency;
-    final amount = (debt.cents / 100).toStringAsFixed(2);
-    final toName =
-        ref.read(participantNamesProvider(widget.roomId))[debt.to] ?? debt.to;
-    final confirmed = await showDialog<bool>(
+    final members =
+        ref.read(groupMembersProvider(widget.roomId)).value ?? const [];
+    final names = ref.read(participantNamesProvider(widget.roomId));
+    final group = (ref.read(ledgerGroupsProvider).value ?? const [])
+        .where((g) => g.roomId == widget.roomId)
+        .firstOrNull;
+    // Active participants (claimed and local); a tapped debt may involve a
+    // former member, who stays selectable for that payment.
+    final participants = <String, String>{
+      for (final m in members)
+        if (m.isActive) m.userId: names[m.userId] ?? m.userId,
+      if (debt != null) debt.from: names[debt.from] ?? debt.from,
+      if (debt != null) debt.to: names[debt.to] ?? debt.to,
+    };
+    final ids = participants.keys.toList();
+    final defaultFrom = participants.containsKey(myId)
+        ? myId
+        : (ids.isNotEmpty ? ids.first : null);
+    final defaultTo =
+        ids.where((id) => id != defaultFrom).firstOrNull;
+
+    final draft = await showDialog<PaymentDraft>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Record settlement'),
-        content: Text(
-            'Mark that you paid $amount $currency to $toName?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Confirm')),
-        ],
+      builder: (_) => RecordPaymentDialog(
+        participants: participants,
+        initialFrom: debt?.from ?? defaultFrom,
+        initialTo: debt?.to ?? defaultTo,
+        initialCents: debt?.cents,
+        debtCents: debt?.cents,
+        currency: debt?.currency ?? group?.currency ?? 'EUR',
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (draft == null || !mounted) return;
 
     await ref.read(expenseAdderProvider.notifier).addSettlement(
           roomId: widget.roomId,
-          amountCents: debt.cents,
-          currency: currency,
-          fromUser: myId,
-          toUser: debt.to,
+          amountCents: draft.cents,
+          currency: draft.currency,
+          fromUser: draft.from,
+          toUser: draft.to,
         );
 
     if (!mounted) return;
     final error = ref.read(expenseAdderProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
-    } else {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Settlement recorded')));
-    }
+    messenger.showSnackBar(SnackBar(
+        content: Text(error != null ? 'Failed: $error' : 'Payment recorded')));
   }
 }

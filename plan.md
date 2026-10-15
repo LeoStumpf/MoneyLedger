@@ -286,15 +286,17 @@ Two edits with the exact same ms clock stay divergent (digests see them as equal
 debt (no account) can never be settled, and a creditor can't record "X paid me".
 Decision (conductor, Splitwise-style): **any active member may record a payment
 between any two participants**; default from/to = the tapped debt row.
-- [ ] Settle any debt row (incl. local persons); "Record payment" with from/to pickers
-- [ ] Tests (widget + replication)
+- [x] Settle any debt row (incl. local persons); "Record payment" with from/to pickers
+- [x] Tests (widget + replication) — verified on devices (Carl's debt settled from the phone)
 
 ### G29. Expense-form gaps (G7) 🟡
-- [ ] Per-expense currency picker (defaults to the group currency)
-- [ ] Sign-out confirmation dialog
-- [ ] Sync status lag: A showed "Waiting for B…" ~1 min after B's own change →
-      mark peer in-sync when a fresh inbound record/digest proves convergence
-- [ ] SSO button label: show the server name stably (not the raw client host)
+- [x] Per-expense currency picker (also fixed: editing overwrote the expense currency)
+- [x] Sign-out confirmation dialog
+- [x] Sync status lag: reader side marks a peer in sync once convergence is proven
+      from that peer's own records (`peer_convergence.dart`) — 22 s → immediate
+- [x] SSO button label: the typed server name / IdP names
+- [ ] Writer side still pending ~27 s after own change (ack = digest after 5 s poke
+      debounce + relay hop) → faster ack (shorter debounce or per-record ack)
 
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
@@ -336,7 +338,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G9 — leave/delete group (+ G23 group mutators)
 - [x] G10 — rename group / currency (+ G26 member lifecycle)
 - [x] G7 — smoke checklist + device pass (iOS documented unsupported)
-- [~] G28+G29 — settle any debt; currency picker, sign-out confirm, status lag, SSO label (pulled forward: features before i18n)
+- [x] G28+G29 — settle any debt; currency picker, sign-out confirm, status lag, SSO label (pulled forward: features before i18n)
+- [~] G20+G25 — friendly login errors, matrix.org sign-up link, late onboarding
 - [ ] G12 — app identity, i18n EN+DE, privacy/about
 - [ ] G17 — design pass
 - [ ] G15 — test/tooling debt, offline demo, CI
@@ -346,10 +349,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [ ] G14 — digest size measurement
 - [ ] G16 — nice-to-haves
-- [ ] G20 — friendly login error messages
 - [ ] G21 — licensing: AGPL-3.0 decided → LICENSE, notices, licenses page
 - [ ] G22 — dependency upgrades (matrix, file_picker)
-- [ ] G25 — late onboarding redirect
 - [ ] G27 — LWW tie-break
 - [ ] *(G30+ — newly discovered points)*
 - [ ] G18 — final release review

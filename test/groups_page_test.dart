@@ -77,5 +77,42 @@ void main() {
       expect(find.text('Groups'), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
     });
+
+    // G29: signing out asks first and explains the data stays on the device.
+    for (final confirm in [false, true]) {
+      testWidgets('sign out asks for confirmation (confirm: $confirm)',
+          (tester) async {
+        final spy = _SpyAuth();
+        await tester.pumpWidget(testApp(
+          const GroupsPage(),
+          overrides: [
+            ...testOverrides(isLoggedIn: true),
+            authProvider.overrideWith(() => spy),
+          ],
+        ));
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.byIcon(Icons.logout));
+        await tester.pumpAndSettle();
+        expect(find.text('Sign out?'), findsOneWidget);
+        expect(find.textContaining('stay on this device'), findsOneWidget);
+        expect(spy.logouts, 0, reason: 'nothing happens before confirming');
+
+        await tester.tap(confirm
+            ? find.widgetWithText(FilledButton, 'Sign out')
+            : find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(find.text('Sign out?'), findsNothing);
+        expect(spy.logouts, confirm ? 1 : 0);
+      });
+    }
   });
+}
+
+class _SpyAuth extends AuthNotifier {
+  int logouts = 0;
+
+  @override
+  Future<void> logout() async => logouts++;
 }

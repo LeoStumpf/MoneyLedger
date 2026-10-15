@@ -63,7 +63,9 @@ final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
 ///    marked `reply: true`; replies are never answered (bounded two-message
 ///    exchange — residual divergence is caught by the next periodic cycle).
 /// 4. A digest that exactly matches our state records `lastInSyncAt` for
-///    (group, sender) — this feeds the sync-status UI.
+///    (group, sender) — this feeds the sync-status UI. (`LedgerSyncer` can
+///    prove the same earlier from an inbound record — G29,
+///    `peer_convergence.dart`.)
 /// 5. A digest for a group we don't know → `resync_request` back to the
 ///    sender (they bootstrap us if we're a member).
 /// 6. A digest from a sender we have as `removed` → reply only with their
@@ -374,7 +376,9 @@ class SyncEngine {
       // Rule 4: an exact match proves the sender has everything we have.
       if (diff.identical) {
         await _syncStates.markInSync(
-            groupId, msg.senderId, DateTime.now().millisecondsSinceEpoch);
+            groupId,
+            msg.senderId,
+            DateTime.now().millisecondsSinceEpoch);
         if (!_alive) return;
       }
 

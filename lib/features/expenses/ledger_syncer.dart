@@ -10,10 +10,12 @@ import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
+import '../../core/database/daos/sync_states_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/left_groups.dart';
+import '../../core/sync/peer_convergence.dart';
 import '../../models/member_model.dart';
 import 'expenses_provider.dart';
 
@@ -56,6 +58,10 @@ class LedgerSyncer {
   final GroupsDao _groups;
   final MembersDao _members;
   final SettingsDao _settings;
+  final SyncStatesDao _syncStates;
+
+  /// Record revisions each peer sent us — feeds the fast in-sync proof (G29).
+  final PeerConvergenceTracker _convergence = PeerConvergenceTracker();
 
   /// This device's MXID, known once [start] has the transport.
   String? _myMxid;
@@ -69,7 +75,8 @@ class LedgerSyncer {
         _expenses = ref.read(expensesDaoProvider),
         _groups = ref.read(groupsDaoProvider),
         _members = ref.read(membersDaoProvider),
-        _settings = SettingsDao(ref.read(appDatabaseProvider));
+        _settings = SettingsDao(ref.read(appDatabaseProvider)),
+        _syncStates = ref.read(syncStatesDaoProvider);
 
   /// False once disposed or once the captured DB is closed (on an account
   /// switch the old DB closes before this syncer's `onDispose` runs).
@@ -161,10 +168,60 @@ class LedgerSyncer {
           await processBootstrap(msg.content, _groups, _members, _expenses,
               isAlive: () => _alive);
       }
+      if (!_alive) return;
+      await _proveConvergence(group, msg);
     } catch (e) {
       // After dispose / DB close a failure is expected, not worth logging.
       if (_alive) debugPrint('[ledger] failed to process ${msg.type}: $e');
     }
+  }
+
+  /// G29: an inbound record from a peer may prove that peer now holds
+  /// everything we hold (see `peer_convergence.dart`) — then mark it in sync
+  /// right away instead of waiting for the digest round-trip, so the sync
+  /// icon turns "Synced" as soon as the peer's own change has arrived.
+  Future<void> _proveConvergence(String groupId, TransportMessage msg) async {
+    final peer = msg.senderId;
+    if (peer == _myMxid) return; // own devices don't show in the sync status
+    final rev = inboundRecordRevision(msg.type, msg.content);
+    if (rev == null) return;
+    _convergence.noteHeld(groupId, peer, rev.key, rev.updatedAt);
+
+    final group = await _groups.getGroup(groupId);
+    if (!_alive || group == null) return;
+    final members = await _members.getMembers(groupId);
+    if (!_alive) return;
+    // Only a claimed, active peer has a sync status worth proving.
+    if (!members.any((m) => m.isActive && m.matrixId == peer)) return;
+    final expenses = await _expenses.getAllExpensesForGroup(groupId);
+    if (!_alive) return;
+    final settlements = await _expenses.getAllSettlementsForGroup(groupId);
+    if (!_alive) return;
+    final states = await _syncStates.getSyncStates(groupId);
+    if (!_alive) return;
+    final inSyncAt = states
+            .where((s) => s.userId == peer)
+            .map((s) => s.lastInSyncAt)
+            .firstOrNull ??
+        0;
+    final local = localRecordClocks(
+        group: group,
+        members: members,
+        expenses: expenses,
+        settlements: settlements);
+    if (!peerHoldsEverything(
+        local: local,
+        inSyncAt: inSyncAt,
+        heldByPeer: _convergence.heldBy(groupId, peer))) {
+      return;
+    }
+    // Our wall clock, like rule 4 — not the newest record's clock, which may
+    // be a peer's skewed (up to +5 min clamped) clock: claiming that would
+    // show our own next writes as replicated before they are.
+    final at = DateTime.now().millisecondsSinceEpoch;
+    if (at <= inSyncAt) return;
+    await _syncStates.markInSync(groupId, peer, at);
+    _convergence.prune(groupId, peer, at);
   }
 
   /// G26: we left [groupId] on another of our devices — that device relayed
