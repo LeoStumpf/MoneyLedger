@@ -35,6 +35,8 @@ To override the Flutter binary: `FLUTTER=/path/to/flutter ./build.sh`
 
 Output lands in `build/web/`.
 
+Android release signing: `android/app/build.gradle.kts` signs `release` with the upload keystore (`~/moneyledger-upload-keystore.jks`) configured via the gitignored `android/key.properties`; without that file it falls back to the debug key. Never commit `key.properties` or keystores — see README "Release signing".
+
 ## Commands
 
 ```bash

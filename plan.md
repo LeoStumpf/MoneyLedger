@@ -50,9 +50,13 @@ Android stops building. Not reproducible by anyone but this machine.
 A Play-Store upload is rejected; a sideloaded debug-signed APK can't be upgraded
 by a properly signed one later (users would have to reinstall → lose local data,
 see G5).
-- [ ] Create an upload keystore (outside the repo), `key.properties` + gitignore
-- [ ] Wire a `release` signingConfig that reads `key.properties`
-- [ ] Document the signing setup (where the keystore lives, backup!)
+- [x] Create an upload keystore (`~/moneyledger-upload-keystore.jks`, alias `upload`,
+      RSA 4096; SHA-256 `99:24:17:F1:…:A8:61`), gitignored `android/key.properties`
+- [x] Wire a `release` signingConfig that reads `key.properties` (debug-key fallback)
+- [x] Document the signing setup (README "Release signing")
+- [ ] **Leo:** back up the keystore + password from `key.properties` (password manager)
+- [ ] Play Store: enroll Play App Signing with this key as upload key (G18)
+- [ ] Release notes: debug-signed installs must be uninstalled once (local data lost → export first)
 
 ### G4. Local ledger is shared across Matrix accounts on one device 🟠 (privacy)
 The Drift DB is a single global file (`money_ledger_db`); `logout()` only calls
@@ -216,8 +220,8 @@ end and work continues. Resume after an interrupted session with
 Status: `[ ]` open · `[~]` in progress · `[x]` done
 
 - [x] G1 — INTERNET permission
-- [~] G3 — release keystore
-- [ ] G2 — vendor flutter_vodozemac
+- [x] G3 — release keystore
+- [~] G2 — vendor flutter_vodozemac
 - [ ] CP-accounts — create test accounts A/B with Leo (`~/.config/moneyledger-test/accounts.env`)
 - [ ] G4 — per-account database
 - [ ] G8 — settlements list + undo

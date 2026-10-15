@@ -113,6 +113,29 @@ flutter build ios --release      # macOS only
 > The web build needs `web/sqlite3.wasm` and `web/drift_worker.js` (checked in,
 > not generated) — don't delete them.
 
+### Release signing (Android)
+
+Release APKs/App Bundles are signed with an **upload keystore** that lives
+**outside the repo** (`~/moneyledger-upload-keystore.jks`, alias `upload`).
+Gradle reads it via `android/key.properties`, which is **gitignored** (as are
+`*.jks` / `*.keystore`):
+
+```properties
+storePassword=<store password>
+keyPassword=<key password>
+keyAlias=upload
+storeFile=/home/<you>/moneyledger-upload-keystore.jks
+```
+
+**Back up the keystore and its password** (e.g. password manager + offline copy).
+Losing it means you can never ship an update under the same signature — Play
+Store updates become impossible and sideloaded users would have to uninstall
+(losing local data) to install a newly signed build.
+
+If `android/key.properties` is absent (dev machines, CI without secrets), the
+release build falls back to the **debug key** so `flutter build apk --release`
+still works — such APKs are for testing only, never for distribution.
+
 ## Architecture & contributing
 
 See [`CLAUDE.md`](CLAUDE.md) for the architecture, the Matrix↔app concept mapping,
