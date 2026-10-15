@@ -23,8 +23,11 @@ Severity legend:
 adds it in the `debug/` and `profile/` manifests. Every device test so far ran a
 debug build, so this never surfaced; a `flutter build apk --release` cannot reach
 any homeserver (login + sync dead).
-- [ ] Add the INTERNET permission to `src/main/AndroidManifest.xml`
-- [ ] Build a release APK and smoke-test login + one sync round-trip on a phone
+- [x] Add the INTERNET permission to `src/main/AndroidManifest.xml`
+- [x] Release APK on emulator: homeserver resolves, sign-in gets a real server reply
+      (full login + sync round-trip moves to G7, needs test accounts)
+- [x] Release build was also broken by file_picker 8.x (compileSdk 34 vs. 36 required):
+      `android/build.gradle.kts` now raises library plugins to compileSdk 36
 
 ### G2. Android E2EE build depends on out-of-repo pub-cache patches 🔴
 `flutter_vodozemac` 0.5.0 only builds on Android with two hand-patches in
@@ -39,6 +42,8 @@ Android stops building. Not reproducible by anyone but this machine.
 - [ ] Verify a clean clone builds an APK after `flutter pub cache clean`
 - [ ] Check upstream for a release that fixes Gradle 9 / compileSdk — drop the
       vendored copy if so
+- [ ] The G1 compileSdk override in `android/build.gradle.kts` may already make the
+      `compileSdkVersion 33 → 36` patch unnecessary — verify; consider upgrading file_picker
 
 ### G3. Release signing uses the debug key 🔴
 `android/app/build.gradle*` → `release { signingConfig = signingConfigs.getByName("debug") }`.
@@ -171,6 +176,22 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
 
 ---
 
+### G19. Flaky integration tests under load 🟡
+Found in G1: with the CPU busy (emulator running), `test/integration/anti_entropy_test.dart`
+("a lost delete is repaired…") and `multi_device_test.dart` ("a second device populates
+itself…") fail intermittently; `-j 2` is green. The suite also logs "Bad state: Can't
+re-open a database after closing it" from the digest handler → async work outlives teardown.
+- [ ] Make the sync tests deterministic (await/flush instead of timing; cancel
+      timers/subscriptions before closing the DB)
+- [ ] Run the full suite 5× at default concurrency with the emulator running — all green
+
+### G20. Raw exception text in login errors 🟡
+`lib/features/auth/login_page.dart:186` shows e.g. "ClientException with SocketException: …"
+or "M_FORBIDDEN: …" in the snackbar.
+- [ ] Map common failures (network, wrong password, unknown server, rate limit) to
+      friendly, localized messages; keep details expandable
+- [ ] Widget tests
+
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
 - [ ] Empty states, spacing, list/card styling for groups, expenses, balances
@@ -194,8 +215,8 @@ end and work continues. Resume after an interrupted session with
 
 Status: `[ ]` open · `[~]` in progress · `[x]` done
 
-- [~] G1 — INTERNET permission
-- [ ] G3 — release keystore
+- [x] G1 — INTERNET permission
+- [~] G3 — release keystore
 - [ ] G2 — vendor flutter_vodozemac
 - [ ] CP-accounts — create test accounts A/B with Leo (`~/.config/moneyledger-test/accounts.env`)
 - [ ] G4 — per-account database
@@ -212,7 +233,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [ ] G14 — digest size measurement
 - [ ] G16 — nice-to-haves
-- [ ] *(G19+ — newly discovered points)*
+- [ ] G19 — flaky integration tests
+- [ ] G20 — friendly login error messages
+- [ ] *(G21+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---
