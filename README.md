@@ -26,13 +26,18 @@ and sees only ciphertext.
 - **CSV export/import** for backup and sharing (idempotent merge-by-id).
 - **In-app registration** (open / dummy-UIA homeservers) and **SSO** login.
 - **Device verification** (SAS emoji) and a sync-health indicator.
+- **Background sync (Android):** devices sync while the app runs and, on
+  Android, about every 15 min in the background (WorkManager; network
+  connected, battery not low) — so a closed phone still answers its peers and
+  new devices. Toggle per account under *Sync settings* on the groups screen.
+  The web app syncs only while its tab is open.
 
 ## Platform support
 
 | Platform | Status |
 |----------|--------|
 | Android | supported (release APK, tested on device + emulator) |
-| Web | supported |
+| Web | supported (no background sync — syncs while the tab is open) |
 | iOS | **not supported for v1** |
 
 iOS has never been built: development happens on Linux (no macOS to build or

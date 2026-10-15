@@ -82,7 +82,20 @@ class LedgerSyncer {
   /// switch the old DB closes before this syncer's `onDispose` runs).
   bool get _alive => !_disposed && !_db.isClosed;
 
+  final Completer<void> _ready = Completer<void>();
+
+  /// Completes once [start] has subscribed to the transport (or gave up).
+  Future<void> get ready => _ready.future;
+
   Future<void> start() async {
+    try {
+      await _start();
+    } finally {
+      if (!_ready.isCompleted) _ready.complete();
+    }
+  }
+
+  Future<void> _start() async {
     // Signed out: nothing to sync into. Not subscribing also lets the
     // transport buffer inbound messages until the account's syncer attaches.
     if (_db.isSignedOutPlaceholder) return;
@@ -96,6 +109,7 @@ class LedgerSyncer {
     if (!_alive) return;
     _myMxid = transport.userId;
     _sub = transport.onMessage.listen(_onMessage);
+    _ready.complete();
   }
 
   void dispose() {

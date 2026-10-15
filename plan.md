@@ -319,10 +319,14 @@ MoneyLedger runs. Peers/own devices that never open the app never answer
 background fetch (WorkManager: start client, one /sync, process to-device,
 answer pending requests, stop), and/or Matrix push (pusher + push gateway → FCM;
 needs a gateway, privacy trade-offs). Web: only while the tab is open.
-- [ ] Evaluate + implement a periodic background sync on Android (battery-friendly,
-      e.g. every 15 min, network-constrained)
-- [ ] Explain in onboarding/help that devices sync when the app runs
-- [ ] Decide on push (later, likely out of v1 scope)
+- [x] Periodic background round on Android (`workmanager` 0.10, MIT): every 15 min,
+      network + battery-not-low; one /sync, answer pending, digest if stale; 60 s cap
+- [x] Process-wide guard (IsolateNameServer): app and round never share the stores;
+      a round that finds the app alive delegates a oneShotSync to it
+- [x] Per-account "Background sync" switch (Sync settings sheet); onboarding text
+- [x] Verified: closed emulator app received a phone expense via a background round
+- [ ] Debug-only one-off trigger for manual testing (periodic jobs can't be forced)
+- [ ] Push (Matrix pusher → FCM) — out of v1 scope
 
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
@@ -367,8 +371,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G28+G29 — settle any debt; currency picker, sign-out confirm, status lag, SSO label (pulled forward: features before i18n)
 - [x] G20+G25 — friendly login errors, matrix.org sign-up link, late onboarding
 - [x] G30 — first-login recovery + auth timeouts
-- [~] G31 — background sync on Android (feature before i18n)
-- [ ] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
+- [x] G31 — background sync on Android (feature before i18n)
+- [~] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
 - [ ] G17 — design pass
 - [ ] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup

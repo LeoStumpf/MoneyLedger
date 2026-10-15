@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/core/sync/self_recovery.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
@@ -36,6 +37,44 @@ void main() {
 
       expect(find.text('New group'), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsOneWidget);
+    });
+
+    testWidgets('sync settings: Android shows the background-sync switch',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const GroupsPage(),
+        overrides: [
+          ...testOverrides(isLoggedIn: true),
+          backgroundSyncSupportedProvider.overrideWithValue(true),
+          backgroundSyncEnabledProvider.overrideWith((_) => Stream.value(true)),
+        ],
+      ));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Sync settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Background sync'), findsOneWidget);
+      final sw = tester.widget<SwitchListTile>(
+          find.byKey(const Key('backgroundSyncSwitch')));
+      expect(sw.value, isTrue);
+    });
+
+    testWidgets('sync settings: web explains there is no background sync',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const GroupsPage(),
+        overrides: [
+          ...testOverrides(isLoggedIn: true),
+          backgroundSyncSupportedProvider.overrideWithValue(false),
+          backgroundSyncEnabledProvider.overrideWith((_) => Stream.value(true)),
+        ],
+      ));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Sync settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No background sync here'), findsOneWidget);
+      expect(find.byKey(const Key('backgroundSyncSwitch')), findsNothing);
     });
 
     testWidgets('shows logout icon button in app bar', (tester) async {

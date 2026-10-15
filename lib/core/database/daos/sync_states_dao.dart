@@ -46,6 +46,16 @@ class SyncStatesDao extends DatabaseAccessor<AppDatabase>
         lastDigestSentAt: Value(at),
       ));
 
+  /// When this device last sent a digest to anyone, for any group (ms epoch;
+  /// 0 if never). The background round (G31) only broadcasts its own digests
+  /// when this is older than the background period.
+  Future<int> latestDigestSentAt() async {
+    final latest = peerSyncStates.lastDigestSentAt.max();
+    final row =
+        await (selectOnly(peerSyncStates)..addColumns([latest])).getSingle();
+    return row.read(latest) ?? 0;
+  }
+
   static PeerSyncStateModel _toModel(PeerSyncState s) => PeerSyncStateModel(
         groupId: s.groupId,
         userId: s.userId,

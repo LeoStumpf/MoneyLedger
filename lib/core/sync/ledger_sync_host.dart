@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/ledger_syncer.dart';
+import '../background/background_sync_provider.dart';
 import 'sync_engine.dart';
 
 /// Whether inbound sync (LedgerSyncer) and anti-entropy (SyncEngine) are
@@ -31,6 +32,9 @@ class LedgerSyncHost extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(ledgerSyncActiveProvider);
+    // G31: keep the Android periodic background sync registered while signed
+    // in with it enabled (no-op on other platforms).
+    ref.watch(backgroundSyncSchedulingProvider);
     return child;
   }
 }

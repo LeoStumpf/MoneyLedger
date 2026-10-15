@@ -73,6 +73,7 @@ lib/
   main.dart          # entry point — ProviderScope(App)
   app.dart           # MaterialApp.router
   core/
+    background/      # G31 Android periodic background sync (round, gate, WorkManager glue)
     router.dart      # go_router + routerRedirect() pure function (generated: router.g.dart)
     splash_page.dart # neutral loading route while the onboarding flag is unknown (G25)
     database/
@@ -302,6 +303,50 @@ anti-entropy repairs). The expenses app-bar `_SyncStatusIcon` shows a tappable
 error cloud when failing (sheet with last error / last-synced + a **Retry now**
 that calls `broadcastDigests()`); otherwise the existing `cloud_done`/
 `cloud_queue` states.
+
+### Background sync (G31, Android)
+
+To-device messages queue on the homeserver and are only fetched while the app
+runs, so a closed device used to answer nothing (digests, resync requests). A
+periodic **WorkManager** task (`workmanager` ^0.10, MIT; every 15 min, network
+connected + battery not low; `lib/core/background/`) fixes that:
+
+- `background_round.dart` — **plain Dart** `runBackgroundRound(tryAcquire,
+  openSession, openDatabase, abort, timeout)`: opens the per-account DB, runs
+  the app's own `LedgerSyncer` + `SyncEngine` in a private `ProviderContainer`
+  (no startup digest via `digestOnStartProvider`, short poke debounce, no
+  periodic timer / self-resync retries), `fetchOnce()` (one `/sync`), waits
+  until the relay is quiet (no send in flight), broadcasts its own digests
+  **only if** `SyncStatesDao.latestDigestSentAt()` is older than 15 min, does up
+  to 2 follow-up fetches while there was traffic, then disposes + closes (DB,
+  then the session). Bounded at 60 s. Tested with fakes
+  (`test/core/background_round_test.dart`).
+- `background_sync_native.dart` — the headless entry
+  (`backgroundSyncDispatcher`, `@pragma('vm:entry-point')`) and the real
+  session: `vod.init()`, `buildMatrixClient()`, `client.backgroundSync = false`
+  **before** `init(waitForFirstSync: false)` (init's first `/sync` + our
+  `oneShotSync` only — no endless loop), `forClient` before init;
+  close = `client.dispose(closeDatabase: true)` — **never logout**.
+  `background_sync.dart` conditionally exports it or the web stub (no-ops).
+- **Concurrency guard** (`background_gate.dart`): app and round run in the same
+  process but different isolates, each with its own Matrix client / Drift
+  connection on the same files (Olm sessions!) — they must never overlap. Both
+  register a port in the process-wide `IsolateNameServer` and ping the other
+  side (register first, check second; unanswered = stale mapping, removed). The
+  app claims its slot in `main()` **before** opening anything
+  (`prepareBackgroundSync`) and asks a running round to `stop` (it aborts and
+  closes its stores, bounded wait). A round that finds the app alive doesn't
+  touch the stores: it asks the app to `sync` (one `oneShotSync` in the app's
+  client) and keeps the process awake meanwhile.
+- Setting: per account, device-local `AppSettings` `background_sync_enabled`
+  (default on), *Sync settings* sheet on the groups page;
+  `backgroundSyncSchedulingProvider` (watched by `LedgerSyncHost`) registers /
+  cancels the OS task (cancel on sign-out). The round re-checks the flag.
+- The app manifest removes the plugin's `POST_NOTIFICATIONS` permission (no
+  expedited / foreground workers). Web/iOS: no background sync.
+- Manual trigger on a device: `adb shell cmd jobscheduler run -f
+  app.moneyledger.money_ledger <jobId>` (id from `dumpsys jobscheduler`); logs
+  are tagged `[bg]` / `[bg-gate]`.
 
 ### Anti-entropy (Phase C)
 

@@ -13,8 +13,8 @@ part 'self_recovery.g.dart';
 /// arrived. Injectable so tests can shorten it.
 ///
 /// Why retry at all: the request is relayed to the user's *other* devices, and
-/// those only answer while MoneyLedger is actually running there (no push /
-/// background sync on mobile). The homeserver queues the request, so it is
+/// those only answer while MoneyLedger runs there (or in its ~15 min Android
+/// background round, G31). The homeserver queues the request, so it is
 /// normally answered as soon as the other device opens the app — the retries
 /// cover a request that was lost or couldn't be sent yet (encryption not ready
 /// right after login, a transient send failure).

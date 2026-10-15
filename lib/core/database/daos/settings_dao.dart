@@ -23,6 +23,27 @@ class SettingsDao extends DatabaseAccessor<AppDatabase> with _$SettingsDaoMixin 
             key: Value(_onboardingSeenKey), value: Value('true')),
       );
 
+  // ── background sync (G31) ───────────────────────────────────────────────────
+
+  static const _backgroundSyncKey = 'background_sync_enabled';
+
+  /// Whether the periodic Android background sync may run for this account
+  /// (device-local, per account). Default: on.
+  Stream<bool> watchBackgroundSyncEnabled() =>
+      (select(appSettings)..where((t) => t.key.equals(_backgroundSyncKey)))
+          .watchSingleOrNull()
+          .map((row) => row?.value != 'false');
+
+  Future<bool> backgroundSyncEnabled() =>
+      (select(appSettings)..where((t) => t.key.equals(_backgroundSyncKey)))
+          .getSingleOrNull()
+          .then((row) => row?.value != 'false');
+
+  Future<void> setBackgroundSyncEnabled(bool enabled) =>
+      into(appSettings).insertOnConflictUpdate(AppSettingsCompanion(
+          key: const Value(_backgroundSyncKey),
+          value: Value(enabled ? 'true' : 'false')));
+
   // ── left-group tombstones (G9) ─────────────────────────────────────────────
 
   static const _leftGroupPrefix = 'left_group:';

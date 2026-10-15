@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../auth/auth_provider.dart';
+import '../onboarding/onboarding_provider.dart';
 import '../backup/csv_files.dart';
 import '../backup/csv_import.dart';
 import '../expenses/ledger_syncer.dart';
+import '../../core/background/background_sync_provider.dart';
 import '../../core/sync/self_recovery.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../models/group_model.dart';
@@ -32,6 +34,14 @@ class GroupsPage extends ConsumerWidget {
             icon: const Icon(Icons.devices),
             tooltip: 'Devices & security',
             onPressed: () => context.push('/devices'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Sync settings',
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              builder: (_) => const SyncSettingsSheet(),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -160,6 +170,57 @@ class _RestoringGroups extends StatelessWidget {
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sync settings (G31): explains when this device syncs and, on Android,
+/// toggles the periodic background sync for the signed-in account.
+class SyncSettingsSheet extends ConsumerWidget {
+  const SyncSettingsSheet({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final supported = ref.watch(backgroundSyncSupportedProvider);
+    final enabled = ref.watch(backgroundSyncEnabledProvider).value ?? true;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ListTile(
+              title: Text('Sync'),
+              subtitle: Text(
+                  'Devices exchange changes while MoneyLedger is open. Changes '
+                  'from others wait on your homeserver (encrypted) until this '
+                  'device picks them up.'),
+            ),
+            if (supported)
+              SwitchListTile(
+                key: const Key('backgroundSyncSwitch'),
+                secondary: const Icon(Icons.sync),
+                title: const Text('Background sync'),
+                subtitle: const Text(
+                    'Also sync about every 15 minutes while the app is closed '
+                    '(with network, not on low battery).'),
+                value: enabled,
+                onChanged: (v) => ref
+                    .read(settingsDaoProvider)
+                    .setBackgroundSyncEnabled(v),
+              )
+            else
+              const ListTile(
+                leading: Icon(Icons.sync_disabled),
+                title: Text('No background sync here'),
+                subtitle: Text('In the browser, MoneyLedger syncs only while '
+                    'this tab is open. The Android app also syncs '
+                    'periodically in the background.'),
+              ),
           ],
         ),
       ),

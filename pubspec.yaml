@@ -38,6 +38,7 @@ dependencies:
   # Android: it fixes Gradle 9 (Project.exec removed) and compiles against SDK 36.
   # Android builds need a Rust toolchain (rustup, stable) — see README.
   flutter_vodozemac: ^0.6.0
+  workmanager: ^0.10.10
 
 dev_dependencies:
   flutter_test:

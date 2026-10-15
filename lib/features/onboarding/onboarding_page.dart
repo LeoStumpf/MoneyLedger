@@ -21,7 +21,9 @@ class OnboardingPage extends ConsumerWidget {
       Icons.sync,
       'Members sync peer-to-peer',
       'Changes are shared directly between members over end-to-end-encrypted '
-          'Matrix messages. The homeserver only relays ciphertext.'
+          'Matrix messages. The homeserver only relays ciphertext. Devices '
+          'sync while the app runs and, on Android, periodically in the '
+          'background.'
     ),
     (
       Icons.group_add,

@@ -30,6 +30,12 @@ final syncIntervalProvider =
 final pokeDebounceProvider =
     Provider<Duration>((ref) => const Duration(seconds: 5));
 
+/// Whether [SyncEngine.start] broadcasts every group's digest right away. The
+/// app does (a fresh start announces its state); the Android background round
+/// (G31) turns it off and decides itself — it only broadcasts when the last
+/// digest is older than the background period.
+final digestOnStartProvider = Provider<bool>((ref) => true);
+
 /// Rule 5 asks a digest's sender to bootstrap us into a group we don't know.
 /// A burst of digests naming the same unknown group (several peers / devices
 /// answering at once) must not fan out into one resync_request each: per group
@@ -114,7 +120,22 @@ class SyncEngine {
   /// DB eagerly, before this engine's own `onDispose` has run.
   bool get _alive => !_disposed && !_db.isClosed;
 
+  final Completer<void> _ready = Completer<void>();
+
+  /// Completes once [start] has subscribed to the transport (or gave up:
+  /// signed out / no transport). The background round (G31) waits for it
+  /// before fetching, so no inbound payload is processed half-attached.
+  Future<void> get ready => _ready.future;
+
   Future<void> start() async {
+    try {
+      await _start();
+    } finally {
+      if (!_ready.isCompleted) _ready.complete();
+    }
+  }
+
+  Future<void> _start() async {
     // Signed out: there is no account ledger to sync. (Pages that watch this
     // provider directly may still build it during a login/logout transition;
     // starting here would send a spurious empty-DB resync_request — G24.)
@@ -130,6 +151,7 @@ class SyncEngine {
     if (kDebugMode) debugPrint('[sync] engine started for ${transport.userId}');
     _transport = transport;
     _sub = transport.onMessage.listen(_onMessage);
+    _ready.complete();
     _periodic = Timer.periodic(
         _ref.read(syncIntervalProvider), (_) => broadcastDigests());
     try {
@@ -146,7 +168,7 @@ class SyncEngine {
       if (!_alive) return;
       debugPrint('[sync] self-resync check failed: $e');
     }
-    await broadcastDigests();
+    if (_ref.read(digestOnStartProvider)) await broadcastDigests();
   }
 
   // ── new-device recovery (G30) ─────────────────────────────────────────────
