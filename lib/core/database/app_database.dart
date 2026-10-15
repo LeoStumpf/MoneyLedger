@@ -144,6 +144,19 @@ class AppDatabase extends _$AppDatabase {
     return super.close();
   }
 
+  /// Removes every local row of [groupId] — group meta, participants,
+  /// expenses, settlements (tombstones included) and peer sync bookkeeping —
+  /// in one transaction (G9 leave / delete). Device-local: nothing is sent.
+  Future<void> purgeGroup(String groupId) => transaction(() async {
+        await (delete(groups)..where((t) => t.roomId.equals(groupId))).go();
+        await (delete(members)..where((t) => t.groupId.equals(groupId))).go();
+        await (delete(expenses)..where((t) => t.roomId.equals(groupId))).go();
+        await (delete(settlements)..where((t) => t.roomId.equals(groupId)))
+            .go();
+        await (delete(peerSyncStates)..where((t) => t.groupId.equals(groupId)))
+            .go();
+      });
+
   @override
   int get schemaVersion => 5;
 

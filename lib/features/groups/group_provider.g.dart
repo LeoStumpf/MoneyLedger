@@ -410,7 +410,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'519a2d56aa1c25f701b567380323f50274fe2b31';
+String _$groupCreatorHash() => r'39cb0461a53b0ec34b84827f8118743a96ac4685';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -462,7 +462,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'ebbdee3ce836ae9a81ca387e591dc1641bbaf9e6';
+String _$memberAdderHash() => r'666bf327f6658279d78b4201c8074b3fe7a0abea';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -514,9 +514,79 @@ final class MemberRemoverProvider
   }
 }
 
-String _$memberRemoverHash() => r'3f0329e80c5e39dc57dcfd29d619b4932ce7bce3';
+String _$memberRemoverHash() => r'61e337646abbcc5060611cb19da97fa162cba8de';
 
 abstract class _$MemberRemover extends $Notifier<AsyncValue<void>> {
+  AsyncValue<void> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<void>, AsyncValue<void>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<void>, AsyncValue<void>>,
+              AsyncValue<void>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+/// Leave / delete a group (G9). Both end with the group **purged** from the
+/// local DB and a device-local [LeftGroupTombstone], so a late digest or
+/// bootstrap from a peer (or our own other devices) can't resurrect it — only
+/// being re-added (a newer `active` member record for our MXID) brings it back.
+
+@ProviderFor(GroupExiter)
+final groupExiterProvider = GroupExiterProvider._();
+
+/// Leave / delete a group (G9). Both end with the group **purged** from the
+/// local DB and a device-local [LeftGroupTombstone], so a late digest or
+/// bootstrap from a peer (or our own other devices) can't resurrect it — only
+/// being re-added (a newer `active` member record for our MXID) brings it back.
+final class GroupExiterProvider
+    extends $NotifierProvider<GroupExiter, AsyncValue<void>> {
+  /// Leave / delete a group (G9). Both end with the group **purged** from the
+  /// local DB and a device-local [LeftGroupTombstone], so a late digest or
+  /// bootstrap from a peer (or our own other devices) can't resurrect it — only
+  /// being re-added (a newer `active` member record for our MXID) brings it back.
+  GroupExiterProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'groupExiterProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$groupExiterHash();
+
+  @$internal
+  @override
+  GroupExiter create() => GroupExiter();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<void> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<void>>(value),
+    );
+  }
+}
+
+String _$groupExiterHash() => r'e7e7cceaf082b85c4fb25672e24b07523e8cbb36';
+
+/// Leave / delete a group (G9). Both end with the group **purged** from the
+/// local DB and a device-local [LeftGroupTombstone], so a late digest or
+/// bootstrap from a peer (or our own other devices) can't resurrect it — only
+/// being re-added (a newer `active` member record for our MXID) brings it back.
+
+abstract class _$GroupExiter extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
   @$mustCallSuper
   @override

@@ -127,9 +127,12 @@ mistyped settlement is permanent from the user's perspective.
 
 ### G9. No way to delete/leave/archive a group 🟡
 `GroupsDao.deleteGroup` exists but is unused. Groups only accumulate.
-- [ ] "Leave group" = mark own participant `removed` + stop syncing + hide locally
-- [ ] "Delete locally" for groups that are only on this device
-- [ ] Decide archive vs. delete semantics for settled-up groups
+- [x] "Leave group" = own participant `removed` (replicated) + `purgeGroup` + device-local
+      `left_group:<id>` tombstone; stale digests/bootstraps can't resurrect it (SyncEngine
+      rule 7 also re-sends our `removed` record to peers that missed it); re-add brings it back
+- [x] "Delete group" for solo/local-only groups (or when we're no longer active)
+- [x] Confirmation warns about unsettled balance + offers CSV export; ⋮ menu on expenses page
+- [ ] Archive for settled-up groups — not done (future, low priority)
 
 ### G10. Group rename + default currency edit 🟡
 Group meta is LWW-synced already (`meta_updated_at`), only the UI is missing.
@@ -171,6 +174,7 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
 - [ ] Offline demo mode `--dart-define=OFFLINE_DEMO=true` (override transport +
       auth gateway with seeded fakes) for screenshots / manual multi-user checks
 - [ ] CI (GitHub Actions): `./build.sh` on push — needs G2 first for Android
+- [ ] Regenerate stale `.g.dart` files (build_runner changes hashes in 4 untouched files)
 - [ ] Audit the ~30 `debugPrint` / swallowed `catch` sites in `lib/` — route
       user-relevant failures into `SyncHealth` or a snackbar
 
@@ -226,7 +230,7 @@ against SDK 36 natively (the G1 gradle override could go).
 `lib/features/groups/group_provider.dart` (GroupCreator, MemberAdder, MemberRemover)
 read `ref` after awaits and set `state` without a `ref.mounted` check (cf. the G19
 `_WriteContext` fix in `expenses_provider.dart`).
-- [ ] Apply the same capture-before-await pattern + test
+- [x] Apply the same capture-before-await pattern (`_GroupWriteContext`) + test
 
 ### G24. Silent no-op sends + startup message loss 🟠
 Found in G7a (real devices):
@@ -251,6 +255,20 @@ Found in G7a (real devices):
 G7a: on the emulator the groups page showed first and onboarding replaced it
 ~2–3 min later (flag defaults to "seen" until loaded; per-account DB opens late).
 - [ ] Show a neutral splash until the flag is known (or decide onboarding at login)
+
+### G26. Member lifecycle gaps (found in G9) 🟠
+- **Bug:** `MemberAdder.add(groupId, mxid)` for an MXID that already claimed a UUID
+  participant creates a *second* participant with the same matrixId →
+  `memberByMatrixId`'s `getSingleOrNull` then throws (e.g. re-adding someone who
+  left after claiming a placeholder). Re-add must reactivate the existing participant.
+- Members page hides removed participants → peers just see someone vanish; show
+  "left"/"removed" (greyed) since they still appear in history.
+- Leaving on one device leaves the group on the user's *other* devices (shown as
+  removed, no digests). Consider propagating "left" to own devices (self-sync).
+- Re-add detection compares the re-adder's clock with `left_at` (skew → ignored).
+- [ ] Fix the duplicate-participant re-add bug + test
+- [ ] Show removed/left members distinctly
+- [ ] Propagate leave/delete to own other devices (decide semantics)
 
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
@@ -289,8 +307,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G7a — first real-device sync: phone (A) ↔ emulator (B) — all 10 steps pass after fixing app-wide sync host
 - [x] G8 — settlements list + undo
 - [x] G24 — silent no-op sends + startup message loss (pulled forward)
-- [~] G9 — leave/delete group
-- [ ] G10 — rename group / currency
+- [x] G9 — leave/delete group (+ G23 group mutators)
+- [~] G10 — rename group / currency
 - [ ] G7 — smoke checklist + emulator pass (iOS: document unsupported — no macOS)
 - [ ] G12 — app identity, i18n EN+DE, privacy/about
 - [ ] G17 — design pass
@@ -304,9 +322,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G20 — friendly login error messages
 - [ ] G21 — licensing: AGPL-3.0 decided → LICENSE, notices, licenses page
 - [ ] G22 — dependency upgrades (matrix, file_picker)
-- [ ] G23 — group mutators ref-after-await
 - [ ] G25 — late onboarding redirect
-- [ ] *(G26+ — newly discovered points)*
+- [ ] G26 — member lifecycle gaps (re-add duplicate bug, show left members, own devices)
+- [ ] *(G27+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---

@@ -9,8 +9,10 @@ import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
+import '../../core/database/daos/settings_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/sync/left_groups.dart';
 import '../../models/member_model.dart';
 import 'expenses_provider.dart';
 
@@ -52,6 +54,10 @@ class LedgerSyncer {
   final ExpensesDao _expenses;
   final GroupsDao _groups;
   final MembersDao _members;
+  final SettingsDao _settings;
+
+  /// This device's MXID, known once [start] has the transport.
+  String? _myMxid;
 
   bool _disposed = false;
   StreamSubscription<TransportMessage>? _sub;
@@ -61,7 +67,8 @@ class LedgerSyncer {
         _db = ref.read(appDatabaseProvider),
         _expenses = ref.read(expensesDaoProvider),
         _groups = ref.read(groupsDaoProvider),
-        _members = ref.read(membersDaoProvider);
+        _members = ref.read(membersDaoProvider),
+        _settings = SettingsDao(ref.read(appDatabaseProvider));
 
   /// False once disposed or once the captured DB is closed (on an account
   /// switch the old DB closes before this syncer's `onDispose` runs).
@@ -79,6 +86,7 @@ class LedgerSyncer {
       return;
     }
     if (!_alive) return;
+    _myMxid = transport.userId;
     _sub = transport.onMessage.listen(_onMessage);
   }
 
@@ -101,6 +109,27 @@ class LedgerSyncer {
       if (!_alive) return;
       final groupKnown = (await _groups.getGroup(group)) != null;
       if (!_alive) return;
+
+      if (!groupKnown) {
+        // G9: a group we left / deleted is only re-accepted via a bootstrap
+        // that re-adds us; every other record for it is dropped (it would
+        // otherwise leave orphan rows, e.g. a peer's self-member payload).
+        final left = await _settings.leftGroup(group);
+        if (!_alive) return;
+        if (left != null) {
+          if (!acceptsForLeftGroup(
+            type: msg.type,
+            content: msg.content,
+            myMxid: _myMxid,
+            tombstone: left,
+          )) {
+            debugPrint('[ledger] dropped ${msg.type} for left group $group');
+            return;
+          }
+          await _settings.clearGroupLeft(group);
+          if (!_alive) return;
+        }
+      }
 
       if (!isSenderAuthorized(
         type: msg.type,
@@ -188,6 +217,27 @@ class LedgerSyncer {
       default:
         return false;
     }
+  }
+
+  /// Whether an inbound record for a group we **left / deleted** (G9) may be
+  /// applied: only a `bootstrap` whose members list our MXID `active` with a
+  /// clock newer than the tombstone — i.e. we were re-added. A stale snapshot
+  /// (a peer that missed our leave, or our own other device answering a
+  /// resync) still lists us with the old clock and is ignored.
+  @visibleForTesting
+  static bool acceptsForLeftGroup({
+    required String type,
+    required Map<String, dynamic> content,
+    required String? myMxid,
+    required LeftGroupTombstone tombstone,
+  }) {
+    if (type != bootstrapEventType || myMxid == null) return false;
+    return classifyPeerViewOfMe(
+          memberRecords: content['members'] as List? ?? const [],
+          myMxid: myMxid,
+          leftAt: tombstone.leftAt,
+        ) ==
+        PeerViewOfMe.readded;
   }
 
   /// Clamps an inbound LWW clock to at most `now + tolerance` so a future-dated

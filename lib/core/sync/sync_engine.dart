@@ -12,10 +12,12 @@ import '../database/app_database.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
 import '../database/daos/members_dao.dart';
+import '../database/daos/settings_dao.dart';
 import '../database/daos/sync_states_dao.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
 import 'ledger_payloads.dart';
+import 'left_groups.dart';
 import 'sync_health.dart';
 
 /// How often each group's digest is broadcast to its members. Injectable so
@@ -66,6 +68,13 @@ final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
 ///    sender (they bootstrap us if we're a member).
 /// 6. A digest from a sender we have as `removed` → reply only with their
 ///    member-tombstone payload so their device learns of the removal.
+/// 7. A digest for a group we **left / deleted** (a [LeftGroupTombstone], G9)
+///    never triggers rule 5 — the group stays gone — unless the digest lists
+///    our MXID `active` with a clock newer than the tombstone (we were
+///    **re-added**): then rule 5 applies as usual. If the digest instead still
+///    lists us `active` with an older clock (the peer missed our leave notice)
+///    and we left (not merely deleted), we re-send our stored `removed` member
+///    payload to the sender, nothing else.
 class SyncEngine {
   final Ref _ref;
 
@@ -78,6 +87,7 @@ class SyncEngine {
   final MembersDao _members;
   final ExpensesDao _expenses;
   final SyncStatesDao _syncStates;
+  final SettingsDao _settings;
 
   LedgerTransport? _transport;
   StreamSubscription<TransportMessage>? _sub;
@@ -92,7 +102,8 @@ class SyncEngine {
         _groups = ref.read(groupsDaoProvider),
         _members = ref.read(membersDaoProvider),
         _expenses = ref.read(expensesDaoProvider),
-        _syncStates = ref.read(syncStatesDaoProvider);
+        _syncStates = ref.read(syncStatesDaoProvider),
+        _settings = SettingsDao(ref.read(appDatabaseProvider));
 
   /// Whether async work may continue. Checked after **every** await: the
   /// engine may have been disposed (logout / account switch / container
@@ -260,6 +271,24 @@ class SyncEngine {
       final group = await _groups.getGroup(groupId);
       if (!_alive) return;
       if (group == null) {
+        // Rule 7: a group we left / deleted stays gone unless we were re-added.
+        final left = await _settings.leftGroup(groupId);
+        if (!_alive) return;
+        if (left != null) {
+          final view = classifyPeerViewOfMe(
+            memberRecords: (content['members'] as Map? ?? const {}).values,
+            myMxid: transport.userId,
+            leftAt: left.leftAt,
+          );
+          if (view == PeerViewOfMe.staleActive && left.removalNotice != null) {
+            await transport.sendToUsers(
+                {msg.senderId}, memberEventType, left.removalNotice!);
+            return;
+          }
+          if (view != PeerViewOfMe.readded) return;
+          // Re-added: fall through to rule 5 — LedgerSyncer accepts the
+          // bootstrap answer because it carries our newer active record.
+        }
         // Rule 5: we don't know this group — ask the sender to bootstrap us
         // (at most once per group per cooldown window).
         final now = DateTime.now().millisecondsSinceEpoch;

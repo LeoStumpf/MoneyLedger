@@ -8,9 +8,13 @@ import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../backup/csv_export.dart';
 import '../backup/csv_files.dart';
+import '../balance/balance_provider.dart';
+import '../groups/group_exit_dialog.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 import 'ledger_syncer.dart';
+
+enum _GroupMenuAction { export, exit }
 
 class ExpensesPage extends ConsumerWidget {
   final String roomId;
@@ -36,6 +40,10 @@ class ExpensesPage extends ConsumerWidget {
     // trigger deletes — a bare `read` in the dialog callback would let it be
     // disposed mid-delete.
     ref.watch(expenseAdderProvider);
+    // Same for the leave/delete notifier (G9).
+    ref.watch(groupExiterProvider);
+    final exitKind =
+        groupExitKind(members, ref.watch(currentUserIdProvider));
 
     return Scaffold(
       appBar: AppBar(
@@ -59,10 +67,36 @@ class ExpensesPage extends ConsumerWidget {
             tooltip: 'Balance',
             onPressed: () => context.push('/groups/$roomId/balance'),
           ),
-          IconButton(
-            icon: const Icon(Icons.save_alt),
-            tooltip: 'Export CSV',
-            onPressed: () => _exportCsv(context, ref),
+          // Less frequent group actions live in an overflow menu so the app
+          // bar stays uncluttered on phones.
+          PopupMenuButton<_GroupMenuAction>(
+            tooltip: 'More',
+            onSelected: (action) => switch (action) {
+              _GroupMenuAction.export => _exportCsv(context, ref),
+              _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: _GroupMenuAction.export,
+                child: ListTile(
+                  leading: Icon(Icons.save_alt),
+                  title: Text('Export CSV'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: _GroupMenuAction.exit,
+                child: ListTile(
+                  leading: Icon(exitKind == GroupExitKind.leave
+                      ? Icons.logout
+                      : Icons.delete_outline),
+                  title: Text(exitKind == GroupExitKind.leave
+                      ? 'Leave group'
+                      : 'Delete group'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -158,6 +192,40 @@ class ExpensesPage extends ConsumerWidget {
         );
       },
     );
+  }
+
+  /// Leave / delete this group (G9) after a confirmation that warns about an
+  /// unsettled balance; then back to the groups list.
+  Future<void> _exitGroup(
+      BuildContext context, WidgetRef ref, GroupExitKind kind) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final group = await ref.read(groupsDaoProvider).getGroup(roomId);
+    if (!context.mounted) return;
+    final me = ref.read(currentParticipantProvider(roomId)).value;
+    final warning =
+        unsettledWarning(ref.read(balanceForRoomProvider(roomId)), me?.userId);
+    final confirmed = await confirmGroupExit(
+      context,
+      kind: kind,
+      groupName: group?.name ?? 'This group',
+      warning: warning,
+      onExport: () => _exportCsv(context, ref),
+    );
+    if (!confirmed) return;
+    final exiter = ref.read(groupExiterProvider.notifier);
+    await (kind == GroupExitKind.leave
+        ? exiter.leave(roomId)
+        : exiter.delete(roomId));
+    final error = ref.read(groupExiterProvider).error;
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+      return;
+    }
+    messenger.showSnackBar(SnackBar(
+        content: Text(kind == GroupExitKind.leave
+            ? 'You left "${group?.name ?? ''}"'
+            : 'Deleted "${group?.name ?? ''}"')));
+    if (context.mounted) context.go('/groups');
   }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {

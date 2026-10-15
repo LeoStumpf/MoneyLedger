@@ -78,7 +78,7 @@ lib/
         groups_dao.dart        # Groups table queries → GroupModel (LWW upsert)
         members_dao.dart       # Participants (id + name + optional matrixId; LWW; activeClaimedMatrixIds)
         sync_states_dao.dart   # PeerSyncStates: per-(group,peer) anti-entropy bookkeeping
-        settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, per account); never synced
+        settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, left-group tombstones, per account); never synced
     matrix/
       ledger_transport.dart       # LedgerTransport port + TransportMessage + event-type constants
                                   #   + SendResult, TransportUnavailableException, pure planDeviceSend
@@ -87,6 +87,7 @@ lib/
     sync/
       ledger_payloads.dart     # Plain-Dart payload codec (protocol v1) + bootstrap builder
       sync_engine.dart         # Anti-entropy: digest exchange + targeted repair + resync
+      left_groups.dart         # LeftGroupTombstone + pure classifyPeerViewOfMe (G9 leave/delete)
       sync_status_provider.dart # groupSyncStatusProvider — drives the cloud icons
   models/
     expense_model.dart         # Plain Dart models (ExpenseModel, SettlementModel)
@@ -96,6 +97,7 @@ lib/
     auth/                      # Matrix login, in-app registration, session mgmt
                                #   register_flows.dart: pure UIA-flow classifier; register_page.dart
     groups/                    # Group list + create (local-only groups, member add/remove)
+                               #   GroupExiter (leave/delete, G9) + group_exit_dialog.dart
     expenses/                  # Expense list, add/edit/delete, ledger sync
       ledger_syncer.dart       # LedgerSyncer: subscribes to to-device onMessage → writes to Drift
                                # Static @visibleForTesting methods for unit-testable event processing
@@ -226,6 +228,27 @@ clamped to `now + 5 min` (`clampInboundClock`) to bound clock-skew LWW wins. Not
 yet covered: per-record cryptographic authorship (a member can still forge
 another member's record) — see `docs/open-points.md`.
 
+**Leaving / deleting a group (G9).** The expenses app bar's overflow menu (⋮,
+next to *Export CSV*) offers **Leave group** when this account is an active
+participant and another claimed account is active (`groupExitKind`), else
+**Delete group** (solo / local-only group, or we're no longer active). The
+confirmation warns (non-blocking) if our balance isn't settled and offers the
+CSV export. `GroupExiter.leave` marks our participant `removed` (LWW) and relays
+it to every claimed account (best-effort — peers see "X left"; our own other
+devices too, where the group stays but read-only-ish: we're removed there);
+`delete` sends nothing. Both then `AppDatabase.purgeGroup` (group, members,
+expenses, settlements incl. tombstones, peer sync states — one transaction) and
+write a device-local **`LeftGroupTombstone`** (`AppSettings` key
+`left_group:<id>`, JSON `{left_at, member?}`; no schema change). Receivers
+(group unknown + tombstone present): `LedgerSyncer` drops **every** record for
+the group except a `bootstrap` that **re-adds** us (our MXID `active` with
+`updated_at > left_at`, `acceptsForLeftGroup`) — that clears the tombstone and
+goes through the normal TOFU path; `SyncEngine` rule 7 (see its doc) never
+asks for a resync of a left group unless the digest shows us re-added, and
+answers a digest that still lists us active with an older clock (lost leave
+notice) with our stored `removed` member payload. Peers stop targeting us on
+their own: replication and digests go to *active* claimed members only.
+
 **Sync health (Phase F).** Replication/digest errors used to only `debugPrint`.
 `SyncHealth` (`lib/core/sync/sync_health.dart`, a `keepAlive` Riverpod notifier)
 now collects `reportDelivery(targets, SendResult)`/`reportFailure()` from
@@ -256,7 +279,7 @@ re-send with a higher `updatedAt`; delete = a permanent tombstone. New-device
 recovery: an empty DB sends `resync_request{scope: all}` to the user's own MXID
 (another of their devices answers with bootstraps); an unknown group named in a
 peer's digest triggers organic bootstrap (at most one `resync_request` per group
-per `kGroupResyncCooldown`, 30 s — a burst of digests doesn't fan out). Sync status (`cloud_done`/
+per `kGroupResyncCooldown`, 30 s — a burst of digests doesn't fan out); never for a group we left/deleted unless we were re-added — G9). Sync status (`cloud_done`/
 `cloud_queue` icons) is derived from `PeerSyncStates.lastInSyncAt`
 (`lib/core/sync/sync_status_provider.dart`). Full receiver rules: the `SyncEngine`
 doc comment.
@@ -350,7 +373,7 @@ provider's `.future` in a `ProviderContainer` test.
 
 **Router pattern:** `routerProvider` is `keepAlive: true` and uses `refreshListenable` (a `ValueNotifier`, toggled) to rerun the redirect when `isLoggedInProvider` **or** `onboardingSeenProvider` changes. Do **not** make it non-keepAlive — that recreates the `GoRouter` on every auth state change, which crashes at the default initial location `/`. `routerRedirect(isLoggedIn, onboardingSeen, location)` is the pure, unit-tested seam: signed-out users reach only `/login` + `/register`; a signed-in user who hasn't completed the one-time **onboarding** (`onboarding_seen` flag in `AppSettings`, default *seen* until the flag loads so returning users never flash it) is forced to `/onboarding`.
 
-**Async work vs. account switch / dispose (G19):** on an account switch Riverpod 3 closes the old ledger DB **eagerly** (when `appDatabaseProvider` rebuilds), but dependents like `SyncEngine`/`LedgerSyncer` are only disposed on the next scheduler flush — so in-flight async work can outlive both its DB and its `Ref`. Rules: (1) capture the DB + DAOs (and transport/health notifier) **before the first await** — `SyncEngine`/`LedgerSyncer` read them in their constructor, `ExpenseAdder` via `_WriteContext` — never re-read DAO providers after an await; (2) after **every** await check `_alive` (`!_disposed && !_db.isClosed`; `AppDatabase.isClosed` is set by `close()`) and bail silently; (3) in notifiers, only set `state` / use `ref` after an await when `ref.mounted`; (4) errors caught after the DB closed are expected — don't log them or report them to `SyncHealth` (its `report*` also no-op when unmounted). Regression test: `test/integration/account_switch_sync_test.dart`.
+**Async work vs. account switch / dispose (G19):** on an account switch Riverpod 3 closes the old ledger DB **eagerly** (when `appDatabaseProvider` rebuilds), but dependents like `SyncEngine`/`LedgerSyncer` are only disposed on the next scheduler flush — so in-flight async work can outlive both its DB and its `Ref`. Rules: (1) capture the DB + DAOs (and transport/health notifier) **before the first await** — `SyncEngine`/`LedgerSyncer` read them in their constructor, `ExpenseAdder` via `_WriteContext`, the group mutators (`GroupCreator`/`MemberAdder`/`MemberRemover`/`GroupExiter`) via `_GroupWriteContext` (G23) — never re-read DAO providers after an await; (2) after **every** await check `_alive` (`!_disposed && !_db.isClosed`; `AppDatabase.isClosed` is set by `close()`) and bail silently; (3) in notifiers, only set `state` / use `ref` after an await when `ref.mounted`; (4) errors caught after the DB closed are expected — don't log them or report them to `SyncHealth` (its `report*` also no-op when unmounted). Regression tests: `test/integration/account_switch_sync_test.dart`, `test/features/group_mutators_lifecycle_test.dart`.
 
 **Deterministic sync tests:** never wait with a fixed sleep. `FakeMatrixNetwork.settle()` waits until the relay is quiescent (N consecutive 2 ms ticks with no send/delivery — load-independent because pending microtasks and earlier-due timers like the 1 ms poke debounce always run first). Teardown: dispose the `ProviderContainer` **before** closing its DB.
 
