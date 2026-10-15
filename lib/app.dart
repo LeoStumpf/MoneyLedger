@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router.dart';
+import 'core/sync/ledger_sync_host.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -15,6 +16,9 @@ class App extends ConsumerWidget {
         useMaterial3: true,
       ),
       routerConfig: router,
+      // Inbound sync must run on every screen while signed in (incl. onboarding).
+      builder: (context, child) =>
+          LedgerSyncHost(child: child ?? const SizedBox.shrink()),
     );
   }
 }

@@ -148,6 +148,7 @@ SAS exists for visibility only; replication still reaches unverified devices.
       `flutter_localizations` + ARB files (at least EN + DE)
 - [ ] Amount/date formatting per locale (`intl`), currency symbols
 - [ ] Privacy policy / about page (needed for store listing)
+- [ ] Manifest: `android:enableOnBackInvokedCallback="true"` (predictive back; logcat warning)
 
 ### G13. CSV backup limitations 🟡
 Documented in CLAUDE.md: no settlements / tombstones, participant identity by
@@ -226,10 +227,35 @@ read `ref` after awaits and set `state` without a `ref.mounted` check (cf. the G
 `_WriteContext` fix in `expenses_provider.dart`).
 - [ ] Apply the same capture-before-await pattern + test
 
+### G24. Silent no-op sends + startup message loss 🟠
+Found in G7a (real devices):
+- `MatrixLedgerTransport.sendToUsers` returns success when the targets have no
+  devices (`lib/core/matrix/matrix_ledger_transport.dart:41`), and the SDK's
+  `sendToDeviceEncryptedChunked` returns quietly when encryption is off →
+  SyncHealth reports success although nothing was sent.
+- The SDK's to-device stream isn't buffered: events processed before the
+  LedgerSyncer subscribes (app start, `client.init` → background sync) are lost
+  until the next digest (≤10 min). Subscribe before the first sync, or buffer.
+- Duplicate startup sends: resync_request ×3 within ~200 ms, digest ×2 at
+  start (SyncEngine rebuilt during the per-account DB switch-over).
+- [ ] Treat "no target device reached" / encryption disabled as a failure
+- [ ] Guarantee the to-device listener is attached before the first sync
+- [ ] De-duplicate startup resync/digest sends
+- [ ] Tests with the fake transport
+
+### G25. Onboarding flag loads late → onboarding pops up minutes after login 🟡
+G7a: on the emulator the groups page showed first and onboarding replaced it
+~2–3 min later (flag defaults to "seen" until loaded; per-account DB opens late).
+- [ ] Show a neutral splash until the flag is known (or decide onboarding at login)
+
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
 - [ ] Empty states, spacing, list/card styling for groups, expenses, balances
 - [ ] Iterate against emulator screenshots of every main screen
+- [ ] Real-device findings (G7a): expenses title says only "Expenses" (truncated
+      "Expe…") — show the group name; keyboard covers the "Add" button on the
+      expense form; members shown by Matrix localpart (wraps) — prefer the
+      Matrix display name; add-member dialog can't add a local person by name
 
 ### G18. Final release review 🟡
 - [ ] `/code-review` over all of Phase G; fix findings
@@ -255,8 +281,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] CP-accounts — test accounts `@moneyledger-test-{a,b}-c725:matrix.org` (`~/.config/moneyledger-test/accounts.env`)
 - [x] G4 — per-account database
 - [x] G19 — SyncEngine ref-after-dispose + flaky integration tests (pulled forward)
-- [~] G7a — first real-device sync: phone (A) ↔ emulator (B) (pulled forward)
-- [ ] G8 — settlements list + undo
+- [x] G7a — first real-device sync: phone (A) ↔ emulator (B) — all 10 steps pass after fixing app-wide sync host
+- [~] G8 — settlements list + undo
 - [ ] G9 — leave/delete group
 - [ ] G10 — rename group / currency
 - [ ] G7 — smoke checklist + emulator pass (iOS: document unsupported — no macOS)
@@ -273,7 +299,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G21 — licensing: AGPL-3.0 decided → LICENSE, notices, licenses page
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G23 — group mutators ref-after-await
-- [ ] *(G24+ — newly discovered points)*
+- [ ] G24 — silent no-op sends + startup message loss
+- [ ] G25 — late onboarding redirect
+- [ ] *(G26+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---
