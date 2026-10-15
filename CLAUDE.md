@@ -35,6 +35,8 @@ To override the Flutter binary: `FLUTTER=/path/to/flutter ./build.sh`
 
 Output lands in `build/web/`.
 
+Android E2EE: `flutter_vodozemac` (**≥ 0.6.0** — older versions break on Gradle 9 / compileSdk < 36) compiles the vodozemac Rust crate during the Gradle build via cargokit, so Android builds need `rustup` (**stable** toolchain) with targets `aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android`. No pub-cache patches are needed (0.5.0 required hand-patches; don't downgrade). Web uses the prebuilt wasm committed in `web/pkg/` (no Rust needed).
+
 Android release signing: `android/app/build.gradle.kts` signs `release` with the upload keystore (`~/moneyledger-upload-keystore.jks`) configured via the gitignored `android/key.properties`; without that file it falls back to the debug key. Never commit `key.properties` or keystores — see README "Release signing".
 
 ## Commands

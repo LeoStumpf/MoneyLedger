@@ -29,21 +29,17 @@ any homeserver (login + sync dead).
 - [x] Release build was also broken by file_picker 8.x (compileSdk 34 vs. 36 required):
       `android/build.gradle.kts` now raises library plugins to compileSdk 36
 
-### G2. Android E2EE build depends on out-of-repo pub-cache patches 🔴
-`flutter_vodozemac` 0.5.0 only builds on Android with two hand-patches in
-`~/.pub-cache` (`cargokit/gradle/plugin.gradle`: `Project.exec` → injected
-`ExecOperations` for Gradle 9; `android/build.gradle`: `compileSdkVersion 33 → 36`).
-A `pub cache repair`, version bump, fresh clone or CI machine loses them →
-Android stops building. Not reproducible by anyone but this machine.
-- [ ] Vendor `flutter_vodozemac` into the repo (e.g. `third_party/flutter_vodozemac/`)
-      as a `path:` dependency with both patches committed
-- [ ] Document the Rust toolchain requirement (nightly? targets
-      aarch64/armv7/x86_64/i686-linux-android) in README + CLAUDE.md
-- [ ] Verify a clean clone builds an APK after `flutter pub cache clean`
-- [ ] Check upstream for a release that fixes Gradle 9 / compileSdk — drop the
-      vendored copy if so
-- [ ] The G1 compileSdk override in `android/build.gradle.kts` may already make the
-      `compileSdkVersion 33 → 36` patch unnecessary — verify; consider upgrading file_picker
+### G2. Android E2EE build depends on out-of-repo pub-cache patches ✅
+`flutter_vodozemac` 0.5.0 needed two hand-patches in `~/.pub-cache` (Gradle 9
+`Project.exec`, compileSdk 33 → 36).
+- [x] Upstream 0.6.0 ships exactly both fixes (+ 16 KB page-size flags) → bumped
+      `^0.5.0 → ^0.6.0` instead of vendoring; `rust/` + `lib/` byte-identical, so web
+      `web/pkg` wasm is unaffected; `vodozemac` stays 0.5.0 (matrix 7.2.2)
+- [x] Rust toolchain (stable + android targets) documented in README + CLAUDE.md
+- [x] Verified: clean clone + empty `PUB_CACHE` → release APK builds; emulator launch
+      without vodozemac init errors; web release build OK
+- [x] compileSdk patch obsolete (0.6.0 + the G1 override); override still needed for
+      file_picker 8.x (10.x would drop it — see G22)
 
 ### G3. Release signing uses the debug key 🔴
 `android/app/build.gradle*` → `release { signingConfig = signingConfigs.getByName("debug") }`.
@@ -196,6 +192,23 @@ or "M_FORBIDDEN: …" in the snackbar.
       friendly, localized messages; keep details expandable
 - [ ] Widget tests
 
+### G21. Licensing — matrix SDK + flutter_vodozemac are AGPL-3.0 🟠
+Both `matrix` (Famedly) and `flutter_vodozemac` are **AGPL-3.0**; the repo has **no
+LICENSE file**. Distributing the APK (Play Store) almost certainly requires the app
+to be AGPL-compatible: publish the source, ship the license, list third-party
+notices. **Decision for Leo.**
+- [ ] Leo decides: license the app AGPL-3.0 (public repo) — or replace the SDK
+- [ ] Add `LICENSE`, `THIRD_PARTY_NOTICES.md` (cf. ZoneCraft/PositioningInfo), in-app
+      licenses page (`showLicensePage`) + source link in About (G12)
+
+### G22. Dependency upgrades (matrix 7 → 10+, file_picker 8 → 10) 🟡
+`flutter_vodozemac` is pinned at 0.6.x by `matrix` 7.2.2 (`vodozemac ^0.5.0`); 0.7+/0.8
+need matrix 10+/11+ and a rebuilt `web/pkg` wasm. file_picker 10.x compiles
+against SDK 36 natively (the G1 gradle override could go).
+- [ ] Assess the matrix SDK major upgrade (API changes in to-device/encryption,
+      DB init) — do it only if low-risk; rebuild web wasm
+- [ ] Upgrade file_picker to 10.x; drop the compileSdk override if no longer needed
+
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
 - [ ] Empty states, spacing, list/card styling for groups, expenses, balances
@@ -221,7 +234,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 
 - [x] G1 — INTERNET permission
 - [x] G3 — release keystore
-- [~] G2 — vendor flutter_vodozemac
+- [x] G2 — vodozemac build reproducible (upgrade to 0.6.0)
 - [ ] CP-accounts — create test accounts A/B with Leo (`~/.config/moneyledger-test/accounts.env`)
 - [ ] G4 — per-account database
 - [ ] G8 — settlements list + undo
@@ -239,7 +252,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G16 — nice-to-haves
 - [ ] G19 — flaky integration tests
 - [ ] G20 — friendly login error messages
-- [ ] *(G21+ — newly discovered points)*
+- [ ] G21 — licensing (AGPL) — needs Leo's decision
+- [ ] G22 — dependency upgrades (matrix, file_picker)
+- [ ] *(G23+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---

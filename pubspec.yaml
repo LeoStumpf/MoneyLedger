@@ -34,7 +34,10 @@ dependencies:
   file_picker: ^8.1.2
   # Utilities
   uuid: ^4.5.3
-  flutter_vodozemac: ^0.5.0
+  # E2EE (vodozemac via Rust/flutter_rust_bridge). >=0.6.0 is required for
+  # Android: it fixes Gradle 9 (Project.exec removed) and compiles against SDK 36.
+  # Android builds need a Rust toolchain (rustup, stable) — see README.
+  flutter_vodozemac: ^0.6.0
 
 dev_dependencies:
   flutter_test:

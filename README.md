@@ -38,7 +38,18 @@ and sees only ciphertext.
 ## Prerequisites
 
 - Flutter SDK **3.44+** (Dart **3.12+**) — verify with `flutter doctor`.
-- Android: Android SDK + a device or emulator.
+- Android: Android SDK + NDK and a device or emulator.
+- Android: a **Rust toolchain** (`rustup`, **stable**) — E2EE uses
+  [`flutter_vodozemac`](https://pub.dev/packages/flutter_vodozemac) (≥ 0.6.0),
+  which compiles the vodozemac Rust crate during the Gradle build (via cargokit).
+  Install from <https://rustup.rs>, then add the Android targets:
+  ```bash
+  rustup target add aarch64-linux-android armv7-linux-androideabi \
+                    x86_64-linux-android i686-linux-android
+  ```
+  (cargokit tries to `rustup target add` missing targets itself, but
+  pre-installing them keeps offline/CI builds deterministic.) Web needs no Rust:
+  it uses the prebuilt wasm checked in under `web/pkg/`.
 - iOS: Xcode (macOS only).
 - A Matrix account on any homeserver to actually sign in.
 
