@@ -21,6 +21,7 @@ class ExpensesPage extends ConsumerWidget {
     ref.watch(ledgerSyncerProvider);
     ref.watch(syncEngineProvider); // run anti-entropy while this group is open
     final expensesAsync = ref.watch(expensesForRoomProvider(roomId));
+    final settlementsAsync = ref.watch(settlementsForRoomProvider(roomId));
     final syncStatus = ref.watch(groupSyncStatusProvider(roomId));
     final names = ref.watch(participantNamesProvider(roomId));
     final meAsync = ref.watch(currentParticipantProvider(roomId));
@@ -87,27 +88,8 @@ class ExpensesPage extends ConsumerWidget {
           Expanded(
             child: Stack(
               children: [
-          expensesAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
-            data: (expenses) {
-              if (expenses.isEmpty) {
-                return const Center(child: Text('No expenses yet.'));
-              }
-              return ListView.builder(
-                itemCount: expenses.length,
-                itemBuilder: (context, i) => _ExpenseTile(
-                  expense: expenses[i],
-                  paidByName:
-                      names[expenses[i].paidBy] ?? expenses[i].paidBy,
-                  pending: syncStatus.isRecordPending(expenses[i].updatedAt),
-                  onTap: () => context.push('/groups/$roomId/expenses/edit',
-                      extra: expenses[i]),
-                  onDelete: () => _confirmDelete(context, ref, expenses[i]),
-                ),
-              );
-            },
-          ),
+          _ledgerList(context, ref, expensesAsync, settlementsAsync, names,
+              syncStatus),
           if (adderState.isLoading)
             const ColoredBox(
               color: Colors.black26,
@@ -118,6 +100,63 @@ class ExpensesPage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Expenses and settlements merged into one newest-first list. Both DAO
+  /// streams already drop tombstones, so deleted records never show.
+  Widget _ledgerList(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<ExpenseModel>> expensesAsync,
+    AsyncValue<List<SettlementModel>> settlementsAsync,
+    Map<String, String> names,
+    GroupSyncStatus syncStatus,
+  ) {
+    if (expensesAsync.hasError) {
+      return Center(child: Text('Error: ${expensesAsync.error}'));
+    }
+    if (settlementsAsync.hasError) {
+      return Center(child: Text('Error: ${settlementsAsync.error}'));
+    }
+    if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final entries = <({int createdAt, Object record})>[
+      for (final e in expensesAsync.value!) (createdAt: e.createdAt, record: e),
+      for (final s in settlementsAsync.value!)
+        (createdAt: s.createdAt, record: s),
+    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (entries.isEmpty) {
+      return const Center(child: Text('No expenses yet.'));
+    }
+    String nameOf(String id) => names[id] ?? id;
+    return ListView.builder(
+      itemCount: entries.length,
+      itemBuilder: (context, i) {
+        final record = entries[i].record;
+        if (record is SettlementModel) {
+          final from = nameOf(record.fromUser);
+          final to = nameOf(record.toUser);
+          return _SettlementTile(
+            settlement: record,
+            fromName: from,
+            toName: to,
+            pending: syncStatus.isRecordPending(record.updatedAt),
+            onDelete: () =>
+                _confirmDeleteSettlement(context, ref, record, from, to),
+          );
+        }
+        final expense = record as ExpenseModel;
+        return _ExpenseTile(
+          expense: expense,
+          paidByName: nameOf(expense.paidBy),
+          pending: syncStatus.isRecordPending(expense.updatedAt),
+          onTap: () =>
+              context.push('/groups/$roomId/expenses/edit', extra: expense),
+          onDelete: () => _confirmDelete(context, ref, expense),
+        );
+      },
     );
   }
 
@@ -226,6 +265,39 @@ class ExpensesPage extends ConsumerWidget {
     await ref
         .read(expenseAdderProvider.notifier)
         .deleteExpense(expense.id, roomId);
+    final error = ref.read(expenseAdderProvider).error;
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+    }
+  }
+
+  Future<void> _confirmDeleteSettlement(BuildContext context, WidgetRef ref,
+      SettlementModel settlement, String fromName, String toName) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final amount = (settlement.amountCents / 100).toStringAsFixed(2);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete settlement?'),
+        content: Text('"$fromName paid $toName $amount ${settlement.currency}" '
+            'will be removed for all members and the balance restored.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await ref
+        .read(expenseAdderProvider.notifier)
+        .deleteSettlement(settlement.id, roomId);
     final error = ref.read(expenseAdderProvider).error;
     if (error != null) {
       messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
@@ -405,6 +477,68 @@ class _ExpenseTile extends StatelessWidget {
           ),
           PopupMenuButton<String>(
             tooltip: 'Expense options',
+            onSelected: (action) {
+              if (action == 'delete') onDelete();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'delete', child: Text('Delete')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// `YYYY-MM-DD` in local time (no intl dependency yet — see G12).
+String _date(int msEpoch) {
+  final d = DateTime.fromMillisecondsSinceEpoch(msEpoch);
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${d.year}-${two(d.month)}-${two(d.day)}';
+}
+
+/// A recorded payment between two participants ("Alex paid Sam"). No edit —
+/// a wrong settlement is deleted (tombstoned) and re-recorded from the balance
+/// page.
+class _SettlementTile extends StatelessWidget {
+  final SettlementModel settlement;
+  final String fromName;
+  final String toName;
+  final bool pending;
+  final VoidCallback onDelete;
+  const _SettlementTile({
+    required this.settlement,
+    required this.fromName,
+    required this.toName,
+    required this.pending,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = (settlement.amountCents / 100).toStringAsFixed(2);
+    return ListTile(
+      leading: const CircleAvatar(child: Icon(Icons.handshake_outlined)),
+      title: Text('$fromName paid $toName'),
+      subtitle: Text('Settlement · ${_date(settlement.createdAt)}'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (pending)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Icon(
+                Icons.cloud_queue,
+                size: 18,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
+          Text(
+            '$amount ${settlement.currency}',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Settlement options',
             onSelected: (action) {
               if (action == 'delete') onDelete();
             },

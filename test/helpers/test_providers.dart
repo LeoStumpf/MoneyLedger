@@ -60,6 +60,8 @@ List<dynamic> testOverrides({
   bool loginFlowsLoading = false,
   List<ExpenseModel> expenses = const [],
   List<SettlementModel> settlements = const [],
+  // Overrides [settlements] — for tests that push updates over time.
+  Stream<List<SettlementModel>>? settlementsStream,
   List<DebtEntry> debts = const [],
 }) =>
     [
@@ -72,7 +74,8 @@ List<dynamic> testOverrides({
       expensesForRoomProvider
           .overrideWith((ref, roomId) => Stream.value(expenses)),
       settlementsForRoomProvider
-          .overrideWith((ref, roomId) => Stream.value(settlements)),
+          .overrideWith((ref, roomId) =>
+              settlementsStream ?? Stream.value(settlements)),
       balanceForRoomProvider.overrideWith((ref, roomId) => debts),
       ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
       // The participant-name resolver and members page read the members stream

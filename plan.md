@@ -119,10 +119,11 @@ Covered only by unit/widget tests against fakes:
 `addSettlement` is reachable from the balance page, but there is **no list of
 settlements** anywhere and `ExpenseAdder.deleteSettlement` has **no caller**. A
 mistyped settlement is permanent from the user's perspective.
-- [ ] Show settlements in the expenses list (or a "Payments" section) with
-      date / from → to / amount
-- [ ] Delete (tombstone) via the existing `deleteSettlement`; optional edit
-- [ ] Widget test
+- [x] Settlements merged into the expense list (newest first, handshake icon,
+      "A paid B", date, amount)
+- [x] Delete (tombstone) via `deleteSettlement` with confirmation; no edit —
+      delete + re-record from the balance page is one tap
+- [x] 4 widget tests + replication integration test (293 green)
 
 ### G9. No way to delete/leave/archive a group 🟡
 `GroupsDao.deleteGroup` exists but is unused. Groups only accumulate.
@@ -255,7 +256,8 @@ G7a: on the emulator the groups page showed first and onboarding replaced it
 - [ ] Real-device findings (G7a): expenses title says only "Expenses" (truncated
       "Expe…") — show the group name; keyboard covers the "Add" button on the
       expense form; members shown by Matrix localpart (wraps) — prefer the
-      Matrix display name; add-member dialog can't add a local person by name
+      Matrix display name; add-member dialog can't add a local person by name;
+      long names wrap the settlement title over 4 lines; expense tiles show no date
 
 ### G18. Final release review 🟡
 - [ ] `/code-review` over all of Phase G; fix findings
@@ -282,7 +284,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G4 — per-account database
 - [x] G19 — SyncEngine ref-after-dispose + flaky integration tests (pulled forward)
 - [x] G7a — first real-device sync: phone (A) ↔ emulator (B) — all 10 steps pass after fixing app-wide sync host
-- [~] G8 — settlements list + undo
+- [x] G8 — settlements list + undo
+- [~] G24 — silent no-op sends + startup message loss (pulled forward)
 - [ ] G9 — leave/delete group
 - [ ] G10 — rename group / currency
 - [ ] G7 — smoke checklist + emulator pass (iOS: document unsupported — no macOS)
@@ -299,7 +302,6 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G21 — licensing: AGPL-3.0 decided → LICENSE, notices, licenses page
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G23 — group mutators ref-after-await
-- [ ] G24 — silent no-op sends + startup message loss
 - [ ] G25 — late onboarding redirect
 - [ ] *(G26+ — newly discovered points)*
 - [ ] G18 — final release review

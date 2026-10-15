@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -160,6 +162,8 @@ void main() {
         overrides: [
           expensesForRoomProvider
               .overrideWith((ref, roomId) => Stream.value([expense])),
+          settlementsForRoomProvider
+              .overrideWith((ref, roomId) => Stream.value(const [])),
           groupMembersProvider
               .overrideWith((ref, groupId) => Stream.value(const [])),
           groupSyncStatusProvider.overrideWith(
@@ -183,6 +187,8 @@ void main() {
         const ExpensesPage(roomId: _roomId),
         overrides: [
           expensesForRoomProvider
+              .overrideWith((ref, roomId) => Stream.value(const [])),
+          settlementsForRoomProvider
               .overrideWith((ref, roomId) => Stream.value(const [])),
           groupSyncStatusProvider.overrideWith((ref, g) =>
               const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null)),
@@ -310,6 +316,176 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Keep me'), findsOneWidget);
+    });
+
+    group('settlements', () {
+      // 2026-06-13 12:00 local — far from midnight, so the date is stable.
+      final t1 = DateTime(2026, 6, 13, 12).millisecondsSinceEpoch;
+      final t2 = DateTime(2026, 6, 14, 12).millisecondsSinceEpoch;
+      final t3 = DateTime(2026, 6, 15, 12).millisecondsSinceEpoch;
+      const names = {'p-alex': 'Alex', 'p-sam': 'Sam'};
+
+      SettlementModel settlement(String id, int at, {int cents = 1250}) =>
+          SettlementModel(
+            id: id,
+            roomId: _roomId,
+            amountCents: cents,
+            currency: 'EUR',
+            fromUser: 'p-alex',
+            toUser: 'p-sam',
+            createdAt: at,
+            updatedAt: at,
+          );
+
+      ExpenseModel expense(String id, String description, int at) =>
+          ExpenseModel(
+            id: id,
+            roomId: _roomId,
+            description: description,
+            amountCents: 4000,
+            currency: 'EUR',
+            paidBy: 'p-sam',
+            splitsJson: '{"p-alex":2000,"p-sam":2000}',
+            createdAt: at,
+            updatedAt: at,
+          );
+
+      testWidgets('a settlement shows with names, amount and date',
+          (tester) async {
+        await tester.pumpWidget(testApp(
+          const ExpensesPage(roomId: _roomId),
+          overrides: [
+            ...testOverrides(
+                isLoggedIn: true, settlements: [settlement('s1', t1)]),
+            participantNamesProvider.overrideWith((ref, g) => names),
+          ],
+        ));
+        await tester.pump();
+        await tester.pump();
+
+        // Only a settlement — the empty state must not show.
+        expect(find.textContaining('No expenses'), findsNothing);
+        expect(find.text('Alex paid Sam'), findsOneWidget);
+        expect(find.text('12.50 EUR'), findsOneWidget);
+        expect(find.text('Settlement · 2026-06-13'), findsOneWidget);
+        expect(find.byIcon(Icons.handshake_outlined), findsOneWidget);
+      });
+
+      testWidgets('settlements merge with expenses newest first',
+          (tester) async {
+        await tester.pumpWidget(testApp(
+          const ExpensesPage(roomId: _roomId),
+          overrides: [
+            ...testOverrides(
+              isLoggedIn: true,
+              expenses: [expense('e3', 'Hotel', t3), expense('e1', 'Taxi', t1)],
+              settlements: [settlement('s2', t2)],
+            ),
+            participantNamesProvider.overrideWith((ref, g) => names),
+          ],
+        ));
+        await tester.pump();
+        await tester.pump();
+
+        final dy = [
+          tester.getTopLeft(find.text('Hotel')).dy,
+          tester.getTopLeft(find.text('Alex paid Sam')).dy,
+          tester.getTopLeft(find.text('Taxi')).dy,
+        ];
+        expect(dy[0], lessThan(dy[1]));
+        expect(dy[1], lessThan(dy[2]));
+      });
+
+      testWidgets('delete via menu + confirm tombstones it and hides the tile',
+          (tester) async {
+        final db = openTestDatabase();
+        addTearDown(db.close);
+        final dao = ExpensesDao(db);
+        await tester.runAsync(() async {
+          await dao.upsertSettlementLww(SettlementsCompanion(
+            id: const Value('s1'),
+            roomId: const Value('g1'),
+            amountCents: const Value(1250),
+            currency: const Value('EUR'),
+            fromUser: const Value('p-alex'),
+            toUser: const Value('p-sam'),
+            createdAt: Value(t1),
+            updatedAt: Value(t1),
+          ));
+          await MembersDao(db).upsertMemberLww(const MembersCompanion(
+            groupId: Value('g1'),
+            userId: Value('p-alex'),
+            displayName: Value('Alex'),
+            matrixId: Value('@alice:x.org'),
+            status: Value('active'),
+            updatedAt: Value(1000),
+          ));
+        });
+        final net = FakeMatrixNetwork();
+        // The tile list is driven by a controller we refill from the DB's
+        // tombstone-filtered query (Drift watch streams don't mix with the
+        // widget-test fake clock) — so "disappears" reflects the real write.
+        final ctrl = StreamController<List<SettlementModel>>();
+        addTearDown(ctrl.close);
+
+        await tester.pumpWidget(testApp(
+          const ExpensesPage(roomId: 'g1'),
+          overrides: [
+            ...testOverrides(isLoggedIn: true, settlementsStream: ctrl.stream),
+            participantNamesProvider.overrideWith((ref, g) => names),
+            appDatabaseProvider.overrideWithValue(db),
+            ledgerTransportProvider
+                .overrideWith((ref) => net.clientFor('@alice:x.org')),
+          ],
+        ));
+        await tester.runAsync(
+            () async => ctrl.add(await dao.getSettlementsForRoom('g1')));
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('Alex paid Sam'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('Settlement options'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Delete'));
+        await tester.pumpAndSettle();
+        expect(find.text('Delete settlement?'), findsOneWidget);
+
+        await tester.runAsync(() async {
+          await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          final all = await dao.getAllSettlementsForGroup('g1');
+          expect(all.single.deleted, true);
+          ctrl.add(await dao.getSettlementsForRoom('g1'));
+        });
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Alex paid Sam'), findsNothing);
+        expect(find.textContaining('No expenses'), findsOneWidget);
+      });
+
+      testWidgets('cancelling the settlement delete keeps it', (tester) async {
+        await tester.pumpWidget(testApp(
+          const ExpensesPage(roomId: _roomId),
+          overrides: [
+            ...testOverrides(
+                isLoggedIn: true, settlements: [settlement('s1', t1)]),
+            participantNamesProvider.overrideWith((ref, g) => names),
+          ],
+        ));
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.byTooltip('Settlement options'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Delete'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Alex paid Sam'), findsOneWidget);
+      });
     });
   });
 }
