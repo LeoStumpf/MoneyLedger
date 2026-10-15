@@ -336,7 +336,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G9 — leave/delete group (+ G23 group mutators)
 - [x] G10 — rename group / currency (+ G26 member lifecycle)
 - [x] G7 — smoke checklist + device pass (iOS documented unsupported)
-- [~] G12 — app identity, i18n EN+DE, privacy/about
+- [~] G28+G29 — settle any debt; currency picker, sign-out confirm, status lag, SSO label (pulled forward: features before i18n)
+- [ ] G12 — app identity, i18n EN+DE, privacy/about
 - [ ] G17 — design pass
 - [ ] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup
@@ -350,8 +351,6 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G25 — late onboarding redirect
 - [ ] G27 — LWW tie-break
-- [ ] G28 — settle any debt incl. local persons
-- [ ] G29 — expense-form gaps (currency picker, sign-out confirm, status lag, SSO label)
 - [ ] *(G30+ — newly discovered points)*
 - [ ] G18 — final release review
 
