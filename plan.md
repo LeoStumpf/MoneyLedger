@@ -171,14 +171,49 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
 
 ---
 
-## Suggested order
+### G17. Design pass — a polished, consistent look 🟡
+- [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
+- [ ] Empty states, spacing, list/card styling for groups, expenses, balances
+- [ ] Iterate against emulator screenshots of every main screen
 
-1. **G1 → G3 → G2** (Android release actually works and is reproducible)
-2. **G4** (privacy on shared devices) and **G8** (settlement undo) — small, high value
-3. **G7** smoke pass on real devices → fix what breaks
-4. **G5** full-fidelity backup
-5. **G6** record signing (largest item — own design phase)
-6. Minor items as time allows
+### G18. Final release review 🟡
+- [ ] `/code-review` over all of Phase G; fix findings
+- [ ] `./build.sh` green; release APK on emulator + phone
+- [ ] Docs in sync (CLAUDE.md, README, open-points); release notes
+
+---
+
+## Execution queue (conductor process)
+
+One task at a time: the conductor session hands a task to a single subagent,
+reviews the diff + tests + emulator screenshots, ticks boxes, commits + pushes to
+`main`, then starts the next. **Newly discovered points are appended as `G19+`
+before G18.** If a step needs Leo (accounts, phone), only that step moves to the
+end and work continues. Resume after an interrupted session with
+"mach weiter mit plan.md".
+
+Status: `[ ]` open · `[~]` in progress · `[x]` done
+
+- [~] G1 — INTERNET permission
+- [ ] G3 — release keystore
+- [ ] G2 — vendor flutter_vodozemac
+- [ ] CP-accounts — create test accounts A/B with Leo (`~/.config/moneyledger-test/accounts.env`)
+- [ ] G4 — per-account database
+- [ ] G8 — settlements list + undo
+- [ ] G9 — leave/delete group
+- [ ] G10 — rename group / currency
+- [ ] G7 — smoke checklist + emulator pass (iOS: document unsupported — no macOS)
+- [ ] G12 — app identity, i18n EN+DE, privacy/about
+- [ ] G17 — design pass
+- [ ] G15 — test/tooling debt, offline demo, CI
+- [ ] G5 — full-fidelity backup
+- [ ] G13 — CSV improvements
+- [ ] G6 — signed records (any member may edit; every version signed by its editor)
+- [ ] G11 — verified-only replication (+ SAS emulator ↔ phone)
+- [ ] G14 — digest size measurement
+- [ ] G16 — nice-to-haves
+- [ ] *(G19+ — newly discovered points)*
+- [ ] G18 — final release review
 
 ---
 
