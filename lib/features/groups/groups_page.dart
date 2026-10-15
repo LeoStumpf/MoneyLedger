@@ -5,6 +5,7 @@ import '../auth/auth_provider.dart';
 import '../backup/csv_files.dart';
 import '../backup/csv_import.dart';
 import '../expenses/ledger_syncer.dart';
+import '../../core/sync/self_recovery.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../models/group_model.dart';
 import 'group_provider.dart';
@@ -44,7 +45,10 @@ class GroupsPage extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('New group'),
       ),
-      body: _GroupsBody(groupsAsync: groupsAsync),
+      body: _GroupsBody(
+        groupsAsync: groupsAsync,
+        restoring: ref.watch(selfRecoveryProvider),
+      ),
     );
   }
 
@@ -89,7 +93,11 @@ class GroupsPage extends ConsumerWidget {
 
 class _GroupsBody extends StatelessWidget {
   final AsyncValue<List<GroupModel>> groupsAsync;
-  const _GroupsBody({required this.groupsAsync});
+
+  /// A fresh device's first recovery is outstanding (G30) — show "Restoring…"
+  /// instead of the empty state.
+  final bool restoring;
+  const _GroupsBody({required this.groupsAsync, required this.restoring});
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +105,7 @@ class _GroupsBody extends StatelessWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (groups) {
+          if (groups.isEmpty && restoring) return const _RestoringGroups();
           if (groups.isEmpty) {
             return const Center(
               child: Text(
@@ -121,5 +130,39 @@ class _GroupsBody extends StatelessWidget {
           );
         },
       );
+  }
+}
+
+/// Empty DB on a freshly signed-in device while the self-resync is out (G30).
+class _RestoringGroups extends StatelessWidget {
+  const _RestoringGroups();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 24),
+            Text(
+              'Restoring your groups from your other devices…',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Open MoneyLedger on another device signed in to this account '
+              '— it sends your groups while the app is running there.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

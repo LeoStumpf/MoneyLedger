@@ -146,4 +146,55 @@ void main() {
     expect(m.title, AuthErrorStrings.unknownTitle);
     expect(m.detail, contains('boom'));
   });
+
+  group('auth timeouts (G30)', () {
+    test('limits: discovery 10 s, login/register 20 s', () {
+      expect(kHomeserverCheckTimeout, const Duration(seconds: 10));
+      expect(kAuthRequestTimeout, const Duration(seconds: 20));
+    });
+
+    test('a stalled request fails with AuthTimeoutException', () async {
+      final stalled = Completer<void>().future; // never completes
+      await expectLater(
+        withAuthTimeout(stalled, const Duration(milliseconds: 10), 'login'),
+        throwsA(isA<AuthTimeoutException>()
+            .having((e) => e.step, 'step', 'login')
+            .having((e) => e.toString(), 'text', contains('login timed out'))),
+      );
+    });
+
+    test('a request that answers in time passes its result through', () async {
+      expect(
+          await withAuthTimeout(
+              Future.value(42), const Duration(seconds: 1), 'checkHomeserver'),
+          42);
+    });
+
+    test('a request error inside the limit is not turned into a timeout',
+        () async {
+      await expectLater(
+        withAuthTimeout(Future<void>.error(StateError('boom')),
+            const Duration(seconds: 1), 'register'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('maps to the friendly "took too long" message', () {
+      final timeout =
+          AuthTimeoutException('checkHomeserver', kHomeserverCheckTimeout);
+      for (final action in AuthAction.values) {
+        final m = describeAuthError(timeout, action: action);
+        expect(m.kind, AuthErrorKind.timeout);
+        expect(m.title, AuthErrorStrings.timeoutTitle);
+        expect(m.hint, AuthErrorStrings.timeoutHint);
+        expect(m.detail, contains('checkHomeserver timed out after 10s'));
+      }
+      // As the gateway wraps it (no offline probe for a timeout).
+      final wrapped = AuthNetworkException('matrix.org',
+          deviceOffline: false,
+          cause: AuthTimeoutException('login', kAuthRequestTimeout));
+      expect(kindOf(wrapped), AuthErrorKind.timeout);
+      expect(kindOf(wrapped, AuthAction.register), AuthErrorKind.timeout);
+    });
+  });
 }

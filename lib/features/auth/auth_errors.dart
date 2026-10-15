@@ -91,6 +91,34 @@ abstract final class AuthErrorStrings {
   static const detailsLabel = 'Details';
 }
 
+/// Cap on the homeserver check (`/versions` + login types) before a login or
+/// registration (G30) — a stalled connection must not spin the button forever.
+const kHomeserverCheckTimeout = Duration(seconds: 10);
+
+/// Cap on the login / registration request itself (G30). Longer than the
+/// check: logging in also sets up and uploads this device's encryption keys.
+const kAuthRequestTimeout = Duration(seconds: 20);
+
+/// An auth network step that didn't answer within its limit (G30). A
+/// [TimeoutException], so [describeAuthError] shows the friendly "took too
+/// long" message.
+class AuthTimeoutException extends TimeoutException {
+  /// What timed out, e.g. `checkHomeserver` / `login` (for the details text).
+  final String step;
+  AuthTimeoutException(this.step, Duration limit)
+      : super('$step timed out after ${limit.inSeconds}s', limit);
+
+  @override
+  String toString() => 'TimeoutException: $message';
+}
+
+/// [request], failing with an [AuthTimeoutException] once [limit] passes. The
+/// underlying request isn't cancelled (the SDK has no cancellation) — a late
+/// success still completes in the background.
+Future<T> withAuthTimeout<T>(Future<T> request, Duration limit, String step) =>
+    request.timeout(limit,
+        onTimeout: () => throw AuthTimeoutException(step, limit));
+
 /// Errcodes we recognize when they only appear inside an error's text.
 final _errcodePattern = RegExp(r'\bM_[A-Z_]+\b');
 

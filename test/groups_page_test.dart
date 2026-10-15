@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:money_ledger/core/sync/self_recovery.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
+import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
@@ -108,6 +112,64 @@ void main() {
       });
     }
   });
+
+  group('GroupsPage first-login recovery (G30)', () {
+    testWidgets('shows "Restoring your groups…" while recovery is outstanding',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const GroupsPage(),
+        overrides: [
+          ...testOverrides(isLoggedIn: true),
+          selfRecoveryProvider.overrideWith(_Restoring.new),
+        ],
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('Restoring your groups'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.textContaining('No groups yet'), findsNothing);
+    });
+
+    testWidgets('restored groups are listed even while still "restoring"',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const GroupsPage(),
+        overrides: [
+          isLoggedInProvider.overrideWith((ref) => true),
+          ledgerGroupsProvider.overrideWith((_) => Stream.value(const [
+                GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
+              ])),
+          selfRecoveryProvider.overrideWith(_Restoring.new),
+        ],
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Trip'), findsOneWidget);
+      expect(find.textContaining('Restoring your groups'), findsNothing);
+    });
+
+    testWidgets('falls back to the empty state once recovery is over',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const GroupsPage(),
+        overrides: [
+          ...testOverrides(isLoggedIn: true),
+          selfRecoveryProvider.overrideWith(_Restoring.new),
+        ],
+      ));
+      await tester.pump();
+      await tester.pump();
+      final element = tester.element(find.byType(GroupsPage));
+      ProviderScope.containerOf(element).read(selfRecoveryProvider.notifier)
+          .finish();
+      await tester.pump();
+
+      expect(find.textContaining('Restoring your groups'), findsNothing);
+      expect(find.textContaining('No groups yet'), findsOneWidget);
+    });
+  });
 }
 
 class _SpyAuth extends AuthNotifier {
@@ -115,4 +177,9 @@ class _SpyAuth extends AuthNotifier {
 
   @override
   Future<void> logout() async => logouts++;
+}
+
+class _Restoring extends SelfRecovery {
+  @override
+  bool build() => true;
 }

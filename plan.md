@@ -303,8 +303,26 @@ between any two participants**; default from/to = the tapped debt row.
   own devices); was ~3 s in G7. Reproduce + fix or explain (show a "restoring…"
   state while the first resync is outstanding).
 - `checkHomeserver` / `login` have no timeout → the button can spin ~20 s+.
-- [ ] Investigate first-login recovery; "Restoring your groups…" empty state
-- [ ] Timeouts (e.g. 15 s) on discovery/login/register with a friendly message
+- [x] Root cause: not a bug — the phone app wasn't running (no background sync);
+      self-resync now retried at 5 s / 30 s / 2 min while the DB is empty
+- [x] "Restoring your groups from your other devices…" state (3 min UI timeout;
+      skipped when no other own device exists)
+- [x] Timeouts: discovery 10 s, login/register 20 s → friendly "took too long"
+- [ ] A timed-out login still completes in the background (SDK call not cancelled)
+      → a retry can create a second device; guard against concurrent logins
+- [ ] Queued retries are each answered later → bootstraps sent up to 4×; dedupe
+
+### G31. Sync only happens while the app is open (no background sync) 🟠
+To-device messages are queued on the homeserver and only fetched while
+MoneyLedger runs. Peers/own devices that never open the app never answer
+(digests, resync, bootstraps) — observed in G30. Options: Android periodic
+background fetch (WorkManager: start client, one /sync, process to-device,
+answer pending requests, stop), and/or Matrix push (pusher + push gateway → FCM;
+needs a gateway, privacy trade-offs). Web: only while the tab is open.
+- [ ] Evaluate + implement a periodic background sync on Android (battery-friendly,
+      e.g. every 15 min, network-constrained)
+- [ ] Explain in onboarding/help that devices sync when the app runs
+- [ ] Decide on push (later, likely out of v1 scope)
 
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
@@ -348,8 +366,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G7 — smoke checklist + device pass (iOS documented unsupported)
 - [x] G28+G29 — settle any debt; currency picker, sign-out confirm, status lag, SSO label (pulled forward: features before i18n)
 - [x] G20+G25 — friendly login errors, matrix.org sign-up link, late onboarding
-- [~] G30 — first-login recovery + auth timeouts
-- [ ] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
+- [x] G30 — first-login recovery + auth timeouts
+- [ ] G31 — background sync on Android
+- [~] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
 - [ ] G17 — design pass
 - [ ] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup
@@ -360,7 +379,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G16 — nice-to-haves
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G27 — LWW tie-break
-- [ ] *(G31+ — newly discovered points)*
+- [ ] *(G32+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---

@@ -18,6 +18,7 @@ import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
 import 'ledger_payloads.dart';
 import 'left_groups.dart';
+import 'self_recovery.dart';
 import 'sync_health.dart';
 
 /// How often each group's digest is broadcast to its members. Injectable so
@@ -138,8 +139,7 @@ class SyncEngine {
       final groups = await _groups.getAllGroups();
       if (!_alive) return;
       if (groups.isEmpty) {
-        await transport.sendToUsers({transport.userId}, resyncRequestEventType,
-            {'v': protocolVersion, 'scope': 'all'});
+        _startSelfRecovery();
         return;
       }
     } catch (e) {
@@ -149,8 +149,84 @@ class SyncEngine {
     await broadcastDigests();
   }
 
+  // ── new-device recovery (G30) ─────────────────────────────────────────────
+
+  /// Pending self-resync retry; null when recovery isn't (or no longer) running.
+  Timer? _selfResyncRetry;
+  bool _selfRecoveryActive = false;
+
+  /// Empty DB at start: send `resync_request{scope: all}` to our own MXID and
+  /// retry with backoff ([selfResyncRetryDelaysProvider]) while the DB stays
+  /// empty and no bootstrap has arrived. Our other devices only answer while
+  /// the app runs there, so the groups page shows "Restoring…" meanwhile
+  /// ([SelfRecovery]) — ended early when a send finds no other own device
+  /// (nothing to restore).
+  void _startSelfRecovery() {
+    _selfRecoveryActive = true;
+    _setRestoring(true);
+    _selfResyncAttempt(0);
+  }
+
+  Future<void> _selfResyncAttempt(int attempt) async {
+    final transport = _transport;
+    if (transport == null || !_alive || !_selfRecoveryActive) return;
+    try {
+      if (attempt > 0) {
+        final groups = await _groups.getAllGroups();
+        if (!_alive || !_selfRecoveryActive) return;
+        if (groups.isNotEmpty) {
+          _endSelfRecovery();
+          return;
+        }
+      }
+      final result = await transport.sendToUsers({transport.userId},
+          resyncRequestEventType, {'v': protocolVersion, 'scope': 'all'});
+      if (!_alive || !_selfRecoveryActive) return;
+      if (kDebugMode) {
+        debugPrint('[sync] self resync_request #${attempt + 1} → '
+            '${result.deviceCount} own device(s)');
+      }
+      if (result.deviceCount == 0) {
+        // No other device of ours exists: there is nobody to restore from.
+        // (Groups shared with peers still arrive organically via rule 5.)
+        _endSelfRecovery();
+        return;
+      }
+    } catch (e) {
+      if (!_alive) return;
+      // e.g. encryption not ready right after login — the retry covers it.
+      debugPrint('[sync] self resync_request #${attempt + 1} failed: $e');
+    }
+    final delays = _ref.read(selfResyncRetryDelaysProvider);
+    if (attempt >= delays.length) {
+      // Out of retries: stop asking. The UI's own timeout ends "Restoring…".
+      _selfRecoveryActive = false;
+      return;
+    }
+    _selfResyncRetry =
+        Timer(delays[attempt], () => _selfResyncAttempt(attempt + 1));
+  }
+
+  void _endSelfRecovery() {
+    _selfRecoveryActive = false;
+    _selfResyncRetry?.cancel();
+    _selfResyncRetry = null;
+    _setRestoring(false);
+  }
+
+  void _setRestoring(bool restoring) {
+    if (!_alive || !_ref.mounted) return;
+    final notifier = _ref.read(selfRecoveryProvider.notifier);
+    if (restoring) {
+      notifier.begin(_ref.read(selfRecoveryTimeoutProvider));
+    } else {
+      notifier.finish();
+    }
+  }
+
   void dispose() {
     _disposed = true;
+    _selfResyncRetry?.cancel();
     _sub?.cancel();
     _periodic?.cancel();
     for (final t in _pokes.values) {
@@ -198,6 +274,16 @@ class SyncEngine {
             bootstrapEventType:
         final group = msg.content['group'] as String?;
         if (group != null) pokeGroup(group);
+        // A bootstrap answers our new-device recovery: stop retrying. The
+        // "Restoring…" state ends once LedgerSyncer has stored it (the groups
+        // list is non-empty) — give it the poke window to land first.
+        if (msg.type == bootstrapEventType && _selfRecoveryActive) {
+          _selfRecoveryActive = false;
+          _selfResyncRetry?.cancel();
+          _selfResyncRetry = Timer(_ref.read(pokeDebounceProvider), () {
+            if (_alive) _setRestoring(false);
+          });
+        }
     }
   }
 

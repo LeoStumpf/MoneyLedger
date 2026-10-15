@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 
@@ -80,12 +82,15 @@ class MatrixAuthGateway implements AuthGateway {
   }) =>
       _translated(homeserver, () async {
         await _checkHomeserver(homeserver);
-        await _client.login(
-          AuthenticationTypes.password,
-          identifier: AuthenticationUserIdentifier(user: username),
-          password: password,
-          initialDeviceDisplayName: 'MoneyLedger',
-        );
+        await withAuthTimeout(
+            _client.login(
+              AuthenticationTypes.password,
+              identifier: AuthenticationUserIdentifier(user: username),
+              password: password,
+              initialDeviceDisplayName: 'MoneyLedger',
+            ),
+            kAuthRequestTimeout,
+            'login');
       });
 
   @override
@@ -95,11 +100,14 @@ class MatrixAuthGateway implements AuthGateway {
   }) =>
       _translated(homeserver, () async {
         await _checkHomeserver(homeserver);
-        await _client.login(
-          AuthenticationTypes.token,
-          token: token,
-          initialDeviceDisplayName: 'MoneyLedger',
-        );
+        await withAuthTimeout(
+            _client.login(
+              AuthenticationTypes.token,
+              token: token,
+              initialDeviceDisplayName: 'MoneyLedger',
+            ),
+            kAuthRequestTimeout,
+            'login');
       });
 
   @override
@@ -116,11 +124,14 @@ class MatrixAuthGateway implements AuthGateway {
     try {
       // First attempt with no auth: an open server completes immediately;
       // otherwise it answers with a UIA challenge (flows + session).
-      await _client.register(
-        username: username,
-        password: password,
-        initialDeviceDisplayName: 'MoneyLedger',
-      );
+      await withAuthTimeout(
+          _client.register(
+            username: username,
+            password: password,
+            initialDeviceDisplayName: 'MoneyLedger',
+          ),
+          kAuthRequestTimeout,
+          'register');
     } on MatrixException catch (e) {
       final flows = e.authenticationFlows;
       if (isClientRegistrationDisabled(e.errcode, hasFlows: flows != null)) {
@@ -139,13 +150,16 @@ class MatrixAuthGateway implements AuthGateway {
             signUpUrl: await _signUpUrl(homeserver));
       }
       // Complete the no-op dummy stage to finish sign-up.
-      await _client.register(
-        username: username,
-        password: password,
-        initialDeviceDisplayName: 'MoneyLedger',
-        auth: AuthenticationData(
-            type: AuthenticationTypes.dummy, session: session),
-      );
+      await withAuthTimeout(
+          _client.register(
+            username: username,
+            password: password,
+            initialDeviceDisplayName: 'MoneyLedger',
+            auth: AuthenticationData(
+                type: AuthenticationTypes.dummy, session: session),
+          ),
+          kAuthRequestTimeout,
+          'register');
     }
   }
 
@@ -163,7 +177,8 @@ class MatrixAuthGateway implements AuthGateway {
   /// instead of JSON, …) reported as [NotAHomeserverException].
   Future<void> _checkHomeserver(String homeserver) async {
     try {
-      await _client.checkHomeserver(Uri.parse(homeserver));
+      await withAuthTimeout(_client.checkHomeserver(Uri.parse(homeserver)),
+          kHomeserverCheckTimeout, 'checkHomeserver');
     } catch (e) {
       if (isNetworkError(e) || e is BadServerLoginTypesException) rethrow;
       if (e is MatrixException && e.errcode != 'M_UNRECOGNIZED') rethrow;
@@ -187,6 +202,12 @@ class MatrixAuthGateway implements AuthGateway {
           e is RegistrationRequiresWebException ||
           !isNetworkError(e)) {
         rethrow;
+      }
+      // A timeout means the server didn't answer in time — no need to spend
+      // another few seconds probing whether the device is offline.
+      if (e is TimeoutException) {
+        throw AuthNetworkException(_host(homeserver),
+            deviceOffline: false, cause: e);
       }
       throw AuthNetworkException(_host(homeserver),
           deviceOffline: !await _referenceServerReachable(), cause: e);
