@@ -424,12 +424,10 @@ class SyncEngine {
   /// The participant claimed by the Matrix account [matrixId], if any. All the
   /// engine's "who is this account?" lookups go through here — senders and self
   /// are identified by their MXID, not the (possibly local) participant id.
-  static MemberModel? _claimedBy(List<MemberModel> members, String matrixId) {
-    for (final m in members) {
-      if (m.matrixId == matrixId) return m;
-    }
-    return null;
-  }
+  /// (Duplicates from the pre-G26 re-add bug resolve like everywhere else —
+  /// see [claimedBy].)
+  static MemberModel? _claimedBy(List<MemberModel> members, String matrixId) =>
+      claimedBy(members, matrixId);
 
   Future<void> _sendBootstrap(
       LedgerTransport transport, String groupId, String to) async {

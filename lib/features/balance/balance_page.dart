@@ -22,10 +22,10 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     final transport = ref.watch(ledgerTransportProvider).value;
     // "Me" is this device's participant in the group (id may differ from the
     // MXID once a local slot has been claimed); fall back to the raw MXID.
-    final myId =
-        ref.watch(currentParticipantProvider(widget.roomId)).value?.userId ??
-            transport?.userId ??
-            '';
+    final me = ref.watch(currentParticipantProvider(widget.roomId)).value;
+    final myId = me?.userId ?? transport?.userId ?? '';
+    // G26: removed from the group → read-only, no new settlements.
+    final canSettle = me?.isActive ?? true;
     final adderState = ref.watch(expenseAdderProvider);
     String nameOf(String id) => names[id] ?? id;
 
@@ -69,7 +69,7 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                                       : Colors.grey[700]),
                         ),
                         // Only the current user can settle their own debts.
-                        onTap: isMine && !adderState.isLoading
+                        onTap: isMine && canSettle && !adderState.isLoading
                             ? () => _settle(context, d, myId)
                             : null,
                       ),

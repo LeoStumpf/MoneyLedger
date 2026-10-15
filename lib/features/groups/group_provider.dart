@@ -38,10 +38,14 @@ String currentUserId(Ref ref) =>
 /// — i.e. "who am I in this group". Its `userId` is the participant id to use
 /// as `paid_by` / split key for the current user (equals the MXID for a
 /// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+///
+/// Re-evaluated whenever the group's members change (G26), so e.g. being
+/// removed by another member is reflected live (read-only group, banner).
 @riverpod
 Future<MemberModel?> currentParticipant(Ref ref, String groupId) {
   final myId = ref.watch(currentUserIdProvider);
   if (myId.isEmpty) return Future.value(null);
+  ref.watch(groupMembersProvider(groupId));
   return ref.watch(membersDaoProvider).memberByMatrixId(groupId, myId);
 }
 
@@ -90,6 +94,23 @@ class _GroupWriteContext {
   final Future<LedgerTransport> transport;
 
   Future<String> myMxid() async => (await transport).userId;
+
+  /// Best-effort relay of [content] to the group's active claimed members
+  /// (self included — our other devices). The change is already saved
+  /// locally, so a transport failure doesn't fail the user action; it is
+  /// reported to [SyncHealth] and anti-entropy repairs it later.
+  Future<void> replicate(
+      String groupId, String type, Map<String, dynamic> content) async {
+    if (db.isClosed) return;
+    try {
+      final targets = (await members.activeClaimedMatrixIds(groupId)).toSet();
+      if (targets.isEmpty || db.isClosed) return;
+      final result = await (await transport).sendToUsers(targets, type, content);
+      if (!db.isClosed) health.reportDelivery(targets, result);
+    } catch (e) {
+      if (!db.isClosed) health.reportFailure(e);
+    }
+  }
 
   Future<Map<String, dynamic>> buildBootstrap(String groupId) async =>
       buildBootstrapContent(
@@ -167,18 +188,34 @@ class MemberAdder extends _$MemberAdder {
   static Future<void> _applyAdd(
       _GroupWriteContext w, String groupId, String userId,
       {String? displayName}) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    // Added by Matrix ID → a claimed participant (id == MXID for now).
-    final member = MemberModel(
-      groupId: groupId,
-      userId: userId,
-      displayName: (displayName != null && displayName.isNotEmpty)
-          ? displayName
-          : localpartOf(userId),
-      matrixId: userId,
-      status: 'active',
-      updatedAt: now,
-    );
+    // G26: if this account already claims a participant here (e.g. it left
+    // after claiming a placeholder, or was removed), **reactivate** that
+    // participant — same id + name, so history stays attributed — instead of
+    // inserting a second participant with the same matrixId. Its clock is
+    // strictly newer than the `removed` record (whoever stamped it), so the
+    // re-add wins LWW everywhere and the re-added device's tombstone check
+    // (`updated_at > left_at`) passes even if our clock lags theirs.
+    final existing = claimedBy(await w.members.getMembers(groupId), userId);
+    final member = existing != null
+        ? MemberModel(
+            groupId: groupId,
+            userId: existing.userId,
+            displayName: existing.displayName,
+            matrixId: userId,
+            status: 'active',
+            updatedAt: nextLwwClock(existing.updatedAt),
+          )
+        // Added by Matrix ID → a claimed participant (id == MXID for now).
+        : MemberModel(
+            groupId: groupId,
+            userId: userId,
+            displayName: (displayName != null && displayName.isNotEmpty)
+                ? displayName
+                : localpartOf(userId),
+            matrixId: userId,
+            status: 'active',
+            updatedAt: DateTime.now().millisecondsSinceEpoch,
+          );
     await w.members.upsertMemberLww(memberCompanion(member));
 
     final transport = await w.transport;
@@ -314,7 +351,7 @@ class MemberAdder extends _$MemberAdder {
         displayName: displayName ?? m.displayName,
         matrixId: identical(matrixId, _unset) ? m.matrixId : matrixId as String?,
         status: m.status,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
+        updatedAt: nextLwwClock(m.updatedAt),
       );
 }
 
@@ -334,7 +371,7 @@ MemberModel? _removedCopy(List<MemberModel> members, String userId, int now) {
         displayName: m.displayName,
         matrixId: m.matrixId,
         status: 'removed',
-        updatedAt: now,
+        updatedAt: nextLwwClock(m.updatedAt, now: now),
       );
     }
   }
@@ -408,7 +445,7 @@ class GroupExiter extends _$GroupExiter {
         final me = await w.myMxid();
         final members = await w.members.getMembers(groupId);
         final now = DateTime.now().millisecondsSinceEpoch;
-        final self = members.where((m) => m.matrixId == me).firstOrNull;
+        final self = claimedBy(members, me);
         final removed =
             self == null ? null : _removedCopy(members, self.userId, now);
         if (removed != null) {
@@ -441,11 +478,40 @@ class GroupExiter extends _$GroupExiter {
   static Future<void> _purge(
       _GroupWriteContext w, String groupId, LeftGroupTombstone t) async {
     if (w.db.isClosed) return; // account switched meanwhile — not ours to touch
-    await w.db.transaction(() async {
-      await w.db.purgeGroup(groupId);
-      await w.settings.markGroupLeft(groupId, t);
-    });
+    await w.settings.purgeGroupAsLeft(groupId, t);
   }
+}
+
+/// Edits a group's meta — name and default currency (G10). Any active member
+/// may edit. Persisted as an LWW meta upsert with a fresh clock and relayed
+/// as a `group` meta payload to the active claimed members (anti-entropy's
+/// `meta_updated_at` repairs a lost relay). The default currency only applies
+/// to **new** expenses — existing ones keep theirs (balances are per currency).
+@riverpod
+class GroupEditor extends _$GroupEditor {
+  @override
+  AsyncValue<void> build() => const AsyncData(null);
+
+  Future<void> edit(String groupId,
+          {required String name, required String currency}) =>
+      _runGroupWrite(ref, (s) => state = s, (w) async {
+        final current = await w.groups.getGroup(groupId);
+        if (current == null) return;
+        if (current.name == name && current.currency == currency) return;
+        final updated = GroupModel(
+          roomId: groupId,
+          name: name,
+          currency: currency,
+          updatedAt: nextLwwClock(current.updatedAt),
+        );
+        await w.groups.upsertGroupLww(GroupsCompanion(
+          roomId: Value(groupId),
+          name: Value(name),
+          currency: Value(currency),
+          updatedAt: Value(updated.updatedAt),
+        ));
+        await w.replicate(groupId, groupMetaEventType, groupMetaPayload(updated));
+      });
 }
 
 /// Maps a [MemberModel] to a fully-populated companion (all columns set) for an

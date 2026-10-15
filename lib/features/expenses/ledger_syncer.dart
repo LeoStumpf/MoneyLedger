@@ -12,6 +12,7 @@ import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/left_groups.dart';
 import '../../models/member_model.dart';
 import 'expenses_provider.dart';
@@ -152,6 +153,10 @@ class LedgerSyncer {
           await processGroupMeta(msg.content, _groups);
         case memberEventType:
           await processMember(msg.content, _members);
+          if (isOwnLeaveFromOtherDevice(
+              senderId: msg.senderId, content: msg.content, myMxid: _myMxid)) {
+            await _applyOwnLeave(group);
+          }
         case bootstrapEventType:
           await processBootstrap(msg.content, _groups, _members, _expenses,
               isAlive: () => _alive);
@@ -161,6 +166,36 @@ class LedgerSyncer {
       if (_alive) debugPrint('[ledger] failed to process ${msg.type}: $e');
     }
   }
+
+  /// G26: we left [groupId] on another of our devices — that device relayed
+  /// our `removed` record to us too. If it won LWW (we're now removed here),
+  /// leave exactly like `GroupExiter.leave` did there: purge the group and
+  /// keep the tombstone (with our removal notice for rule 7) — but send
+  /// nothing, the leaving device already told everyone.
+  Future<void> _applyOwnLeave(String groupId) async {
+    if (!_alive) return;
+    final me = await _members.memberByMatrixId(groupId, _myMxid!);
+    if (!_alive || me == null || me.isActive) return;
+    await _settings.purgeGroupAsLeft(
+        groupId,
+        LeftGroupTombstone(
+            leftAt: me.updatedAt, removalNotice: memberPayload(me)));
+  }
+
+  /// Whether an inbound `member` payload is **our own leave relayed from
+  /// another of our devices**: sent by our own MXID, about our own MXID, with
+  /// status `removed`. (Removal by *another* member is sent by them — the
+  /// group then stays, read-only, see `ExpensesPage`.)
+  @visibleForTesting
+  static bool isOwnLeaveFromOtherDevice({
+    required String senderId,
+    required Map<String, dynamic> content,
+    required String? myMxid,
+  }) =>
+      myMxid != null &&
+      senderId == myMxid &&
+      content['matrix_id'] == myMxid &&
+      content['status'] == 'removed';
 
   // ── inbound authorization (plain-Dart, unit-testable) ───────────────────────
 

@@ -136,8 +136,9 @@ mistyped settlement is permanent from the user's perspective.
 
 ### G10. Group rename + default currency edit 🟡
 Group meta is LWW-synced already (`meta_updated_at`), only the UI is missing.
-- [ ] Edit dialog on the expenses screen; replicate meta update
-- [ ] Test convergence of a rename across two devices
+- [x] "Edit group" in the ⋮ menu (name + default currency for new expenses);
+      `GroupEditor` LWW upsert + `com.moneyledger.group` replication
+- [x] Rename convergence (incl. concurrent) tested + verified on phone ↔ emulator
 
 ### G11. Device-verification enforcement (opt-in) 🟡
 SAS exists for visibility only; replication still reaches unverified devices.
@@ -174,6 +175,7 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
 - [ ] Offline demo mode `--dart-define=OFFLINE_DEMO=true` (override transport +
       auth gateway with seeded fakes) for screenshots / manual multi-user checks
 - [ ] CI (GitHub Actions): `./build.sh` on push — needs G2 first for Android
+- [ ] `dart format` the whole repo once (files are unformatted; agents avoid it to keep diffs small)
 - [ ] Regenerate stale `.g.dart` files (build_runner changes hashes in 4 untouched files)
 - [ ] Audit the ~30 `debugPrint` / swallowed `catch` sites in `lib/` — route
       user-relevant failures into `SyncHealth` or a snackbar
@@ -266,9 +268,15 @@ G7a: on the emulator the groups page showed first and onboarding replaced it
 - Leaving on one device leaves the group on the user's *other* devices (shown as
   removed, no digests). Consider propagating "left" to own devices (self-sync).
 - Re-add detection compares the re-adder's clock with `left_at` (skew → ignored).
-- [ ] Fix the duplicate-participant re-add bug + test
-- [ ] Show removed/left members distinctly
-- [ ] Propagate leave/delete to own other devices (decide semantics)
+- [x] Re-add reactivates the existing participant; `claimedBy()` tolerates old duplicates
+- [x] "Former members" section (greyed, Re-add)
+- [x] Own leave propagates to own devices (purge + tombstone); removed by others →
+      read-only history + banner + "Delete from this device"
+- [x] `nextLwwClock = max(now, old+1)` for local edits (re-add beats a skewed `removed`)
+
+### G27. LWW has no tie-break on equal `updated_at` 🟡
+Two edits with the exact same ms clock stay divergent (digests see them as equal).
+- [ ] Deterministic tie-break (e.g. compare a content hash) in all LWW upserts + digest compare
 
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
@@ -308,8 +316,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G8 — settlements list + undo
 - [x] G24 — silent no-op sends + startup message loss (pulled forward)
 - [x] G9 — leave/delete group (+ G23 group mutators)
-- [~] G10 — rename group / currency
-- [ ] G7 — smoke checklist + emulator pass (iOS: document unsupported — no macOS)
+- [x] G10 — rename group / currency (+ G26 member lifecycle)
+- [~] G7 — smoke checklist + emulator pass (iOS: document unsupported — no macOS)
 - [ ] G12 — app identity, i18n EN+DE, privacy/about
 - [ ] G17 — design pass
 - [ ] G15 — test/tooling debt, offline demo, CI
@@ -323,8 +331,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G21 — licensing: AGPL-3.0 decided → LICENSE, notices, licenses page
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G25 — late onboarding redirect
-- [ ] G26 — member lifecycle gaps (re-add duplicate bug, show left members, own devices)
-- [ ] *(G27+ — newly discovered points)*
+- [ ] G27 — LWW tie-break
+- [ ] *(G28+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---

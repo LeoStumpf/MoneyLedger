@@ -175,6 +175,9 @@ String _$currentUserIdHash() => r'76f65c8883f46092cc228dc1ff6c8a26b9366446';
 /// — i.e. "who am I in this group". Its `userId` is the participant id to use
 /// as `paid_by` / split key for the current user (equals the MXID for a
 /// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+///
+/// Re-evaluated whenever the group's members change (G26), so e.g. being
+/// removed by another member is reflected live (read-only group, banner).
 
 @ProviderFor(currentParticipant)
 final currentParticipantProvider = CurrentParticipantFamily._();
@@ -183,6 +186,9 @@ final currentParticipantProvider = CurrentParticipantFamily._();
 /// — i.e. "who am I in this group". Its `userId` is the participant id to use
 /// as `paid_by` / split key for the current user (equals the MXID for a
 /// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+///
+/// Re-evaluated whenever the group's members change (G26), so e.g. being
+/// removed by another member is reflected live (read-only group, banner).
 
 final class CurrentParticipantProvider
     extends
@@ -196,6 +202,9 @@ final class CurrentParticipantProvider
   /// — i.e. "who am I in this group". Its `userId` is the participant id to use
   /// as `paid_by` / split key for the current user (equals the MXID for a
   /// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+  ///
+  /// Re-evaluated whenever the group's members change (G26), so e.g. being
+  /// removed by another member is reflected live (read-only group, banner).
   CurrentParticipantProvider._({
     required CurrentParticipantFamily super.from,
     required String super.argument,
@@ -241,12 +250,15 @@ final class CurrentParticipantProvider
 }
 
 String _$currentParticipantHash() =>
-    r'd66a50848fa9de0b49116a164384f41da9597008';
+    r'7f59b752741659707f6de3164ffefb781028c542';
 
 /// The participant in [groupId] that this device's account has claimed, if any
 /// — i.e. "who am I in this group". Its `userId` is the participant id to use
 /// as `paid_by` / split key for the current user (equals the MXID for a
 /// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+///
+/// Re-evaluated whenever the group's members change (G26), so e.g. being
+/// removed by another member is reflected live (read-only group, banner).
 
 final class CurrentParticipantFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<MemberModel?>, String> {
@@ -263,6 +275,9 @@ final class CurrentParticipantFamily extends $Family
   /// — i.e. "who am I in this group". Its `userId` is the participant id to use
   /// as `paid_by` / split key for the current user (equals the MXID for a
   /// from-scratch user, a UUID once they've claimed a pre-existing local slot).
+  ///
+  /// Re-evaluated whenever the group's members change (G26), so e.g. being
+  /// removed by another member is reflected live (read-only group, banner).
 
   CurrentParticipantProvider call(String groupId) =>
       CurrentParticipantProvider._(argument: groupId, from: this);
@@ -462,7 +477,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'666bf327f6658279d78b4201c8074b3fe7a0abea';
+String _$memberAdderHash() => r'211b32b22916295638ac3213c8bae474ada3f78e';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -579,7 +594,7 @@ final class GroupExiterProvider
   }
 }
 
-String _$groupExiterHash() => r'e7e7cceaf082b85c4fb25672e24b07523e8cbb36';
+String _$groupExiterHash() => r'3040ab000f200df33e1ad487204e6ace716a56b3';
 
 /// Leave / delete a group (G9). Both end with the group **purged** from the
 /// local DB and a device-local [LeftGroupTombstone], so a late digest or
@@ -587,6 +602,80 @@ String _$groupExiterHash() => r'e7e7cceaf082b85c4fb25672e24b07523e8cbb36';
 /// being re-added (a newer `active` member record for our MXID) brings it back.
 
 abstract class _$GroupExiter extends $Notifier<AsyncValue<void>> {
+  AsyncValue<void> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<void>, AsyncValue<void>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<void>, AsyncValue<void>>,
+              AsyncValue<void>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+/// Edits a group's meta — name and default currency (G10). Any active member
+/// may edit. Persisted as an LWW meta upsert with a fresh clock and relayed
+/// as a `group` meta payload to the active claimed members (anti-entropy's
+/// `meta_updated_at` repairs a lost relay). The default currency only applies
+/// to **new** expenses — existing ones keep theirs (balances are per currency).
+
+@ProviderFor(GroupEditor)
+final groupEditorProvider = GroupEditorProvider._();
+
+/// Edits a group's meta — name and default currency (G10). Any active member
+/// may edit. Persisted as an LWW meta upsert with a fresh clock and relayed
+/// as a `group` meta payload to the active claimed members (anti-entropy's
+/// `meta_updated_at` repairs a lost relay). The default currency only applies
+/// to **new** expenses — existing ones keep theirs (balances are per currency).
+final class GroupEditorProvider
+    extends $NotifierProvider<GroupEditor, AsyncValue<void>> {
+  /// Edits a group's meta — name and default currency (G10). Any active member
+  /// may edit. Persisted as an LWW meta upsert with a fresh clock and relayed
+  /// as a `group` meta payload to the active claimed members (anti-entropy's
+  /// `meta_updated_at` repairs a lost relay). The default currency only applies
+  /// to **new** expenses — existing ones keep theirs (balances are per currency).
+  GroupEditorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'groupEditorProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$groupEditorHash();
+
+  @$internal
+  @override
+  GroupEditor create() => GroupEditor();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<void> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<void>>(value),
+    );
+  }
+}
+
+String _$groupEditorHash() => r'e84ea00beddbb71c8af63a34621fcc9081df0e5a';
+
+/// Edits a group's meta — name and default currency (G10). Any active member
+/// may edit. Persisted as an LWW meta upsert with a fresh clock and relayed
+/// as a `group` meta payload to the active claimed members (anti-entropy's
+/// `meta_updated_at` repairs a lost relay). The default currency only applies
+/// to **new** expenses — existing ones keep theirs (balances are per currency).
+
+abstract class _$GroupEditor extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
   @$mustCallSuper
   @override

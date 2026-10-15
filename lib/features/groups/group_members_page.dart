@@ -11,6 +11,10 @@ import 'group_provider.dart';
 ///
 /// Actions: add (name + optional Matrix ID), rename, claim/unclaim a Matrix
 /// account (keeps history), and remove from the group (history kept).
+///
+/// Removed / left participants are listed under **Former members** (greyed —
+/// they still appear in the history); a claimed one can be re-added, which
+/// reactivates the same participant (G26).
 class GroupMembersPage extends ConsumerWidget {
   final String roomId;
   const GroupMembersPage({super.key, required this.roomId});
@@ -22,6 +26,11 @@ class GroupMembersPage extends ConsumerWidget {
     final adderState = ref.watch(memberAdderProvider);
     final removerState = ref.watch(memberRemoverProvider);
     final busy = adderState.isLoading || removerState.isLoading;
+    // G26: once removed from the group, its membership is read-only for us
+    // (peers would reject our changes).
+    final all = membersAsync.value ?? const <MemberModel>[];
+    final iAmRemoved = all.any((m) => m.matrixId == myId) &&
+        !all.any((m) => m.matrixId == myId && m.isActive);
 
     return Scaffold(
       appBar: AppBar(
@@ -30,15 +39,19 @@ class GroupMembersPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Invite by Matrix ID',
-            onPressed: busy ? null : () => _showInviteDialog(context, ref),
+            onPressed: busy || iAmRemoved
+                ? null
+                : () => _showInviteDialog(context, ref),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: busy ? null : () => _showAddDialog(context, ref),
-        icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Add person'),
-      ),
+      floatingActionButton: iAmRemoved
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: busy ? null : () => _showAddDialog(context, ref),
+              icon: const Icon(Icons.person_add_outlined),
+              label: const Text('Add person'),
+            ),
       body: Stack(
         children: [
           membersAsync.when(
@@ -46,13 +59,34 @@ class GroupMembersPage extends ConsumerWidget {
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (all) {
               final members = all.where((m) => m.isActive).toList();
-              if (members.isEmpty) {
+              final former = all.where((m) => !m.isActive).toList();
+              if (members.isEmpty && former.isEmpty) {
                 return const Center(child: Text('No members.'));
               }
-              return ListView.builder(
-                itemCount: members.length,
-                itemBuilder: (context, i) =>
-                    _MemberTile(member: members[i], myId: myId, roomId: roomId),
+              return ListView(
+                padding: const EdgeInsets.only(bottom: 88), // clear the FAB
+                children: [
+                  for (final m in members)
+                    _MemberTile(
+                        member: m,
+                        myId: myId,
+                        roomId: roomId,
+                        readOnly: iAmRemoved),
+                  if (former.isNotEmpty) ...[
+                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: Text('Former members',
+                          style: Theme.of(context).textTheme.titleSmall),
+                    ),
+                    for (final m in former)
+                      _FormerMemberTile(
+                          member: m,
+                          myId: myId,
+                          roomId: roomId,
+                          canReadd: !iAmRemoved && !busy),
+                  ],
+                ],
               );
             },
           ),
@@ -178,12 +212,70 @@ class GroupMembersPage extends ConsumerWidget {
   }
 }
 
+/// A removed / left participant (G26), greyed. Leaving and being removed both
+/// store `status: removed` (who did it isn't recorded), hence the neutral
+/// "former member". A claimed one can be re-added through the normal add
+/// path, which reactivates this same participant (id, name, history kept).
+class _FormerMemberTile extends ConsumerWidget {
+  final MemberModel member;
+  final String myId;
+  final String roomId;
+  final bool canReadd;
+  const _FormerMemberTile(
+      {required this.member,
+      required this.myId,
+      required this.roomId,
+      required this.canReadd});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final title = member.displayName.isNotEmpty
+        ? member.displayName
+        : (member.matrixId ?? member.userId);
+    final isSelf = member.matrixId != null && member.matrixId == myId;
+    final mxid = member.matrixId;
+    return Opacity(
+      opacity: 0.6,
+      child: ListTile(
+        leading: const CircleAvatar(child: Icon(Icons.person_off_outlined)),
+        title: Text(title),
+        subtitle: Text(mxid != null
+            ? '$mxid · former member'
+            : 'Local · former member'),
+        trailing: isSelf
+            ? const Chip(label: Text('You'))
+            : mxid == null
+                ? null
+                : TextButton(
+                    onPressed: canReadd
+                        ? () => _readd(context, ref, mxid, title)
+                        : null,
+                    child: const Text('Re-add'),
+                  ),
+      ),
+    );
+  }
+
+  Future<void> _readd(
+      BuildContext context, WidgetRef ref, String mxid, String name) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(memberAdderProvider.notifier).add(roomId, mxid);
+    final error = ref.read(memberAdderProvider).error;
+    messenger.showSnackBar(SnackBar(
+        content: Text(error != null ? 'Failed: $error' : 'Re-added $name')));
+  }
+}
+
 class _MemberTile extends ConsumerWidget {
   final MemberModel member;
   final String myId;
   final String roomId;
+  final bool readOnly;
   const _MemberTile(
-      {required this.member, required this.myId, required this.roomId});
+      {required this.member,
+      required this.myId,
+      required this.roomId,
+      this.readOnly = false});
 
   bool get _isSelf => member.matrixId != null && member.matrixId == myId;
 
@@ -202,7 +294,9 @@ class _MemberTile extends ConsumerWidget {
           : const Text('Local'),
       trailing: _isSelf
           ? const Chip(label: Text('You'))
-          : PopupMenuButton<String>(
+          : readOnly
+              ? null
+              : PopupMenuButton<String>(
               tooltip: 'Options',
               onSelected: (a) => _onAction(context, ref, a),
               itemBuilder: (_) => [

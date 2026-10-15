@@ -79,13 +79,20 @@ void main() {
       expect(find.text('Remove from group'), findsOneWidget);
     });
 
-    testWidgets('removed members are hidden from the list', (tester) async {
+    testWidgets('removed members are listed greyed under "Former members" '
+        'with a re-add action for claimed ones (G26)', (tester) async {
       await tester.pumpWidget(testApp(
         const GroupMembersPage(roomId: 'g1'),
         overrides: overridesFor(
           [
             claimed('@alice:x.org', name: 'Alice'),
             claimed('@bob:x.org', name: 'Bob', status: 'removed'),
+            MemberModel(
+                groupId: 'g1',
+                userId: 'p-cash',
+                displayName: 'Cash',
+                status: 'removed',
+                updatedAt: 1),
           ],
           '@alice:x.org',
         ),
@@ -93,7 +100,45 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Alice'), findsOneWidget);
-      expect(find.text('Bob'), findsNothing);
+      expect(find.text('Former members'), findsOneWidget);
+      expect(find.text('Bob'), findsOneWidget);
+      expect(find.text('@bob:x.org · former member'), findsOneWidget);
+      expect(find.text('Local · former member'), findsOneWidget);
+      // Bob appears after the section header, greyed.
+      expect(
+          tester.getTopLeft(find.text('Bob')).dy >
+              tester.getTopLeft(find.text('Former members')).dy,
+          isTrue);
+      expect(
+          find.ancestor(of: find.text('Bob'), matching: find.byType(Opacity)),
+          findsOneWidget);
+      // Only the claimed former member can be re-added; no options menus.
+      expect(find.widgetWithText(TextButton, 'Re-add'), findsOneWidget);
+      expect(find.byType(PopupMenuButton<String>), findsNothing);
+    });
+
+    testWidgets('once we were removed, the members list is read-only',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const GroupMembersPage(roomId: 'g1'),
+        overrides: overridesFor(
+          [
+            claimed('@alice:x.org', name: 'Alice', status: 'removed'),
+            claimed('@bob:x.org', name: 'Bob'),
+            claimed('@carol:x.org', name: 'Carol', status: 'removed'),
+          ],
+          '@alice:x.org',
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add person'), findsNothing);
+      expect(find.byType(PopupMenuButton<String>), findsNothing);
+      final readd = tester.widget<TextButton>(
+          find.widgetWithText(TextButton, 'Re-add'));
+      expect(readd.onPressed, isNull);
+      // We are listed among the former members.
+      expect(find.widgetWithText(Chip, 'You'), findsOneWidget);
     });
   });
 }

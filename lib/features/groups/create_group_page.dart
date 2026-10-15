@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'group_provider.dart';
 
-const _currencies = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD'];
+/// Currencies offered for a group's default currency (create + edit).
+const kGroupCurrencies = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD'];
 
 class CreateGroupPage extends ConsumerStatefulWidget {
   const CreateGroupPage({super.key});
@@ -60,7 +61,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
               DropdownButtonFormField<String>(
                 initialValue: _currency,
                 decoration: const InputDecoration(labelText: 'Currency'),
-                items: _currencies
+                items: kGroupCurrencies
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
                 onChanged: (v) => setState(() => _currency = v ?? 'EUR'),

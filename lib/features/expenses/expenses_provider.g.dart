@@ -76,7 +76,7 @@ final class AppDatabaseProvider
   }
 }
 
-String _$appDatabaseHash() => r'663e21d172f630ed922d941b7c9f4df2da1d7cff';
+String _$appDatabaseHash() => r'89cdb2f12afba3b064e66a850a0dda4596baf750';
 
 @ProviderFor(expensesDao)
 final expensesDaoProvider = ExpensesDaoProvider._();

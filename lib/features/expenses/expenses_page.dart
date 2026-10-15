@@ -9,12 +9,13 @@ import '../../models/member_model.dart';
 import '../backup/csv_export.dart';
 import '../backup/csv_files.dart';
 import '../balance/balance_provider.dart';
+import '../groups/group_edit_dialog.dart';
 import '../groups/group_exit_dialog.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 import 'ledger_syncer.dart';
 
-enum _GroupMenuAction { export, exit }
+enum _GroupMenuAction { edit, export, exit }
 
 class ExpensesPage extends ConsumerWidget {
   final String roomId;
@@ -35,13 +36,18 @@ class ExpensesPage extends ConsumerWidget {
     final needsClaim = meAsync.hasValue &&
         meAsync.value == null &&
         members.any((m) => m.isActive);
+    // G26: another member removed us — the group stays as read-only history
+    // (peers would reject our writes anyway) until we delete it here.
+    final removed = meAsync.value != null && !meAsync.value!.isActive;
+    final canEdit = meAsync.value?.isActive ?? false;
     final adderState = ref.watch(memberAdderProvider);
     // Keep the (auto-dispose) expense notifier alive while this page can
     // trigger deletes — a bare `read` in the dialog callback would let it be
     // disposed mid-delete.
     ref.watch(expenseAdderProvider);
-    // Same for the leave/delete notifier (G9).
+    // Same for the leave/delete (G9) and edit-group (G10) notifiers.
     ref.watch(groupExiterProvider);
+    ref.watch(groupEditorProvider);
     final exitKind =
         groupExitKind(members, ref.watch(currentUserIdProvider));
 
@@ -53,7 +59,7 @@ class ExpensesPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.person_add_outlined),
             tooltip: 'Add member',
-            onPressed: adderState.isLoading
+            onPressed: adderState.isLoading || removed
                 ? null
                 : () => _showAddMemberDialog(context, ref),
           ),
@@ -72,10 +78,20 @@ class ExpensesPage extends ConsumerWidget {
           PopupMenuButton<_GroupMenuAction>(
             tooltip: 'More',
             onSelected: (action) => switch (action) {
+              _GroupMenuAction.edit => _editGroup(context, ref),
               _GroupMenuAction.export => _exportCsv(context, ref),
               _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
             },
             itemBuilder: (_) => [
+              PopupMenuItem(
+                value: _GroupMenuAction.edit,
+                enabled: canEdit,
+                child: const ListTile(
+                  leading: Icon(Icons.edit_outlined),
+                  title: Text('Edit group'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               const PopupMenuItem(
                 value: _GroupMenuAction.export,
                 child: ListTile(
@@ -100,13 +116,28 @@ class ExpensesPage extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/groups/$roomId/expenses/add'),
-        icon: const Icon(Icons.add),
-        label: const Text('Add expense'),
-      ),
+      floatingActionButton: removed
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => context.push('/groups/$roomId/expenses/add'),
+              icon: const Icon(Icons.add),
+              label: const Text('Add expense'),
+            ),
       body: Column(
         children: [
+          if (removed)
+            MaterialBanner(
+              content: const Text('You were removed from this group. '
+                  'Its history stays readable here.'),
+              leading: const Icon(Icons.person_off_outlined),
+              actions: [
+                TextButton(
+                  onPressed: () =>
+                      _exitGroup(context, ref, GroupExitKind.delete),
+                  child: const Text('Delete from this device'),
+                ),
+              ],
+            ),
           if (needsClaim)
             MaterialBanner(
               content: const Text("You've been added to this group. "
@@ -123,7 +154,7 @@ class ExpensesPage extends ConsumerWidget {
             child: Stack(
               children: [
           _ledgerList(context, ref, expensesAsync, settlementsAsync, names,
-              syncStatus),
+              syncStatus, readOnly: removed),
           if (adderState.isLoading)
             const ColoredBox(
               color: Colors.black26,
@@ -145,8 +176,9 @@ class ExpensesPage extends ConsumerWidget {
     AsyncValue<List<ExpenseModel>> expensesAsync,
     AsyncValue<List<SettlementModel>> settlementsAsync,
     Map<String, String> names,
-    GroupSyncStatus syncStatus,
-  ) {
+    GroupSyncStatus syncStatus, {
+    required bool readOnly,
+  }) {
     if (expensesAsync.hasError) {
       return Center(child: Text('Error: ${expensesAsync.error}'));
     }
@@ -177,8 +209,9 @@ class ExpensesPage extends ConsumerWidget {
             fromName: from,
             toName: to,
             pending: syncStatus.isRecordPending(record.updatedAt),
-            onDelete: () =>
-                _confirmDeleteSettlement(context, ref, record, from, to),
+            onDelete: readOnly
+                ? null
+                : () => _confirmDeleteSettlement(context, ref, record, from, to),
           );
         }
         final expense = record as ExpenseModel;
@@ -186,9 +219,11 @@ class ExpensesPage extends ConsumerWidget {
           expense: expense,
           paidByName: nameOf(expense.paidBy),
           pending: syncStatus.isRecordPending(expense.updatedAt),
-          onTap: () =>
-              context.push('/groups/$roomId/expenses/edit', extra: expense),
-          onDelete: () => _confirmDelete(context, ref, expense),
+          onTap: readOnly
+              ? null
+              : () => context.push('/groups/$roomId/expenses/edit',
+                  extra: expense),
+          onDelete: readOnly ? null : () => _confirmDelete(context, ref, expense),
         );
       },
     );
@@ -226,6 +261,23 @@ class ExpensesPage extends ConsumerWidget {
             ? 'You left "${group?.name ?? ''}"'
             : 'Deleted "${group?.name ?? ''}"')));
     if (context.mounted) context.go('/groups');
+  }
+
+  /// Rename the group / change its default currency (G10).
+  Future<void> _editGroup(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final group = await ref.read(groupsDaoProvider).getGroup(roomId);
+    if (group == null || !context.mounted) return;
+    final result = await showEditGroupDialog(context,
+        name: group.name, currency: group.currency);
+    if (result == null) return;
+    await ref
+        .read(groupEditorProvider.notifier)
+        .edit(roomId, name: result.name, currency: result.currency);
+    final error = ref.read(groupEditorProvider).error;
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+    }
   }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
@@ -516,14 +568,14 @@ class _ExpenseTile extends StatelessWidget {
   final ExpenseModel expense;
   final String paidByName;
   final bool pending;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
+  final VoidCallback? onTap;
+  final VoidCallback? onDelete;
   const _ExpenseTile(
       {required this.expense,
       required this.paidByName,
       required this.pending,
-      required this.onTap,
-      required this.onDelete});
+      this.onTap,
+      this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -549,10 +601,11 @@ class _ExpenseTile extends StatelessWidget {
             '$amount ${expense.currency}',
             style: Theme.of(context).textTheme.titleMedium,
           ),
+          if (onDelete != null)
           PopupMenuButton<String>(
             tooltip: 'Expense options',
             onSelected: (action) {
-              if (action == 'delete') onDelete();
+              if (action == 'delete') onDelete!();
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'delete', child: Text('Delete')),
@@ -579,13 +632,13 @@ class _SettlementTile extends StatelessWidget {
   final String fromName;
   final String toName;
   final bool pending;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
   const _SettlementTile({
     required this.settlement,
     required this.fromName,
     required this.toName,
     required this.pending,
-    required this.onDelete,
+    this.onDelete,
   });
 
   @override
@@ -611,10 +664,11 @@ class _SettlementTile extends StatelessWidget {
             '$amount ${settlement.currency}',
             style: Theme.of(context).textTheme.titleMedium,
           ),
+          if (onDelete != null)
           PopupMenuButton<String>(
             tooltip: 'Settlement options',
             onSelected: (action) {
-              if (action == 'delete') onDelete();
+              if (action == 'delete') onDelete!();
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'delete', child: Text('Delete')),

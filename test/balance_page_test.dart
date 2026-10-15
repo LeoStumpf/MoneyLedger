@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_page.dart';
+import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/test_providers.dart';
 
@@ -63,5 +65,34 @@ void main() {
 
       expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
     });
+
+    // G26: a participant removed by another member can't record settlements.
+    for (final status in ['active', 'removed']) {
+      testWidgets('own debt is settleable only while active ($status)',
+          (tester) async {
+        const me = '@bob:matrix.org';
+        await tester.pumpWidget(testApp(
+          const BalancePage(roomId: _roomId),
+          overrides: [
+            ...testOverrides(isLoggedIn: true, debts: const [
+              DebtEntry(
+                  from: me, to: '@alice:matrix.org', cents: 500, currency: 'EUR'),
+            ]),
+            currentParticipantProvider.overrideWith((ref, g) =>
+                Future<MemberModel?>.value(MemberModel(
+                    groupId: g,
+                    userId: me,
+                    matrixId: me,
+                    status: status,
+                    updatedAt: 1))),
+          ],
+        ));
+        await tester.pump();
+        await tester.pump();
+
+        final tile = tester.widget<ListTile>(find.byType(ListTile));
+        expect(tile.onTap != null, status == 'active');
+      });
+    }
   });
 }

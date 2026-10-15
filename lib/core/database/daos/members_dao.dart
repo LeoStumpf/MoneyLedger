@@ -33,13 +33,15 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
           .get()
           .then((rows) => rows.map((r) => r.matrixId!).toList());
 
-  /// The participant in [groupId] claimed by [matrixId], if any.
+  /// The participant in [groupId] claimed by [matrixId], if any. Tolerates
+  /// duplicate claims left by the pre-G26 re-add bug (prefers active, then
+  /// newest — see [claimedBy]) instead of throwing.
   Future<MemberModel?> memberByMatrixId(String groupId, String matrixId) =>
       (select(members)
             ..where(
                 (t) => t.groupId.equals(groupId) & t.matrixId.equals(matrixId)))
-          .getSingleOrNull()
-          .then((row) => row == null ? null : _toModel(row));
+          .get()
+          .then((rows) => claimedBy(rows.map(_toModel), matrixId));
 
   Future<List<MemberModel>> getMembers(String groupId) =>
       (select(members)..where((t) => t.groupId.equals(groupId)))

@@ -40,6 +40,16 @@ class SettingsDao extends DatabaseAccessor<AppDatabase> with _$SettingsDaoMixin 
       .getSingleOrNull()
       .then((row) => LeftGroupTombstone.decode(row?.value));
 
+  /// Purges [groupId] from this device ([AppDatabase.purgeGroup]) and writes
+  /// its tombstone, atomically — the common tail of every way a group is
+  /// left: [GroupExiter] (leave / delete) and our own leave relayed from
+  /// another of our devices (G26, `LedgerSyncer`).
+  Future<void> purgeGroupAsLeft(String groupId, LeftGroupTombstone t) =>
+      attachedDatabase.transaction(() async {
+        await attachedDatabase.purgeGroup(groupId);
+        await markGroupLeft(groupId, t);
+      });
+
   /// Forgets the tombstone — we were re-added to [groupId].
   Future<void> clearGroupLeft(String groupId) => (delete(appSettings)
         ..where((t) => t.key.equals('$_leftGroupPrefix$groupId')))

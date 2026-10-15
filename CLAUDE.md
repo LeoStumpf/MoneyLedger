@@ -235,8 +235,7 @@ participant and another claimed account is active (`groupExitKind`), else
 confirmation warns (non-blocking) if our balance isn't settled and offers the
 CSV export. `GroupExiter.leave` marks our participant `removed` (LWW) and relays
 it to every claimed account (best-effort — peers see "X left"; our own other
-devices too, where the group stays but read-only-ish: we're removed there);
-`delete` sends nothing. Both then `AppDatabase.purgeGroup` (group, members,
+devices too, which then leave as well, see G26 below); `delete` sends nothing. Both then `AppDatabase.purgeGroup` (group, members,
 expenses, settlements incl. tombstones, peer sync states — one transaction) and
 write a device-local **`LeftGroupTombstone`** (`AppSettings` key
 `left_group:<id>`, JSON `{left_at, member?}`; no schema change). Receivers
@@ -248,6 +247,34 @@ asks for a resync of a left group unless the digest shows us re-added, and
 answers a digest that still lists us active with an older clock (lost leave
 notice) with our stored `removed` member payload. Peers stop targeting us on
 their own: replication and digests go to *active* claimed members only.
+
+**Member lifecycle (G26).** Adding an MXID that already claims a participant
+in the group (left / removed, or a claimed placeholder) **reactivates** that
+participant (same id + name, history kept) instead of inserting a duplicate.
+All "which participant does this MXID claim?" lookups go through
+`claimedBy()` (`member_model.dart`; prefers active, then newest — so DBs with
+pre-G26 duplicates don't throw in `memberByMatrixId`). Local edits stamp
+`nextLwwClock(old)` = `max(now, old + 1)`, so a re-add always beats the
+`removed` record even when the leaver's clock ran ahead (and thus passes the
+re-added device's `updated_at > left_at` check). An inbound `member` payload
+**sent by our own MXID** marking **our own** participant `removed` means we
+left on another device → `LedgerSyncer` purges the group + writes the
+tombstone like `GroupExiter.leave` (`SettingsDao.purgeGroupAsLeft`), sending
+nothing. Removed by **another** member → the group stays as read-only history
+(`currentParticipant` is inactive): banner "You were removed from this group"
++ *Delete from this device*; no add-expense / settle / edit / member changes.
+The members page lists removed participants greyed under **Former members**
+(claimed ones get *Re-add*). Who removed whom isn't recorded, so a removal
+learned only via a peer's digest gossip (our own leave notice lost) also shows
+as "removed".
+
+**Editing a group (G10).** ⋮ → *Edit group* (any active member):
+name + default currency (`group_edit_dialog.dart`, currencies from
+`kGroupCurrencies`). `GroupEditor.edit` LWW-upserts the meta with
+`nextLwwClock` and relays a `com.moneyledger.group` payload to the active
+claimed members; a lost relay is repaired by the digest's `meta_updated_at`.
+The default currency only applies to **new** expenses (balances are per
+currency).
 
 **Sync health (Phase F).** Replication/digest errors used to only `debugPrint`.
 `SyncHealth` (`lib/core/sync/sync_health.dart`, a `keepAlive` Riverpod notifier)
