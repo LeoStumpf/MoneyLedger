@@ -360,7 +360,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G16 — nice-to-haves
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G27 — LWW tie-break
-- [ ] *(G30+ — newly discovered points)*
+- [ ] *(G31+ — newly discovered points)*
 - [ ] G18 — final release review
 
 ---
