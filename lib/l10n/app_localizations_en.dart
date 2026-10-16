@@ -371,9 +371,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splitAddsUpToTotal => 'Adds up to the total';
 
   @override
-  String splitRemaining(Object amount) {
-    return 'Remaining: $amount';
+  String splitLeft(Object amount) {
+    return '$amount left';
   }
+
+  @override
+  String splitTooMuch(Object amount) {
+    return '$amount too much';
+  }
+
+  @override
+  String splitPercentValue(Object value) {
+    return '$value%';
+  }
+
+  @override
+  String get splitEnterAmountFirst => 'Enter the amount first';
+
+  @override
+  String get splitDistribute => 'Distribute';
+
+  @override
+  String get splitRescale => 'Rescale proportionally';
+
+  @override
+  String get splitPutRestHere => 'Put the rest here';
+
+  @override
+  String get splitShareMore => 'One share more';
+
+  @override
+  String get splitShareLess => 'One share less';
+
+  @override
+  String get splitOpenFieldsHint =>
+      'Empty fields share the rest · 0 = not involved';
 
   @override
   String get splitByWeight => 'Split by weight';

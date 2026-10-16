@@ -235,12 +235,39 @@
     }
   },
   "splitAddsUpToTotal": "Adds up to the total",
-  "splitRemaining": "Remaining: {amount}",
-  "@splitRemaining": {
+  "splitLeft": "{amount} left",
+  "@splitLeft": {
+    "description": "Split editor: part of the total not yet assigned to anyone",
     "placeholders": {
       "amount": {}
     }
   },
+  "splitTooMuch": "{amount} too much",
+  "@splitTooMuch": {
+    "description": "Split editor: the assigned amounts exceed the total by this much",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "splitPercentValue": "{value}%",
+  "@splitPercentValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "splitEnterAmountFirst": "Enter the amount first",
+  "splitDistribute": "Distribute",
+  "@splitDistribute": {
+    "description": "Split editor action: spread what is left over the open (empty or auto-filled) rows"
+  },
+  "splitRescale": "Rescale proportionally",
+  "@splitRescale": {
+    "description": "Split editor action: scale the entered amounts so they add up to the total"
+  },
+  "splitPutRestHere": "Put the rest here",
+  "splitShareMore": "One share more",
+  "splitShareLess": "One share less",
+  "splitOpenFieldsHint": "Empty fields share the rest · 0 = not involved",
   "splitByWeight": "Split by weight",
   "splitEnterWeight": "Enter at least one weight",
   "splitAddsUpTo100": "Adds up to 100%",

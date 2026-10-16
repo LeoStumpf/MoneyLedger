@@ -435,7 +435,7 @@ void main() {
         find.widgetWithText(FilledButton, 'Add'),
       );
       expect(button.onPressed, isNull);
-      expect(find.textContaining('Remaining'), findsOneWidget);
+      expect(find.textContaining('5.00 left'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
       for (var i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 25));

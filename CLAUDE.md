@@ -1366,6 +1366,36 @@ change.** Only the add/edit form changed.
   stored cents (a shares/percent expense thus reopens as exact amounts — same
   result, different knobs). **Excluded participants are absent from the map**
   (not stored as `0`); the editor's included set on edit = the map's keys.
+- **Smarter defaults (G59)** — pure helpers in `split_calculator.dart`:
+  `distributeRest(total, fixed, open)` (rest spread equally, largest
+  remainder; empty when rest ≤ 0 / nobody open), `rescaleProportionally`,
+  `sharesFromWeights` (simplest whole shares: equal → 1 each, cents ÷ GCD —
+  re-resolving gives the same cents; fractional weights via hundredths),
+  `percentsFromWeights` (hundredths summing to exactly 100 %, e.g.
+  33.34/33.33/33.33), `percentToHundredths` / `hundredthsToPercent`. Editor:
+  - **Mode switch converts the current split** (Equal → Exact: the equal
+    cents, excluded = `0`; → Shares; → Percent; Exact/Shares/% → Equal: the
+    included set) — but only a **complete** split (Exact adding up, % at
+    exactly 100, ≥ 1 weight/person); an incomplete one leaves the target's
+    own inputs. A **peek** (switch away and back, no edit, same total)
+    restores exactly what was there. No amount yet → Exact rows are blank.
+    The edit flow converts the stored split the same way (it opens in Exact
+    with the stored amounts as *typed* rows, others `0`).
+  - **Exact / Percent: blank = open, `0` = not involved.** Rows the editor
+    wrote itself (prefill, *Distribute*) stay "auto" (open) until the user
+    types in them (`_autoExact` / `_autoPercent`). Status line: *Adds up* /
+    "X left" / "X too much" (`splitLeft` / `splitTooMuch`) + one action —
+    **Distribute** (total − typed rows spread over the open rows, when that
+    rest is > 0) else **Rescale proportionally** (scales every value; the
+    "total changed under typed amounts" case). Per-row ⊕ "Put the rest here"
+    (visible while something is left, space reserved) adds the whole
+    remainder to that row. Percent works in hundredths with the same
+    actions. Hint line "Empty fields share the rest · 0 = not involved".
+  - **Shares:** −/+ steppers per row (min 0, − disabled at 0).
+  - Equal/Shares/% follow a changed total automatically (resolve); Exact
+    keeps its amounts and shows the mismatch. Tests:
+    `test/features/split_editor_test.dart` (incl. the 5 € / 2.50 € example),
+    `split_calculator_test.dart`.
 - **Out of scope:** itemised receipts, per-item assignment, tax/tip lines,
   saving a default split per group; settlements remain split-free.
 

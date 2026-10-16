@@ -176,4 +176,95 @@ void main() {
       expect(isEqualSplit(<String, int>{}), isFalse);
     });
   });
+
+  group('G59 fill the rest', () {
+    test('5 € with 2.50 € typed: the open person gets 2.50 €', () {
+      expect(distributeRest(500, {'a': 250}, ['b']), {'b': 250});
+    });
+
+    test('the rest is spread exactly over several open rows', () {
+      final r = distributeRest(1000, {'a': 1}, ['b', 'c', 'd']);
+      expect(_sum(r), 999);
+      expect(r, {'b': 333, 'c': 333, 'd': 333});
+      // 1 cent left over two open rows → the first one gets it.
+      expect(distributeRest(101, {'a': 100}, ['b', 'c']), {'b': 1, 'c': 0});
+    });
+
+    test('all blank: the whole total is split equally', () {
+      final r = distributeRest(100, const {}, ['a', 'b', 'c']);
+      expect(r, {'a': 34, 'b': 33, 'c': 33});
+    });
+
+    test('nothing left, over-allocated or nobody open → nothing to fill', () {
+      expect(distributeRest(500, {'a': 500}, ['b']), isEmpty);
+      expect(distributeRest(500, {'a': 530}, ['b']), isEmpty);
+      expect(distributeRest(500, {'a': 250}, const []), isEmpty);
+      expect(remainingForExact(500, {'a': 530}), -30);
+    });
+
+    test('rescale keeps the proportions and sums exactly', () {
+      final r = rescaleProportionally(1000, {'a': 300, 'b': 200});
+      expect(r, {'a': 600, 'b': 400});
+      final odd = rescaleProportionally(100, {'a': 1, 'b': 1, 'c': 1});
+      expect(_sum(odd), 100);
+      expect(rescaleProportionally(100, {'a': 0, 'b': 5}), {'a': 0, 'b': 100});
+    });
+  });
+
+  group('G59 mode conversion', () {
+    test('equal weights → 1 share each, excluded → 0', () {
+      expect(sharesFromWeights({'a': 1, 'b': 1, 'c': 0}), {
+        'a': 1,
+        'b': 1,
+        'c': 0,
+      });
+      expect(sharesFromWeights({'a': 250, 'b': 250}), {'a': 1, 'b': 1});
+    });
+
+    test('cents reduce to the simplest whole shares', () {
+      final s = sharesFromWeights({'a': 1500, 'b': 500});
+      expect(s, {'a': 3, 'b': 1});
+      // Resolving them again reproduces the cents exactly.
+      expect(splitByShares(2000, s), {'a': 1500, 'b': 500});
+      final odd = sharesFromWeights({'a': 333, 'b': 667});
+      expect(splitByShares(1000, odd), {'a': 333, 'b': 667});
+    });
+
+    test('fractional weights (percents) go by hundredths', () {
+      expect(sharesFromWeights({'a': 12.5, 'b': 87.5}), {'a': 1, 'b': 7});
+      expect(sharesFromWeights({'a': 50, 'b': 50}), {'a': 1, 'b': 1});
+      expect(sharesFromWeights({'a': 0, 'b': 0}), {'a': 0, 'b': 0});
+    });
+
+    test('percents sum to exactly 100 in hundredths', () {
+      final three = percentsFromWeights({'a': 1, 'b': 1, 'c': 1});
+      expect(three, {'a': 33.34, 'b': 33.33, 'c': 33.33});
+      expect(
+        three.values.map(percentToHundredths).fold(0, (a, b) => a + b),
+        10000,
+      );
+      expect(percentsFromWeights({'a': 1, 'b': 1}), {'a': 50, 'b': 50});
+      expect(percentsFromWeights({'a': 1500, 'b': 500, 'c': 0}), {
+        'a': 75,
+        'b': 25,
+        'c': 0,
+      });
+      for (var n = 1; n <= 13; n++) {
+        final p = percentsFromWeights({for (var i = 0; i < n; i++) 'p$i': 1});
+        expect(
+          p.values.map(percentToHundredths).fold(0, (a, b) => a + b),
+          10000,
+          reason: 'n=$n',
+        );
+      }
+    });
+
+    test('hundredths round-trip', () {
+      expect(hundredthsToPercent(5000), 50);
+      expect(hundredthsToPercent(5000), isA<int>());
+      expect(hundredthsToPercent(3334), 33.34);
+      expect(percentToHundredths(33.33), 3333);
+      expect(percentToHundredths(12.5), 1250);
+    });
+  });
 }

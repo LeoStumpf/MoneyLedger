@@ -650,21 +650,26 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 ### G59. Smarter split defaults (Leo, 2026-10-17) 🟡
 Switching split modes or editing amounts today starts from blanks; make the
 `SplitEditor` (`split_editor.dart`) do the obvious thing.
-- [ ] Switching mode prefills from the current split (Equal → Exact shows the
+- [x] Switching mode prefills from the current split (Equal → Exact shows the
       equal amounts, → Shares 1 each, → Percent the matching percentages;
       on edit the stored split converts the same way)
-- [ ] Exact: an "auto / fill the rest" action — e.g. total 5 €, one person
+- [x] Exact: an "auto / fill the rest" action — e.g. total 5 €, one person
       2.50 € → the remaining 2.50 € is spread over the people left blank
       (largest-remainder, `split_calculator.dart`); per-row "rest" button and
       a status line "2.50 € left — distribute"
-- [ ] Percent: same "rest" for the last open person; Shares: +/- steppers
-- [ ] Changing the total keeps the chosen proportions where it makes sense
+- [x] Percent: same "rest" for the last open person; Shares: +/- steppers
+- [x] Changing the total keeps the chosen proportions where it makes sense
       (Exact stays exact with a "doesn't add up" hint + one-tap rescale)
-- [ ] EN+DE, widget tests for each default / auto-fill path
+- [x] EN+DE, widget tests for each default / auto-fill path
 
 ### G60. Expense-date follow-ups (found in G49) 🟢
 - [ ] Payments (settlements) have no date yet
 - [ ] Offline demo seed: a back-dated example
+
+### G61. Split follow-ups (found in G59) 🟢
+- [ ] Try live auto-fill of open rows (Tricount-style) instead of the button
+- [ ] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
+- [ ] Check the new split rows at phone width (long names, Shares steppers)
 
 ---
 
@@ -722,16 +727,17 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G47 — custom categories + dropdown
 - [x] G48 — restore points + revert
 - [x] G49 — expense date
-- [ ] G59 — smarter split defaults (prefill from current split, "fill the rest")
+- [x] G59 — smarter split defaults (prefill from current split, "fill the rest")
 - [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
 - [ ] G51 — Nostr spike
 - [ ] G52 — link groups implementation
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
 - [ ] G55 — web glyph coverage without Google (found in G43)
-- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15 (use `pixel-lock` for the Pixel)
+- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel)
 - [ ] G58 — restore-point follow-ups (found in G48)
 - [ ] G60 — expense-date follow-ups (found in G49)
+- [ ] G61 — split follow-ups (found in G59)
 - [ ] G57 — custom-category follow-ups (found in G47)
 - [ ] G56 — UX follow-ups (found in G46)
 

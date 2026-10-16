@@ -86,6 +86,74 @@ bool isEqualSplit(Map<String, int> map) {
   return true;
 }
 
+/// G59: [total] minus the [fixed] amounts, spread **equally** over the [open]
+/// ids (largest remainder — sums to the rest exactly). Empty when nothing is
+/// left (rest ≤ 0) or nobody is open. Used for "fill the rest" in Exact mode
+/// (cents) and Percent mode (hundredths of a percent, see [percentToHundredths]).
+Map<String, int> distributeRest(
+  int total,
+  Map<String, int> fixed,
+  List<String> open,
+) {
+  final rest = remainingForExact(total, fixed);
+  if (rest <= 0 || open.isEmpty) return const {};
+  return splitEqually(rest, open);
+}
+
+/// G59: [amounts] scaled proportionally so they sum to [total] exactly
+/// (largest remainder). Entries ≤ 0 stay 0. Empty input or no positive amount →
+/// every entry 0 (the caller only offers this when something was typed).
+Map<String, int> rescaleProportionally(int total, Map<String, int> amounts) =>
+    distributeByWeights(total, amounts);
+
+/// G59: the simplest whole-number shares with the same proportions as
+/// [weights] — all equal positive weights → 1 each; whole weights (e.g. cents
+/// 1500 / 500) are divided by their GCD (→ 3 / 1); fractional weights (e.g.
+/// percents 12.5 / 87.5) are taken in hundredths first. Non-positive weights
+/// → 0. Resolving the result against the same total reproduces the original
+/// cents exactly when the weights were cents.
+Map<String, int> sharesFromWeights(Map<String, num> weights) {
+  final positive = [
+    for (final w in weights.values)
+      if (w > 0) w,
+  ];
+  if (positive.isEmpty) return {for (final id in weights.keys) id: 0};
+  final whole = positive.every((w) => w == w.roundToDouble());
+  int scaled(num w) => w <= 0 ? 0 : (whole ? w.round() : (w * 100).round());
+  var g = 0;
+  for (final w in positive) {
+    g = _gcd(g, scaled(w));
+  }
+  if (g <= 0) g = 1;
+  return {for (final e in weights.entries) e.key: scaled(e.value) ~/ g};
+}
+
+/// G59: percentages (in hundredths, summing to exactly 100 %) proportional to
+/// [weights] — e.g. three equal weights → 33.34 / 33.33 / 33.33. Non-positive
+/// weights → 0. Converts with [hundredthsToPercent] for display.
+Map<String, num> percentsFromWeights(Map<String, num> weights) =>
+    distributeByWeights(
+      10000,
+      weights,
+    ).map((id, h) => MapEntry(id, hundredthsToPercent(h)));
+
+/// G59: a percent value in whole hundredths (33.33 → 3333).
+int percentToHundredths(num percent) => (percent * 100).round();
+
+/// G59: hundredths back to a percent — an int when whole (5000 → 50),
+/// else a double (3334 → 33.34).
+num hundredthsToPercent(int hundredths) =>
+    hundredths % 100 == 0 ? hundredths ~/ 100 : hundredths / 100;
+
+int _gcd(int a, int b) {
+  while (b != 0) {
+    final t = a % b;
+    a = b;
+    b = t;
+  }
+  return a.abs();
+}
+
 class _Remainder {
   final String id;
   final double frac;

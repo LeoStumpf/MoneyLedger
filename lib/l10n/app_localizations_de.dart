@@ -373,9 +373,41 @@ class AppLocalizationsDe extends AppLocalizations {
   String get splitAddsUpToTotal => 'Ergibt den Gesamtbetrag';
 
   @override
-  String splitRemaining(Object amount) {
-    return 'Verbleibend: $amount';
+  String splitLeft(Object amount) {
+    return 'noch $amount offen';
   }
+
+  @override
+  String splitTooMuch(Object amount) {
+    return '$amount zu viel';
+  }
+
+  @override
+  String splitPercentValue(Object value) {
+    return '$value %';
+  }
+
+  @override
+  String get splitEnterAmountFirst => 'Gib zuerst den Betrag ein';
+
+  @override
+  String get splitDistribute => 'Verteilen';
+
+  @override
+  String get splitRescale => 'Proportional anpassen';
+
+  @override
+  String get splitPutRestHere => 'Rest hier eintragen';
+
+  @override
+  String get splitShareMore => 'Ein Anteil mehr';
+
+  @override
+  String get splitShareLess => 'Ein Anteil weniger';
+
+  @override
+  String get splitOpenFieldsHint =>
+      'Leere Felder teilen sich den Rest · 0 = nicht beteiligt';
 
   @override
   String get splitByWeight => 'Nach Anteilen aufgeteilt';

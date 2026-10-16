@@ -66,9 +66,23 @@ class SplitPlan {
 /// Lets the user divide an expense one of four ways — equally (with per-person
 /// include checkboxes), by exact amounts, by integer weights, or by percentage.
 /// Reports a [SplitPlan] via [onPlanChanged] whenever the user changes anything;
-/// the parent resolves it against the current amount. [totalCents] is used only
-/// for the live per-person previews. Excluded participants are absent from the
-/// resolved map.
+/// the parent resolves it against the current amount. [totalCents] drives the
+/// live per-person previews, the mode-switch prefill and the "fill the rest"
+/// actions. Excluded participants are absent from the resolved map.
+///
+/// G59 defaults:
+/// - **Switching mode converts the current split** (Equal → Exact: the equal
+///   cents; → Shares: the simplest whole shares, 1 each for an equal split;
+///   → Percent: matching percentages summing to exactly 100). Only a split that
+///   is complete converts; an incomplete one leaves the target mode's own
+///   inputs. A mere peek (switch away and back with no change and the same
+///   total) returns to exactly what was there.
+/// - **Exact / Percent: blank = open, 0 = not involved.** Rows the editor
+///   filled itself (prefill, *Distribute*) count as open too until the user
+///   types in them. *Distribute* spreads the total minus the typed rows over
+///   the open rows (largest remainder); the per-row button puts the whole
+///   remainder on that row; *Rescale proportionally* scales every amount when
+///   no open row can absorb the difference (e.g. after the total changed).
 class SplitEditor extends StatefulWidget {
   final List<MemberModel> members;
   final int totalCents;
@@ -99,6 +113,19 @@ class _SplitEditorState extends State<SplitEditor> {
   final _shareCtrl = <String, TextEditingController>{};
   final _percentCtrl = <String, TextEditingController>{};
 
+  /// Rows of Exact / Percent whose value the editor wrote (prefill /
+  /// distribute) and the user hasn't typed in since — open for "fill the rest".
+  final _autoExact = <String>{};
+  final _autoPercent = <String>{};
+
+  /// Modes that hold inputs (shown or prefilled at least once).
+  final _seeded = <SplitMode>{};
+
+  /// Whether the user changed anything since the last mode switch, and the
+  /// total at that switch — together they tell a "peek" from a real change.
+  bool _changedSinceSwitch = false;
+  late int _totalAtSwitch;
+
   @override
   void initState() {
     super.initState();
@@ -122,6 +149,8 @@ class _SplitEditorState extends State<SplitEditor> {
       _mode = SplitMode.equal;
       _included = {for (final m in widget.members) m.userId};
     }
+    _seeded.add(_mode);
+    _totalAtSwitch = widget.totalCents;
 
     // Push the starting plan once the first frame is built.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -138,13 +167,22 @@ class _SplitEditorState extends State<SplitEditor> {
     if (!_exactPrefilled && _mode == SplitMode.exact && initial != null) {
       _exactPrefilled = true;
       final locale = context.localeName;
-      initial.forEach(
-        (id, cents) => _exactCtrl[id]?.text = formatAmountInput(cents, locale),
-      );
+      // The stored amounts are the user's own choice (typed, not auto); people
+      // outside the split are an explicit 0 (not involved).
+      for (final m in widget.members) {
+        final cents = initial[m.userId] ?? 0;
+        _exactCtrl[m.userId]!.text = cents > 0
+            ? formatAmountInput(cents, locale)
+            : '0';
+      }
     }
   }
 
   String _money(int cents) => context.money(cents, widget.currency);
+
+  String _percent(int hundredths) => context.l10n.splitPercentValue(
+    formatDecimal(hundredthsToPercent(hundredths), context.localeName),
+  );
 
   @override
   void dispose() {
@@ -164,6 +202,54 @@ class _SplitEditorState extends State<SplitEditor> {
     widget.onPlanChanged(_plan());
   }
 
+  /// A user edit: no longer a mere peek, then [_update].
+  void _changed() {
+    _changedSinceSwitch = true;
+    _update();
+  }
+
+  // --- reading the inputs -------------------------------------------------
+
+  int? _exactCents(String id) =>
+      parseAmountCents(_exactCtrl[id]!.text, locale: context.localeName);
+
+  /// Percent of [id] in hundredths, or null when blank / unparsable.
+  int? _percentHundredths(String id) {
+    final p = parseLocalizedDecimal(_percentCtrl[id]!.text);
+    return p == null ? null : percentToHundredths(p);
+  }
+
+  bool _blank(TextEditingController c) => c.text.trim().isEmpty;
+
+  /// Rows "fill the rest" may write: blank, or auto-filled with a value > 0.
+  List<String> _openRows(
+    Map<String, TextEditingController> ctrl,
+    Set<String> auto,
+    int? Function(String) value,
+  ) => [
+    for (final m in widget.members)
+      if (_blank(ctrl[m.userId]!) ||
+          (auto.contains(m.userId) && (value(m.userId) ?? 0) > 0))
+        m.userId,
+  ];
+
+  /// Rows the user typed a positive value into (not open, not 0).
+  Map<String, int> _fixedRows(
+    Map<String, TextEditingController> ctrl,
+    List<String> open,
+    int? Function(String) value,
+  ) => {
+    for (final m in widget.members)
+      if (!open.contains(m.userId) && (value(m.userId) ?? 0) > 0)
+        m.userId: value(m.userId)!,
+  };
+
+  /// Every positive value of a mode (typed or auto).
+  Map<String, int> _allValues(int? Function(String) value) => {
+    for (final m in widget.members)
+      if ((value(m.userId) ?? 0) > 0) m.userId: value(m.userId)!,
+  };
+
   /// Snapshots the current mode + inputs into a [SplitPlan].
   SplitPlan _plan() {
     switch (_mode) {
@@ -176,15 +262,7 @@ class _SplitEditorState extends State<SplitEditor> {
           ],
         );
       case SplitMode.exact:
-        final exact = <String, int>{};
-        for (final m in widget.members) {
-          final cents = parseAmountCents(
-            _exactCtrl[m.userId]!.text,
-            locale: context.localeName,
-          );
-          if (cents != null && cents > 0) exact[m.userId] = cents;
-        }
-        return SplitPlan(mode: _mode, exact: exact);
+        return SplitPlan(mode: _mode, exact: _allValues(_exactCents));
       case SplitMode.shares:
         final weights = <String, int>{};
         for (final m in widget.members) {
@@ -202,11 +280,177 @@ class _SplitEditorState extends State<SplitEditor> {
     }
   }
 
+  // --- mode switch (G59) --------------------------------------------------
+
+  /// The current split as proportions, or null when it isn't complete (an
+  /// Exact split that doesn't add up, percents not at 100 %, nothing chosen).
+  Map<String, num>? _currentWeights() {
+    final plan = _plan();
+    switch (_mode) {
+      case SplitMode.equal:
+        return plan.included.isEmpty
+            ? null
+            : {for (final id in plan.included) id: 1};
+      case SplitMode.exact:
+        final ok =
+            widget.totalCents > 0 &&
+            plan.exact.isNotEmpty &&
+            remainingForExact(widget.totalCents, plan.exact) == 0;
+        return ok ? plan.exact : null;
+      case SplitMode.shares:
+        return plan.weights.isEmpty ? null : plan.weights;
+      case SplitMode.percent:
+        final sum = plan.percents.values.fold<int>(
+          0,
+          (a, p) => a + percentToHundredths(p),
+        );
+        return sum == 10000 ? plan.percents : null;
+    }
+  }
+
+  void _switchTo(SplitMode target) {
+    if (target == _mode) return;
+    final peek =
+        _seeded.contains(target) &&
+        !_changedSinceSwitch &&
+        widget.totalCents == _totalAtSwitch;
+    if (!peek) {
+      final weights = _currentWeights();
+      if (weights != null) {
+        _fill(target, weights);
+      } else if (!_seeded.contains(target)) {
+        final who = _included.isEmpty
+            ? [for (final m in widget.members) m.userId]
+            : _included;
+        _fill(target, {for (final id in who) id: 1});
+      }
+    }
+    _seeded.add(target);
+    _mode = target;
+    _changedSinceSwitch = false;
+    _totalAtSwitch = widget.totalCents;
+    _update();
+  }
+
+  /// Writes the proportions [weights] into [target]'s inputs (members absent
+  /// from [weights] or ≤ 0 → not involved).
+  void _fill(SplitMode target, Map<String, num> weights) {
+    final locale = context.localeName;
+    num w(String id) => weights[id] ?? 0;
+    switch (target) {
+      case SplitMode.equal:
+        _included = {
+          for (final m in widget.members)
+            if (w(m.userId) > 0) m.userId,
+        };
+      case SplitMode.exact:
+        final total = widget.totalCents;
+        final cents = total > 0
+            ? distributeByWeights(total, {
+                for (final m in widget.members) m.userId: w(m.userId),
+              })
+            : null;
+        _autoExact.clear();
+        for (final m in widget.members) {
+          final id = m.userId;
+          if (w(id) <= 0) {
+            _exactCtrl[id]!.text = '0';
+          } else {
+            // No amount yet → blank (open): "Distribute" fills it later.
+            _exactCtrl[id]!.text = cents == null
+                ? ''
+                : formatAmountInput(cents[id]!, locale);
+            _autoExact.add(id);
+          }
+        }
+      case SplitMode.shares:
+        final shares = sharesFromWeights({
+          for (final m in widget.members) m.userId: w(m.userId),
+        });
+        shares.forEach((id, n) => _shareCtrl[id]!.text = '$n');
+      case SplitMode.percent:
+        final percents = percentsFromWeights({
+          for (final m in widget.members) m.userId: w(m.userId),
+        });
+        _autoPercent.clear();
+        percents.forEach((id, p) {
+          _percentCtrl[id]!.text = formatDecimal(p, locale);
+          if (p > 0) _autoPercent.add(id);
+        });
+    }
+  }
+
+  // --- fill the rest (G59) ------------------------------------------------
+
+  /// Spreads `total − typed` over the open rows of Exact (cents) or Percent
+  /// (hundredths); the filled rows stay "auto".
+  void _distribute(SplitMode mode) {
+    final exact = mode == SplitMode.exact;
+    final ctrl = exact ? _exactCtrl : _percentCtrl;
+    final auto = exact ? _autoExact : _autoPercent;
+    final value = exact ? _exactCents : _percentHundredths;
+    final total = exact ? widget.totalCents : 10000;
+    final open = _openRows(ctrl, auto, value);
+    final fill = distributeRest(total, _fixedRows(ctrl, open, value), open);
+    if (fill.isEmpty) return;
+    fill.forEach((id, v) {
+      ctrl[id]!.text = _format(mode, v);
+      auto.add(id);
+    });
+    _changed();
+  }
+
+  /// Scales every positive value of Exact / Percent to the total.
+  void _rescale(SplitMode mode) {
+    final exact = mode == SplitMode.exact;
+    final ctrl = exact ? _exactCtrl : _percentCtrl;
+    final value = exact ? _exactCents : _percentHundredths;
+    final values = _allValues(value);
+    if (values.isEmpty) return;
+    rescaleProportionally(
+      exact ? widget.totalCents : 10000,
+      values,
+    ).forEach((id, v) => ctrl[id]!.text = _format(mode, v));
+    _changed();
+  }
+
+  /// Puts the whole remainder on [id] (on top of what it has) — a deliberate
+  /// choice, so the row counts as typed.
+  void _restHere(SplitMode mode, String id, int remaining) {
+    final exact = mode == SplitMode.exact;
+    final ctrl = exact ? _exactCtrl : _percentCtrl;
+    final current = (exact ? _exactCents(id) : _percentHundredths(id)) ?? 0;
+    ctrl[id]!.text = _format(mode, current + remaining);
+    (exact ? _autoExact : _autoPercent).remove(id);
+    _changed();
+  }
+
+  String _format(SplitMode mode, int v) => mode == SplitMode.exact
+      ? formatAmountInput(v, context.localeName)
+      : formatDecimal(hundredthsToPercent(v), context.localeName);
+
+  /// Exact: `total − sum(all)` in cents; Percent: `100 % − sum` in hundredths.
+  int _remaining(SplitMode mode) => mode == SplitMode.exact
+      ? remainingForExact(widget.totalCents, _allValues(_exactCents))
+      : remainingForExact(10000, _allValues(_percentHundredths));
+
+  void _stepShare(String id, int delta) {
+    final c = _shareCtrl[id]!;
+    final n = (int.tryParse(c.text.trim()) ?? 0) + delta;
+    c.text = '${n < 0 ? 0 : n}';
+    _changed();
+  }
+
+  // --- UI -----------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final result = _plan().resolve(widget.totalCents);
     final small = Theme.of(context).textTheme.bodySmall;
     final l = context.l10n;
+    final remaining = _mode == SplitMode.exact || _mode == SplitMode.percent
+        ? _remaining(_mode)
+        : 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -220,10 +464,7 @@ class _SplitEditorState extends State<SplitEditor> {
             const ButtonSegment(value: SplitMode.percent, label: Text('%')),
           ],
           selected: {_mode},
-          onSelectionChanged: (s) {
-            _mode = s.first;
-            _update();
-          },
+          onSelectionChanged: (s) => _switchTo(s.first),
         ),
         const SizedBox(height: Insets.s),
         Card(
@@ -235,7 +476,7 @@ class _SplitEditorState extends State<SplitEditor> {
             child: Column(
               children: [
                 for (final m in widget.members)
-                  _row(m, result.shares[m.userId] ?? 0),
+                  _row(m, result.shares[m.userId] ?? 0, remaining),
               ],
             ),
           ),
@@ -243,13 +484,23 @@ class _SplitEditorState extends State<SplitEditor> {
         const SizedBox(height: Insets.s),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Insets.xs),
-          child: _statusLine(result, small),
+          child: _statusLine(result, small, remaining),
         ),
+        if (_mode == SplitMode.exact || _mode == SplitMode.percent)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Insets.xs, 2, Insets.xs, 0),
+            child: Text(
+              l.splitOpenFieldsHint,
+              style: small?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _row(MemberModel m, int cents) {
+  Widget _row(MemberModel m, int cents, int remaining) {
     // G17: avatar + name (one line, ellipsized) on every row.
     final name = Expanded(
       child: Row(
@@ -298,7 +549,7 @@ class _SplitEditorState extends State<SplitEditor> {
                   } else {
                     _included.remove(m.userId);
                   }
-                  _update();
+                  _changed();
                 },
               ),
               name,
@@ -318,7 +569,13 @@ class _SplitEditorState extends State<SplitEditor> {
                   _exactCtrl[m.userId]!,
                   suffix: widget.currency,
                   decimal: true,
+                  onEdited: () => _autoExact.remove(m.userId),
                 ),
+              ),
+              _restButton(
+                SplitMode.exact,
+                m.userId,
+                widget.totalCents > 0 ? remaining : 0,
               ),
             ],
           ),
@@ -329,10 +586,12 @@ class _SplitEditorState extends State<SplitEditor> {
           child: Row(
             children: [
               name,
+              _stepButton(m.userId, -1),
               SizedBox(
-                width: 64,
+                width: 48,
                 child: _numField(_shareCtrl[m.userId]!, decimal: false),
               ),
+              _stepButton(m.userId, 1),
               preview,
             ],
           ),
@@ -349,8 +608,10 @@ class _SplitEditorState extends State<SplitEditor> {
                   _percentCtrl[m.userId]!,
                   suffix: '%',
                   decimal: true,
+                  onEdited: () => _autoPercent.remove(m.userId),
                 ),
               ),
+              _restButton(SplitMode.percent, m.userId, remaining),
               preview,
             ],
           ),
@@ -358,10 +619,37 @@ class _SplitEditorState extends State<SplitEditor> {
     }
   }
 
+  /// "Put the rest here" — only while something is left; the space is kept so
+  /// the column doesn't jump.
+  Widget _restButton(SplitMode mode, String id, int remaining) => Visibility(
+    visible: remaining > 0,
+    maintainSize: true,
+    maintainAnimation: true,
+    maintainState: true,
+    child: IconButton(
+      tooltip: context.l10n.splitPutRestHere,
+      visualDensity: VisualDensity.compact,
+      icon: const Icon(Icons.add_circle_outline, size: 20),
+      onPressed: remaining > 0 ? () => _restHere(mode, id, remaining) : null,
+    ),
+  );
+
+  Widget _stepButton(String id, int delta) {
+    final l = context.l10n;
+    final n = int.tryParse(_shareCtrl[id]!.text.trim()) ?? 0;
+    return IconButton(
+      tooltip: delta > 0 ? l.splitShareMore : l.splitShareLess,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(delta > 0 ? Icons.add : Icons.remove, size: 18),
+      onPressed: delta < 0 && n <= 0 ? null : () => _stepShare(id, delta),
+    );
+  }
+
   Widget _numField(
     TextEditingController c, {
     String? suffix,
     required bool decimal,
+    VoidCallback? onEdited,
   }) {
     return TextField(
       controller: c,
@@ -380,11 +668,15 @@ class _SplitEditorState extends State<SplitEditor> {
           vertical: Insets.s + 2,
         ),
       ),
-      onChanged: (_) => _update(),
+      onChanged: (_) {
+        onEdited?.call();
+        _changed();
+      },
     );
   }
 
-  Widget _statusLine(SplitResult result, TextStyle? small) {
+  /// The status text plus, when it helps, one action (G59).
+  Widget _statusLine(SplitResult result, TextStyle? small, int remaining) {
     final ok = Theme.of(context).colorScheme.primary;
     final bad = Theme.of(context).colorScheme.error;
     final l = context.l10n;
@@ -396,12 +688,18 @@ class _SplitEditorState extends State<SplitEditor> {
           style: small?.copyWith(color: n == 0 ? bad : null),
         );
       case SplitMode.exact:
-        final remaining = remainingForExact(widget.totalCents, result.shares);
-        return Text(
-          remaining == 0 && result.isValid
-              ? l.splitAddsUpToTotal
-              : l.splitRemaining(_money(remaining)),
-          style: small?.copyWith(color: result.isValid ? ok : bad),
+        if (widget.totalCents <= 0) {
+          return Text(l.splitEnterAmountFirst, style: small);
+        }
+        if (remaining == 0 && result.isValid) {
+          return Text(l.splitAddsUpToTotal, style: small?.copyWith(color: ok));
+        }
+        return _withAction(
+          remaining > 0
+              ? l.splitLeft(_money(remaining))
+              : l.splitTooMuch(_money(-remaining)),
+          small?.copyWith(color: bad),
+          SplitMode.exact,
         );
       case SplitMode.shares:
         return Text(
@@ -409,10 +707,51 @@ class _SplitEditorState extends State<SplitEditor> {
           style: small?.copyWith(color: result.isValid ? null : bad),
         );
       case SplitMode.percent:
-        return Text(
-          result.isValid ? l.splitAddsUpTo100 : l.splitPercentMustTotal100,
-          style: small?.copyWith(color: result.isValid ? ok : bad),
+        if (remaining == 0 && result.isValid) {
+          return Text(l.splitAddsUpTo100, style: small?.copyWith(color: ok));
+        }
+        return _withAction(
+          remaining > 0
+              ? l.splitLeft(_percent(remaining))
+              : l.splitTooMuch(_percent(-remaining)),
+          small?.copyWith(color: bad),
+          SplitMode.percent,
         );
     }
+  }
+
+  /// [text] with *Distribute* (some open row can take `total − typed`) or
+  /// else *Rescale proportionally* (something to scale).
+  Widget _withAction(String text, TextStyle? style, SplitMode mode) {
+    final l = context.l10n;
+    final exact = mode == SplitMode.exact;
+    final ctrl = exact ? _exactCtrl : _percentCtrl;
+    final auto = exact ? _autoExact : _autoPercent;
+    final value = exact ? _exactCents : _percentHundredths;
+    final total = exact ? widget.totalCents : 10000;
+    final open = _openRows(ctrl, auto, value);
+    final canDistribute = distributeRest(
+      total,
+      _fixedRows(ctrl, open, value),
+      open,
+    ).isNotEmpty;
+    final canRescale = _allValues(value).isNotEmpty;
+    final action = canDistribute
+        ? TextButton(
+            onPressed: () => _distribute(mode),
+            child: Text(l.splitDistribute),
+          )
+        : canRescale
+        ? TextButton(
+            onPressed: () => _rescale(mode),
+            child: Text(l.splitRescale),
+          )
+        : null;
+    return Row(
+      children: [
+        Expanded(child: Text(text, style: style)),
+        ?action,
+      ],
+    );
   }
 }

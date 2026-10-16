@@ -674,11 +674,65 @@ abstract class AppLocalizations {
   /// **'Adds up to the total'**
   String get splitAddsUpToTotal;
 
-  /// No description provided for @splitRemaining.
+  /// Split editor: part of the total not yet assigned to anyone
   ///
   /// In en, this message translates to:
-  /// **'Remaining: {amount}'**
-  String splitRemaining(Object amount);
+  /// **'{amount} left'**
+  String splitLeft(Object amount);
+
+  /// Split editor: the assigned amounts exceed the total by this much
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} too much'**
+  String splitTooMuch(Object amount);
+
+  /// No description provided for @splitPercentValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{value}%'**
+  String splitPercentValue(Object value);
+
+  /// No description provided for @splitEnterAmountFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the amount first'**
+  String get splitEnterAmountFirst;
+
+  /// Split editor action: spread what is left over the open (empty or auto-filled) rows
+  ///
+  /// In en, this message translates to:
+  /// **'Distribute'**
+  String get splitDistribute;
+
+  /// Split editor action: scale the entered amounts so they add up to the total
+  ///
+  /// In en, this message translates to:
+  /// **'Rescale proportionally'**
+  String get splitRescale;
+
+  /// No description provided for @splitPutRestHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Put the rest here'**
+  String get splitPutRestHere;
+
+  /// No description provided for @splitShareMore.
+  ///
+  /// In en, this message translates to:
+  /// **'One share more'**
+  String get splitShareMore;
+
+  /// No description provided for @splitShareLess.
+  ///
+  /// In en, this message translates to:
+  /// **'One share less'**
+  String get splitShareLess;
+
+  /// No description provided for @splitOpenFieldsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty fields share the rest · 0 = not involved'**
+  String get splitOpenFieldsHint;
 
   /// No description provided for @splitByWeight.
   ///
