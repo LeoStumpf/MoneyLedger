@@ -41,8 +41,8 @@ import 'dart:ui' show IsolateNameServer;
 
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 
-const _mainPortName = 'app.moneyledger.main';
-const _backgroundPortName = 'app.moneyledger.background';
+const _mainPortName = 'io.github.leostumpf.moneyledger.main';
+const _backgroundPortName = 'io.github.leostumpf.moneyledger.background';
 const _pingTimeout = Duration(seconds: 2);
 
 /// The process-wide port registry ([IsolateNameServer]); injectable so the

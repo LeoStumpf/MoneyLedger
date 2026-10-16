@@ -5,11 +5,11 @@
 ///
 /// Uses an **in-memory** database only (never the real account DB). Run it as
 /// a separate package so it can't touch an installed app's data: temporarily
-/// set `applicationId = "app.moneyledger.money_ledger.bench"` in
+/// set `applicationId = "io.github.leostumpf.moneyledger.bench"` in
 /// `android/app/build.gradle.kts`, `flutter build apk --profile -t
 /// tool/bench/digest_bench.dart`, revert the gradle file, check the package
 /// name (`aapt2 dump badging`), `adb install` + launch it, read `adb logcat |
-/// grep '\[bench\]'`, then `adb uninstall app.moneyledger.money_ledger.bench`.
+/// grep '\[bench\]'`, then `adb uninstall io.github.leostumpf.moneyledger.bench`.
 /// Never `flutter run` it over the real app (a signature mismatch makes the
 /// tool uninstall the app and its data). Results go to the screen and to the
 /// log (`[bench]`).

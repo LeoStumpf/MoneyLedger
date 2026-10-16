@@ -471,20 +471,20 @@ flag). A first-time user lands on a bare Matrix login without knowing why.
 ### G38. App id → `io.github.leostumpf.moneyledger` (Leo, 2026-10-16) 🟠
 Leo's naming scheme (ZoneCraft, timeLoggBook): `io.github.leostumpf.<name>`.
 Must happen before the first Play upload (the id is permanent there).
-- [ ] namespace + applicationId in `android/app/build.gradle.kts`, Kotlin
+- [x] namespace + applicationId in `android/app/build.gradle.kts`, Kotlin
       package/path of `MainActivity`, background-sync references
       (`background_sync_native.dart`, `background_gate.dart`, jobscheduler
       command in CLAUDE.md / smoke-test), bench tool, docs
-- [ ] Devices (approved by Leo): sign out + uninstall the old app on the
+- [x] Devices (approved by Leo): sign out + uninstall the old app on the
       phone and emulator-5554, install the new id, log in test accounts A/B
       again, recreate the test groups (replaces the pre-G6 legacy groups, G35)
-- [ ] Re-verify on devices: login, sync both ways, SAS between A and B,
+- [x] Re-verify on devices: login, sync both ways, SAS between A and B,
       background sync job id
 
 ### G18. Final release review 🟡
 - [x] Code review over all of Phase G (sync/crypto/backup/math): 16 findings incl. 4 blockers → all fixed with regression tests
 - [ ] Second review pass over the G18 fixes (after G40/G39/G38)
-- [ ] Recreate the pre-G6 test groups ("G7a Test"/"G7a Probe") or document them
+- [x] (G38: devices reset, "Testgruppe A+B" + "Lokal-Test" recreated) Recreate the pre-G6 test groups ("G7a Test"/"G7a Probe") or document them
       as legacy-only (G35 decision)
 - [ ] Balance suggestion rows truncate long names to ~4 chars ("mone… zahlt an
       dich") — allow 2 lines instead of single-line NamesLine there
@@ -540,7 +540,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] *(G32+ — newly discovered points)*
 - [x] G40+G39 — fully local mode (no Matrix account) + first-open welcome
 - [x] G41 — local-mode follow-ups (restore adoption, empty local DB file)
-- [ ] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
+- [x] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
 - [~] G18 — final release review
 
 ---

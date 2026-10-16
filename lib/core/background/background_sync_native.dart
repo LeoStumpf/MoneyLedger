@@ -26,7 +26,8 @@ import 'background_scheduler.dart';
 
 /// WorkManager unique work name + task name of the periodic sync.
 const kBackgroundSyncUniqueName = 'moneyledger-background-sync';
-const kBackgroundSyncTaskName = 'app.moneyledger.backgroundSync';
+const kBackgroundSyncTaskName =
+    'io.github.leostumpf.moneyledger.backgroundSync';
 
 /// G36: unique name of the debug-only one-off round (same task / dispatcher).
 const kBackgroundSyncOnceUniqueName = 'moneyledger-background-sync-once';

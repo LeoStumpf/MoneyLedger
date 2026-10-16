@@ -24,8 +24,8 @@ class _Registry implements PortRegistry {
   void remove(String name) => ports.remove(name);
 }
 
-const _main = 'app.moneyledger.main';
-const _background = 'app.moneyledger.background';
+const _main = 'io.github.leostumpf.moneyledger.main';
+const _background = 'io.github.leostumpf.moneyledger.background';
 
 void main() {
   late _Registry reg;

@@ -676,9 +676,12 @@ connected + battery not low; `lib/core/background/`) fixes that:
   dispatcher) — swipe the app away within the delay so the round runs
   headless instead of delegating to the app. Release builds never show it
   (and `runOnce` is a no-op there).
-- Manual trigger on a device: `adb shell cmd jobscheduler run -f
-  app.moneyledger.money_ledger <jobId>` (id from `dumpsys jobscheduler`); logs
-  are tagged `[bg]` / `[bg-gate]`.
+- Manual trigger on a device: `adb shell cmd jobscheduler run -f -n
+  androidx.work.systemjobscheduler io.github.leostumpf.moneyledger <jobId>`
+  (WorkManager schedules in that JobScheduler namespace on Android 14+ — without
+  `-n` the job isn't found; id from `dumpsys jobscheduler | grep leostumpf`,
+  it changes when WorkManager reschedules, e.g. after a force stop); logs are
+  tagged `[bg]` / `[bg-gate]`.
 
 ### Anti-entropy (Phase C)
 

@@ -53,7 +53,7 @@ Expected results are in *italics*.
 | 2.3 | Homeserver with SSO (matrix.org) → *"Continue with …" SSO button appears after the flow lookup* | emu |
 | 2.4 | Tap an SSO button → *system browser opens the homeserver SSO page* | emu |
 | 2.5 | Complete SSO in the browser → *`moneyledger://sso-callback?loginToken=…` returns to the app, signed in* | Leo |
-| 2.6 | Signed out: `adb shell am start -a android.intent.action.VIEW -d "moneyledger://sso-callback?loginToken=invalid" app.moneyledger.money_ledger` → *"SSO login failed: …" snackbar, stays on login, no crash* | emu |
+| 2.6 | Signed out: `adb shell am start -a android.intent.action.VIEW -d "moneyledger://sso-callback?loginToken=invalid" io.github.leostumpf.moneyledger` → *"SSO login failed: …" snackbar, stays on login, no crash* | emu |
 | 2.7 | Login → "New here? Create an account" → fill dummy username/password (no account is created on matrix.org: it disabled client registration / needs captcha etc.) → Create account → *"Register on the web" card ("signing up on its own website" for matrix.org, or the required UIA stages) + "Open homeserver website"* | emu |
 | 2.8 | "Open homeserver website" → *browser opens the homeserver* | emu |
 | 2.9 | Registration on a homeserver with an open `m.login.dummy` flow → *account created, signed in* | Leo |
@@ -179,6 +179,40 @@ iOS Rust/XCFramework build that has never been done. `ios/Runner` is template
 level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
+
+**2026-10-16 (G38 app id `io.github.leostumpf.moneyledger`, device reset)** ·
+working tree on `4fa6995` + G38 · release APK signed with the upload key
+(`aapt2 dump badging`: `package: name='io.github.leostumpf.moneyledger'`).
+Old `app.moneyledger.money_ledger`: signed out in-app on the phone (A) and
+emu-5554 (B) (logcat `SessionClearReason.logout`), then uninstalled there and
+on emu-5556 (5556 killed afterwards). New APK installed on both. **Phone (DE),
+true first open:** 1.1 welcome, 5 pages → *Ohne Konto nutzen* → "Leo A" →
+local onboarding → group "Lokal-Test", Mia, Pizza 24 € equal → Settings →
+*Matrix-Konto verbinden* (password login) → account onboarding, logcat
+`[local] adopted 1 local group(s) into @…a… (4 rows signed)`, banner "Deine
+lokale Gruppe gehört jetzt zu …". **emu-5554 (EN):** welcome → *Sign in with
+Matrix* → B → onboarding → "Restoring your groups…". Phone: new group
+"Testgruppe A+B" (EUR), invite B by MXID (no local person → added directly);
+"Lokal-Test": invite B → "Who is …?" → *Mia* (claim) → emu shows "Lokal-Test
+· You owe €12.00" (the adopted, freshly signed history). Testgruppe: Kino 30 €
+(phone) → emu within ~4 s; Groceries 18.40 € (emu) → phone ≤ 2 s; Kino edited
+to 36 € on emu → phone ≤ 2 s; "Loeschtest" 5 € added + deleted on phone → gone
+on emu ≤ 2 s; payment B → A 8.80 € via *Settle up* (emu) → phone "Ausgeglichen";
+cloud "Synchronisiert" / "Synced" on both; **0** `refused` / `[g6]` lines in
+both logcats. 9.x SAS A → B (members page → ⋮ → Geräte → *Verifizieren*):
+emu "Accept" → same 7 emoji, German names on the phone (Gitarre, Hammer, Uhr,
+Daumen Hoch, Pokal, Elefant, Sanduhr), English on the emu → both "They match"
+→ "Device verified" / "Gerät verifiziert", B's device listed "Verifiziert".
+B's account also lists an "Element auf Chrome für Windows" session (not ours,
+left alone). Background sync: emu job `androidx.work.systemjobscheduler/1`;
+app task removed (`[bg-gate] app detached — releasing the app slot`; that
+force stop made WorkManager reschedule as job 2), phone adds "Hintergrund" 7 €
+→ `cmd jobscheduler run -f -n androidx.work.systemjobscheduler
+io.github.leostumpf.moneyledger 2` → `[bg] round started for @…b…` →
+`round done: … completed, received: 2, sent: 1` → phone cloud synced; emu
+reopened shows "You owe €3.50". Final state: phone signed in as A, emu-5554
+as B, both with "Testgruppe A+B" + "Lokal-Test" (the pre-G6 "G7a" groups are
+gone). Screenshots `g38_*.png` (session scratchpad).
 
 **2026-10-16 (G41 local-mode follow-ups)** · working tree on `dd5cf76` +
 G41 · release APK. Spare emu-5556 (`zc-shot-phone`): uninstalled → fresh
