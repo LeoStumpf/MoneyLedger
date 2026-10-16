@@ -136,6 +136,21 @@ Three flows can only be verified on a real device + homeserver, not in
 - **Settlements can't be listed or undone** — `deleteSettlement` has no UI caller. (G8)
 - **No delete/leave group** — `GroupsDao.deleteGroup` is unused. (G9)
 
+### Dependencies (G22) — what is still held back
+- **`sqlite3` ≥ 3.6** (and so the newest drift point releases' minimums) needs
+  `meta` ^1.19 via `record_use` 1.x; Flutter 3.44 pins `meta` 1.18 → stuck on
+  3.5.x until a Flutter upgrade.
+- **`build_runner` ≥ 2.17** needs `build` 5.x; `drift_dev` 2.35 still requires
+  `build` < 5 → 2.15.x until drift_dev moves.
+- **Flutter itself** (3.44.0, pinned in CI) — not part of G22.
+- **No SDK downgrade path:** matrix 14 migrated the device stores (v11 → v12,
+  old device-key boxes cleared). Reinstalling a matrix-7 build over it would
+  not lose the session (it only clears caches), but don't rely on rollbacks.
+- **Web COOP/COEP:** flutter_rust_bridge logs "Buffers cannot be shared due to
+  missing cross-origin headers" on the web build (wasm works, just without
+  shared buffers). Setting `Cross-Origin-Opener-Policy`/`-Embedder-Policy` on
+  the host would silence it — needs a check that SSO redirects still work.
+
 ### Smaller items
 - The `router` provider's `refreshListenable`/redirect wiring (against
   `isLoggedInProvider` + `onboardingSeenProvider`) is untested; `routerRedirect`
@@ -169,6 +184,15 @@ Durable constraints of the current design — not bugs, but worth knowing.
 ---
 
 ## Resolved
+
+- **G22 — dependency upgrades** (2026-10-16): matrix 7.2.2 → 14.0.0
+  (flutter_vodozemac 0.6 → 0.8.1, vodozemac Rust 0.9 → 0.10, `web/pkg` wasm
+  rebuilt), drift 2.31 → 2.35 / sqlite3 2 → 3 (sqlite3_flutter_libs dropped,
+  web sqlite3.wasm + drift_worker.js refreshed), file_picker 8 → 13 (web save
+  built in; compileSdk-36 gradle override removed), riverpod 3.4 / go_router 18
+  / app_links 7 / package_info_plus 10, CI `actions/checkout@v7`. No app-code
+  changes for the SDK; existing installs kept their session. Found + fixed on
+  device: CSV import failed ("Ref … disposed") — `CsvImporter` is keepAlive now.
 
 - **G14 + G27 — message size + LWW tie-break** (2026-10-16): measured the
   to-device ceiling; chunked bootstraps (were broken above ~52 records),

@@ -229,10 +229,10 @@ notices. **Decision for Leo.**
 `flutter_vodozemac` is pinned at 0.6.x by `matrix` 7.2.2 (`vodozemac ^0.5.0`); 0.7+/0.8
 need matrix 10+/11+ and a rebuilt `web/pkg` wasm. file_picker 10.x compiles
 against SDK 36 natively (the G1 gradle override could go).
-- [ ] Assess the matrix SDK major upgrade (API changes in to-device/encryption,
+- [x] Assess the matrix SDK major upgrade (API changes in to-device/encryption,
       DB init) — do it only if low-risk; rebuild web wasm
-- [ ] Upgrade file_picker to 10.x; drop the compileSdk override if no longer needed
-- [ ] CI: `actions/checkout@v4` runs on deprecated Node 20 → bump to a Node-24
+- [x] Upgrade file_picker to 10.x; drop the compileSdk override if no longer needed
+- [x] CI: `actions/checkout@v4` runs on deprecated Node 20 → bump to a Node-24
       major (and check subosito/flutter-action); first CI run green (7 min)
 
 ### G23. Same ref-after-await pattern in group mutators 🟡
@@ -464,7 +464,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [x] G14 — digest size measurement
 - [x] G16 — nice-to-haves
-- [ ] G22 — dependency upgrades (matrix, file_picker)
+- [x] G22 — dependency upgrades (matrix, file_picker)
 - [x] G27 — LWW tie-break
 - [ ] G33 — design follow-ups (settlement title, test display names)
 - [ ] G34 — backup follow-ups

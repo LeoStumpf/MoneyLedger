@@ -117,7 +117,12 @@ typedef CsvImportResult = ({int expenses, int payments});
 /// copy (or is new) becomes a version signed by **this device as its
 /// editor** (new records also get this device as their creator, "added
 /// by"); rows that don't win are skipped, never re-signed.
-@riverpod
+///
+/// keepAlive (G22): the UI reads the notifier once, then awaits the file
+/// picker and a preview dialog with nothing listening — an auto-disposed
+/// provider was gone by then. The DAOs are read per call, so an account
+/// switch in between is still honoured.
+@Riverpod(keepAlive: true)
 class CsvImporter extends _$CsvImporter {
   @override
   FutureOr<void> build() {}

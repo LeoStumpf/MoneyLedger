@@ -21,6 +21,11 @@ part of 'csv_import.dart';
 /// copy (or is new) becomes a version signed by **this device as its
 /// editor** (new records also get this device as their creator, "added
 /// by"); rows that don't win are skipped, never re-signed.
+///
+/// keepAlive (G22): the UI reads the notifier once, then awaits the file
+/// picker and a preview dialog with nothing listening — an auto-disposed
+/// provider was gone by then. The DAOs are read per call, so an account
+/// switch in between is still honoured.
 
 @ProviderFor(CsvImporter)
 final csvImporterProvider = CsvImporterProvider._();
@@ -38,6 +43,11 @@ final csvImporterProvider = CsvImporterProvider._();
 /// copy (or is new) becomes a version signed by **this device as its
 /// editor** (new records also get this device as their creator, "added
 /// by"); rows that don't win are skipped, never re-signed.
+///
+/// keepAlive (G22): the UI reads the notifier once, then awaits the file
+/// picker and a preview dialog with nothing listening — an auto-disposed
+/// provider was gone by then. The DAOs are read per call, so an account
+/// switch in between is still honoured.
 final class CsvImporterProvider
     extends $AsyncNotifierProvider<CsvImporter, void> {
   /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
@@ -53,13 +63,18 @@ final class CsvImporterProvider
   /// copy (or is new) becomes a version signed by **this device as its
   /// editor** (new records also get this device as their creator, "added
   /// by"); rows that don't win are skipped, never re-signed.
+  ///
+  /// keepAlive (G22): the UI reads the notifier once, then awaits the file
+  /// picker and a preview dialog with nothing listening — an auto-disposed
+  /// provider was gone by then. The DAOs are read per call, so an account
+  /// switch in between is still honoured.
   CsvImporterProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'csvImporterProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -72,7 +87,7 @@ final class CsvImporterProvider
   CsvImporter create() => CsvImporter();
 }
 
-String _$csvImporterHash() => r'368aad17de0f57fe847fef9bbfb84631612c544e';
+String _$csvImporterHash() => r'7ec72c9170ed710e0e774f71a5c03b67ecf90599';
 
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///
@@ -87,12 +102,17 @@ String _$csvImporterHash() => r'368aad17de0f57fe847fef9bbfb84631612c544e';
 /// copy (or is new) becomes a version signed by **this device as its
 /// editor** (new records also get this device as their creator, "added
 /// by"); rows that don't win are skipped, never re-signed.
+///
+/// keepAlive (G22): the UI reads the notifier once, then awaits the file
+/// picker and a preview dialog with nothing listening — an auto-disposed
+/// provider was gone by then. The DAOs are read per call, so an account
+/// switch in between is still honoured.
 
 abstract class _$CsvImporter extends $AsyncNotifier<void> {
   FutureOr<void> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AsyncValue<void>, void>;
     final element =
         ref.element
@@ -102,6 +122,6 @@ abstract class _$CsvImporter extends $AsyncNotifier<void> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

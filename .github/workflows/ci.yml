@@ -24,13 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: System SQLite for the Drift tests
-        # test/flutter_test_config.dart falls back to the system libsqlite3
-        # when the build-hook copy isn't where it expects it.
-        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
-
+      # v2 is still the latest major (composite action; its caching uses
+      # actions/cache@v5, i.e. Node 24).
       - uses: subosito/flutter-action@v2
         with:
           channel: stable

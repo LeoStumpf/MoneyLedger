@@ -131,6 +131,21 @@ void main() {
     expect(again!.sig, e.sig, reason: 'stale row skipped, nothing re-signed');
   });
 
+  test('G22: the importer notifier survives the async file-picker gap '
+      '(read once, used after awaits with no listener)', () async {
+    // importCsvWithPreview reads the notifier, then awaits the picker and a
+    // dialog — an auto-disposed provider was gone by then ("Cannot use the
+    // Ref of csvImporterProvider after it has been disposed", seen on device).
+    final importer = c.read(csvImporterProvider.notifier);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    final csv = buildGroupCsv(grp, members, [exp()]);
+    final preview = await importer.preview(csv);
+    expect(preview.isNewGroup, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    final r = await importer.importCsv(csv);
+    expect(r.expenses, 1);
+  });
+
   test('re-importing the same CSV is idempotent (no duplicates)', () async {
     final csv = buildGroupCsv(grp, members, [exp()]);
     await import(csv);

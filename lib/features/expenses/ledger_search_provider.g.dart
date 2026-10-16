@@ -113,7 +113,7 @@ abstract class _$LedgerSearch extends $Notifier<LedgerFilter?> {
   LedgerFilter? build(String roomId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<LedgerFilter?, LedgerFilter?>;
     final element =
         ref.element
@@ -123,6 +123,6 @@ abstract class _$LedgerSearch extends $Notifier<LedgerFilter?> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

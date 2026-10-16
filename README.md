@@ -69,10 +69,10 @@ smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
 ## Tech stack
 
 - Flutter 3.44+ / Dart 3.12+
-- [`matrix`](https://pub.dev/packages/matrix) 7.x — protocol / transport
+- [`matrix`](https://pub.dev/packages/matrix) 14.x — protocol / transport
 - [`flutter_riverpod`](https://pub.dev/packages/flutter_riverpod) 3.x +
   `riverpod_annotation` — code-gen state management
-- [`drift`](https://pub.dev/packages/drift) 2.x — local SQLite ORM
+- [`drift`](https://pub.dev/packages/drift) 2.35 — local SQLite ORM (`sqlite3` 3.x)
 - [`go_router`](https://pub.dev/packages/go_router) — navigation
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE
   strings from ARB files (`lib/l10n/`), number/date/currency formatting
@@ -82,7 +82,7 @@ smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
 - Flutter SDK **3.44+** (Dart **3.12+**) — verify with `flutter doctor`.
 - Android: Android SDK + NDK and a device or emulator.
 - Android: a **Rust toolchain** (`rustup`, **stable**) — E2EE uses
-  [`flutter_vodozemac`](https://pub.dev/packages/flutter_vodozemac) (≥ 0.6.0),
+  [`flutter_vodozemac`](https://pub.dev/packages/flutter_vodozemac) (0.8.x),
   which compiles the vodozemac Rust crate during the Gradle build (via cargokit).
   Install from <https://rustup.rs>, then add the Android targets:
   ```bash
@@ -91,7 +91,8 @@ smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
   ```
   (cargokit tries to `rustup target add` missing targets itself, but
   pre-installing them keeps offline/CI builds deterministic.) Web needs no Rust:
-  it uses the prebuilt wasm checked in under `web/pkg/`.
+  it uses the prebuilt wasm checked in under `web/pkg/` (rebuilt only when
+  `flutter_vodozemac` changes — recipe in CLAUDE.md, "Rebuilding `web/pkg/`").
 - iOS: not supported for v1 (see [Platform support](#platform-support)).
 - A Matrix account on any homeserver to actually sign in.
 
@@ -192,7 +193,7 @@ flutter build apk --release      # → build/app/outputs/flutter-apk/
 ```
 
 > The web build needs `web/sqlite3.wasm` and `web/drift_worker.js` (checked in,
-> not generated) — don't delete them.
+> not generated; taken from the matching drift GitHub release) — don't delete them.
 
 ### Release signing (Android)
 

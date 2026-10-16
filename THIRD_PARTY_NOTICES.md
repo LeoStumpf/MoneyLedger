@@ -15,25 +15,25 @@ The version-exact list of all packages (direct and transitive) is in
 
 | Package | Version | License |
 |---|---|---|
-| `matrix` (Famedly Matrix SDK) | 7.2.2 | **AGPL-3.0** |
-| `flutter_vodozemac` (E2EE bindings) | 0.6.0 | **AGPL-3.0** |
-| `vodozemac` (Dart API — Ed25519 verify for signed records, G6) | 0.5.0 | **AGPL-3.0** |
+| `matrix` (Famedly Matrix SDK) | 14.0.0 | **AGPL-3.0** |
+| `flutter_vodozemac` (E2EE bindings) | 0.8.1 | **AGPL-3.0** |
+| `vodozemac` (Dart API — Ed25519 verify for signed records, G6) | 0.8.0 | **AGPL-3.0** |
 | `canonical_json` (signed-record encoding, G6) | 1.1.3 | Apache-2.0 |
 | `crypto` (SHA-256 for signed records, G6) | 3.0.7 | BSD-3-Clause |
 | `flutter`, `flutter_localizations` (SDK) | 3.44 | BSD-3-Clause |
 | `go_router`, `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
-| `sqflite` | 2.4.2+1 | BSD-2-Clause |
-| `app_links` | 6.4.1 | Apache-2.0 |
-| `drift`, `drift_flutter`, `sqlite3_flutter_libs`, `flutter_riverpod`, `riverpod_annotation`, `file_picker`, `uuid`, `workmanager`, `cupertino_icons` | see lock | MIT |
+| `sqflite` | 2.4.4+2 | BSD-2-Clause |
+| `app_links` | 7.2.2 | Apache-2.0 |
+| `drift`, `drift_flutter`, `sqlite3` (transitive, via drift), `flutter_riverpod`, `riverpod_annotation`, `file_picker` (+ its federated `*_file_picker` / `file_picker_*` implementations), `uuid`, `workmanager`, `cupertino_icons` | see lock | MIT |
 
 ### Native / compiled components
 
-- **vodozemac** (Rust, `matrix-org/vodozemac` 0.9.0) — Apache-2.0. Compiled into
+- **vodozemac** (Rust, `matrix-org/vodozemac` 0.10.0) — Apache-2.0. Compiled into
   the Android app by `flutter_vodozemac` (cargokit) and shipped prebuilt for the
   web in [`web/pkg/`](web/pkg) (`vodozemac_bindings_dart_bg.wasm`). Its Rust
   dependencies (RustCrypto crates, `flutter_rust_bridge`, …) are MIT and/or
   Apache-2.0.
-- **SQLite** — public domain; bundled by `sqlite3_flutter_libs` (Android) and as
+- **SQLite** — public domain; bundled by the `sqlite3` 3.x build hooks (Android) and as
   [`web/sqlite3.wasm`](web/sqlite3.wasm) with Drift's
   [`web/drift_worker.js`](web/drift_worker.js) (MIT) on the web.
 
@@ -56,12 +56,13 @@ license as the app. The in-app icons are Flutter's bundled Material Icons
 ## Transitive and build-only dependencies
 
 Build/dev-only tools (`build_runner`, `drift_dev`, `riverpod_generator`,
-`flutter_lints`, `sqlite3` and `fake_async` for tests) and all transitive dependencies are
+`flutter_lints` and `fake_async` for tests) and all transitive dependencies are
 permissive — MIT, BSD-2/3-Clause or Apache-2.0 — plus:
 
 - (`vodozemac`, `canonical_json` and `crypto` used to be transitive only;
   since G6 they are direct dependencies — see the table above);
-- `gtk` — MPL-2.0, Linux-desktop only (not shipped in the Android/web app).
+- `dbus` — MPL-2.0, Linux-desktop only via `file_picker_linux` (not shipped in
+  the Android/web app). (`gtk`, MPL-2.0, was dropped with file_picker 8.)
 
 ## Compatibility
 

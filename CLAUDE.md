@@ -16,14 +16,15 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 ## Tech Stack
 
 - **Flutter 3.44+** — cross-platform UI (Android + web; **iOS not supported for v1** — see below)
-- [`matrix`](https://pub.dev/packages/matrix) 7.x — Matrix protocol: auth, room management, event sync
+- [`matrix`](https://pub.dev/packages/matrix) 14.x — Matrix protocol: auth, to-device E2EE, device keys / SAS (G22: 7 → 14)
 - [`flutter_riverpod`](https://pub.dev/packages/flutter_riverpod) 3.x + `riverpod_annotation` 4.x — state management (code-gen style)
-- [`drift`](https://pub.dev/packages/drift) 2.x + `drift_flutter` — type-safe SQLite ORM for local ledger state
-- [`go_router`](https://pub.dev/packages/go_router) — navigation
+- [`drift`](https://pub.dev/packages/drift) 2.35 + `drift_flutter` 0.3 — type-safe SQLite ORM for local ledger state (`sqlite3` 3.x, native lib via build hooks)
+- [`go_router`](https://pub.dev/packages/go_router) 18.x — navigation
 - [`uuid`](https://pub.dev/packages/uuid) — UUIDv7 generation for expense IDs
 - [`sqflite`](https://pub.dev/packages/sqflite) — required by the matrix SDK's internal SQLite store
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE UI strings (ARB) + locale formatting (G12)
-- [`package_info_plus`](https://pub.dev/packages/package_info_plus) — app version on the About page
+- [`package_info_plus`](https://pub.dev/packages/package_info_plus) 10.x — app version on the About page
+- [`file_picker`](https://pub.dev/packages/file_picker) 13.x — CSV/backup save + open (static `FilePicker.saveFile` / `pickFile`, web download included)
 - `vodozemac` (Ed25519 verify), [`canonical_json`](https://pub.dev/packages/canonical_json) + [`crypto`](https://pub.dev/packages/crypto) (SHA-256) — G6 signed records
 
 **License: AGPL-3.0-or-later** (`LICENSE`; `matrix` + `flutter_vodozemac` are
@@ -46,7 +47,9 @@ To override the Flutter binary: `FLUTTER=/path/to/flutter ./build.sh`
 
 Output lands in `build/web/`.
 
-Android E2EE: `flutter_vodozemac` (**≥ 0.6.0** — older versions break on Gradle 9 / compileSdk < 36) compiles the vodozemac Rust crate during the Gradle build via cargokit, so Android builds need `rustup` (**stable** toolchain) with targets `aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android`. No pub-cache patches are needed (0.5.0 required hand-patches; don't downgrade). Web uses the prebuilt wasm committed in `web/pkg/` (no Rust needed).
+Android E2EE: `flutter_vodozemac` (**0.8.x**, pinned by `matrix` 14's `vodozemac ^0.8.0`; Rust vodozemac 0.10) compiles the vodozemac Rust crate during the Gradle build via cargokit, so Android builds need `rustup` (**stable** toolchain) with targets `aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android`. No pub-cache patches are needed (0.5.0 required hand-patches; don't downgrade). Web uses the prebuilt wasm committed in `web/pkg/` (no Rust needed to build the app).
+
+**Rebuilding `web/pkg/`** (only when `flutter_vodozemac`/`vodozemac` changes — the wasm must match the Dart bindings' FRB content hash): needs Rust **nightly** + `rust-src` + `wasm32-unknown-unknown`, `wasm-pack`, and `flutter_rust_bridge_codegen` **pinned to the resolved `flutter_rust_bridge`** (`cargo install flutter_rust_bridge_codegen --version <x> --locked`; 2.13.0 for 0.8.x). Clone `famedly/dart-vodozemac` at the tag = the `flutter_vodozemac` version (e.g. `0.8.1`), then in its `dart/` dir: `flutter_rust_bridge_codegen build-web --dart-root . --rust-root $(readlink -f ../rust) --release`, and copy `dart/web/pkg/vodozemac_bindings_dart{_bg.wasm,.js}` to `web/pkg/`. Check `FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH` in `rust/src/frb_generated.rs` equals `rustContentHash` in the pub-cache `vodozemac` package. `web/sqlite3.wasm` + `web/drift_worker.js` come from the matching **drift GitHub release** assets (`drift-<version>`).
 
 **iOS is not supported for v1**: development is on Linux (no macOS to build/sign),
 and `flutter_vodozemac` needs an iOS Rust/XCFramework build that has never been
@@ -182,13 +185,13 @@ lib/
       ledger_csv.dart          # Pure-Dart RFC4180 codec: buildGroupCsv / parseGroupCsv
       csv_export.dart          # DB → CSV seam (buildGroupCsvForExport) + csvFileName
       csv_import.dart          # CsvImporter: preview + LWW merge-by-id back into Drift; resolveCsvNames
-      backup_files.dart        # file_picker glue (native save+pick; web download via download/)
+      backup_files.dart        # file_picker glue (save dialog / browser download + pick)
     onboarding/                # First-run intro (OnboardingPage) + onboarding_seen flag
     devices/                   # Device list + SAS verification UI (DevicesPage, member device sheet,
                                #   IncomingVerificationListener) — G11
     about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
 test/
-  flutter_test_config.dart     # Loads bundled sqlite3 FFI before every test file
+  flutter_test_config.dart     # Per-test-file setup (Drift multi-DB warning off; sqlite3 via hooks)
   helpers/
     test_providers.dart        # Riverpod override helpers for widget tests
     in_memory_database.dart    # AppDatabase.forTesting(NativeDatabase.memory())
@@ -607,8 +610,8 @@ those groups, but isn't detected (open point).
 
 **Files:** `backup_files.dart` (`saveTextFile` / `pickTextFile`,
 `LedgerFileKind.csv|backup`) — native: file_picker save dialog (returns false
-when cancelled → no `last_backup_at`); web: a Blob download
-(`download/web_download_web.dart`, file_picker 8 has no web `saveFile`).
+when cancelled → no `last_backup_at`); web: file_picker's own download mode
+(returns null → treated as saved; the custom Blob glue went with G22).
 Backups are picked without an extension filter (Android doesn't map `.json`
 reliably); the parser rejects wrong files.
 
@@ -856,7 +859,7 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
 
 **Drift + Riverpod code-gen conflict:** Drift generates data classes (`Expense`, `Settlement`, `Group`) in part files. Riverpod's generator can't reference those types as provider return types in the same build phase. Solution: use plain model classes (`ExpenseModel`, `SettlementModel`, `GroupModel` in `lib/models/`) as the DAO layer's public API, and map from Drift types internally. **Never use Drift-generated data classes as return types of `@riverpod` providers.**
 
-**`drift` + `matrix` SQLite compatibility:** Use `drift ^2.31` and `drift_flutter ^0.2.8` — these depend on `sqlite3 ^2.x` which aligns with the matrix SDK's requirement. Avoid upgrading drift to 2.32+ without checking; that version switches to `sqlite3 ^3.x` which conflicts with matrix and breaks test compilation.
+**`drift` + `matrix` SQLite compatibility:** `matrix` ≥ 9 and `drift` ≥ 2.32 / `drift_flutter` ≥ 0.3 all use **`sqlite3` 3.x** (G22) — upgrade them together (matrix 7 + drift ≤ 2.31 were the `sqlite3` 2.x pair). sqlite3 3.x loads SQLite via **build hooks**: no `sqlite3_flutter_libs` (EOL), no `DynamicLibrary`/`open.overrideForAll` in tests (`flutter test` bundles it), and on the web `web/sqlite3.wasm` must come from a 3.x-era release. `sqlite3` ≥ 3.6 needs `meta` ^1.19 (newer than Flutter 3.44 pins) → 3.5.x for now.
 
 **Per-account DB (G4):** never open a database with a fixed name — always go
 through `appDatabaseProvider` (per-account). Long-lived objects that use the DB
@@ -901,7 +904,8 @@ wait for a Drift write with `eventually(condition, tester: tester)`
 
 **Testing without Matrix imports:** The `matrix` SDK pulls in native sqlite3 which can cause issues in test processes. Keep test files free of `package:matrix` imports. Extract testable logic from classes that use Matrix types as `@visibleForTesting` static methods that accept plain Dart types (maps, strings, ints). See `LedgerSyncer.processExpense` for the pattern.
 
-**Matrix SDK (7.x) API:**
+**Matrix SDK (14.x) API:**
+- G22 upgrade 7.2.2 → 14.0.0 needed **no app code changes** (all APIs below unchanged). The SDK store migrates v11 → v12 on first start (device-key boxes merged into one `deviceKeysLists` box; Olm account/sessions kept) — verified on both test devices: still signed in, sync + signatures + SAS intact. **Before a future SDK major**, check `MatrixSdkDatabase._migrateFromVersion`: anything beyond `clearCache()` that drops the client box / Olm sessions would force a re-login.
 - `Client(name, database: db)` — database is required in constructor (not a builder callback)
 - `MatrixSdkDatabase.init(name, database: openedDb, sqfliteFactory: databaseFactory)` — on **native you MUST pass an already-opened sqflite `Database`** via `database:` (open it with `sqflite.openDatabase(path)` first). `sqfliteFactory` alone is **not** enough: `BoxCollection` throws `You must provide a Database 'sqfliteDatabase' for use on native` (the factory is only used for high-level ops like delete). On web, call `MatrixSdkDatabase.init(name)` with no DB (it uses IndexedDB). See `buildMatrixClient()` in `lib/core/matrix/matrix_service.dart`.
 - `client.init(waitForFirstSync: false)` — **always pass `false`.** The default `true` makes `init()` block on the first network `/sync` when a session is restored, which hangs app startup indefinitely on a stalled sync. Drift is the local source of truth; sync runs in the background.

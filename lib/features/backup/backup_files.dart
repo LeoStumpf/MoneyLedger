@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-import 'download/web_download.dart';
-
 /// Thin platform glue around the system file dialogs (web download / native
 /// save + picker), shared by the CSV export/import and the full JSON backup
 /// (G5). Not unit-tested — the building/parsing it wraps is covered by the
@@ -28,18 +26,14 @@ Future<bool> saveTextFile(
   String content,
   LedgerFileKind kind,
 ) async {
-  final bytes = utf8.encode(content);
-  if (kIsWeb) {
-    await downloadFile(fileName, bytes, kind.mimeType);
-    return true;
-  }
-  final path = await FilePicker.platform.saveFile(
+  final saved = await FilePicker.saveFile(
     fileName: fileName,
-    bytes: bytes,
-    type: FileType.custom,
-    allowedExtensions: [kind.extension],
+    bytes: utf8.encode(content),
+    mimeType: kind.mimeType,
   );
-  return path != null;
+  // Web (file_picker's default download mode) triggers a browser download and
+  // always returns null — there is no dialog to cancel.
+  return kIsWeb || saved != null;
 }
 
 /// Prompts the user to pick a file of [kind] and returns its text, or null if
@@ -49,13 +43,12 @@ Future<bool> saveTextFile(
 /// file with a clear message anyway.
 Future<String?> pickTextFile(LedgerFileKind kind) async {
   final filtered = kind != LedgerFileKind.backup;
-  final result = await FilePicker.platform.pickFiles(
+  final file = await FilePicker.pickFile(
     type: filtered ? FileType.custom : FileType.any,
     allowedExtensions: filtered ? [kind.extension] : null,
-    withData: true,
   );
-  if (result == null || result.files.isEmpty) return null;
-  final bytes = result.files.first.bytes;
+  if (file == null) return null;
+  final bytes = await file.readAsBytes();
   // A non-text file picked as a backup decodes to garbage the parser rejects.
-  return bytes == null ? null : utf8.decode(bytes, allowMalformed: !filtered);
+  return utf8.decode(bytes, allowMalformed: !filtered);
 }

@@ -60,7 +60,7 @@ abstract class _$SyncHealth extends $Notifier<SyncHealthState> {
   SyncHealthState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<SyncHealthState, SyncHealthState>;
     final element =
         ref.element
@@ -70,6 +70,6 @@ abstract class _$SyncHealth extends $Notifier<SyncHealthState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
