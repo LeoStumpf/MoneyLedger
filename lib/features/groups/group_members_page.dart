@@ -7,6 +7,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/person_avatar.dart';
 import 'add_person_dialog.dart';
+import '../devices/device_provider.dart';
+import '../devices/devices_page.dart';
+import '../../core/matrix/device_gateway.dart';
 import '../../models/member_model.dart';
 import 'group_provider.dart';
 
@@ -250,6 +253,55 @@ class _FormerMemberTile extends ConsumerWidget {
   }
 }
 
+/// G11: a subtle warning under a member whose devices aren't all verified
+/// (red "not reachable" when none is verified and verified-only sync is on);
+/// tap → their device list with Verify actions. Nothing while loading / on
+/// error (offline) — it's a hint, not a gate.
+class _PeerDeviceWarning extends ConsumerWidget {
+  const _PeerDeviceWarning({required this.matrixId, required this.name});
+  final String matrixId;
+  final String name;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final devices = ref.watch(memberDevicesProvider(matrixId)).value;
+    if (devices == null) return const SizedBox.shrink();
+    final trust = peerDeviceTrust(devices);
+    if (!trust.needsAttention) return const SizedBox.shrink();
+    final verifiedOnly = ref.watch(verifiedOnlySyncProvider).value ?? false;
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final blocked = verifiedOnly && trust.noneVerified;
+    final color = blocked
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurfaceVariant;
+    return InkWell(
+      key: Key('peerDeviceWarning:$matrixId'),
+      onTap: () =>
+          showMemberDevicesSheet(context, matrixId: matrixId, name: name),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Row(
+          children: [
+            Icon(Icons.gpp_maybe_outlined, size: 14, color: color),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                blocked
+                    ? l.memberNotReachableUnverified
+                    : l.memberUnverifiedDevices(trust.unverified),
+                style: theme.textTheme.bodySmall?.copyWith(color: color),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MemberTile extends ConsumerWidget {
   final MemberModel member;
   final String myId;
@@ -268,11 +320,18 @@ class _MemberTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final title = member.label;
     final l = context.l10n;
+    final mxid = member.matrixId;
     return ListTile(
       leading: PersonAvatar(id: member.userId, name: title),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: member.isClaimed
-          ? Text(member.matrixId!, maxLines: 1, overflow: TextOverflow.ellipsis)
+      subtitle: mxid != null
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(mxid, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (!_isSelf) _PeerDeviceWarning(matrixId: mxid, name: title),
+              ],
+            )
           : Text(l.localParticipant),
       trailing: _isSelf
           ? Chip(label: Text(l.you))
@@ -282,6 +341,8 @@ class _MemberTile extends ConsumerWidget {
               tooltip: l.options,
               onSelected: (a) => _onAction(context, ref, a),
               itemBuilder: (_) => [
+                if (member.isClaimed)
+                  PopupMenuItem(value: 'devices', child: Text(l.devicesTitle)),
                 PopupMenuItem(value: 'rename', child: Text(l.rename)),
                 if (member.isClaimed)
                   PopupMenuItem(
@@ -310,6 +371,12 @@ class _MemberTile extends ConsumerWidget {
     // The write that ran, if any, and how to read its outcome afterwards.
     Object? Function()? errorOf;
     switch (action) {
+      case 'devices':
+        await showMemberDevicesSheet(
+          context,
+          matrixId: member.matrixId!,
+          name: member.label,
+        );
       case 'rename':
         final name = await _prompt(
           context,

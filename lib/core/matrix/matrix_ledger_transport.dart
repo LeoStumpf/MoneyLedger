@@ -50,8 +50,9 @@ class MatrixLedgerTransport implements LedgerTransport {
   Future<SendResult> sendToUsers(
     Set<String> userIds,
     String type,
-    Map<String, dynamic> content,
-  ) async {
+    Map<String, dynamic> content, {
+    DeliveryPolicy policy = DeliveryPolicy.everyone,
+  }) async {
     final targets = userIds.where((u) => u.isNotEmpty).toSet();
     if (targets.isEmpty) return SendResult.nothingToSend;
 
@@ -80,9 +81,15 @@ class MatrixLedgerTransport implements LedgerTransport {
                 in _client.userDeviceKeys[u]?.deviceKeys.values ??
                     const <DeviceKeys>[])
               if (dk.deviceId != null)
-                (deviceId: dk.deviceId!, blocked: dk.blocked),
+                TransportDevice(
+                  dk.deviceId!,
+                  blocked: dk.blocked,
+                  verified: dk.verified,
+                  key: dk.ed25519Key,
+                ),
           ],
       },
+      policy: policy,
     );
     final devices = <DeviceKeys>[
       for (final MapEntry(key: user, value: ids) in plan.devices.entries)
@@ -93,7 +100,8 @@ class MatrixLedgerTransport implements LedgerTransport {
         '[transport] send ${type.substring(moneyLedgerTypePrefix.length)}'
         '${content['group'] is String ? ' group=${content['group']}' : ''}'
         ' → ${devices.length} device(s)'
-        '${plan.unreachableUsers.isEmpty ? '' : ', no device: ${plan.unreachableUsers.join(', ')}'}',
+        '${plan.unreachableUsers.isEmpty ? '' : ', no device: ${plan.unreachableUsers.join(', ')}'}'
+        '${plan.withheldDevices == 0 ? '' : ', withheld ${plan.withheldDevices} unverified'}',
       );
     }
     if (devices.isNotEmpty) {
@@ -103,7 +111,9 @@ class MatrixLedgerTransport implements LedgerTransport {
     }
     return SendResult(
       unreachableUsers: plan.unreachableUsers,
+      unverifiedUsers: plan.unverifiedUsers,
       deviceCount: devices.length,
+      withheldDevices: plan.withheldDevices,
     );
   }
 

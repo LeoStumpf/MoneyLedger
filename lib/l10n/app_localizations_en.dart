@@ -1360,4 +1360,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recordSignatureWarning => 'Signature problem';
+
+  @override
+  String peerHasNoVerifiedDevice(Object peer) {
+    return '$peer has no verified device — verify one to sync (only verified devices are synced)';
+  }
+
+  @override
+  String get verifiedOnlyTitle => 'Only sync with verified devices';
+
+  @override
+  String get verifiedOnlyOffBody =>
+      'Off: every device of your group members (and your own) receives your ledger data.';
+
+  @override
+  String get verifiedOnlyOnBody =>
+      'On: devices you haven\'t verified by emoji comparison — yours or other members\' — receive nothing from this device.';
+
+  @override
+  String get verifiedOnlyConfirmTitle => 'Only sync with verified devices?';
+
+  @override
+  String get verifiedOnlyConfirmBody =>
+      'Your expenses, payments and group changes will only be sent to devices you have verified by comparing emojis (Devices page for your own, the members page for others).\n\nUnverified devices — including a member\'s new phone or your own new login — get nothing until you verify them, so they fall behind. Records you receive are still accepted; the details show whether the signing device is verified.\n\nApplies to this device and account only.';
+
+  @override
+  String get verifiedOnlyTurnOn => 'Turn on';
+
+  @override
+  String memberUnverifiedDevices(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unverified devices',
+      one: '1 unverified device',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get memberNotReachableUnverified =>
+      'Not reachable — no verified device';
+
+  @override
+  String memberDevicesTitle(Object name) {
+    return 'Devices of $name';
+  }
+
+  @override
+  String get memberDevicesBody =>
+      'Verify a device by comparing emojis with its owner (in person or on a call). Verification is stored on this device only.';
+
+  @override
+  String get memberHasNoDevices => 'No active devices.';
+
+  @override
+  String get incomingVerificationTitle => 'Verification request';
+
+  @override
+  String incomingVerificationOwnDevice(Object device) {
+    return 'Your device $device wants to verify this device by comparing emojis.';
+  }
+
+  @override
+  String incomingVerificationMember(Object user, Object device) {
+    return '$user (device $device) wants to verify this device by comparing emojis.';
+  }
+
+  @override
+  String get accept => 'Accept';
+
+  @override
+  String get decline => 'Decline';
+
+  @override
+  String get recordDeviceVerifiedByYou =>
+      'You verified this device (emoji comparison).';
+
+  @override
+  String get recordDeviceNotVerifiedByYou =>
+      'You haven\'t verified this device (emoji comparison).';
 }

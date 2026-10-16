@@ -50,7 +50,7 @@ final class SyncHealthProvider
   }
 }
 
-String _$syncHealthHash() => r'7ecc0b6aa49da9a02c4a134ef79bf0a4daefeabc';
+String _$syncHealthHash() => r'3792c4d9e2639a118cd835f5e9626fd29c58531b';
 
 /// Holds [SyncHealthState] for the whole session. `keepAlive` so it survives
 /// page navigation (the indicator lives in per-group app bars but the health is

@@ -21,8 +21,9 @@ class _OfflineTransport implements LedgerTransport {
   Future<SendResult> sendToUsers(
     Set<String> userIds,
     String type,
-    Map<String, dynamic> content,
-  ) async => throw Exception('offline');
+    Map<String, dynamic> content, {
+    DeliveryPolicy policy = DeliveryPolicy.everyone,
+  }) async => throw Exception('offline');
   @override
   Future<String?> profileName(String matrixId) async => null;
   static final _keys = HmacKeyRegistry();

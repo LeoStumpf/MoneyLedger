@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:matrix/encryption.dart' show KeyVerificationMethod;
 import 'package:matrix/matrix.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
@@ -32,6 +33,13 @@ Future<Client> buildMatrixClient() async {
     'MoneyLedger',
     database: db,
     nativeImplementations: NativeImplementations.dummy,
+    // SAS (emoji) device verification over to-device messages (Phase F /
+    // G11). Without these the SDK ignores every verification request and
+    // advertises no method when starting one.
+    verificationMethods: {
+      KeyVerificationMethod.emoji,
+      KeyVerificationMethod.numbers,
+    },
     supportedLoginTypes: {
       AuthenticationTypes.password,
       AuthenticationTypes.sso,

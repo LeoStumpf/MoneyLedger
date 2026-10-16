@@ -22,7 +22,23 @@ class DemoDeviceGateway implements DeviceGateway {
   ];
 
   @override
-  VerificationSession verifyDevice(String deviceId) => _NoVerification();
+  Future<List<DeviceInfo>> userDevices(String userId) async => [
+    DeviceInfo(
+      deviceId: 'DEMO-${userId.hashCode.toRadixString(16)}',
+      displayName: 'MoneyLedger',
+      userId: userId,
+      isThisDevice: false,
+      verified: true,
+    ),
+  ];
+
+  @override
+  VerificationSession verifyDevice(String deviceId, {String? userId}) =>
+      _NoVerification();
+
+  @override
+  Stream<IncomingVerification> get incomingVerifications =>
+      const Stream.empty();
 }
 
 /// Verification isn't simulated: the session reports failure immediately.

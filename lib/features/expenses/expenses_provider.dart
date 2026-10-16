@@ -10,10 +10,12 @@ import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
+import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
 import '../../core/database/daos/sync_states_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/sync/delivery_policy.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
@@ -86,7 +88,10 @@ class _WriteContext {
       expenses = ref.read(expensesDaoProvider),
       members = ref.read(membersDaoProvider),
       health = ref.read(syncHealthProvider.notifier),
-      transport = ref.read(ledgerTransportProvider.future) {
+      transport = withDeliveryPolicy(
+        ref.read(ledgerTransportProvider.future),
+        SettingsDao(ref.read(appDatabaseProvider)),
+      ) {
     // Only awaited when there are replication targets; don't let an unused
     // transport failure surface as an unhandled async error.
     transport.ignore();

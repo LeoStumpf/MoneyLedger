@@ -130,4 +130,59 @@ void main() {
       expect(s.lastErrorAt, isNull);
     });
   });
+
+  group('G11 unverified peers', () {
+    test(
+      'a send that withholds every device of a peer marks it unverified',
+      () {
+        final s = const SyncHealthState().afterSuccess(
+          1,
+          reached: {'@a:x'},
+          unreachable: {'@b:x', '@c:x'},
+          unverified: {'@b:x'},
+        );
+        expect(s.unreachablePeers, {'@b:x', '@c:x'});
+        expect(s.unverifiedPeers, {'@b:x'});
+        expect(s.failing, isFalse);
+      },
+    );
+
+    test('reaching the peer later (or it losing all devices) clears it', () {
+      final s = const SyncHealthState(
+        unreachablePeers: {'@b:x', '@c:x'},
+        unverifiedPeers: {'@b:x', '@c:x'},
+      ).afterSuccess(2, reached: {'@b:x'}, unreachable: {'@c:x'});
+      expect(s.unverifiedPeers, isEmpty);
+      expect(s.unreachablePeers, {'@c:x'});
+    });
+
+    test('a failure keeps the unverified set', () {
+      final s = const SyncHealthState(
+        unverifiedPeers: {'@b:x'},
+      ).afterFailure('x', 3);
+      expect(s.unverifiedPeers, {'@b:x'});
+    });
+
+    test(
+      'pendingPeerHint prefers unverified, then no-device, then waiting',
+      () {
+        const health = SyncHealthState(
+          unreachablePeers: {'@b:x', '@c:x'},
+          unverifiedPeers: {'@c:x'},
+        );
+        expect(pendingPeerHint(['@a:x', '@b:x', '@c:x'], health), (
+          peer: '@c:x',
+          reason: PendingReason.unverified,
+        ));
+        expect(pendingPeerHint(['@a:x', '@b:x'], health), (
+          peer: '@b:x',
+          reason: PendingReason.noDevice,
+        ));
+        expect(pendingPeerHint(['@a:x'], health), (
+          peer: '@a:x',
+          reason: PendingReason.waiting,
+        ));
+      },
+    );
+  });
 }

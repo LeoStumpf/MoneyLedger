@@ -4,6 +4,7 @@ import 'core/l10n/l10n.dart';
 import 'core/router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/sync/ledger_sync_host.dart';
+import 'features/devices/devices_page.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -22,8 +23,14 @@ class App extends ConsumerWidget {
       themeMode: ThemeMode.system,
       routerConfig: router,
       // Inbound sync must run on every screen while signed in (incl. onboarding).
-      builder: (context, child) =>
-          LedgerSyncHost(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => LedgerSyncHost(
+        // G11: answer device-verification requests on any screen.
+        child: IncomingVerificationListener(
+          navigatorContext: () =>
+              router.routerDelegate.navigatorKey.currentContext,
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
     );
   }
 }

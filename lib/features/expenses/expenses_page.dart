@@ -663,17 +663,17 @@ class _SyncStatusIcon extends ConsumerWidget {
         onPressed: null,
       );
     }
-    // A pending peer with no logged-in device isn't a sync error — say so
-    // instead of "waiting" forever (G24).
-    final noDevice = status.pendingPeers
-        .where(health.unreachablePeers.contains)
-        .firstOrNull;
-    final waitingFor = noDevice ?? status.pendingPeers.first;
+    // A pending peer with no logged-in device (G24) or no verified one
+    // (G11, verified-only sync) isn't a sync error — say so instead of
+    // "waiting" forever.
+    final hint = pendingPeerHint(status.pendingPeers, health);
     return IconButton(
       icon: const Icon(Icons.cloud_queue),
-      tooltip: noDevice != null
-          ? l.peerHasNoDevice(noDevice)
-          : l.waitingForPeer(waitingFor),
+      tooltip: switch (hint.reason) {
+        PendingReason.unverified => l.peerHasNoVerifiedDevice(hint.peer),
+        PendingReason.noDevice => l.peerHasNoDevice(hint.peer),
+        PendingReason.waiting => l.waitingForPeer(hint.peer),
+      },
       onPressed: null,
     );
   }

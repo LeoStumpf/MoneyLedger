@@ -127,6 +127,10 @@ Expected results are in *italics*.
 | 9.1 | Groups → Devices & security → *all of the account's devices listed (this one first) with verified status* | emu |
 | 9.2 | "Verify" another own device → *emoji dialog on both; "They match" on both → "Device verified."* | Leo |
 | 9.3 | Cancel mid-verification → *dialog closes, no crash, device stays unverified* | Leo |
+| 9.4 | The other device shows "Verification request … Accept / Decline" on any screen → Accept → *same emoji dialog* | emu |
+| 9.5 | Members → tap "N unverified devices" under a member (or ⋮ → Devices) → Verify their device; they accept → *emoji dialog on both; both "Device verified."; the member's device and ours show Verified on both sides* | emu |
+| 9.6 | Settings → "Only sync with verified devices" → *confirmation explains the consequence*; on → add an expense → *verified devices (own + peers) get it; a member with no verified device: members page red "Not reachable — no verified device", sync tooltip "X has no verified device …", they don't receive it* | emu |
+| 9.7 | Signature details of a record from a device you haven't verified → *"You haven't verified this device (emoji comparison)."* | emu |
 
 ## 10. Release build
 
@@ -145,6 +149,30 @@ iOS Rust/XCFramework build that has never been done. `ios/Runner` is template
 level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
+
+**2026-10-16 (G11 device verification)** · working tree on `81754eb` + G11 ·
+release APK via `adb install -r` on phone (A, German), emu-5554 (B) and a
+spare emu-5556 (fresh login as A, signed out afterwards — device removed).
+9.2/9.4: SAS emu-5556 ↔ phone (A ↔ A): request popped up on the phone,
+identical emojis (Trumpet Flower Pencil Key Ball Glasses Mushroom), "They
+match" on both → phone "Gerät verifiziert."; emu-5556 hit a network drop
+right after the MAC (the SDK's cancel send failed too, dialog stayed on the
+spinner — now a 3-min stall timeout) but both device lists show the other
+as **Verified**. 9.5: B → members → "3 unverified devices" under A → Verify
+the phone → A accepted → emojis matched (Cloud Pizza Globe Penguin Dog Lion
+Paperclip) → "Device verified." on both; one SAS verified both directions
+(phone shows B's device Verified too). 9.6: phone (verified-only on, trusts
+B + emu-5556) added "G11VerifiedOnly" → reached B and emu-5556. emu-5556
+(verified-only on, B unverified there): members page "Not reachable — no
+verified device", added "G11Withheld" with the phone app stopped → sync
+tooltip "@…b… has no verified device", **B did not receive it** (≥70 s);
+after restarting the phone (own verified device) it got it and relayed it
+to B by anti-entropy (the phone trusts B — expected). 9.7: on B the details
+of "G11Withheld" say "You haven't verified this device". Setting turned off
+on every device afterwards. Screenshots `g11_*.png` (session scratchpad).
+Seen: emu-5556's Matrix sync loop stalled after an emulator network switch
+until the app was restarted; SAS emoji names are English (SDK) in the
+German UI.
 
 **2026-10-16 (G6 signed records, partial pass)** · working tree on `56416b7` ·
 release APK installed with `adb install -r` on phone (A) and emu (B), no
@@ -209,7 +237,7 @@ only re-checked where later changes touched them.
 | 8.3 | phone | pass | re-import of the same file: no duplicate expenses/participants/group |
 | 8.4 | — | not run | |
 | 9.1 | phone, emu-B | pass | this device + Element web session ("Not verified") |
-| 9.2/9.3 | — | not run | needs Leo (would pop up on his Element session) |
+| 9.2/9.3 | — | not run | needs Leo (would pop up on his Element session) — 9.2 now covered app↔app, see G11 run |
 | 10.1 | build | pass | `CN=Leo Stumpf, O=MoneyLedger` (upload key) |
 | 10.2 | phone, emu-B | pass | upgrade kept session + data |
 | 10.3 | build | pass | INTERNET (+ AndroidX `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`) only |

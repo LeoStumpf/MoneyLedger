@@ -1376,4 +1376,86 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get recordSignatureWarning => 'Signaturproblem';
+
+  @override
+  String peerHasNoVerifiedDevice(Object peer) {
+    return '$peer hat kein verifiziertes Gerät – verifiziere eines, um zu synchronisieren (nur verifizierte Geräte werden synchronisiert)';
+  }
+
+  @override
+  String get verifiedOnlyTitle =>
+      'Nur mit verifizierten Geräten synchronisieren';
+
+  @override
+  String get verifiedOnlyOffBody =>
+      'Aus: Jedes Gerät deiner Gruppenmitglieder (und deine eigenen) erhält deine Daten.';
+
+  @override
+  String get verifiedOnlyOnBody =>
+      'An: Geräte, die du nicht per Emoji-Vergleich verifiziert hast – deine oder die anderer Mitglieder – erhalten nichts von diesem Gerät.';
+
+  @override
+  String get verifiedOnlyConfirmTitle =>
+      'Nur mit verifizierten Geräten synchronisieren?';
+
+  @override
+  String get verifiedOnlyConfirmBody =>
+      'Deine Ausgaben, Zahlungen und Gruppenänderungen werden nur noch an Geräte gesendet, die du per Emoji-Vergleich verifiziert hast (eigene auf der Geräteseite, andere auf der Mitgliederseite).\n\nNicht verifizierte Geräte – auch das neue Handy eines Mitglieds oder deine eigene neue Anmeldung – erhalten nichts, bis du sie verifizierst, und bleiben zurück. Empfangene Einträge werden weiter angenommen; die Details zeigen, ob das signierende Gerät verifiziert ist.\n\nGilt nur für dieses Gerät und Konto.';
+
+  @override
+  String get verifiedOnlyTurnOn => 'Einschalten';
+
+  @override
+  String memberUnverifiedDevices(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count nicht verifizierte Geräte',
+      one: '1 nicht verifiziertes Gerät',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get memberNotReachableUnverified =>
+      'Nicht erreichbar – kein verifiziertes Gerät';
+
+  @override
+  String memberDevicesTitle(Object name) {
+    return 'Geräte von $name';
+  }
+
+  @override
+  String get memberDevicesBody =>
+      'Verifiziere ein Gerät, indem du mit der Person Emojis vergleichst (persönlich oder per Anruf). Die Verifizierung wird nur auf diesem Gerät gespeichert.';
+
+  @override
+  String get memberHasNoDevices => 'Keine aktiven Geräte.';
+
+  @override
+  String get incomingVerificationTitle => 'Verifizierungsanfrage';
+
+  @override
+  String incomingVerificationOwnDevice(Object device) {
+    return 'Dein Gerät $device möchte dieses Gerät per Emoji-Vergleich verifizieren.';
+  }
+
+  @override
+  String incomingVerificationMember(Object user, Object device) {
+    return '$user (Gerät $device) möchte dieses Gerät per Emoji-Vergleich verifizieren.';
+  }
+
+  @override
+  String get accept => 'Annehmen';
+
+  @override
+  String get decline => 'Ablehnen';
+
+  @override
+  String get recordDeviceVerifiedByYou =>
+      'Du hast dieses Gerät verifiziert (Emoji-Vergleich).';
+
+  @override
+  String get recordDeviceNotVerifiedByYou =>
+      'Du hast dieses Gerät nicht verifiziert (Emoji-Vergleich).';
 }

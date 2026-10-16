@@ -17,6 +17,7 @@ import '../database/daos/signing_dao.dart';
 import '../database/daos/sync_states_dao.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
+import 'delivery_policy.dart';
 import 'ledger_payloads.dart';
 import 'left_groups.dart';
 import 'record_gate.dart';
@@ -161,7 +162,10 @@ class SyncEngine {
     if (_db.isSignedOutPlaceholder) return;
     final LedgerTransport transport;
     try {
-      transport = await _ref.read(ledgerTransportProvider.future);
+      transport = await withDeliveryPolicy(
+        _ref.read(ledgerTransportProvider.future),
+        _settings,
+      );
     } catch (e) {
       if (_alive) debugPrint('[sync] engine inactive, no transport: $e');
       return;

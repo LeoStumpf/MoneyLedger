@@ -68,59 +68,162 @@ class SendResult {
   /// Targets (other than the sender's own MXID) with no device to send to.
   final Set<String> unreachableUsers;
 
+  /// G11: the subset of [unreachableUsers] that *do* have devices, all of
+  /// which were withheld because none is verified ("only sync with verified
+  /// devices" is on).
+  final Set<String> unverifiedUsers;
+
   /// How many devices the payload was handed to for delivery.
   final int deviceCount;
 
-  const SendResult({this.unreachableUsers = const {}, this.deviceCount = 0});
+  /// G11: devices (own and peers') skipped because they aren't verified.
+  final int withheldDevices;
+
+  const SendResult({
+    this.unreachableUsers = const {},
+    this.unverifiedUsers = const {},
+    this.deviceCount = 0,
+    this.withheldDevices = 0,
+  });
 
   static const nothingToSend = SendResult();
 }
 
 /// One candidate device of a target user, as seen by the transport adapter.
-typedef TransportDevice = ({String deviceId, bool blocked});
+class TransportDevice {
+  final String deviceId;
+
+  /// Blocked in the Matrix SDK — never sent to.
+  final bool blocked;
+
+  /// Verified according to the Matrix SDK's own store (SAS / cross-signing).
+  final bool verified;
+
+  /// The device's Ed25519 key (null when unknown) — matched against the
+  /// app's own verified-device record (G11, [DeliveryPolicy.trusted]).
+  final String? key;
+
+  const TransportDevice(
+    this.deviceId, {
+    this.blocked = false,
+    this.verified = false,
+    this.key,
+  });
+}
+
+/// Whether the device [deviceId] of [user] (current key [key]) counts as
+/// verified: the SDK says so ([sdkVerified]) or this account verified exactly
+/// this (user, device, key) by emoji comparison ([trusted], G11). A device
+/// whose key changed since it was verified is **not** verified. Pure.
+bool isDeviceTrusted({
+  required String user,
+  required String deviceId,
+  required String? key,
+  required bool sdkVerified,
+  required Set<SignerId> trusted,
+}) =>
+    sdkVerified ||
+    (key != null &&
+        trusted.contains(SignerId(user: user, device: deviceId, key: key)));
+
+/// G11: where a send may go. [everyone] (the default) = every device of
+/// every target; with [verifiedOnly] only verified devices
+/// ([isDeviceTrusted]) receive anything — own and peers' alike.
+class DeliveryPolicy {
+  final bool verifiedOnly;
+
+  /// (user, device, Ed25519 key) this account verified by emoji comparison.
+  final Set<SignerId> trusted;
+
+  const DeliveryPolicy({this.verifiedOnly = false, this.trusted = const {}});
+
+  static const everyone = DeliveryPolicy();
+
+  bool allows(String user, TransportDevice d) =>
+      !verifiedOnly ||
+      isDeviceTrusted(
+        user: user,
+        deviceId: d.deviceId,
+        key: d.key,
+        sdkVerified: d.verified,
+        trusted: trusted,
+      );
+}
 
 /// The pure delivery decision behind every real send (plain Dart so it is
 /// unit-testable without the Matrix SDK).
 class DevicePlan {
   /// userId → device ids to send to (blocked devices and the sender's current
-  /// device removed — exactly what the SDK itself would skip).
+  /// device removed — exactly what the SDK itself would skip — and, under a
+  /// verified-only [DeliveryPolicy], unverified devices).
   final Map<String, List<String>> devices;
 
   /// Targets other than [planDeviceSend]'s `selfUserId` with no sendable device.
   final Set<String> unreachableUsers;
 
-  const DevicePlan({required this.devices, required this.unreachableUsers});
+  /// The subset of [unreachableUsers] whose devices were all withheld as
+  /// unverified (G11).
+  final Set<String> unverifiedUsers;
+
+  /// Devices withheld as unverified (own other devices included).
+  final int withheldDevices;
+
+  const DevicePlan({
+    required this.devices,
+    required this.unreachableUsers,
+    this.unverifiedUsers = const {},
+    this.withheldDevices = 0,
+  });
 
   int get deviceCount => devices.values.fold(0, (sum, ids) => sum + ids.length);
 }
 
 /// Decides which devices of [targets] to send to, given every target's known
 /// [devicesByUser]. The sender's current device ([selfUserId]/[selfDeviceId])
-/// and blocked devices are excluded. A target other than [selfUserId] left
-/// with no device is *unreachable*; self with no other device is normal (a
+/// and blocked devices are excluded, and so are devices [policy] doesn't
+/// allow (G11 verified-only). A target other than [selfUserId] left with no
+/// device is *unreachable* — *unverified* when it had devices that were only
+/// withheld by the policy; self with no other device is normal (a
 /// single-device user's digest/resync to self) and never reported.
 DevicePlan planDeviceSend({
   required Set<String> targets,
   required String selfUserId,
   required String? selfDeviceId,
   required Map<String, Iterable<TransportDevice>> devicesByUser,
+  DeliveryPolicy policy = DeliveryPolicy.everyone,
 }) {
   final devices = <String, List<String>>{};
   final unreachable = <String>{};
+  final unverified = <String>{};
+  var withheld = 0;
   for (final user in targets) {
     if (user.isEmpty) continue;
-    final ids = [
-      for (final d in devicesByUser[user] ?? const <TransportDevice>[])
-        if (!d.blocked && !(user == selfUserId && d.deviceId == selfDeviceId))
-          d.deviceId,
-    ];
+    final ids = <String>[];
+    var withheldHere = 0;
+    for (final d in devicesByUser[user] ?? const <TransportDevice>[]) {
+      if (d.blocked || (user == selfUserId && d.deviceId == selfDeviceId)) {
+        continue;
+      }
+      if (!policy.allows(user, d)) {
+        withheldHere++;
+        continue;
+      }
+      ids.add(d.deviceId);
+    }
+    withheld += withheldHere;
     if (ids.isNotEmpty) {
       devices[user] = ids;
     } else if (user != selfUserId) {
       unreachable.add(user);
+      if (withheldHere > 0) unverified.add(user);
     }
   }
-  return DevicePlan(devices: devices, unreachableUsers: unreachable);
+  return DevicePlan(
+    devices: devices,
+    unreachableUsers: unreachable,
+    unverifiedUsers: unverified,
+    withheldDevices: withheld,
+  );
 }
 
 /// The operations the app needs from its relay layer.
@@ -141,11 +244,15 @@ abstract interface class LedgerTransport {
   /// Throws [TransportUnavailableException] when nothing can be sent at all
   /// (signed out / encryption not ready). Targets without any device are
   /// reported in [SendResult.unreachableUsers] rather than thrown.
+  ///
+  /// [policy] (G11) restricts delivery to verified devices; the app's
+  /// senders pass the account's setting via `PolicyTransport`.
   Future<SendResult> sendToUsers(
     Set<String> userIds,
     String type,
-    Map<String, dynamic> content,
-  );
+    Map<String, dynamic> content, {
+    DeliveryPolicy policy = DeliveryPolicy.everyone,
+  });
 
   /// The public Matrix profile display name of [matrixId] (G17) — used as a
   /// participant's name when they are added by MXID. Null when the account

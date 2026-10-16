@@ -193,9 +193,10 @@ Attestations relayed by another member for a known group are ignored. A `server`
 
 1. **Fabricated device.** M signs a version as X using an invented device ID D′ and M's own key. Receivers who have never seen D′, and can't find it on X's server list, can't tell it apart from a device X logged out of before they pinned it. It is **accepted as "unverified"** and shown as such.
    - **Mitigation:** X's own devices flag any record claiming X with a device that is neither pinned nor currently X's. They show "not from one of your devices", and X can react, for example by re-editing.
+   - G11 doesn't close it: such a version is still accepted (inbound isn't refused under verified-only); the details dialog shows the device as not verified by you.
    - **Closing it fully** needs cross-signing (b). Add it later: if X has a master key and the record's device is SSK-signed (`DeviceKeys.crossVerified` / `hasValidSignatureChain`), treat it as `verified`. If X has cross-signing and an unknown device is not SSK-signed, a strict client could reject it.
 2. **Malicious inviter.** For a new member, the inviter can attest fake keys, so those records show as "vouched". This is no worse than today, where the inviter's bootstrap is TOFU-accepted wholesale.
-3. **Homeserver.** It can add devices for its own users (G11 / SAS verification).
+3. **Homeserver.** It can add devices for its own users. *G11 (opt-in):* "Only sync with verified devices" sends nothing to a device we never emoji-verified, and the details dialog says whether the signing device was verified by us; inbound records are still accepted (not refused).
 4. **Mixed mode.** v1 peers verify nothing and strip signatures when they relay (§9).
 5. **Disagreement between honest devices.** An honest device that accepted M's fabricated-device version as "unverified", while another device that knew a conflicting pin rejected it, can end up holding different versions. The `rejected` digest map stops the repair loop and both sides surface it in the UI. Divergence beats accepting a provable forgery.
 

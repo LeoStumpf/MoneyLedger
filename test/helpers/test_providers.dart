@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
+import 'package:money_ledger/features/devices/device_provider.dart';
 import 'package:money_ledger/features/expenses/record_attribution.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
@@ -124,6 +125,7 @@ List<dynamic> testOverrides({
 List<dynamic> signingUiOverrides({List<KnownKey> keys = const []}) => [
   knownDeviceKeysProvider.overrideWith((_) => Stream.value(keys)),
   rejectedVersionProvider.overrideWith((_, _) => Stream.value(null)),
+  trustedDevicesProvider.overrideWith((_) => Stream.value(const {})),
 ];
 
 /// Additional override for groups tests where you want to control the group list.

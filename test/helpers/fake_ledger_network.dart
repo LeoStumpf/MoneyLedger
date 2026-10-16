@@ -62,6 +62,10 @@ class FakeMatrixNetwork {
       .putIfAbsent(userId, () => {})
       .putIfAbsent(device, () => FakeTransport(this, userId, device));
 
+  /// G11: devices (`'<user>|<device>'`) the simulated Matrix SDK reports as
+  /// verified (as if verified in another client / via cross-signing).
+  final Set<String> sdkVerified = {};
+
   /// Simulates a device signing out: it no longer receives anything, and a
   /// user left with no devices becomes unreachable for senders.
   void removeDevice(String userId, {String device = 'D1'}) {
@@ -74,6 +78,7 @@ class FakeMatrixNetwork {
     Set<String> targets,
     String type,
     Map<String, dynamic> content,
+    DeliveryPolicy policy,
   ) {
     final sender = senderDevice.userId;
     _activity++;
@@ -88,9 +93,14 @@ class FakeMatrixNetwork {
         for (final t in targets)
           t: [
             for (final id in (_clients[t] ?? const {}).keys)
-              (deviceId: id, blocked: false),
+              TransportDevice(
+                id,
+                verified: sdkVerified.contains('$t|$id'),
+                key: keys.listedKey(t, id),
+              ),
           ],
       },
+      policy: policy,
     );
     for (final MapEntry(key: target, value: ids) in plan.devices.entries) {
       if (dropWhere?.call(sender, target, type) ?? false) continue;
@@ -102,7 +112,9 @@ class FakeMatrixNetwork {
     }
     return SendResult(
       unreachableUsers: plan.unreachableUsers,
+      unverifiedUsers: plan.unverifiedUsers,
       deviceCount: plan.deviceCount,
+      withheldDevices: plan.withheldDevices,
     );
   }
 
@@ -201,12 +213,13 @@ class FakeTransport implements LedgerTransport {
   Future<SendResult> sendToUsers(
     Set<String> userIds,
     String type,
-    Map<String, dynamic> content,
-  ) async {
+    Map<String, dynamic> content, {
+    DeliveryPolicy policy = DeliveryPolicy.everyone,
+  }) async {
     if (unavailable) {
       throw const TransportUnavailableException('encryption is not enabled');
     }
-    return _net._send(this, userIds, type, content);
+    return _net._send(this, userIds, type, content, policy);
   }
 
   @override

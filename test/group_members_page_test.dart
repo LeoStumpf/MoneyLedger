@@ -5,6 +5,7 @@ import 'package:money_ledger/features/groups/group_members_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/member_model.dart';
 
+import 'helpers/fake_device_gateway.dart';
 import 'helpers/test_providers.dart';
 
 void main() {
@@ -15,6 +16,7 @@ void main() {
     List<Object> overridesFor(List<MemberModel> members, String selfId) => [
       currentUserIdProvider.overrideWithValue(selfId),
       groupMembersProvider('g1').overrideWith((ref) => Stream.value(members)),
+      ...FakeTrustStore().overrides(FakeDeviceGateway(const [])),
     ];
 
     MemberModel claimed(

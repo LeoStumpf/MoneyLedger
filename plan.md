@@ -143,8 +143,8 @@ Group meta is LWW-synced already (`meta_updated_at`), only the UI is missing.
 
 ### G11. Device-verification enforcement (opt-in) 🟡
 SAS exists for visibility only; replication still reaches unverified devices.
-- [ ] Per-user setting "only replicate to verified devices" (default off)
-- [ ] Warn in the members page when a peer has unverified devices
+- [x] Per-user setting "only replicate to verified devices" (default off)
+- [x] Warn in the members page when a peer has unverified devices
 
 ### G12. Polish & app identity 🟡
 - [x] App name is `money_ledger` on Android (`android:label`) and web
@@ -396,6 +396,20 @@ See `docs/design/g6-signed-records.md` + `docs/open-points.md`.
       the server mid-merge)
 - [ ] Footer wraps long MXIDs ("…test-a-\nc725") — use display label / ellipsis
 
+### G36. Verification follow-ups (found in G11) 🟡
+Decided by the conductor: inbound records from unverified devices stay
+*flagged*, not quarantined (a permanent refusal wouldn't heal after a later
+verification); the verified-device list stays device-local (not in backups —
+trust is a per-device decision).
+- [ ] Translate the SAS emoji names (Matrix spec ships translations) — the SDK
+      gives English names in the German UI
+- [ ] Matrix sync loop stalled after an emulator network switch until app
+      restart (seen once on emulator-5556) — check reconnect/backoff
+- [ ] Verified-only only restricts what *this* device sends; document clearly
+      in-app; a new own device can't restore while the setting is on elsewhere
+      until verified
+- [ ] SAS against Element sessions (Leo-only smoke 9.2/9.3)
+
 ### G18. Final release review 🟡
 - [ ] `/code-review` over all of Phase G; fix findings
 - [ ] `./build.sh` green; release APK on emulator + phone
@@ -436,7 +450,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G5 — full-fidelity backup
 - [x] G13 — CSV improvements (with G5)
 - [x] G6 — signed records (any member may edit; every version signed by its editor)
-- [ ] G11 — verified-only replication (+ SAS emulator ↔ phone)
+- [x] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [ ] G14 — digest size measurement
 - [ ] G16 — nice-to-haves
 - [ ] G22 — dependency upgrades (matrix, file_picker)
@@ -444,6 +458,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G33 — design follow-ups (settlement title, test display names)
 - [ ] G34 — backup follow-ups
 - [ ] G35 — signed-records follow-ups
+- [ ] G36 — verification follow-ups
 - [ ] *(G32+ — newly discovered points)*
 - [ ] G18 — final release review
 

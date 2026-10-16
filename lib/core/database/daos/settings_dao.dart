@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
+import '../../matrix/ledger_transport.dart';
 import '../../sync/left_groups.dart';
 
 part 'settings_dao.g.dart';
@@ -49,6 +50,77 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
           value: Value(enabled ? 'true' : 'false'),
         ),
       );
+
+  // ── device verification (G11) ───────────────────────────────────────────
+
+  static const _verifiedOnlyKey = 'verified_only_sync';
+  static const _verifiedDevicePrefix = 'verified_device:';
+
+  /// "Only sync with verified devices" (device-local, per account). Default
+  /// off.
+  Stream<bool> watchVerifiedOnlySync() =>
+      (select(appSettings)..where((t) => t.key.equals(_verifiedOnlyKey)))
+          .watchSingleOrNull()
+          .map((row) => row?.value == 'true');
+
+  Future<bool> verifiedOnlySync() =>
+      (select(appSettings)..where((t) => t.key.equals(_verifiedOnlyKey)))
+          .getSingleOrNull()
+          .then((row) => row?.value == 'true');
+
+  Future<void> setVerifiedOnlySync(bool on) =>
+      into(appSettings).insertOnConflictUpdate(
+        AppSettingsCompanion(
+          key: const Value(_verifiedOnlyKey),
+          value: Value(on ? 'true' : 'false'),
+        ),
+      );
+
+  /// Records that this account verified [device] (user, device id, Ed25519
+  /// key) by emoji comparison. The Matrix SDK forgets the verified flag of
+  /// devices of users we share no room with (roomless app), so the app keeps
+  /// its own record; a later key change for the same device id voids it.
+  Future<void> markDeviceVerified(SignerId device) =>
+      into(appSettings).insertOnConflictUpdate(
+        AppSettingsCompanion(
+          key: Value('$_verifiedDevicePrefix${device.user}|${device.device}'),
+          value: Value(device.key),
+        ),
+      );
+
+  // `_` is a LIKE wildcard; the Dart-side prefix check in
+  // [_verifiedDeviceFrom] makes the match exact.
+  Selectable<AppSetting> _verifiedDeviceRows() =>
+      select(appSettings)..where((t) => t.key.like('$_verifiedDevicePrefix%'));
+
+  static SignerId? _verifiedDeviceFrom(AppSetting row) {
+    if (!row.key.startsWith(_verifiedDevicePrefix)) return null;
+    final rest = row.key.substring(_verifiedDevicePrefix.length);
+    // MXIDs never contain `|`; device ids might.
+    final bar = rest.indexOf('|');
+    if (bar <= 0 || bar == rest.length - 1 || row.value.isEmpty) return null;
+    return SignerId(
+      user: rest.substring(0, bar),
+      device: rest.substring(bar + 1),
+      key: row.value,
+    );
+  }
+
+  /// Every device this account verified by emoji comparison.
+  Stream<Set<SignerId>> watchVerifiedDevices() => _verifiedDeviceRows()
+      .watch()
+      .map((rows) => {...rows.map(_verifiedDeviceFrom).nonNulls});
+
+  Future<Set<SignerId>> verifiedDevices() => _verifiedDeviceRows().get().then(
+    (rows) => {...rows.map(_verifiedDeviceFrom).nonNulls},
+  );
+
+  /// The account's current delivery policy: verified-only on/off + the
+  /// devices it verified. Read on every send (`PolicyTransport`).
+  Future<DeliveryPolicy> deliveryPolicy() async {
+    if (!await verifiedOnlySync()) return DeliveryPolicy.everyone;
+    return DeliveryPolicy(verifiedOnly: true, trusted: await verifiedDevices());
+  }
 
   // ── backup (G5) ──────────────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ import '../auth/auth_provider.dart';
 import '../onboarding/onboarding_provider.dart';
 import '../backup/backup_providers.dart';
 import '../backup/backup_ui.dart';
+import '../devices/device_provider.dart';
 import '../expenses/ledger_syncer.dart';
 import '../../core/background/background_sync_provider.dart';
 import '../../core/sync/self_recovery.dart';
@@ -498,7 +499,51 @@ class BalanceSummaryText extends StatelessWidget {
   }
 }
 
-/// Settings sheet (G31 sync settings, G5 backup, G12 about): explains when
+/// G11: the opt-in "Only sync with verified devices" switch (per account,
+/// device-local). Turning it on asks first and spells out the consequence.
+class VerifiedOnlySyncTile extends ConsumerWidget {
+  const VerifiedOnlySyncTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final on = ref.watch(verifiedOnlySyncProvider).value ?? false;
+    return SwitchListTile(
+      key: const Key('verifiedOnlySwitch'),
+      secondary: const Icon(Icons.verified_user_outlined),
+      title: Text(l.verifiedOnlyTitle),
+      subtitle: Text(on ? l.verifiedOnlyOnBody : l.verifiedOnlyOffBody),
+      value: on,
+      onChanged: (v) async {
+        final settings = ref.read(settingsDaoProvider);
+        if (v) {
+          final ok = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(l.verifiedOnlyConfirmTitle),
+              content: Text(l.verifiedOnlyConfirmBody),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(l.cancel),
+                ),
+                FilledButton(
+                  key: const Key('verifiedOnlyConfirm'),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(l.verifiedOnlyTurnOn),
+                ),
+              ],
+            ),
+          );
+          if (ok != true) return;
+        }
+        await settings.setVerifiedOnlySync(v);
+      },
+    );
+  }
+}
+
+/// Settings sheet (G31 sync settings, G11 verified-only, G5 backup, G12 about): explains when
 /// this device syncs and, on Android, toggles the periodic background sync for
 /// the signed-in account; backs up / restores all groups; links to the About
 /// page.
@@ -537,6 +582,7 @@ class SyncSettingsSheet extends ConsumerWidget {
                 title: Text(l.noBackgroundSyncTitle),
                 subtitle: Text(l.noBackgroundSyncBody),
               ),
+            const VerifiedOnlySyncTile(),
             const Divider(),
             const BackupSettingsSection(),
             const Divider(),

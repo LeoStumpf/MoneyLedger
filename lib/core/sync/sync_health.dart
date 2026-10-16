@@ -34,12 +34,18 @@ class SyncHealthState {
   /// Cleared per peer as soon as a later send finds one of their devices.
   final Set<String> unreachablePeers;
 
+  /// G11: the subset of [unreachablePeers] that have devices, none of them
+  /// verified, while "only sync with verified devices" is on — the UI says
+  /// "X has no verified device" instead of "waiting".
+  final Set<String> unverifiedPeers;
+
   const SyncHealthState({
     this.consecutiveFailures = 0,
     this.lastError,
     this.lastErrorAt,
     this.lastSuccessAt,
     this.unreachablePeers = const {},
+    this.unverifiedPeers = const {},
   });
 
   /// Whether the UI should surface a sync problem.
@@ -51,17 +57,24 @@ class SyncHealthState {
     lastErrorAt: now,
     lastSuccessAt: lastSuccessAt,
     unreachablePeers: unreachablePeers,
+    unverifiedPeers: unverifiedPeers,
   );
 
   /// A send went through. Resets failures and clears the error; [reached]
-  /// targets leave [unreachablePeers], [unreachable] ones join it.
+  /// targets leave [unreachablePeers], [unreachable] ones join it — and
+  /// [unverified] ones (a subset of [unreachable]) [unverifiedPeers].
   SyncHealthState afterSuccess(
     int now, {
     Set<String> reached = const {},
     Set<String> unreachable = const {},
+    Set<String> unverified = const {},
   }) => SyncHealthState(
     lastSuccessAt: now,
     unreachablePeers: {...unreachablePeers.difference(reached), ...unreachable},
+    unverifiedPeers: {
+      ...unverifiedPeers.difference(reached).difference(unreachable),
+      ...unverified,
+    },
   );
 }
 
@@ -96,6 +109,7 @@ class SyncHealth extends _$SyncHealth {
       DateTime.now().millisecondsSinceEpoch,
       reached: targets.difference(result.unreachableUsers),
       unreachable: result.unreachableUsers,
+      unverified: result.unverifiedUsers,
     );
   }
 
@@ -103,4 +117,37 @@ class SyncHealth extends _$SyncHealth {
     if (!ref.mounted) return;
     state = state.afterFailure(error, DateTime.now().millisecondsSinceEpoch);
   }
+}
+
+/// Why the sync icon is still waiting for a peer (G24 / G11).
+enum PendingReason {
+  /// Nothing known — the peer hasn't acknowledged our latest state yet.
+  waiting,
+
+  /// The peer has no logged-in device.
+  noDevice,
+
+  /// The peer has devices, but none is verified and "only sync with verified
+  /// devices" is on.
+  unverified,
+}
+
+/// The peer the pending sync icon names, and why: a peer whose devices are
+/// all unverified first, then one with no device, else the first waiting
+/// peer. Pure; [pendingPeers] must not be empty.
+({String peer, PendingReason reason}) pendingPeerHint(
+  Iterable<String> pendingPeers,
+  SyncHealthState health,
+) {
+  for (final p in pendingPeers) {
+    if (health.unverifiedPeers.contains(p)) {
+      return (peer: p, reason: PendingReason.unverified);
+    }
+  }
+  for (final p in pendingPeers) {
+    if (health.unreachablePeers.contains(p)) {
+      return (peer: p, reason: PendingReason.noDevice);
+    }
+  }
+  return (peer: pendingPeers.first, reason: PendingReason.waiting);
 }

@@ -20,12 +20,15 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
   unverified**; X's own devices flag it ("not from one of your devices").
   Closing this needs **cross-signing** (device keys signed by X's
   self-signing key survive logout) — the app never sets cross-signing up;
-  future item (with G11).
+  future item. With G11's verified-only setting such records still arrive
+  (inbound isn't refused) and stay "unverified".
 - **Malicious inviter.** A new member trusts the inviter's bootstrap
   (TOFU, as before) including its `device_keys` attestations, so the inviter
   could vouch for fake keys ("vouched" in the details).
 - **Homeserver.** A user's homeserver can add devices for that user (the
-  Matrix E2EE trust model; G11 / SAS verification).
+  Matrix E2EE trust model). *Mitigated, opt-in (G11):* with "Only sync with
+  verified devices" a device we never emoji-verified gets nothing from us,
+  and the record details say "You haven't verified this device".
 - **Divergence by disagreement.** An honest device that accepted a version as
   "unverified" and one that refused it (key conflict) keep different
   versions; the digest `rejected` map stops the repair loop and the refusing
@@ -40,11 +43,24 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
 - Same-clock different versions (two signed versions with one `updated_at`):
   first stored wins (G27 tie-break still open).
 
-### Device-verification enforcement
-SAS (emoji) verification exists for **visibility + manual** trust only
-(`DevicesPage`). Replication still reaches unverified devices. An opt-in
-"replicate only to verified devices" mode was deliberately left out of the MVP
-(it can strand legitimate unverified sessions).
+### Device-verification enforcement (G11) — limits
+Opt-in "Only sync with verified devices" (per account, device-local, default
+off) withholds everything *this device* sends from unverified devices (own and
+peers'), and SAS works with other members' devices (members page). Open:
+- **Only our sends.** A peer's own devices still sync with each other (and a
+  device we trust relays to devices it trusts); it is only end-to-end
+  effective when every member turns it on and verifies.
+- **Inbound is not refused** (decision: G6 refusals are permanent and a
+  legitimate new device would lose edits) — only flagged in the details.
+- **No cross-signing.** Verification is per device: every new device of a
+  member must be emoji-verified again; an account that uses cross-signing in
+  another client gets its SSSS step skipped. Fabricated device ids (G6) stay
+  "unverified", not refused.
+- New own device + setting on elsewhere: self-restore (G30) waits until the
+  new device is verified; the restoring banner times out meanwhile.
+- SAS emoji names come from the SDK in English (German UI shows "Trumpet").
+- The verified-device record lives in the per-account DB on this device
+  (not in backups; lost with the app data).
 
 ### Offline demo mode (`OFFLINE_DEMO`) — nice-to-have
 A `--dart-define=OFFLINE_DEMO=true` that overrides `ledgerTransportProvider` +
@@ -58,7 +74,8 @@ Three flows can only be verified on a real device + homeserver, not in
 - **SSO** native deep link (`moneyledger://sso-callback`).
 - **Registration** UIA on a real homeserver (dummy path + the captcha/email/terms
   fallback).
-- **SAS device verification** round-trip (needs a second device + olm).
+- **SAS device verification** round-trip — done app↔app on 2026-10-16
+  (G11); against Element not tried.
 
 ### Found in the 2026-10-15 audit (see plan.md)
 - **Android release build has no INTERNET permission** (only debug/profile

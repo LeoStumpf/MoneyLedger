@@ -30,8 +30,9 @@ class DemoTransport implements LedgerTransport {
   Future<SendResult> sendToUsers(
     Set<String> userIds,
     String type,
-    Map<String, dynamic> content,
-  ) async => SendResult(deviceCount: userIds.where((u) => u != userId).length);
+    Map<String, dynamic> content, {
+    DeliveryPolicy policy = DeliveryPolicy.everyone,
+  }) async => SendResult(deviceCount: userIds.where((u) => u != userId).length);
 
   @override
   Future<String?> profileName(String matrixId) async => null;

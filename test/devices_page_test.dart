@@ -6,20 +6,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/matrix/device_gateway.dart';
-import 'package:money_ledger/features/devices/device_provider.dart';
 import 'package:money_ledger/features/devices/devices_page.dart';
 
 import 'helpers/fake_device_gateway.dart';
 import 'helpers/l10n.dart';
 
-Widget _app(FakeDeviceGateway gateway) => ProviderScope(
-  overrides: [deviceGatewayProvider.overrideWith((ref) async => gateway)],
-  child: MaterialApp(
-    localizationsDelegates: testLocalizationsDelegates,
-    supportedLocales: testSupportedLocales,
-    home: const DevicesPage(),
-  ),
-);
+Widget _app(FakeDeviceGateway gateway, {FakeTrustStore? store}) =>
+    ProviderScope(
+      overrides: (store ?? FakeTrustStore()).overrides(gateway),
+      child: MaterialApp(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
+        home: const DevicesPage(),
+      ),
+    );
 
 void main() {
   testWidgets('lists devices with status and a trust summary', (tester) async {

@@ -2197,6 +2197,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Signature problem'**
   String get recordSignatureWarning;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'{peer} has no verified device — verify one to sync (only verified devices are synced)'**
+  String peerHasNoVerifiedDevice(Object peer);
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Only sync with verified devices'**
+  String get verifiedOnlyTitle;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Off: every device of your group members (and your own) receives your ledger data.'**
+  String get verifiedOnlyOffBody;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'On: devices you haven\'t verified by emoji comparison — yours or other members\' — receive nothing from this device.'**
+  String get verifiedOnlyOnBody;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Only sync with verified devices?'**
+  String get verifiedOnlyConfirmTitle;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Your expenses, payments and group changes will only be sent to devices you have verified by comparing emojis (Devices page for your own, the members page for others).\n\nUnverified devices — including a member\'s new phone or your own new login — get nothing until you verify them, so they fall behind. Records you receive are still accepted; the details show whether the signing device is verified.\n\nApplies to this device and account only.'**
+  String get verifiedOnlyConfirmBody;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get verifiedOnlyTurnOn;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 unverified device} other{{count} unverified devices}}'**
+  String memberUnverifiedDevices(int count);
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Not reachable — no verified device'**
+  String get memberNotReachableUnverified;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Devices of {name}'**
+  String memberDevicesTitle(Object name);
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Verify a device by comparing emojis with its owner (in person or on a call). Verification is stored on this device only.'**
+  String get memberDevicesBody;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'No active devices.'**
+  String get memberHasNoDevices;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Verification request'**
+  String get incomingVerificationTitle;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Your device {device} wants to verify this device by comparing emojis.'**
+  String incomingVerificationOwnDevice(Object device);
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'{user} (device {device}) wants to verify this device by comparing emojis.'**
+  String incomingVerificationMember(Object user, Object device);
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get accept;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get decline;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'You verified this device (emoji comparison).'**
+  String get recordDeviceVerifiedByYou;
+
+  /// G11 device-verification enforcement
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t verified this device (emoji comparison).'**
+  String get recordDeviceNotVerifiedByYou;
 }
 
 class _AppLocalizationsDelegate

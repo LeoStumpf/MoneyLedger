@@ -9,6 +9,7 @@ import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/sync/delivery_policy.dart';
 import '../../core/sync/left_groups.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
@@ -78,7 +79,10 @@ class _GroupWriteContext {
       settings = ref.read(settingsDaoProvider),
       signing = ref.read(signingDaoProvider),
       health = ref.read(syncHealthProvider.notifier),
-      transport = ref.read(ledgerTransportProvider.future) {
+      transport = withDeliveryPolicy(
+        ref.read(ledgerTransportProvider.future),
+        ref.read(settingsDaoProvider),
+      ) {
     // Not every mutation awaits the transport (e.g. a solo-group delete);
     // don't let an unused transport failure surface as an unhandled error.
     transport.ignore();

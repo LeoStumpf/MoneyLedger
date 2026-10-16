@@ -425,7 +425,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'c38387545aac89f527557a1021aef3dd1f403c89';
+String _$groupCreatorHash() => r'e56a04ccea931a1cf96911d4c1ce74eda939744d';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -477,7 +477,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'0a0cf281e92945c8e584bfc3c2608be125771d16';
+String _$memberAdderHash() => r'b41323301f7682eb4382b2a0c829d01d00b756ac';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -529,7 +529,7 @@ final class MemberRemoverProvider
   }
 }
 
-String _$memberRemoverHash() => r'61e337646abbcc5060611cb19da97fa162cba8de';
+String _$memberRemoverHash() => r'9463ec01bd00fe71c889c2bf610534da5d688478';
 
 abstract class _$MemberRemover extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -616,7 +616,7 @@ final class ProfileNameRefreshProvider
 }
 
 String _$profileNameRefreshHash() =>
-    r'd7e2205372bf2adc7b63aea6383a5a767de446e8';
+    r'fc5e4e1aa07a40881103d7676d4232a49cf3ef7c';
 
 /// Leave / delete a group (G9). Both end with the group **purged** from the
 /// local DB and a device-local [LeftGroupTombstone], so a late digest or
@@ -663,7 +663,7 @@ final class GroupExiterProvider
   }
 }
 
-String _$groupExiterHash() => r'3040ab000f200df33e1ad487204e6ace716a56b3';
+String _$groupExiterHash() => r'fa5fc6ddc6f766b9ed715b0964cc6ecc09c759c0';
 
 /// Leave / delete a group (G9). Both end with the group **purged** from the
 /// local DB and a device-local [LeftGroupTombstone], so a late digest or
@@ -736,7 +736,7 @@ final class GroupEditorProvider
   }
 }
 
-String _$groupEditorHash() => r'e84ea00beddbb71c8af63a34621fcc9081df0e5a';
+String _$groupEditorHash() => r'e5c4f6581851354ffd8ef0d8a176b2497b177070';
 
 /// Edits a group's meta — name and default currency (G10). Any active member
 /// may edit. Persisted as an LWW meta upsert with a fresh clock and relayed

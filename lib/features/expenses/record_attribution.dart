@@ -8,6 +8,8 @@ import '../../core/sync/record_verifier.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/member_model.dart';
 import '../../models/record_signature.dart';
+import '../../core/matrix/record_crypto.dart';
+import '../devices/device_provider.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 
@@ -24,6 +26,17 @@ final rejectedVersionProvider = StreamProvider.autoDispose
           .watch(signingDaoProvider)
           .watchRejected(r.group, r.kind.wire, r.id),
     );
+
+/// G11: whether the device that signed [s] is one this account verified by
+/// emoji comparison (exact user, device and key). Null for our own
+/// signatures — G6 already flags "not from one of your devices". Pure.
+bool? signerVerifiedByMe(
+  RecordSignature s, {
+  required String myMxid,
+  required Set<SignerId> trusted,
+}) => s.user == myMxid
+    ? null
+    : trusted.contains(SignerId(user: s.user, device: s.device, key: s.key));
 
 /// The display name for the account [mxid] in a group: "you" for ourselves,
 /// else the participant it claims, else its localpart.
@@ -153,6 +166,7 @@ class RecordAttribution extends ConsumerWidget {
         ref.watch(groupMembersProvider(groupId)).value ??
         const <MemberModel>[];
     final keys = ref.watch(knownDeviceKeysProvider).value ?? const [];
+    final trusted = ref.watch(trustedDevicesProvider).value ?? const {};
     final me = ref.watch(currentUserIdProvider);
     final rejected = ref
         .watch(
@@ -192,7 +206,7 @@ class RecordAttribution extends ConsumerWidget {
                   a.problem ? Icons.gpp_maybe_outlined : Icons.info_outline,
                   color: a.problem ? theme.colorScheme.error : null,
                 ),
-                onPressed: () => _showDetails(context, keys, name),
+                onPressed: () => _showDetails(context, keys, name, me, trusted),
               ),
           ],
         ),
@@ -226,6 +240,8 @@ class RecordAttribution extends ConsumerWidget {
     BuildContext context,
     List<KnownKey> keys,
     String Function(String) name,
+    String me,
+    Set<SignerId> trusted,
   ) {
     final l = context.l10n;
     String statusText(RecordSignature s) {
@@ -247,6 +263,13 @@ class RecordAttribution extends ConsumerWidget {
           Text(title, style: Theme.of(context).textTheme.titleSmall),
           Text(l.recordSignedByDevice(s.device, context.date(at))),
           Text(statusText(s)),
+          if (signerVerifiedByMe(s, myMxid: me, trusted: trusted)
+              case final byMe?)
+            Text(
+              byMe
+                  ? l.recordDeviceVerifiedByYou
+                  : l.recordDeviceNotVerifiedByYou,
+            ),
         ],
       ),
     );

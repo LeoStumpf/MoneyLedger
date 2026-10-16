@@ -361,12 +361,18 @@ class _TrackingTransport implements LedgerTransport {
   Future<SendResult> sendToUsers(
     Set<String> userIds,
     String type,
-    Map<String, dynamic> content,
-  ) async {
+    Map<String, dynamic> content, {
+    DeliveryPolicy policy = DeliveryPolicy.everyone,
+  }) async {
     _inFlight++;
     _touch();
     try {
-      final r = await _inner.sendToUsers(userIds, type, content);
+      final r = await _inner.sendToUsers(
+        userIds,
+        type,
+        content,
+        policy: policy,
+      );
       sent++;
       return r;
     } finally {

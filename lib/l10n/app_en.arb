@@ -912,5 +912,99 @@
   "recordSignatureWarning": "Signature problem",
   "@recordSignatureWarning": {
     "description": "G6: list icon tooltip"
+  },
+  "peerHasNoVerifiedDevice": "{peer} has no verified device — verify one to sync (only verified devices are synced)",
+  "@peerHasNoVerifiedDevice": {
+    "description": "G11 device-verification enforcement",
+    "placeholders": {
+      "peer": {}
+    }
+  },
+  "verifiedOnlyTitle": "Only sync with verified devices",
+  "@verifiedOnlyTitle": {
+    "description": "G11 device-verification enforcement"
+  },
+  "verifiedOnlyOffBody": "Off: every device of your group members (and your own) receives your ledger data.",
+  "@verifiedOnlyOffBody": {
+    "description": "G11 device-verification enforcement"
+  },
+  "verifiedOnlyOnBody": "On: devices you haven't verified by emoji comparison — yours or other members' — receive nothing from this device.",
+  "@verifiedOnlyOnBody": {
+    "description": "G11 device-verification enforcement"
+  },
+  "verifiedOnlyConfirmTitle": "Only sync with verified devices?",
+  "@verifiedOnlyConfirmTitle": {
+    "description": "G11 device-verification enforcement"
+  },
+  "verifiedOnlyConfirmBody": "Your expenses, payments and group changes will only be sent to devices you have verified by comparing emojis (Devices page for your own, the members page for others).\n\nUnverified devices — including a member's new phone or your own new login — get nothing until you verify them, so they fall behind. Records you receive are still accepted; the details show whether the signing device is verified.\n\nApplies to this device and account only.",
+  "@verifiedOnlyConfirmBody": {
+    "description": "G11 device-verification enforcement"
+  },
+  "verifiedOnlyTurnOn": "Turn on",
+  "@verifiedOnlyTurnOn": {
+    "description": "G11 device-verification enforcement"
+  },
+  "memberUnverifiedDevices": "{count, plural, =1{1 unverified device} other{{count} unverified devices}}",
+  "@memberUnverifiedDevices": {
+    "description": "G11 device-verification enforcement",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memberNotReachableUnverified": "Not reachable — no verified device",
+  "@memberNotReachableUnverified": {
+    "description": "G11 device-verification enforcement"
+  },
+  "memberDevicesTitle": "Devices of {name}",
+  "@memberDevicesTitle": {
+    "description": "G11 device-verification enforcement",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "memberDevicesBody": "Verify a device by comparing emojis with its owner (in person or on a call). Verification is stored on this device only.",
+  "@memberDevicesBody": {
+    "description": "G11 device-verification enforcement"
+  },
+  "memberHasNoDevices": "No active devices.",
+  "@memberHasNoDevices": {
+    "description": "G11 device-verification enforcement"
+  },
+  "incomingVerificationTitle": "Verification request",
+  "@incomingVerificationTitle": {
+    "description": "G11 device-verification enforcement"
+  },
+  "incomingVerificationOwnDevice": "Your device {device} wants to verify this device by comparing emojis.",
+  "@incomingVerificationOwnDevice": {
+    "description": "G11 device-verification enforcement",
+    "placeholders": {
+      "device": {}
+    }
+  },
+  "incomingVerificationMember": "{user} (device {device}) wants to verify this device by comparing emojis.",
+  "@incomingVerificationMember": {
+    "description": "G11 device-verification enforcement",
+    "placeholders": {
+      "user": {},
+      "device": {}
+    }
+  },
+  "accept": "Accept",
+  "@accept": {
+    "description": "G11 device-verification enforcement"
+  },
+  "decline": "Decline",
+  "@decline": {
+    "description": "G11 device-verification enforcement"
+  },
+  "recordDeviceVerifiedByYou": "You verified this device (emoji comparison).",
+  "@recordDeviceVerifiedByYou": {
+    "description": "G11 device-verification enforcement"
+  },
+  "recordDeviceNotVerifiedByYou": "You haven't verified this device (emoji comparison).",
+  "@recordDeviceNotVerifiedByYou": {
+    "description": "G11 device-verification enforcement"
   }
 }

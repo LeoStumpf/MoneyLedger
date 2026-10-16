@@ -36,6 +36,9 @@ class HmacKeyRegistry implements DeviceKeyDirectory {
   HmacRecordCrypto unlistedCrypto(String user, String device) =>
       _newCrypto(user, device);
 
+  /// The key the directory lists for [device] of [user] (null: unlisted).
+  String? listedKey(String user, String device) => _directory[user]?[device];
+
   /// Sign-out: [device] disappears from the directory (its key still
   /// verifies old signatures).
   void removeDevice(String user, String device) {
