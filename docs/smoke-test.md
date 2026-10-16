@@ -131,6 +131,7 @@ Expected results are in *italics*.
 | 7.9 | A adds an expense with B's app in the foreground → *A's cloud turns "Synced" within ~6 s (B's fast ack, G36)* | 2dev |
 | 7.10 | B (emulator): `svc wifi disable; svc data disable`, wait 1–3 min, enable one of them (network switch); A adds → *arrives on B without restarting the app* (G36) | 2dev |
 | 7.11 | Debug build only: Settings → "Run background sync now (debug)" → swipe the app away → *after ~15 s logcat shows a `[bg]` round*; release build → *no such entry* (G36) | emu |
+| 7.12 | Update an install from before G45 (account also used in Element) → *logcat `[g45] cleared sync data of the previous sync filter` once; sync, invite, SAS still work; Element shows the device not as online / presence unchanged*; `GET /_matrix/client/v3/user/<mxid>/filter/<id>` (id from logcat/SDK store) → *the minimal filter (`rooms: []`)* (G45) | 2dev |
 
 ## 8. Backup (JSON) and CSV
 

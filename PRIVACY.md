@@ -19,6 +19,7 @@ MoneyLedger server that could receive your data.
 | Account | Your existing Matrix account (on a homeserver you choose) — or none at all (local mode) |
 | Where your ledger lives | On the devices of the group's members |
 | What the homeserver can read | Nothing of the ledger — only encrypted messages and their metadata |
+| What the homeserver keeps | Your account, its devices and their encryption keys, and encrypted messages until they are delivered — no rooms, no presence, no account settings from MoneyLedger |
 | Analytics, crash reporting, ads, tracking | None |
 | Leaves the device | Encrypted sync messages, sign-in and profile / device lookups — to your homeserver only; a CSV or backup file only when you export one |
 | Third parties (Google, CDNs, …) | None — links open in your browser only when you tap them |
@@ -34,12 +35,20 @@ expenses and payments in a group are visible to all of its members.
 
 To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix
 to-device message to the other members' devices. Your homeserver (and the
-homeservers of the other members) relay these messages and queue them until
-they are delivered, but cannot read them. They do see metadata: which accounts
-and devices exchange messages, when, how often and roughly how large they are.
-Your Matrix account itself — user name, devices, encryption keys, IP addresses
-and sign-in history — is handled by your homeserver under its own privacy
-policy.
+homeservers of the other members) relay these messages and keep each one only
+until the receiving device has fetched it, but cannot read them. They do see
+metadata: which accounts and devices exchange messages, when, how often and
+roughly how large they are. MoneyLedger creates no rooms, saves nothing in your
+account's settings and never marks you as online; when it syncs, it asks your
+homeserver only for these messages and for encryption-key updates — not for
+your rooms, presence or account settings. What your homeserver still keeps is
+what every Matrix app needs: your account, its list of devices (this one is
+named “MoneyLedger”, with when and from which IP address it was last used),
+each device's public encryption keys and one-time keys, and the messages above
+until they are delivered (for a device that never comes back, until it is
+removed). Your Matrix account itself — user name, devices, encryption keys, IP
+addresses and sign-in history — is handled by your homeserver under its own
+privacy policy.
 
 ## No analytics, no servers of ours
 

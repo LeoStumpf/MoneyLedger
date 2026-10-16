@@ -536,10 +536,10 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       (release builds now log nothing, SDK only `wtf`)
 
 ### G45. Minimal Matrix footprint (goal 5) 🟠
-- [ ] Minimal `syncFilter` (no rooms, presence, account data) +
+- [x] Minimal `syncFilter` (no rooms, presence, account data) +
       `syncPresence = offline` in `buildMatrixClient` (also used by the
       background round); to-device delivery must be unaffected
-- [ ] Decide device display name ("MoneyLedger") + whether the profile-name
+- [x] Decide device display name ("MoneyLedger") + whether the profile-name
       refresh should stay automatic; document what the homeserver still keeps
       (account, devices, keys, undelivered messages, who talks to whom)
 - [ ] Two-device smoke (sync, invite, SAS) + `docs/smoke-test.md`
@@ -673,7 +673,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G18 — final release review
 - [x] G43 — privacy promises true (web CDN, matrix.org probes, privacy texts)
 - [x] G44 — small release fixes (license label, AGP blob, release logging)
-- [ ] G45 — minimal Matrix footprint (sync filter, presence)
+- [x] G45 — minimal Matrix footprint (sync filter, presence) — device smoke 7.12 moved to the end
 - [ ] G46 — UX quick wins
 - [ ] G47 — custom categories + dropdown
 - [ ] G48 — restore points + revert
@@ -684,6 +684,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
 - [ ] G55 — web glyph coverage without Google (found in G43)
+- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check
 
 ---
 
