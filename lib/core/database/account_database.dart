@@ -8,7 +8,9 @@
 /// Installs from before G4 kept everything in one global `money_ledger_db`.
 /// The first account to open its per-account DB that plausibly **owns** that
 /// legacy ledger adopts it (rows are copied in; the legacy DB is marked so it
-/// is never adopted twice) — see [adoptLegacyLedger].
+/// is never adopted twice) — see [adoptLegacyLedger]. On a later start it is
+/// deleted when no other account could still need it ([cleanupLegacyLedger],
+/// G36).
 library;
 
 import 'dart:convert';
@@ -29,6 +31,10 @@ const legacyAdoptedIntoKey = 'legacy_adopted_into';
 /// AppSettings key in a **per-account** DB: the legacy check has completed
 /// (adopted, nothing to adopt, or not ours) — don't re-check on every open.
 const legacyCheckedKey = 'legacy_checked';
+
+/// AppSettings key in a **per-account** DB (G36): the legacy-DB cleanup is
+/// settled — deleted, absent, or kept for another account for good.
+const legacyCleanupKey = 'legacy_cleanup_done';
 
 /// Deterministic, filename-safe database name for [mxid]:
 /// `money_ledger_<16 hex chars>`. The raw MXID never appears in a filename /
@@ -82,18 +88,100 @@ bool shouldAdoptLegacy({
 /// open if applicable. The production `accountDatabaseOpenerProvider`.
 AppDatabase openAccountDatabase(String mxid) {
   final name = accountDatabaseName(mxid);
+  Future<AppDatabase?> openLegacy() async =>
+      await databaseExists(legacyDatabaseName)
+      ? AppDatabase.named(legacyDatabaseName)
+      : null;
   return AppDatabase.named(
     name,
-    onOpen: (db) => adoptLegacyLedger(
-      target: db,
-      targetName: name,
-      mxid: mxid,
-      openLegacy: () async => await databaseExists(legacyDatabaseName)
-          ? AppDatabase.named(legacyDatabaseName)
-          : null,
-    ),
+    onOpen: (db) async {
+      // G36: a start *after* the check (adopted or not) may delete the legacy
+      // DB; the adopting open itself never does (adopt now, delete next start).
+      if (await cleanupLegacyLedger(
+        target: db,
+        openLegacy: openLegacy,
+        deleteLegacy: () => deleteDatabase(legacyDatabaseName),
+      )) {
+        return;
+      }
+      await adoptLegacyLedger(
+        target: db,
+        targetName: name,
+        mxid: mxid,
+        openLegacy: openLegacy,
+      );
+    },
   );
 }
+
+/// G36: whether the legacy ledger may be deleted — it was adopted
+/// ([adoptedInto] set) and **every** account it claimed is the adopting one
+/// (or it claimed none: only local / CSV participants). Any other claimed
+/// account might still sign in on this device and need it → keep it.
+@visibleForTesting
+bool canDeleteLegacy({
+  required String? adoptedInto,
+  required Set<String> legacyClaimedMatrixIds,
+}) =>
+    adoptedInto != null &&
+    legacyClaimedMatrixIds.every((m) => accountDatabaseName(m) == adoptedInto);
+
+/// G36: on an open of [target] whose legacy check already completed
+/// ([legacyCheckedKey]) on an earlier start, deletes the legacy DB if
+/// [canDeleteLegacy]. Marks [target] [legacyCleanupKey] once settled for good
+/// (deleted, absent, or adopted but kept for another account); a not-yet-
+/// adopted legacy DB is re-checked on later starts (another account may adopt
+/// it meanwhile). Returns whether [target] had completed its legacy check
+/// before (then there is nothing to adopt). Never throws.
+Future<bool> cleanupLegacyLedger({
+  required AppDatabase target,
+  required Future<AppDatabase?> Function() openLegacy,
+  required Future<void> Function() deleteLegacy,
+}) async {
+  try {
+    if (await _getSetting(target, legacyCheckedKey) == null) return false;
+    if (await _getSetting(target, legacyCleanupKey) != null) return true;
+    final legacy = await openLegacy();
+    if (legacy == null) {
+      await _setSetting(target, legacyCleanupKey, 'absent');
+      return true;
+    }
+    final String? adoptedInto;
+    final Set<String> claimed;
+    try {
+      adoptedInto = await _getSetting(legacy, legacyAdoptedIntoKey);
+      claimed = await _claimedMatrixIds(legacy);
+    } finally {
+      await legacy.close();
+    }
+    if (adoptedInto == null) return true; // another account may adopt it
+    if (canDeleteLegacy(
+      adoptedInto: adoptedInto,
+      legacyClaimedMatrixIds: claimed,
+    )) {
+      await deleteLegacy();
+      debugPrint('[db] deleted the adopted legacy ledger');
+      await _setSetting(target, legacyCleanupKey, 'deleted');
+    } else {
+      debugPrint('[db] legacy ledger kept: other accounts are claimed in it');
+      await _setSetting(target, legacyCleanupKey, 'kept');
+    }
+    return true;
+  } catch (e) {
+    debugPrint('[db] legacy ledger cleanup failed (will retry): $e');
+    return true;
+  }
+}
+
+Future<Set<String>> _claimedMatrixIds(AppDatabase db) async =>
+    (await db
+            .customSelect(
+              'SELECT DISTINCT matrix_id FROM members '
+              'WHERE matrix_id IS NOT NULL',
+            )
+            .get())
+        .map((r) => r.read<String>('matrix_id'))
+        .toSet();
 
 /// One-time migration of the pre-G4 global ledger into [target] (the freshly
 /// opened per-account DB for [mxid]). Runs from `beforeOpen`, so [target] is
@@ -103,8 +191,9 @@ AppDatabase openAccountDatabase(String mxid) {
 /// Idempotent and crash-safe: rows are copied with `INSERT OR IGNORE` inside a
 /// transaction (never clobbering anything already in [target]), then the legacy
 /// DB is marked [legacyAdoptedIntoKey], then [target] is marked
-/// [legacyCheckedKey]. The legacy DB itself is left in place (not deleted) —
-/// non-destructive; it's simply never adopted again.
+/// [legacyCheckedKey]. The legacy DB itself is left in place here — it is
+/// deleted on a **later** start by [cleanupLegacyLedger] (G36) once no other
+/// account could need it; it's never adopted again.
 ///
 /// [openLegacy] returns `null` when no legacy DB exists (checked without
 /// creating one). Returns whether rows were adopted.
@@ -121,15 +210,7 @@ Future<bool> adoptLegacyLedger({
     var adopted = false;
     if (legacy != null) {
       try {
-        final claimed =
-            (await legacy
-                    .customSelect(
-                      'SELECT DISTINCT matrix_id FROM members '
-                      'WHERE matrix_id IS NOT NULL',
-                    )
-                    .get())
-                .map((r) => r.read<String>('matrix_id'))
-                .toSet();
+        final claimed = await _claimedMatrixIds(legacy);
         final adoptedInto = await _getSetting(legacy, legacyAdoptedIntoKey);
         if (shouldAdoptLegacy(
           mxid: mxid,

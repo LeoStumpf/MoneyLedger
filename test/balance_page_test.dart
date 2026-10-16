@@ -6,6 +6,7 @@ import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
+import 'package:money_ledger/core/widgets/names_line.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/models/expense_model.dart';
@@ -21,6 +22,10 @@ import 'helpers/test_providers.dart';
 import 'helpers/eventually.dart';
 
 const _roomId = '!test:matrix.org';
+
+/// A suggested-payment title (G33: a [NamesLine], each name its own Text).
+Finder _debtTitle(String text) =>
+    find.byWidgetPredicate((w) => w is NamesLine && w.fullText == text);
 
 void main() {
   group('BalancePage', () {
@@ -63,14 +68,60 @@ void main() {
       await tester.pump();
 
       // G17: per-person balances (names fall back to the MXID localpart)…
-      expect(find.text('bob'), findsOneWidget);
-      expect(find.text('carol'), findsOneWidget);
-      expect(find.text('alice'), findsOneWidget);
+      // (Each name also appears once per suggested-payment line it's in.)
+      expect(find.text('bob'), findsNWidgets(2));
+      expect(find.text('carol'), findsNWidgets(2));
+      expect(find.text('alice'), findsNWidgets(3));
       expect(find.text('gets back'), findsOneWidget);
       expect(find.text('owes'), findsNWidgets(2));
       // …and the suggested payments.
-      expect(find.text('bob pays alice'), findsOneWidget);
-      expect(find.text('carol pays alice'), findsOneWidget);
+      expect(_debtTitle('bob pays alice'), findsOneWidget);
+      expect(_debtTitle('carol pays alice'), findsOneWidget);
+    });
+
+    testWidgets('G33: a suggested payment between two long names keeps '
+        'both visible, each ellipsized', (tester) async {
+      // (The test font draws every glyph as a square — much wider than a
+      // real one — so give the line some room.)
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      const longA = 'bartholomew-maximilian-featherstonehaugh';
+      const longB = 'wilhelmina-constance-ashby-montgomery';
+      await tester.pumpWidget(
+        testApp(
+          const BalancePage(roomId: _roomId),
+          overrides: testOverrides(
+            isLoggedIn: true,
+            debts: [
+              const DebtEntry(
+                from: '@$longA:matrix.org',
+                to: '@$longB:matrix.org',
+                cents: 2100,
+                currency: 'EUR',
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      final title = _debtTitle('$longA pays $longB');
+      expect(title, findsOneWidget);
+      final a = tester.getRect(
+        find.descendant(of: title, matching: find.text(longA)),
+      );
+      final b = tester.getRect(
+        find.descendant(of: title, matching: find.text(longB)),
+      );
+      final pays = tester.getRect(find.text(' pays '));
+      expect(a.width, greaterThan(60));
+      expect(a.width, closeTo(b.width, 1));
+      // Both are cut (their full width wouldn't fit), neither is dropped.
+      expect(a.width, lessThan(longA.length * 14));
+      expect(a.right, lessThanOrEqualTo(pays.left + 0.5));
+      expect(pays.right, lessThanOrEqualTo(b.left + 0.5));
     });
 
     testWidgets('shows "Balance" AppBar title', (tester) async {
@@ -264,7 +315,7 @@ void main() {
       });
       await pumpPage(tester, db, net);
 
-      await tester.tap(find.text('Carl pays you'));
+      await tester.tap(_debtTitle('Carl pays you'));
       await tester.pumpAndSettle();
       expect(find.text('Record payment'), findsOneWidget);
       // Prefilled with the debt's amount; no "exceeds" warning.
@@ -291,7 +342,7 @@ void main() {
       addTearDown(db.close);
       await pumpPage(tester, db, FakeMatrixNetwork());
 
-      await tester.tap(find.text('Bob pays you'));
+      await tester.tap(_debtTitle('Bob pays you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byKey(const Key('paymentAmount')), '12');
       await tester.pump();

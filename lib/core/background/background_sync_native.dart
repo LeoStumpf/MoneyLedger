@@ -7,7 +7,7 @@ library;
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
@@ -25,6 +25,9 @@ import 'background_scheduler.dart';
 /// WorkManager unique work name + task name of the periodic sync.
 const kBackgroundSyncUniqueName = 'moneyledger-background-sync';
 const kBackgroundSyncTaskName = 'app.moneyledger.backgroundSync';
+
+/// G36: unique name of the debug-only one-off round (same task / dispatcher).
+const kBackgroundSyncOnceUniqueName = 'moneyledger-background-sync-once';
 
 /// How long a round that finds the app alive waits for the app's own sync.
 const _delegateTimeout = Duration(seconds: 45);
@@ -92,6 +95,22 @@ class _WorkManagerScheduler implements BackgroundScheduler {
   Future<void> cancel() async {
     await Workmanager().cancelByUniqueName(kBackgroundSyncUniqueName);
     debugPrint('[bg] periodic background sync cancelled');
+  }
+
+  @override
+  Future<void> runOnce({Duration delay = Duration.zero}) async {
+    // Debug-only (G36): the settings sheet shows the action under kDebugMode.
+    if (!kDebugMode) return;
+    await Workmanager().registerOneOffTask(
+      kBackgroundSyncOnceUniqueName,
+      kBackgroundSyncTaskName,
+      initialDelay: delay,
+      constraints: Constraints(networkType: NetworkType.connected),
+      existingWorkPolicy: ExistingWorkPolicy.replace,
+    );
+    debugPrint(
+      '[bg] one-off background round queued (in ${delay.inSeconds} s)',
+    );
   }
 }
 

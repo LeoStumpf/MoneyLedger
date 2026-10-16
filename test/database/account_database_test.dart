@@ -136,6 +136,8 @@ void main() {
     });
   });
 
+  _cleanupTests();
+
   group('adoptLegacyLedger', () {
     // The legacy DB is a temp file so it survives adoptLegacyLedger closing
     // its handle (like the real on-disk money_ledger_db).
@@ -290,6 +292,162 @@ void main() {
       );
       addTearDown(target.close);
       expect((await target.select(target.groups).get()).single.roomId, 'g1');
+    });
+  });
+}
+
+void _cleanupTests() {
+  group('cleanupLegacyLedger (G36)', () {
+    late Directory tmp;
+    late File legacyFile;
+    AppDatabase openLegacyFile() =>
+        AppDatabase.forTesting(NativeDatabase(legacyFile));
+    Future<AppDatabase?> openLegacy() async =>
+        await legacyFile.exists() ? openLegacyFile() : null;
+    Future<void> deleteLegacy() => legacyFile.delete();
+
+    setUp(() async {
+      tmp = await Directory.systemTemp.createTemp('legacy_cleanup_');
+      legacyFile = File('${tmp.path}/money_ledger_db.sqlite');
+    });
+    tearDown(() => tmp.delete(recursive: true));
+
+    Future<void> seed({List<String> claims = const ['@alice:x.org']}) async {
+      final db = openLegacyFile();
+      if (claims.isEmpty) {
+        await db
+            .into(db.groups)
+            .insert(GroupsCompanion.insert(roomId: 'g0', name: 'Local'));
+      }
+      if (claims.isNotEmpty) {
+        await _seedLegacy(db, owner: claims.first, group: 'g0');
+      }
+      for (final c in claims.skip(1)) {
+        await db
+            .into(db.members)
+            .insert(
+              MembersCompanion.insert(
+                groupId: 'g0',
+                userId: c,
+                matrixId: Value(c),
+                updatedAt: 1,
+              ),
+            );
+      }
+      await db.close();
+    }
+
+    /// One app start of [mxid]: the cleanup (if the check ran before),
+    /// else the adoption — exactly like `openAccountDatabase`.
+    Future<void> start(AppDatabase target, String mxid) async {
+      if (await cleanupLegacyLedger(
+        target: target,
+        openLegacy: openLegacy,
+        deleteLegacy: deleteLegacy,
+      )) {
+        return;
+      }
+      await adoptLegacyLedger(
+        target: target,
+        targetName: accountDatabaseName(mxid),
+        mxid: mxid,
+        openLegacy: openLegacy,
+      );
+    }
+
+    Future<String?> setting(AppDatabase db, String key) async =>
+        (await (db.select(
+          db.appSettings,
+        )..where((t) => t.key.equals(key))).getSingleOrNull())?.value;
+
+    test('adopted by its only claimed account → deleted on the next start, '
+        'data kept in the account DB', () async {
+      await seed();
+      final alice = openTestDatabase();
+      addTearDown(alice.close);
+      await start(alice, '@alice:x.org'); // adopts
+      expect(
+        await legacyFile.exists(),
+        isTrue,
+        reason: 'not on the same start',
+      );
+      await start(alice, '@alice:x.org'); // next start: cleanup
+      expect(await legacyFile.exists(), isFalse);
+      expect(await setting(alice, legacyCleanupKey), 'deleted');
+      expect((await alice.select(alice.groups).get()).single.roomId, 'g0');
+      // Further starts: settled, nothing to do.
+      await start(alice, '@alice:x.org');
+      expect(await alice.select(alice.groups).get(), hasLength(1));
+    });
+
+    test('a ledger without claimed accounts is deleted once adopted', () async {
+      await seed(claims: const []);
+      final a = openTestDatabase();
+      addTearDown(a.close);
+      await start(a, '@alice:x.org');
+      await start(a, '@alice:x.org');
+      expect(await legacyFile.exists(), isFalse);
+    });
+
+    test('another claimed account might still need it → kept', () async {
+      await seed(claims: const ['@alice:x.org', '@bob:x.org']);
+      final alice = openTestDatabase();
+      addTearDown(alice.close);
+      await start(alice, '@alice:x.org');
+      await start(alice, '@alice:x.org');
+      expect(await legacyFile.exists(), isTrue);
+      expect(await setting(alice, legacyCleanupKey), 'kept');
+    });
+
+    test('not adopted (someone else\'s ledger) → kept and re-checked; '
+        'deleted after the owner adopts it', () async {
+      await seed();
+      final bob = openTestDatabase();
+      addTearDown(bob.close);
+      await start(bob, '@bob:x.org'); // check: not ours
+      await start(bob, '@bob:x.org'); // cleanup: not adopted yet → keep
+      expect(await legacyFile.exists(), isTrue);
+      expect(await setting(bob, legacyCleanupKey), isNull);
+
+      final alice = openTestDatabase();
+      addTearDown(alice.close);
+      await start(alice, '@alice:x.org'); // adopts
+      await start(bob, '@bob:x.org'); // Bob's next start may delete it now
+      expect(await legacyFile.exists(), isFalse);
+    });
+
+    test('no legacy DB → settled as absent', () async {
+      final a = openTestDatabase();
+      addTearDown(a.close);
+      await start(a, '@alice:x.org');
+      await start(a, '@alice:x.org');
+      expect(await setting(a, legacyCleanupKey), 'absent');
+    });
+
+    test('canDeleteLegacy (pure)', () {
+      final a = accountDatabaseName('@alice:x.org');
+      expect(
+        canDeleteLegacy(adoptedInto: null, legacyClaimedMatrixIds: {}),
+        isFalse,
+      );
+      expect(
+        canDeleteLegacy(adoptedInto: a, legacyClaimedMatrixIds: {}),
+        isTrue,
+      );
+      expect(
+        canDeleteLegacy(
+          adoptedInto: a,
+          legacyClaimedMatrixIds: {'@alice:x.org'},
+        ),
+        isTrue,
+      );
+      expect(
+        canDeleteLegacy(
+          adoptedInto: a,
+          legacyClaimedMatrixIds: {'@alice:x.org', '@bob:x.org'},
+        ),
+        isFalse,
+      );
     });
   });
 }

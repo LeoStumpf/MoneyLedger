@@ -115,7 +115,12 @@ class FakeMatrixNetwork {
       if (dropWhere?.call(sender, target, type) ?? false) continue;
       for (final id in ids) {
         _clients[target]?[id]?._emit(
-          TransportMessage(senderId: sender, type: type, content: content),
+          TransportMessage(
+            senderId: sender,
+            senderDevice: senderDevice.deviceId,
+            type: type,
+            content: content,
+          ),
         );
       }
     }

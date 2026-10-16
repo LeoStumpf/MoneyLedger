@@ -69,7 +69,7 @@ metadata to A's peers and spams them).
       INSERT OR IGNORE, marked on both sides; native + web)
 - [x] Tests: 17 new (naming, adoption, A→B→A switch, SyncHealth reset) — 282 green
 - [ ] Real-account switch on device → G7 smoke checklist
-- [ ] Later: delete the adopted legacy DB once adoption is confirmed (G18)
+- [x] Later: delete the adopted legacy DB once adoption is confirmed (G18)
 
 ### G5. No recovery when the last device is lost 🟠 (data loss)
 Ledger data exists only on members' devices. Recovery relies on *another device*
@@ -300,7 +300,7 @@ between any two participants**; default from/to = the tapped debt row.
 - [x] Sync status lag: reader side marks a peer in sync once convergence is proven
       from that peer's own records (`peer_convergence.dart`) — 22 s → immediate
 - [x] SSO button label: the typed server name / IdP names
-- [ ] Writer side still pending ~27 s after own change (ack = digest after 5 s poke
+- [x] Writer side still pending ~27 s after own change (ack = digest after 5 s poke
       debounce + relay hop) → faster ack (shorter debounce or per-record ack)
 
 ### G30. Auth/first-login robustness (found in G20) 🟠
@@ -314,9 +314,9 @@ between any two participants**; default from/to = the tapped debt row.
 - [x] "Restoring your groups from your other devices…" state (3 min UI timeout;
       skipped when no other own device exists)
 - [x] Timeouts: discovery 10 s, login/register 20 s → friendly "took too long"
-- [ ] A timed-out login still completes in the background (SDK call not cancelled)
+- [x] A timed-out login still completes in the background (SDK call not cancelled)
       → a retry can create a second device; guard against concurrent logins
-- [ ] Queued retries are each answered later → bootstraps sent up to 4×; dedupe
+- [x] Queued retries are each answered later → bootstraps sent up to 4×; dedupe
 
 ### G31. Sync only happens while the app is open (no background sync) 🟠
 To-device messages are queued on the homeserver and only fetched while
@@ -331,7 +331,7 @@ needs a gateway, privacy trade-offs). Web: only while the tab is open.
       a round that finds the app alive delegates a oneShotSync to it
 - [x] Per-account "Background sync" switch (Sync settings sheet); onboarding text
 - [x] Verified: closed emulator app received a phone expense via a background round
-- [ ] Debug-only one-off trigger for manual testing (periodic jobs can't be forced)
+- [x] Debug-only one-off trigger for manual testing (periodic jobs can't be forced)
 - [ ] Push (Matrix pusher → FCM) — out of v1 scope
 
 ### G32. Android auto-backup includes ledger + Matrix crypto keys 🟠
@@ -375,7 +375,7 @@ stale crypto identity (broken sessions) and is a privacy concern.
       (Drift watch stream hangs under the widget-test clock) — document in
       CLAUDE.md testing notes / provide a helper
 
-- [ ] Balance page "You pay <long name>" could use `NamesLine` (wraps today)
+- [x] Balance page "You pay <long name>" could use `NamesLine` (wraps today)
 
 ### G34. Backup follow-ups (found in G5) 🟡
 - [x] Nudge ignores a second device of the same account (would also protect
@@ -406,11 +406,11 @@ Decided by the conductor: inbound records from unverified devices stay
 *flagged*, not quarantined (a permanent refusal wouldn't heal after a later
 verification); the verified-device list stays device-local (not in backups —
 trust is a per-device decision).
-- [ ] Translate the SAS emoji names (Matrix spec ships translations) — the SDK
+- [x] Translate the SAS emoji names (Matrix spec ships translations) — the SDK
       gives English names in the German UI
-- [ ] Matrix sync loop stalled after an emulator network switch until app
+- [x] Matrix sync loop stalled after an emulator network switch until app
       restart (seen once on emulator-5556) — check reconnect/backoff
-- [ ] Verified-only only restricts what *this* device sends; document clearly
+- [x] Verified-only only restricts what *this* device sends; document clearly
       in-app; a new own device can't restore while the setting is on elsewhere
       until verified
 - [ ] SAS against Element sessions (Leo-only smoke 9.2/9.3)
@@ -418,13 +418,19 @@ trust is a per-device decision).
 ### G37. Scale follow-ups (found in G14) 🟢 (not urgent)
 Ceilings today: ~80 members per group (every bootstrap part / digest repeats
 all members), ~30k records (2,048-bucket summary). See CLAUDE.md "Message size".
-- [ ] Store the G27 version hash in a DB column if digest hashing (~150 ms /
+- [x] Store the G27 version hash in a DB column if digest hashing (~150 ms /
       5k records on desktop) is slow on phones — measure on the Pixel
 - [ ] A refused version costs one extra 3-message bucket exchange per cycle
       (bounded); refusals are per clock (blocks other versions at the same ms)
 
 ### G18. Final release review 🟡
 - [ ] `/code-review` over all of Phase G; fix findings
+- [ ] Recreate the pre-G6 test groups ("G7a Test"/"G7a Probe") or document them
+      as legacy-only (G35 decision)
+- [ ] Balance suggestion rows truncate long names to ~4 chars ("mone… zahlt an
+      dich") — allow 2 lines instead of single-line NamesLine there
+- [ ] Delete the local emulator app-data safety copy
+      (scratchpad `emu_appdata_backup.tgz`, contains test-account keys)
 - [ ] `./build.sh` green; release APK on emulator + phone
 - [ ] Docs in sync (CLAUDE.md, README, open-points); release notes
 
@@ -470,7 +476,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G27 — LWW tie-break
 - [x] G33 — design follow-ups (settlement title, test display names)
 - [x] G34+G35 — backup + signed-records follow-ups
-- [ ] G36+ — verification follow-ups + robustness leftovers (G29/G30/G31/G33/G37)
+- [x] G36+ — verification follow-ups + robustness leftovers (G29/G30/G31/G33/G37)
 - [ ] G37 — scale follow-ups (optional)
 - [ ] *(G32+ — newly discovered points)*
 - [ ] G18 — final release review

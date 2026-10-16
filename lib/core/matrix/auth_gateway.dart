@@ -136,3 +136,47 @@ class NotAHomeserverException implements Exception {
   @override
   String toString() => cause.toString();
 }
+
+/// A sign-in / registration was requested while an earlier one is still
+/// running (G36) — typically one whose UI timeout fired while the request
+/// itself carries on (the SDK can't cancel it). Never started in parallel: two
+/// concurrent `client.login`s would create two devices / race over the session.
+class AuthInProgressException implements Exception {
+  const AuthInProgressException();
+
+  @override
+  String toString() => 'AuthInProgressException: a sign-in is still running';
+}
+
+/// Single-flight guard for auth requests (G36). [operation] wraps a whole
+/// login / registration; [track] marks each raw homeserver request inside it,
+/// which may **outlive** the operation when its UI timeout fires. While either
+/// runs, a new [operation] fails with [AuthInProgressException] instead of
+/// starting a parallel request. A late success of the tracked request is
+/// **adopted**: the client signs in and the app follows its login-state
+/// stream (as before) — no second device, nothing to log out.
+class AuthSingleFlight {
+  bool _operation = false;
+  int _pending = 0;
+
+  /// Whether an operation or a (timed-out but still running) request is in
+  /// flight.
+  bool get busy => _operation || _pending > 0;
+
+  Future<T> operation<T>(Future<T> Function() body) async {
+    if (busy) throw const AuthInProgressException();
+    _operation = true;
+    try {
+      return await body();
+    } finally {
+      _operation = false;
+    }
+  }
+
+  /// [request], counted as in flight until it settles (success or error).
+  Future<T> track<T>(Future<T> request) {
+    _pending++;
+    request.then<void>((_) {}, onError: (_) {}).whenComplete(() => _pending--);
+    return request;
+  }
+}

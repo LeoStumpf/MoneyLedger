@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:money_ledger/core/background/background_scheduler.dart';
 import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/core/sync/self_recovery.dart';
 import 'package:money_ledger/core/sync/sync_health.dart';
@@ -143,6 +144,38 @@ void main() {
 
       expect(find.text('No background sync here'), findsOneWidget);
       expect(find.byKey(const Key('backgroundSyncSwitch')), findsNothing);
+      expect(find.byKey(const Key('debugRunBackgroundSync')), findsNothing);
+    });
+
+    testWidgets('G36: debug builds offer a one-off background round', (
+      tester,
+    ) async {
+      final scheduler = _OnceScheduler();
+      await tester.pumpWidget(
+        testApp(
+          const GroupsPage(),
+          overrides: [
+            ...testOverrides(isLoggedIn: true),
+            backgroundSyncSupportedProvider.overrideWithValue(true),
+            backgroundSchedulerProvider.overrideWithValue(scheduler),
+            backgroundSyncEnabledProvider.overrideWith(
+              (_) => Stream.value(true),
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+
+      // Tests run in debug mode (kDebugMode) — release builds hide it.
+      final tile = find.byKey(const Key('debugRunBackgroundSync'));
+      expect(tile, findsOneWidget);
+      await tester.ensureVisible(tile);
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+      expect(scheduler.runs, [kDebugBackgroundRunDelay]);
+      expect(find.text('Background round queued.'), findsOneWidget);
     });
 
     testWidgets('shows logout icon button in app bar', (tester) async {
@@ -365,4 +398,15 @@ class _LegacyRefusedHealth extends SyncHealth {
       ),
     },
   );
+}
+
+class _OnceScheduler implements BackgroundScheduler {
+  final runs = <Duration>[];
+  @override
+  Future<void> schedule() async {}
+  @override
+  Future<void> cancel() async {}
+  @override
+  Future<void> runOnce({Duration delay = Duration.zero}) async =>
+      runs.add(delay);
 }

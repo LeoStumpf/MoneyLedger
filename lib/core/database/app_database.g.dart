@@ -590,6 +590,17 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _versionHashMeta = const VerificationMeta(
+    'versionHash',
+  );
+  @override
+  late final GeneratedColumn<String> versionHash = GeneratedColumn<String>(
+    'version_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -608,6 +619,7 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     pendingSign,
     category,
     note,
+    versionHash,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -742,6 +754,15 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('version_hash')) {
+      context.handle(
+        _versionHashMeta,
+        versionHash.isAcceptableOrUnknown(
+          data['version_hash']!,
+          _versionHashMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -815,6 +836,10 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      versionHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}version_hash'],
+      ),
     );
   }
 
@@ -841,6 +866,7 @@ class Expense extends DataClass implements Insertable<Expense> {
   final bool pendingSign;
   final String? category;
   final String? note;
+  final String? versionHash;
   const Expense({
     required this.id,
     required this.roomId,
@@ -858,6 +884,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     required this.pendingSign,
     this.category,
     this.note,
+    this.versionHash,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -888,6 +915,9 @@ class Expense extends DataClass implements Insertable<Expense> {
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    if (!nullToAbsent || versionHash != null) {
+      map['version_hash'] = Variable<String>(versionHash);
+    }
     return map;
   }
 
@@ -915,6 +945,9 @@ class Expense extends DataClass implements Insertable<Expense> {
           ? const Value.absent()
           : Value(category),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      versionHash: versionHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(versionHash),
     );
   }
 
@@ -940,6 +973,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
       category: serializer.fromJson<String?>(json['category']),
       note: serializer.fromJson<String?>(json['note']),
+      versionHash: serializer.fromJson<String?>(json['versionHash']),
     );
   }
   @override
@@ -962,6 +996,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       'pendingSign': serializer.toJson<bool>(pendingSign),
       'category': serializer.toJson<String?>(category),
       'note': serializer.toJson<String?>(note),
+      'versionHash': serializer.toJson<String?>(versionHash),
     };
   }
 
@@ -982,6 +1017,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     bool? pendingSign,
     Value<String?> category = const Value.absent(),
     Value<String?> note = const Value.absent(),
+    Value<String?> versionHash = const Value.absent(),
   }) => Expense(
     id: id ?? this.id,
     roomId: roomId ?? this.roomId,
@@ -1001,6 +1037,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     pendingSign: pendingSign ?? this.pendingSign,
     category: category.present ? category.value : this.category,
     note: note.present ? note.value : this.note,
+    versionHash: versionHash.present ? versionHash.value : this.versionHash,
   );
   Expense copyWithCompanion(ExpensesCompanion data) {
     return Expense(
@@ -1030,6 +1067,9 @@ class Expense extends DataClass implements Insertable<Expense> {
           : this.pendingSign,
       category: data.category.present ? data.category.value : this.category,
       note: data.note.present ? data.note.value : this.note,
+      versionHash: data.versionHash.present
+          ? data.versionHash.value
+          : this.versionHash,
     );
   }
 
@@ -1051,7 +1091,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('origin: $origin, ')
           ..write('pendingSign: $pendingSign, ')
           ..write('category: $category, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('versionHash: $versionHash')
           ..write(')'))
         .toString();
   }
@@ -1074,6 +1115,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     pendingSign,
     category,
     note,
+    versionHash,
   );
   @override
   bool operator ==(Object other) =>
@@ -1094,7 +1136,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.origin == this.origin &&
           other.pendingSign == this.pendingSign &&
           other.category == this.category &&
-          other.note == this.note);
+          other.note == this.note &&
+          other.versionHash == this.versionHash);
 }
 
 class ExpensesCompanion extends UpdateCompanion<Expense> {
@@ -1114,6 +1157,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<bool> pendingSign;
   final Value<String?> category;
   final Value<String?> note;
+  final Value<String?> versionHash;
   final Value<int> rowid;
   const ExpensesCompanion({
     this.id = const Value.absent(),
@@ -1132,6 +1176,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.pendingSign = const Value.absent(),
     this.category = const Value.absent(),
     this.note = const Value.absent(),
+    this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ExpensesCompanion.insert({
@@ -1151,6 +1196,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.pendingSign = const Value.absent(),
     this.category = const Value.absent(),
     this.note = const Value.absent(),
+    this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        roomId = Value(roomId),
@@ -1177,6 +1223,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<bool>? pendingSign,
     Expression<String>? category,
     Expression<String>? note,
+    Expression<String>? versionHash,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1196,6 +1243,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       if (pendingSign != null) 'pending_sign': pendingSign,
       if (category != null) 'category': category,
       if (note != null) 'note': note,
+      if (versionHash != null) 'version_hash': versionHash,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1217,6 +1265,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Value<bool>? pendingSign,
     Value<String?>? category,
     Value<String?>? note,
+    Value<String?>? versionHash,
     Value<int>? rowid,
   }) {
     return ExpensesCompanion(
@@ -1236,6 +1285,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       pendingSign: pendingSign ?? this.pendingSign,
       category: category ?? this.category,
       note: note ?? this.note,
+      versionHash: versionHash ?? this.versionHash,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1291,6 +1341,9 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (versionHash.present) {
+      map['version_hash'] = Variable<String>(versionHash.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1316,6 +1369,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('pendingSign: $pendingSign, ')
           ..write('category: $category, ')
           ..write('note: $note, ')
+          ..write('versionHash: $versionHash, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1470,6 +1524,17 @@ class $SettlementsTable extends Settlements
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _versionHashMeta = const VerificationMeta(
+    'versionHash',
+  );
+  @override
+  late final GeneratedColumn<String> versionHash = GeneratedColumn<String>(
+    'version_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1485,6 +1550,7 @@ class $SettlementsTable extends Settlements
     sig,
     origin,
     pendingSign,
+    versionHash,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1596,6 +1662,15 @@ class $SettlementsTable extends Settlements
         ),
       );
     }
+    if (data.containsKey('version_hash')) {
+      context.handle(
+        _versionHashMeta,
+        versionHash.isAcceptableOrUnknown(
+          data['version_hash']!,
+          _versionHashMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1657,6 +1732,10 @@ class $SettlementsTable extends Settlements
         DriftSqlType.bool,
         data['${effectivePrefix}pending_sign'],
       )!,
+      versionHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}version_hash'],
+      ),
     );
   }
 
@@ -1680,6 +1759,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
   final String? sig;
   final String? origin;
   final bool pendingSign;
+  final String? versionHash;
   const Settlement({
     required this.id,
     required this.roomId,
@@ -1694,6 +1774,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     this.sig,
     this.origin,
     required this.pendingSign,
+    this.versionHash,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1717,6 +1798,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       map['origin'] = Variable<String>(origin);
     }
     map['pending_sign'] = Variable<bool>(pendingSign);
+    if (!nullToAbsent || versionHash != null) {
+      map['version_hash'] = Variable<String>(versionHash);
+    }
     return map;
   }
 
@@ -1739,6 +1823,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           ? const Value.absent()
           : Value(origin),
       pendingSign: Value(pendingSign),
+      versionHash: versionHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(versionHash),
     );
   }
 
@@ -1761,6 +1848,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       sig: serializer.fromJson<String?>(json['sig']),
       origin: serializer.fromJson<String?>(json['origin']),
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
+      versionHash: serializer.fromJson<String?>(json['versionHash']),
     );
   }
   @override
@@ -1780,6 +1868,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       'sig': serializer.toJson<String?>(sig),
       'origin': serializer.toJson<String?>(origin),
       'pendingSign': serializer.toJson<bool>(pendingSign),
+      'versionHash': serializer.toJson<String?>(versionHash),
     };
   }
 
@@ -1797,6 +1886,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     Value<String?> sig = const Value.absent(),
     Value<String?> origin = const Value.absent(),
     bool? pendingSign,
+    Value<String?> versionHash = const Value.absent(),
   }) => Settlement(
     id: id ?? this.id,
     roomId: roomId ?? this.roomId,
@@ -1813,6 +1903,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     sig: sig.present ? sig.value : this.sig,
     origin: origin.present ? origin.value : this.origin,
     pendingSign: pendingSign ?? this.pendingSign,
+    versionHash: versionHash.present ? versionHash.value : this.versionHash,
   );
   Settlement copyWithCompanion(SettlementsCompanion data) {
     return Settlement(
@@ -1835,6 +1926,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       pendingSign: data.pendingSign.present
           ? data.pendingSign.value
           : this.pendingSign,
+      versionHash: data.versionHash.present
+          ? data.versionHash.value
+          : this.versionHash,
     );
   }
 
@@ -1853,7 +1947,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           ..write('deleted: $deleted, ')
           ..write('sig: $sig, ')
           ..write('origin: $origin, ')
-          ..write('pendingSign: $pendingSign')
+          ..write('pendingSign: $pendingSign, ')
+          ..write('versionHash: $versionHash')
           ..write(')'))
         .toString();
   }
@@ -1873,6 +1968,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     sig,
     origin,
     pendingSign,
+    versionHash,
   );
   @override
   bool operator ==(Object other) =>
@@ -1890,7 +1986,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           other.deleted == this.deleted &&
           other.sig == this.sig &&
           other.origin == this.origin &&
-          other.pendingSign == this.pendingSign);
+          other.pendingSign == this.pendingSign &&
+          other.versionHash == this.versionHash);
 }
 
 class SettlementsCompanion extends UpdateCompanion<Settlement> {
@@ -1907,6 +2004,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
   final Value<String?> sig;
   final Value<String?> origin;
   final Value<bool> pendingSign;
+  final Value<String?> versionHash;
   final Value<int> rowid;
   const SettlementsCompanion({
     this.id = const Value.absent(),
@@ -1922,6 +2020,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     this.sig = const Value.absent(),
     this.origin = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettlementsCompanion.insert({
@@ -1938,6 +2037,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     this.sig = const Value.absent(),
     this.origin = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        roomId = Value(roomId),
@@ -1960,6 +2060,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     Expression<String>? sig,
     Expression<String>? origin,
     Expression<bool>? pendingSign,
+    Expression<String>? versionHash,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1976,6 +2077,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       if (sig != null) 'sig': sig,
       if (origin != null) 'origin': origin,
       if (pendingSign != null) 'pending_sign': pendingSign,
+      if (versionHash != null) 'version_hash': versionHash,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1994,6 +2096,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     Value<String?>? sig,
     Value<String?>? origin,
     Value<bool>? pendingSign,
+    Value<String?>? versionHash,
     Value<int>? rowid,
   }) {
     return SettlementsCompanion(
@@ -2010,6 +2113,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       sig: sig ?? this.sig,
       origin: origin ?? this.origin,
       pendingSign: pendingSign ?? this.pendingSign,
+      versionHash: versionHash ?? this.versionHash,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2056,6 +2160,9 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     if (pendingSign.present) {
       map['pending_sign'] = Variable<bool>(pendingSign.value);
     }
+    if (versionHash.present) {
+      map['version_hash'] = Variable<String>(versionHash.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2078,6 +2185,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
           ..write('sig: $sig, ')
           ..write('origin: $origin, ')
           ..write('pendingSign: $pendingSign, ')
+          ..write('versionHash: $versionHash, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4357,6 +4465,7 @@ typedef $$ExpensesTableCreateCompanionBuilder =
       Value<bool> pendingSign,
       Value<String?> category,
       Value<String?> note,
+      Value<String?> versionHash,
       Value<int> rowid,
     });
 typedef $$ExpensesTableUpdateCompanionBuilder =
@@ -4377,6 +4486,7 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
       Value<bool> pendingSign,
       Value<String?> category,
       Value<String?> note,
+      Value<String?> versionHash,
       Value<int> rowid,
     });
 
@@ -4466,6 +4576,11 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4558,6 +4673,11 @@ class $$ExpensesTableOrderingComposer
     column: $table.note,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ExpensesTableAnnotationComposer
@@ -4626,6 +4746,11 @@ class $$ExpensesTableAnnotationComposer
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
+    builder: (column) => column,
+  );
 }
 
 class $$ExpensesTableTableManager
@@ -4672,6 +4797,7 @@ class $$ExpensesTableTableManager
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> category = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion(
                 id: id,
@@ -4690,6 +4816,7 @@ class $$ExpensesTableTableManager
                 pendingSign: pendingSign,
                 category: category,
                 note: note,
+                versionHash: versionHash,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4710,6 +4837,7 @@ class $$ExpensesTableTableManager
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> category = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion.insert(
                 id: id,
@@ -4728,6 +4856,7 @@ class $$ExpensesTableTableManager
                 pendingSign: pendingSign,
                 category: category,
                 note: note,
+                versionHash: versionHash,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4776,6 +4905,7 @@ typedef $$SettlementsTableCreateCompanionBuilder =
       Value<String?> sig,
       Value<String?> origin,
       Value<bool> pendingSign,
+      Value<String?> versionHash,
       Value<int> rowid,
     });
 typedef $$SettlementsTableUpdateCompanionBuilder =
@@ -4793,6 +4923,7 @@ typedef $$SettlementsTableUpdateCompanionBuilder =
       Value<String?> sig,
       Value<String?> origin,
       Value<bool> pendingSign,
+      Value<String?> versionHash,
       Value<int> rowid,
     });
 
@@ -4867,6 +4998,11 @@ class $$SettlementsTableFilterComposer
 
   ColumnFilters<bool> get pendingSign => $composableBuilder(
     column: $table.pendingSign,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4944,6 +5080,11 @@ class $$SettlementsTableOrderingComposer
     column: $table.pendingSign,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettlementsTableAnnotationComposer
@@ -4999,6 +5140,11 @@ class $$SettlementsTableAnnotationComposer
     column: $table.pendingSign,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
+    builder: (column) => column,
+  );
 }
 
 class $$SettlementsTableTableManager
@@ -5045,6 +5191,7 @@ class $$SettlementsTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<String?> origin = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettlementsCompanion(
                 id: id,
@@ -5060,6 +5207,7 @@ class $$SettlementsTableTableManager
                 sig: sig,
                 origin: origin,
                 pendingSign: pendingSign,
+                versionHash: versionHash,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5077,6 +5225,7 @@ class $$SettlementsTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<String?> origin = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettlementsCompanion.insert(
                 id: id,
@@ -5092,6 +5241,7 @@ class $$SettlementsTableTableManager
                 sig: sig,
                 origin: origin,
                 pendingSign: pendingSign,
+                versionHash: versionHash,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

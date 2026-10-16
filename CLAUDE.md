@@ -238,9 +238,9 @@ Authentication is pure Matrix — no separate auth system. Users connect to thei
 
 **Registration (Phase F).** `RegisterPage` → `AuthGateway.register`. The real adapter attempts `client.register`, and on a UIA challenge classifies the flows with the pure `register_flows.dart`: a flow needing only `m.login.dummy` is completed in-app; anything requiring a CAPTCHA / email / phone / terms / token throws `RegistrationRequiresWebException` (with friendly labels) and the page shows a **web-registration fallback**; so does an `M_FORBIDDEN` with no UIA flows (`isClientRegistrationDisabled` — e.g. matrix.org, whose sign-up moved to MAS/OIDC) (we don't reimplement every UIA stage). `/register` is reachable while signed out (see `routerRedirect`).
 
-**Device verification (Phase F + G11).** `DeviceGateway` (`core/matrix/device_gateway.dart`, matrix-free port; real adapter `matrix_device_gateway.dart`) lists the user's own devices **and (G11) another member's** (`userDevices`), runs an SAS (emoji) verification **over to-device messages** — with our own other devices and with another member's device alike (no rooms needed) — and streams **incoming** requests (`incomingVerifications`, answered app-wide by `IncomingVerificationListener` in `App`'s builder: "Accept / Decline" → the same emoji dialog). The client must advertise `verificationMethods: {emoji, numbers}` (`buildMatrixClient`) — without it the SDK ignores every request (it was missing before G11, so SAS never worked). `askSSSS` (account has cross-signing from another client, keys not cached) is skipped automatically: the app does no cross-signing. `DevicesPage` (`/devices`) shows own devices; the **members page** shows a subtle "N unverified devices" line under a member (red "Not reachable — no verified device" when verified-only is on and none is verified) and ⋮ → *Devices* opens their device list with *Verify*. The real adapter imports `package:matrix/matrix.dart` **`hide DeviceInfo`** plus `package:matrix/encryption.dart`.
+**Device verification (Phase F + G11).** `DeviceGateway` (`core/matrix/device_gateway.dart`, matrix-free port; real adapter `matrix_device_gateway.dart`) lists the user's own devices **and (G11) another member's** (`userDevices`), runs an SAS (emoji) verification **over to-device messages** — with our own other devices and with another member's device alike (no rooms needed) — and streams **incoming** requests (`incomingVerifications`, answered app-wide by `IncomingVerificationListener` in `App`'s builder: "Accept / Decline" → the same emoji dialog). The client must advertise `verificationMethods: {emoji, numbers}` (`buildMatrixClient`) — without it the SDK ignores every request (it was missing before G11, so SAS never worked). `askSSSS` (account has cross-signing from another client, keys not cached) is skipped automatically: the app does no cross-signing. `DevicesPage` (`/devices`) shows own devices; the **members page** shows a subtle "N unverified devices" line under a member (red "Not reachable — no verified device" when verified-only is on and none is verified) and ⋮ → *Devices* opens their device list with *Verify*. The real adapter imports `package:matrix/matrix.dart` **`hide DeviceInfo`** plus `package:matrix/encryption.dart`. **SAS emoji names (G36)** are localized: `SasEmoji.number` (the SDK's `KeyVerificationEmoji.number`, 0–63) → `sasEmojiName(number, languageCode)` from `features/devices/sas_emoji_names.dart`, an EN+DE table generated once from the Matrix spec's `data-definitions/sas-emoji.json` (Apache-2.0 — THIRD_PARTY_NOTICES + an in-app license entry in `main.dart`); unknown number → the SDK's English name.
 - **The app keeps its own verified-device record** (`AppSettings` `verified_device:<mxid>|<device>` → Ed25519 key, per account, device-local; `SettingsDao.markDeviceVerified`, written by `recordingTrust` on SAS success whether or not the dialog is still open). Reason: in a roomless app the SDK evicts other users' device lists from memory on every `updateUserDeviceKeys` that doesn't name them and re-stores them with `verified: false` — a peer's SAS result would not survive. "Verified" = SDK flag **or** our record for the exact (user, device, **current key**) (`isDeviceTrusted`; a changed key voids it). Own devices: the SDK flag persists too.
-- **Opt-in enforcement (G11): "Only sync with verified devices"** (settings sheet, per account, device-local `verified_only_sync`, default **off**; turning it on asks first and explains). Every app sender — `_WriteContext` / `_GroupWriteContext` / `SyncEngine` (replication, member bootstraps, digests, resync answers) — wraps the transport in `PolicyTransport` (`core/sync/delivery_policy.dart`) built from the **same** account DB it writes to; each send reads `SettingsDao.deliveryPolicy()` (fails closed if unreadable) and passes it to `sendToUsers(…, policy:)` → pure `planDeviceSend` withholds unverified devices (own and peers'). `SendResult.unverifiedUsers` (⊆ `unreachableUsers`: has devices, none verified) feeds `SyncHealthState.unverifiedPeers`; the cloud tooltip (`pendingPeerHint`) says "X has no verified device" instead of "Waiting for X". Withholding is not a failure. **Inbound is not refused** when the setting is on: refusals in G6 are permanent (`rejected_versions`) and would not heal after verifying later, and a member's legitimate new device would silently lose edits; the setting is about where *our* data goes. The record details dialog shows "You (haven't) verified this device" for the signing device of others (`signerVerifiedByMe`). Limits: only what *this* device sends is restricted — a peer's own devices still sync among themselves unless the peer turns it on too; a new own device can't self-restore from a device with the setting on until verified.
+- **Opt-in enforcement (G11): "Only sync with verified devices"** (settings sheet, per account, device-local `verified_only_sync`, default **off**; turning it on asks first and explains). Every app sender — `_WriteContext` / `_GroupWriteContext` / `SyncEngine` (replication, member bootstraps, digests, resync answers) — wraps the transport in `PolicyTransport` (`core/sync/delivery_policy.dart`) built from the **same** account DB it writes to; each send reads `SettingsDao.deliveryPolicy()` (fails closed if unreadable) and passes it to `sendToUsers(…, policy:)` → pure `planDeviceSend` withholds unverified devices (own and peers'). `SendResult.unverifiedUsers` (⊆ `unreachableUsers`: has devices, none verified) feeds `SyncHealthState.unverifiedPeers`; the cloud tooltip (`pendingPeerHint`) says "X has no verified device" instead of "Waiting for X". Withholding is not a failure. **Inbound is not refused** when the setting is on: refusals in G6 are permanent (`rejected_versions`) and would not heal after verifying later, and a member's legitimate new device would silently lose edits; the setting is about where *our* data goes. The record details dialog shows "You (haven't) verified this device" for the signing device of others (`signerVerifiedByMe`). Limits: only what *this* device sends is restricted — a peer's own devices still sync among themselves unless the peer turns it on too; a new own device can't self-restore from a device with the setting on until verified. **G36:** the settings subtitle and the confirm dialog say exactly that ("only limits what this device sends", "a new login of yours can't restore … until you verify it").
 - Tests: pure planner/policy (`test/core/device_plan_test.dart`), `SettingsDao`, `SyncHealth`/`pendingPeerHint`, `withTrust`/`peerDeviceTrust`/`recordingTrust`, an end-to-end fake-relay test (`test/integration/verified_only_sync_test.dart`) and widget tests (`test/verified_only_ui_test.dart`). The SDK SAS round-trip itself is manual-smoke (`docs/smoke-test.md` §9).
 
 ### Participant identity (virtual users)
@@ -288,8 +288,15 @@ marked `legacy_adopted_into`, and either has no claimed MXIDs or claims *this*
 MXID (`shouldAdoptLegacy` — so another account logging in first doesn't inherit
 it), all rows are copied with `INSERT OR IGNORE` in one transaction, then the
 legacy DB is marked. Works identically on native and web (row copy, no file
-rename). The legacy DB is left in place (never re-adopted). Failures are logged
-and retried on the next open.
+rename). The legacy DB is never re-adopted. Failures are logged and retried on
+the next open. **G36 cleanup:** on a *later* open (the target already had
+`legacy_checked` before), `cleanupLegacyLedger` deletes the legacy DB
+(`deleteDatabase`: native file + `-wal`/`-shm`/`-journal`, web via
+`WasmProbeResult.deleteDatabase`) iff it is adopted and **every** MXID it
+claimed is the adopter (`canDeleteLegacy` — or it claimed none); otherwise it
+is kept (another claimed account might still need it). The per-account DB is
+then marked `legacy_cleanup_done` (`deleted` / `kept` / `absent`); a not yet
+adopted legacy DB is re-checked on later starts.
 
 ### Data Flow
 
@@ -474,6 +481,12 @@ connected + battery not low; `lib/core/background/`) fixes that:
   cancels the OS task (cancel on sign-out). The round re-checks the flag.
 - The app manifest removes the plugin's `POST_NOTIFICATIONS` permission (no
   expedited / foreground workers). Web/iOS: no background sync.
+- **Debug builds only (G36):** the settings sheet has *Run background sync now
+  (debug)* (`kDebugMode`) → `BackgroundScheduler.runOnce(delay: 15 s)` = a
+  WorkManager one-off task (`moneyledger-background-sync-once`, same
+  dispatcher) — swipe the app away within the delay so the round runs
+  headless instead of delegating to the app. Release builds never show it
+  (and `runOnce` is a no-op there).
 - Manual trigger on a device: `adb shell cmd jobscheduler run -f
   app.moneyledger.money_ledger <jobId>` (id from `dumpsys jobscheduler`); logs
   are tagged `[bg]` / `[bg-gate]`.
@@ -510,6 +523,20 @@ record we hold newer than its `lastInSyncAt` is one that peer itself sent us
 at the same revision (`peer_convergence.dart`, in-memory per peer; bootstrap /
 gossip / our own writes block the proof). `markInSync` is monotonic and always
 stamps our wall clock (never a peer's possibly skewed record clock).
+**Fast ack (G36):** the writer's own cloud waits for the receiver's digest;
+after a **live record** (expense / settlement / member / meta, not a
+bootstrap) from a peer, `pokeGroup(liveRecord: true)` debounces the ack digest
+by `ackDebounceProvider` (1 s) instead of `pokeDebounceProvider` (5 s) — at most
+one fast ack per group per `kFastAckMinGap` (10 s), never longer than the poke
+debounce (pure `SyncEngine.pokeDelay`). Measured phone → emulator: writer
+pending → synced 9.4–11.2 s (median 9.8) before, 5.4–6.0 s (median 5.7)
+after. **Resync answers are deduped (G36):** a `resync_request` is
+answered at most once per (requesting device, scope/group) per
+`resyncAnswerWindowProvider` (60 s) — an offline device used to answer every
+queued request (a new device's request + its G30 retries) with a full
+bootstrap. The device comes from `TransportMessage.senderDevice` (Matrix: the
+Olm sender key; fake: the device id); a failed answer is forgotten so a retry
+may try again.
 
 **LWW tie-break (G27).** A record *version* is `(updated_at, content hash)`
 (`record_version.dart`): SHA-256 hex of the canonical JSON of the content
@@ -526,7 +553,17 @@ verification) — and in the digests: entries are `"<ms>:<hash8>"` (first 8 hex
 chars; prefix order agrees with full-hash order), meta has `meta_hash`, members
 are hashed from their gossiped versions. A digest entry without a hash (bare
 int) compares by clock only. Refusals (`rejected_versions`) stay per clock: a
-refused version at `T` blocks every version stamped `T`.
+refused version at `T` blocks every version stamped `T`. **Cached hash (G37,
+schema v8):** expenses / settlements have a `version_hash` column; the DAO's
+LWW upsert stores the hash of what it wrote (only for a companion carrying
+the whole content — a partial one stores NULL), the v8 migration backfills
+existing rows (`backfillVersionHashes`), and models read from rows carry it
+(`versionHash`; `withSigning` keeps it — content unchanged), so
+`expenseVersionHash` / `settlementVersionHash` only hash rows without one
+(`compute*VersionHash` always hashes). Never set `versionHash` on a model
+whose content you changed. Measured on the Pixel (5k records, in-memory DB,
+`tool/bench/digest_bench.dart`, run as a separate `.bench` package so it never
+touches the installed app): digest 537 ms → 174 ms; v8 backfill 367 ms once.
 
 **Message size (G14).** Synapse refuses to-device content over **65 536
 bytes** per device (`MAX_TO_DEVICE_CONTENT_SIZE`, 413 — the SDK only logs it
@@ -913,7 +950,8 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
   on wide screens — wrap page content in it), `EmptyState`, `BrandLogo`,
   `NamesLine` (G33: a localized sentence whose **names ellipsize
   independently** — build the template with `NamesLine.sentinel(i)` in place
-  of each name, e.g. settlement rows "A paid B").
+  of each name, e.g. settlement rows "A paid B", and the balance page's
+  suggested payments "A pays B / You pay B / A pays you").
 - **Lists under an extended FAB** pad their bottom with
   `Insets.fabClearance(context)` (88 dp + the system navigation inset — a
   ListView with explicit padding doesn't add it itself), never a fixed number.
@@ -975,7 +1013,7 @@ tokens (`redactSsoUri`). Text-prompt dialogs must own their
 `TextEditingController` (`showTextPrompt`) — disposing it when `showDialog`
 returns crashes the closing animation.
 
-**Auth errors (G20):** login / SSO callback / register pages never show raw exception text. `MatrixAuthGateway` translates failures into plain port types (`auth_gateway.dart`): `AuthServerException(errcode, retryAfterMs)`, `AuthNetworkException(host, deviceOffline)` (on a transport error it probes matrix.org to tell "offline" from "server unreachable"), `NotAHomeserverException` (`checkHomeserver` failed with a non-network error). The pure `describeAuthError(error, action:)` (`features/auth/auth_errors.dart`; falls back to matching the error text) maps them to `AuthErrorMessage{title, hint, detail}`, rendered by `AuthErrorCard` with the raw text behind a collapsed **Details**. All English strings live in `AuthErrorStrings` (one place, for G12). **Timeouts (G30):** `checkHomeserver` is capped at `kHomeserverCheckTimeout` (10 s), login/register requests at `kAuthRequestTimeout` (20 s) via the pure `withAuthTimeout` → `AuthTimeoutException` (a `TimeoutException`, wrapped as `AuthNetworkException(deviceOffline: false)` without the offline probe) → "The server took too long to respond". The SDK call isn't cancelled — a late success still signs in. Web sign-up fallback: `RegistrationRequiresWebException.signUpUrl` comes from the pure `resolveSignUpUrl` (`sign_up_url.dart`): OIDC auth metadata (MAS with `prompt=create` → `<issuer>register`, else `account_management_uri`) → `.well-known` `org.matrix.msc2965.authentication.account` → matrix.org: `app.element.io/#/register` → homeserver URL.
+**Auth errors (G20):** login / SSO callback / register pages never show raw exception text. `MatrixAuthGateway` translates failures into plain port types (`auth_gateway.dart`): `AuthServerException(errcode, retryAfterMs)`, `AuthNetworkException(host, deviceOffline)` (on a transport error it probes matrix.org to tell "offline" from "server unreachable"), `NotAHomeserverException` (`checkHomeserver` failed with a non-network error). The pure `describeAuthError(error, action:)` (`features/auth/auth_errors.dart`; falls back to matching the error text) maps them to `AuthErrorMessage{title, hint, detail}`, rendered by `AuthErrorCard` with the raw text behind a collapsed **Details**. All English strings live in `AuthErrorStrings` (one place, for G12). **Timeouts (G30):** `checkHomeserver` is capped at `kHomeserverCheckTimeout` (10 s), login/register requests at `kAuthRequestTimeout` (20 s) via the pure `withAuthTimeout` → `AuthTimeoutException` (a `TimeoutException`, wrapped as `AuthNetworkException(deviceOffline: false)` without the offline probe) → "The server took too long to respond". The SDK call isn't cancelled — a late success still signs in (**adopted**, G36). **Single flight (G36):** `AuthSingleFlight` (`auth_gateway.dart`) wraps each login / token login / registration (`operation`) and every raw homeserver request inside it (`track`) in `MatrixAuthGateway`; while an operation **or a timed-out request** is still running, a new attempt throws `AuthInProgressException` → "Still signing in…" (`AuthErrorKind.inProgress`) instead of starting a parallel `client.login` (two devices / session race). `FakeAuthGateway` uses the same guard (`pendingRequest`, `requestTimeout`, `requestsStarted`); tests: `test/features/auth_single_flight_test.dart`. Web sign-up fallback: `RegistrationRequiresWebException.signUpUrl` comes from the pure `resolveSignUpUrl` (`sign_up_url.dart`): OIDC auth metadata (MAS with `prompt=create` → `<issuer>register`, else `account_management_uri`) → `.well-known` `org.matrix.msc2965.authentication.account` → matrix.org: `app.element.io/#/register` → homeserver URL.
 
 **Async work vs. account switch / dispose (G19):** on an account switch Riverpod 3 closes the old ledger DB **eagerly** (when `appDatabaseProvider` rebuilds), but dependents like `SyncEngine`/`LedgerSyncer` are only disposed on the next scheduler flush — so in-flight async work can outlive both its DB and its `Ref`. Rules: (1) capture the DB + DAOs (and transport/health notifier) **before the first await** — `SyncEngine`/`LedgerSyncer` read them in their constructor, `ExpenseAdder` via `_WriteContext`, the group mutators (`GroupCreator`/`MemberAdder`/`MemberRemover`/`GroupExiter`) via `_GroupWriteContext` (G23) — never re-read DAO providers after an await; (2) after **every** await check `_alive` (`!_disposed && !_db.isClosed`; `AppDatabase.isClosed` is set by `close()`) and bail silently; (3) in notifiers, only set `state` / use `ref` after an await when `ref.mounted`; (4) errors caught after the DB closed are expected — don't log them or report them to `SyncHealth` (its `report*` also no-op when unmounted). Regression tests: `test/integration/account_switch_sync_test.dart`, `test/features/group_mutators_lifecycle_test.dart`.
 
@@ -1007,6 +1045,7 @@ and override what the test is about (members, expenses, …) yourself
 - G22 upgrade 7.2.2 → 14.0.0 needed **no app code changes** (all APIs below unchanged). The SDK store migrates v11 → v12 on first start (device-key boxes merged into one `deviceKeysLists` box; Olm account/sessions kept) — verified on both test devices: still signed in, sync + signatures + SAS intact. **Before a future SDK major**, check `MatrixSdkDatabase._migrateFromVersion`: anything beyond `clearCache()` that drops the client box / Olm sessions would force a re-login.
 - `Client(name, database: db)` — database is required in constructor (not a builder callback)
 - `MatrixSdkDatabase.init(name, database: openedDb, sqfliteFactory: databaseFactory)` — on **native you MUST pass an already-opened sqflite `Database`** via `database:` (open it with `sqflite.openDatabase(path)` first). `sqfliteFactory` alone is **not** enough: `BoxCollection` throws `You must provide a Database 'sqfliteDatabase' for use on native` (the factory is only used for high-level ops like delete). On web, call `MatrixSdkDatabase.init(name)` with no DB (it uses IndexedDB). See `buildMatrixClient()` in `lib/core/matrix/matrix_service.dart`.
+- **Sync loop robustness (G36):** `buildMatrixClient` passes `httpClient: RequestTimeoutHttpClient(http.Client())` — every request must deliver response **headers** within `kHttpHeaderTimeout` (90 s). The SDK's own `FixedTimeoutHttpClient` (35 s) only times the body, so a request on a socket that died in a network switch could hang a sync round (to-device queue, key queries) until the OS gave up. `matrixClientProvider` also starts a `MatrixSyncWatchdog` (every 30 s + on app resume; pure policy `syncWatchdogDecision` in `core/sync/sync_watchdog_policy.dart`): signed in but no round pending → `client.backgroundSync = true`; a round pending with no finished/failed status for 2 min → logged (`[watchdog]`). **Never `abortSync()` + restart** while an old round can still complete: its `whenComplete` clears `_currentSync` and re-arms → two loops that drop each other's responses. The SDK loop itself retries errors every 3 s and caps the long-poll at 40 s; four emulator network switches (wifi/data off ≤ 3 min, wifi ↔ data) recovered without help.
 - `client.init(waitForFirstSync: false)` — **always pass `false`.** The default `true` makes `init()` block on the first network `/sync` when a session is restored, which hangs app startup indefinitely on a stalled sync. Drift is the local source of truth; sync runs in the background.
 - **Roomless to-device** is the only transport (no rooms). See `MatrixLedgerTransport` (`lib/core/matrix/matrix_ledger_transport.dart`):
   - `client.onToDeviceEvent.stream` — inbound encrypted to-device events; filter by the `com.moneyledger.*` type prefix. It is **not buffered** (an event emitted with no subscriber is lost until the next digest), so `matrixClientProvider` calls `MatrixLedgerTransport.forClient(client)` (one transport per client, via `Expando`) **before `client.init()`**: it subscribes immediately and feeds a `BufferedInbox`, which holds payloads while nobody listens (app start, account-DB switch; bounded 500, per-account tagged) and replays them to the next listeners after a short delay. `transport_provider` reuses the same instance.

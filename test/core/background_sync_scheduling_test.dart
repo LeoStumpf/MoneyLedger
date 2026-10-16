@@ -31,6 +31,10 @@ class RecordingScheduler implements BackgroundScheduler {
 
   @override
   Future<void> cancel() async => calls.add('cancel');
+
+  @override
+  Future<void> runOnce({Duration delay = Duration.zero}) async =>
+      calls.add('runOnce:${delay.inSeconds}');
 }
 
 void main() {

@@ -5,6 +5,7 @@ import '../../core/matrix/auth_gateway.dart';
 import '../../core/matrix/matrix_auth_gateway.dart';
 import '../../core/matrix/matrix_ledger_transport.dart';
 import '../../core/matrix/matrix_service.dart';
+import '../../core/matrix/matrix_sync_watchdog.dart';
 import '../../models/login_flows_result.dart';
 
 part 'auth_provider.g.dart';
@@ -47,6 +48,9 @@ Future<Client> matrixClient(Ref ref) async {
     '[client] init done (logged in: ${client.isLogged()}) '
     '${sw.elapsedMilliseconds}ms',
   );
+  // G36: restart a sync loop that stopped, report one that stalls.
+  final watchdog = MatrixSyncWatchdog(client)..start();
+  ref.onDispose(watchdog.dispose);
   return client;
 }
 

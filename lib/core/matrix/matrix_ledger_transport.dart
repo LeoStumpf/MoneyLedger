@@ -36,6 +36,7 @@ class MatrixLedgerTransport implements LedgerTransport {
               senderId: e.sender,
               type: e.type,
               content: e.content,
+              senderDevice: e.encryptedContent?['sender_key'] as String?,
             ),
           ),
         );

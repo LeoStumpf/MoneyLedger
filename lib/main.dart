@@ -31,6 +31,27 @@ Future<void> main() async {
       'Manrope font',
     ], await rootBundle.loadString('assets/fonts/manrope/OFL.txt'));
   });
+  // G36: the SAS emoji names (EN/DE) come from the Matrix spec (Apache-2.0).
+  LicenseRegistry.addLicense(
+    () => Stream.value(
+      const LicenseEntryWithLineBreaks(
+        ['Matrix specification (SAS emoji names)'],
+        'SAS emoji descriptions and translations from the Matrix '
+        'specification (data-definitions/sas-emoji.json, '
+        'https://github.com/matrix-org/matrix-spec).\n\n'
+        'Copyright The Matrix.org Foundation C.I.C.\n\n'
+        'Licensed under the Apache License, Version 2.0 (the "License"); you '
+        'may not use this file except in compliance with the License. You may '
+        'obtain a copy of the License at '
+        'http://www.apache.org/licenses/LICENSE-2.0\n\n'
+        'Unless required by applicable law or agreed to in writing, software '
+        'distributed under the License is distributed on an "AS IS" BASIS, '
+        'WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or '
+        'implied. See the License for the specific language governing '
+        'permissions and limitations under the License.',
+      ),
+    ),
+  );
   // G15: offline demo (`--dart-define=OFFLINE_DEMO=true`) — seeded ledger,
   // fake relay + auth; no Matrix client, crypto or background sync at all.
   // A compile-time constant, so a normal build tree-shakes this branch.

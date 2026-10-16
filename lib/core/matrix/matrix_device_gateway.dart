@@ -171,7 +171,10 @@ class _MatrixVerificationSession implements VerificationSession {
         _emit(
           VerificationState(
             VerificationPhase.compareEmojis,
-            emojis: [for (final e in kv.sasEmojis) SasEmoji(e.emoji, e.name)],
+            emojis: [
+              for (final e in kv.sasEmojis)
+                SasEmoji(e.emoji, e.name, number: e.number),
+            ],
           ),
         );
       case KeyVerificationState.done:

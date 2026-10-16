@@ -108,7 +108,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Only sync with verified devices?'), findsOneWidget);
       expect(
-        find.textContaining('get nothing until you verify'),
+        find.textContaining('get nothing from this device until you verify'),
+        findsOneWidget,
+      );
+      // G36: it says plainly that only this device's sends are limited and
+      // that a new own login can't restore from here until verified.
+      expect(
+        find.textContaining('This only limits what this device sends'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining("can't restore your groups from this device"),
         findsOneWidget,
       );
       await tester.tap(find.text('Cancel'));
@@ -124,7 +134,14 @@ void main() {
 
       flag.add(true);
       await tester.pumpAndSettle();
-      expect(find.textContaining('On: devices you haven'), findsOneWidget);
+      expect(
+        find.textContaining('On: this device sends nothing'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('It only limits what this device sends'),
+        findsOneWidget,
+      );
 
       // Turning off doesn't ask.
       await tester.tap(find.byKey(const Key('verifiedOnlySwitch')));

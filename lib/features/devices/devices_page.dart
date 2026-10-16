@@ -7,6 +7,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/matrix/device_gateway.dart';
 import '../auth/auth_provider.dart';
 import 'device_provider.dart';
+import 'sas_emoji_names.dart';
 
 /// Security screen (Phase F): lists the user's own Matrix devices with their
 /// verified status and lets them run an SAS (emoji) verification against an
@@ -331,7 +332,11 @@ class _VerificationDialog extends StatelessWidget {
                     children: [
                       Text(e.emoji, style: const TextStyle(fontSize: 30)),
                       Text(
-                        e.name,
+                        sasEmojiName(
+                              e.number,
+                              Localizations.localeOf(context).languageCode,
+                            ) ??
+                            e.name,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],

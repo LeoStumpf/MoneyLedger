@@ -76,9 +76,13 @@ Remaining ceilings / costs:
   members (~0.4 KB each, signed): fine to ~80 members.
 - **Records per group** — the bucket summary is capped at 2 048 buckets
   (~31 KB): ~30k records. A full restore of 5k records is ~117 messages.
-- **Hashing cost** — every digest hashes every record (SHA-256 over
-  canonical JSON; ~150 ms per 5k records on desktop). Cache per-row hashes
-  (a DB column) if phones show it.
+- **Hashing cost** — solved (G37): measured on the Pixel 4a (5k records,
+  in-memory DB, `tool/bench/digest_bench.dart`, profile build): digest =
+  DB read 120 ms + `buildDigestMessages` 414 ms (hashing everything twice:
+  flat attempt + bucketed) = **537 ms**, plus 211 ms for the receiver's
+  local hashes. Now cached in `version_hash` (schema v8): **174 ms** (read
+  125 + build 49), local hashes ~0 ms; the one-off v8 backfill of 5k rows
+  took 367 ms. The DB read (row → model mapping) is now the main cost.
 - A refused version (G6) keeps its bucket's hash different, so each cycle
   costs one extra three-message detail exchange for that bucket (bounded;
   still counts as in sync).
@@ -99,7 +103,10 @@ peers'), and SAS works with other members' devices (members page). Open:
   "unverified", not refused.
 - New own device + setting on elsewhere: self-restore (G30) waits until the
   new device is verified; the restoring banner times out meanwhile.
-- SAS emoji names come from the SDK in English (German UI shows "Trumpet").
+- (G36) SAS emoji names are localized (Matrix spec table, EN + DE); the
+  in-app texts now say plainly that the setting only limits this device's
+  sends. Not yet seen on a device: the German emoji names in a live SAS
+  (all test devices were already verified) — smoke 9.8.
 - The verified-device record lives in the per-account DB on this device
   (not in backups; lost with the app data).
 
@@ -187,7 +194,35 @@ Three flows can only be verified on a real device + homeserver, not in
   shared buffers). Setting `Cross-Origin-Opener-Policy`/`-Embedder-Policy` on
   the host would silence it — needs a check that SSO redirects still work.
 
+### Sync loop after a network switch (G36)
+Seen once on emu-5556 (G11 run): the Matrix sync loop stalled until restart.
+Not reproduced in four emulator switches (offline ≤ 3 min, wifi ↔ data) —
+the SDK retries every 3 s and caps the long-poll at 40 s. Hardened anyway:
+every homeserver request must get response headers within 90 s
+(`RequestTimeoutHttpClient`; the SDK only timed the body), and a watchdog
+restarts a loop that isn't running and logs `[watchdog]` when a round makes
+no progress for 2 min. Remaining: a stall inside a non-HTTP await (DB) would
+only be logged — restarting the SDK loop while an old round can still finish
+runs two loops (see CLAUDE.md). No connectivity listener (no plugin).
+
+### Delivery acks / resync answers (G36)
+- Writer's "waiting" after its own change: ~10 s → ~6 s (fast ack, 1 s
+  debounce, one per group per 10 s). The rest is two relay hops; a second
+  change within 10 s still waits for the 5 s debounce.
+- Resync answers are deduped per (device, scope/group) for 60 s: a lost
+  answer is only re-requested after the window (G30 retries / next digest).
+
+### Legacy ledger cleanup (G36)
+The adopted pre-G4 `money_ledger_db` is deleted on a later start — only when
+every account it claimed is the adopter. With other claimed accounts it is
+kept (`legacy_cleanup_done = kept`), although adoption is single-account
+today: another claimed account can't adopt it anymore. A per-group adoption
+for further accounts would be needed to make use of it (test devices only).
+
 ### Smaller items
+- Balance page suggested payments are one line (G33 `NamesLine`): on a phone
+  a long MXID-localpart name shrinks to a few characters ("mone… zahlt an
+  dich") — readable with display names; the avatars show who it is.
 - The `router` provider's `refreshListenable`/redirect wiring (against
   `isLoggedInProvider` + `onboardingSeenProvider`) is untested; `routerRedirect`
   (pure) is well covered.
@@ -220,6 +255,14 @@ Durable constraints of the current design — not bugs, but worth knowing.
 ---
 
 ## Resolved
+
+- **G36+ follow-ups** (2026-10-16): localized SAS emoji names; verified-only
+  wording; sync-loop request timeout + watchdog; fast ack (writer pending
+  ~10 s → ~6 s); single-flight login/registration (late success adopted, no
+  parallel `client.login`); deduped resync answers; debug-only one-off
+  background round; NamesLine on the balance page; digest hash cached in
+  the DB (Pixel 537 → 174 ms per 5k-record digest); adopted legacy DB
+  deleted.
 
 - **G22 — dependency upgrades** (2026-10-16): matrix 7.2.2 → 14.0.0
   (flutter_vodozemac 0.6 → 0.8.1, vodozemac Rust 0.9 → 0.10, `web/pkg` wasm

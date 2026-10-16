@@ -20,6 +20,10 @@ class MatrixAuthGateway implements AuthGateway {
   final Client _client;
   MatrixAuthGateway(this._client);
 
+  /// G36: one login / registration at a time — also while a timed-out
+  /// request is still running in the SDK (its late success is adopted).
+  final AuthSingleFlight _flight = AuthSingleFlight();
+
   @override
   bool get isLoggedIn => _client.isLogged();
 
@@ -87,44 +91,56 @@ class MatrixAuthGateway implements AuthGateway {
     required String homeserver,
     required String username,
     required String password,
-  }) => _translated(homeserver, () async {
-    await _checkHomeserver(homeserver);
-    await withAuthTimeout(
-      _client.login(
-        AuthenticationTypes.password,
-        identifier: AuthenticationUserIdentifier(user: username),
-        password: password,
-        initialDeviceDisplayName: 'MoneyLedger',
-      ),
-      kAuthRequestTimeout,
-      'login',
-    );
-  });
+  }) => _flight.operation(
+    () => _translated(homeserver, () async {
+      await _checkHomeserver(homeserver);
+      await withAuthTimeout(
+        _flight.track(
+          _client.login(
+            AuthenticationTypes.password,
+            identifier: AuthenticationUserIdentifier(user: username),
+            password: password,
+            initialDeviceDisplayName: 'MoneyLedger',
+          ),
+        ),
+        kAuthRequestTimeout,
+        'login',
+      );
+    }),
+  );
 
   @override
   Future<void> loginWithToken({
     required String homeserver,
     required String token,
-  }) => _translated(homeserver, () async {
-    await _checkHomeserver(homeserver);
-    await withAuthTimeout(
-      _client.login(
-        AuthenticationTypes.token,
-        token: token,
-        initialDeviceDisplayName: 'MoneyLedger',
-      ),
-      kAuthRequestTimeout,
-      'login',
-    );
-  });
+  }) => _flight.operation(
+    () => _translated(homeserver, () async {
+      await _checkHomeserver(homeserver);
+      await withAuthTimeout(
+        _flight.track(
+          _client.login(
+            AuthenticationTypes.token,
+            token: token,
+            initialDeviceDisplayName: 'MoneyLedger',
+          ),
+        ),
+        kAuthRequestTimeout,
+        'login',
+      );
+    }),
+  );
 
   @override
   Future<void> register({
     required String homeserver,
     required String username,
     required String password,
-  }) =>
-      _translated(homeserver, () => _register(homeserver, username, password));
+  }) => _flight.operation(
+    () => _translated(
+      homeserver,
+      () => _register(homeserver, username, password),
+    ),
+  );
 
   Future<void> _register(
     String homeserver,
@@ -136,10 +152,12 @@ class MatrixAuthGateway implements AuthGateway {
       // First attempt with no auth: an open server completes immediately;
       // otherwise it answers with a UIA challenge (flows + session).
       await withAuthTimeout(
-        _client.register(
-          username: username,
-          password: password,
-          initialDeviceDisplayName: 'MoneyLedger',
+        _flight.track(
+          _client.register(
+            username: username,
+            password: password,
+            initialDeviceDisplayName: 'MoneyLedger',
+          ),
         ),
         kAuthRequestTimeout,
         'register',
@@ -164,13 +182,15 @@ class MatrixAuthGateway implements AuthGateway {
       }
       // Complete the no-op dummy stage to finish sign-up.
       await withAuthTimeout(
-        _client.register(
-          username: username,
-          password: password,
-          initialDeviceDisplayName: 'MoneyLedger',
-          auth: AuthenticationData(
-            type: AuthenticationTypes.dummy,
-            session: session,
+        _flight.track(
+          _client.register(
+            username: username,
+            password: password,
+            initialDeviceDisplayName: 'MoneyLedger',
+            auth: AuthenticationData(
+              type: AuthenticationTypes.dummy,
+              session: session,
+            ),
           ),
         ),
         kAuthRequestTimeout,
@@ -194,7 +214,7 @@ class MatrixAuthGateway implements AuthGateway {
   Future<void> _checkHomeserver(String homeserver) async {
     try {
       await withAuthTimeout(
-        _client.checkHomeserver(Uri.parse(homeserver)),
+        _flight.track(_client.checkHomeserver(Uri.parse(homeserver))),
         kHomeserverCheckTimeout,
         'checkHomeserver',
       );

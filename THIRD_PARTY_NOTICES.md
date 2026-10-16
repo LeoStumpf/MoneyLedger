@@ -22,7 +22,7 @@ The version-exact list of all packages (direct and transitive) is in
 | `crypto` (SHA-256 for signed records, G6) | 3.0.7 | BSD-3-Clause |
 | `cryptography` (Argon2id + AES-256-GCM for encrypted backups, G34; pure-Dart implementations only) | 2.9.0 | Apache-2.0 |
 | `flutter`, `flutter_localizations` (SDK) | 3.44 | BSD-3-Clause |
-| `go_router`, `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
+| `go_router`, `http` (G36), `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
 | `sqflite` | 2.4.4+2 | BSD-2-Clause |
 | `app_links` | 7.2.2 | Apache-2.0 |
 | `drift`, `drift_flutter`, `sqlite3` (transitive, via drift), `flutter_riverpod`, `riverpod_annotation`, `file_picker` (+ its federated `*_file_picker` / `file_picker_*` implementations), `uuid`, `workmanager`, `cupertino_icons` | see lock | MIT |
@@ -37,6 +37,15 @@ The version-exact list of all packages (direct and transitive) is in
 - **SQLite** — public domain; bundled by the `sqlite3` 3.x build hooks (Android) and as
   [`web/sqlite3.wasm`](web/sqlite3.wasm) with Drift's
   [`web/drift_worker.js`](web/drift_worker.js) (MIT) on the web.
+
+### Data
+
+- **SAS emoji names** ([`lib/features/devices/sas_emoji_names.dart`](lib/features/devices/sas_emoji_names.dart),
+  G36) — the English descriptions and German translations of the 64 SAS
+  verification emoji, taken from the Matrix specification's
+  [`data-definitions/sas-emoji.json`](https://github.com/matrix-org/matrix-spec/blob/main/data-definitions/sas-emoji.json)
+  (commit `7aaeac0`) — Copyright The Matrix.org Foundation C.I.C.,
+  **Apache-2.0**. Listed on the in-app licenses page.
 
 ### Fonts
 
@@ -69,8 +78,8 @@ permissive — MIT, BSD-2/3-Clause or Apache-2.0 — plus:
 
 All of the above are compatible with distributing MoneyLedger under the
 AGPL-3.0: the AGPL-3.0 packages (`matrix`, `flutter_vodozemac`, `vodozemac`) are the
-reason the app itself is AGPL-licensed; MIT, BSD, Apache-2.0 and MPL-2.0 code
-may be combined with AGPL-3.0 code. **No incompatible license was found**
+reason the app itself is AGPL-licensed; MIT, BSD, Apache-2.0 (incl. the Matrix spec's SAS
+emoji data) and MPL-2.0 code may be combined with AGPL-3.0 code. **No incompatible license was found**
 (checked against each package's `LICENSE` in the pub cache for the versions in
 `pubspec.lock`).
 

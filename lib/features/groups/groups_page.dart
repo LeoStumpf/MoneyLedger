@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import '../backup/backup_providers.dart';
 import '../backup/backup_ui.dart';
 import '../devices/device_provider.dart';
 import '../expenses/ledger_syncer.dart';
+import '../../core/background/background_scheduler.dart';
 import '../../core/background/background_sync_provider.dart';
 import '../../core/sync/self_recovery.dart';
 import '../../core/sync/sync_engine.dart';
@@ -807,6 +809,34 @@ class SyncSettingsSheet extends ConsumerWidget {
                 value: enabled,
                 onChanged: (v) =>
                     ref.read(settingsDaoProvider).setBackgroundSyncEnabled(v),
+              ),
+            // G36: debug builds only — queue one background round for a
+            // manual test (never shown in release builds).
+            if (kDebugMode && supported)
+              ListTile(
+                key: const Key('debugRunBackgroundSync'),
+                leading: const Icon(Icons.bug_report_outlined),
+                title: Text(l.debugRunBackgroundSync),
+                subtitle: Text(
+                  l.debugRunBackgroundSyncBody(
+                    kDebugBackgroundRunDelay.inSeconds,
+                  ),
+                ),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.maybeOf(context);
+                  try {
+                    await ref
+                        .read(backgroundSchedulerProvider)
+                        .runOnce(delay: kDebugBackgroundRunDelay);
+                    messenger?.showSnackBar(
+                      SnackBar(content: Text(l.debugRunBackgroundSyncQueued)),
+                    );
+                  } catch (e) {
+                    messenger?.showSnackBar(
+                      SnackBar(content: Text(l.failedWithError(e.toString()))),
+                    );
+                  }
+                },
               ),
             // G33: the OS refused to (un)register the task — say so.
             if (supported && schedulingError != null)

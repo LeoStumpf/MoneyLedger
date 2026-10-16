@@ -941,7 +941,7 @@
   "@verifiedOnlyOffBody": {
     "description": "G11 device-verification enforcement"
   },
-  "verifiedOnlyOnBody": "On: devices you haven't verified by emoji comparison — yours or other members' — receive nothing from this device.",
+  "verifiedOnlyOnBody": "On: this device sends nothing to devices you haven't verified by emoji comparison — yours or other members'. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can't restore your groups from this device until you verify it.",
   "@verifiedOnlyOnBody": {
     "description": "G11 device-verification enforcement"
   },
@@ -949,7 +949,7 @@
   "@verifiedOnlyConfirmTitle": {
     "description": "G11 device-verification enforcement"
   },
-  "verifiedOnlyConfirmBody": "Your expenses, payments and group changes will only be sent to devices you have verified by comparing emojis (Devices page for your own, the members page for others).\n\nUnverified devices — including a member's new phone or your own new login — get nothing until you verify them, so they fall behind. Records you receive are still accepted; the details show whether the signing device is verified.\n\nApplies to this device and account only.",
+  "verifiedOnlyConfirmBody": "This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the members page for others). It doesn't change what other devices send — members' devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including a member's new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can't restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.",
   "@verifiedOnlyConfirmBody": {
     "description": "G11 device-verification enforcement"
   },
@@ -1320,5 +1320,30 @@
         "type": "String"
       }
     }
+  },
+  "debugRunBackgroundSync": "Run background sync now (debug)",
+  "@debugRunBackgroundSync": {
+    "description": "G36 debug-only settings action: queue one WorkManager background round"
+  },
+  "debugRunBackgroundSyncBody": "Queues one background round in {seconds} s — close the app to test it headless.",
+  "@debugRunBackgroundSyncBody": {
+    "description": "G36 debug-only settings action subtitle",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "debugRunBackgroundSyncQueued": "Background round queued.",
+  "@debugRunBackgroundSyncQueued": {
+    "description": "G36 debug-only snackbar"
+  },
+  "authInProgressTitle": "Still signing in…",
+  "@authInProgressTitle": {
+    "description": "G36: a second sign-in/registration attempt while the previous (timed-out) request is still running"
+  },
+  "authInProgressHint": "The previous attempt is still waiting for the server. If it succeeds you're signed in automatically — otherwise try again in a moment.",
+  "@authInProgressHint": {
+    "description": "G36 hint for authInProgressTitle"
   }
 }

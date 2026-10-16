@@ -40,7 +40,7 @@ final class MatrixClientProvider
   }
 }
 
-String _$matrixClientHash() => r'2310a004bb15375e5e11756df9e970b98475dbe6';
+String _$matrixClientHash() => r'1c0b2d8c668be5cf563f7d9a16a55c13f0a3bbbf';
 
 /// Auth seam: the rest of the app drives login/session through this, never the
 /// raw Client. Overridden with an in-memory fake for offline/test login.

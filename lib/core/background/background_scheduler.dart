@@ -7,7 +7,15 @@ abstract interface class BackgroundScheduler {
 
   /// Removes the periodic task (idempotent).
   Future<void> cancel();
+
+  /// Debug builds only (G36, settings sheet): queues **one** background round
+  /// after [delay] — time to swipe the app away, so the round runs headless
+  /// instead of delegating to the running app.
+  Future<void> runOnce({Duration delay});
 }
+
+/// G36: the delay of the debug-only "Run background sync now".
+const kDebugBackgroundRunDelay = Duration(seconds: 15);
 
 /// Web / iOS / desktop / tests: there is no background sync.
 class NoopBackgroundScheduler implements BackgroundScheduler {
@@ -18,4 +26,7 @@ class NoopBackgroundScheduler implements BackgroundScheduler {
 
   @override
   Future<void> cancel() async {}
+
+  @override
+  Future<void> runOnce({Duration delay = Duration.zero}) async {}
 }

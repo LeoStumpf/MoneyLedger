@@ -6,6 +6,7 @@ library;
 import 'dart:async';
 
 import 'package:money_ledger/core/matrix/auth_gateway.dart';
+import 'package:money_ledger/features/auth/auth_errors.dart';
 import 'package:money_ledger/models/login_flows_result.dart';
 
 class FakeAuthGateway implements AuthGateway {
@@ -23,6 +24,33 @@ class FakeAuthGateway implements AuthGateway {
   String? registerSignUpUrl;
 
   final StreamController<bool> _controller = StreamController.broadcast();
+
+  /// G36: when set, the homeserver request of a login / registration waits
+  /// for it (a stalled server) — completing it later is a **late success**
+  /// (the account signs in, like the SDK would); completing with an error a
+  /// late failure.
+  Completer<void>? pendingRequest;
+
+  /// G36: the UI timeout applied to that request (like `kAuthRequestTimeout`).
+  Duration requestTimeout = kAuthRequestTimeout;
+
+  /// G36: how many homeserver login / registration requests were started.
+  int requestsStarted = 0;
+
+  /// The same single-flight guard as the real gateway.
+  final AuthSingleFlight _flight = AuthSingleFlight();
+
+  /// One guarded login / registration: the request (which signs [user] in on
+  /// success) may outlive its timeout and still sign in.
+  Future<void> _guarded(String user, String step) =>
+      _flight.operation(() async {
+        if (failWith != null) throw failWith!;
+        requestsStarted++;
+        final request = (pendingRequest?.future ?? Future<void>.value()).then(
+          (_) => _setUser(user),
+        );
+        await withAuthTimeout(_flight.track(request), requestTimeout, step);
+      });
 
   FakeAuthGateway({String? initialUserId, LoginFlowsResult? flows})
     : _userId = initialUserId,
@@ -55,19 +83,13 @@ class FakeAuthGateway implements AuthGateway {
     required String homeserver,
     required String username,
     required String password,
-  }) async {
-    if (failWith != null) throw failWith!;
-    _setUser('@$username:${Uri.parse(homeserver).host}');
-  }
+  }) => _guarded('@$username:${Uri.parse(homeserver).host}', 'login');
 
   @override
   Future<void> loginWithToken({
     required String homeserver,
     required String token,
-  }) async {
-    if (failWith != null) throw failWith!;
-    _setUser('@token:${Uri.parse(homeserver).host}');
-  }
+  }) => _guarded('@token:${Uri.parse(homeserver).host}', 'login');
 
   @override
   Future<void> register({
@@ -83,7 +105,7 @@ class FakeAuthGateway implements AuthGateway {
         signUpUrl: registerSignUpUrl,
       );
     }
-    _setUser('@$username:${Uri.parse(homeserver).host}');
+    await _guarded('@$username:${Uri.parse(homeserver).host}', 'register');
   }
 
   @override

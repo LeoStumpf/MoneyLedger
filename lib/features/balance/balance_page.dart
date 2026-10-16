@@ -5,6 +5,7 @@ import '../../core/matrix/transport_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/names_line.dart';
 import '../../core/widgets/person_avatar.dart';
 import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
@@ -181,13 +182,14 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                                     if (i > 0) const Divider(indent: 16),
                                     _DebtRow(
                                       debt: d,
-                                      title: d.from == myId
-                                          ? l.debtYouPay(nameOf(d.to))
+                                      // G33: each name ellipsizes on its own.
+                                      titleTemplate: d.from == myId
+                                          ? l.debtYouPay(NamesLine.sentinel(1))
                                           : d.to == myId
-                                          ? l.debtPaysYou(nameOf(d.from))
+                                          ? l.debtPaysYou(NamesLine.sentinel(0))
                                           : l.debtPays(
-                                              nameOf(d.from),
-                                              nameOf(d.to),
+                                              NamesLine.sentinel(0),
+                                              NamesLine.sentinel(1),
                                             ),
                                       fromAvatar: nameOf(d.from),
                                       toAvatar: nameOf(d.to),
@@ -364,14 +366,16 @@ class _PersonBalanceRow extends StatelessWidget {
 /// One suggested payment "Carl pays Bea · €3.00" — tap to record it (G28).
 class _DebtRow extends StatelessWidget {
   final DebtEntry debt;
-  final String title;
+
+  /// The localized sentence with [NamesLine.sentinel] 0 (payer) / 1 (payee).
+  final String titleTemplate;
   final String fromAvatar;
   final String toAvatar;
   final bool isMine;
   final VoidCallback? onTap;
   const _DebtRow({
     required this.debt,
-    required this.title,
+    required this.titleTemplate,
     required this.fromAvatar,
     required this.toAvatar,
     required this.isMine,
@@ -405,10 +409,13 @@ class _DebtRow extends StatelessWidget {
           ],
         ),
       ),
-      title: Text(
-        title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
+      title: NamesLine(
+        key: Key('debtTitle-${debt.from}-${debt.to}-${debt.currency}'),
+        template: titleTemplate,
+        names: {
+          NamesLine.sentinel(0): fromAvatar,
+          NamesLine.sentinel(1): toAvatar,
+        },
         style: theme.textTheme.bodyMedium?.copyWith(
           fontWeight: isMine ? FontWeight.w700 : FontWeight.w500,
         ),

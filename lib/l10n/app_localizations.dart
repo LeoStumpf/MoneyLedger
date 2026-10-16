@@ -2231,7 +2231,7 @@ abstract class AppLocalizations {
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'On: devices you haven\'t verified by emoji comparison — yours or other members\' — receive nothing from this device.'**
+  /// **'On: this device sends nothing to devices you haven\'t verified by emoji comparison — yours or other members\'. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can\'t restore your groups from this device until you verify it.'**
   String get verifiedOnlyOnBody;
 
   /// G11 device-verification enforcement
@@ -2243,7 +2243,7 @@ abstract class AppLocalizations {
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'Your expenses, payments and group changes will only be sent to devices you have verified by comparing emojis (Devices page for your own, the members page for others).\n\nUnverified devices — including a member\'s new phone or your own new login — get nothing until you verify them, so they fall behind. Records you receive are still accepted; the details show whether the signing device is verified.\n\nApplies to this device and account only.'**
+  /// **'This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the members page for others). It doesn\'t change what other devices send — members\' devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including a member\'s new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can\'t restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.'**
   String get verifiedOnlyConfirmBody;
 
   /// G11 device-verification enforcement
@@ -2701,6 +2701,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{{sender} sent 1 entry of “{group}” that was saved by an older app version without a signature. It was refused, so the group is incomplete or missing here. Ask {sender} to recreate the group.} other{{sender} sent {count} entries of “{group}” that were saved by an older app version without a signature. They were refused, so the group is incomplete or missing here. Ask {sender} to recreate the group.}}'**
   String legacyRefusedBody(int count, String sender, String group);
+
+  /// G36 debug-only settings action: queue one WorkManager background round
+  ///
+  /// In en, this message translates to:
+  /// **'Run background sync now (debug)'**
+  String get debugRunBackgroundSync;
+
+  /// G36 debug-only settings action subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Queues one background round in {seconds} s — close the app to test it headless.'**
+  String debugRunBackgroundSyncBody(int seconds);
+
+  /// G36 debug-only snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Background round queued.'**
+  String get debugRunBackgroundSyncQueued;
+
+  /// G36: a second sign-in/registration attempt while the previous (timed-out) request is still running
+  ///
+  /// In en, this message translates to:
+  /// **'Still signing in…'**
+  String get authInProgressTitle;
+
+  /// G36 hint for authInProgressTitle
+  ///
+  /// In en, this message translates to:
+  /// **'The previous attempt is still waiting for the server. If it succeeds you\'re signed in automatically — otherwise try again in a moment.'**
+  String get authInProgressHint;
 }
 
 class _AppLocalizationsDelegate

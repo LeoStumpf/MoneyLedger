@@ -1401,7 +1401,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get verifiedOnlyOnBody =>
-      'An: Geräte, die du nicht per Emoji-Vergleich verifiziert hast – deine oder die anderer Mitglieder – erhalten nichts von diesem Gerät.';
+      'An: Dieses Gerät sendet nichts an Geräte, die du nicht per Emoji-Vergleich verifiziert hast – deine oder die anderer Mitglieder. Das betrifft nur, was dieses Gerät sendet: Andere Geräte synchronisieren weiter untereinander, und eine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie verifizierst.';
 
   @override
   String get verifiedOnlyConfirmTitle =>
@@ -1409,7 +1409,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get verifiedOnlyConfirmBody =>
-      'Deine Ausgaben, Zahlungen und Gruppenänderungen werden nur noch an Geräte gesendet, die du per Emoji-Vergleich verifiziert hast (eigene auf der Geräteseite, andere auf der Mitgliederseite).\n\nNicht verifizierte Geräte – auch das neue Handy eines Mitglieds oder deine eigene neue Anmeldung – erhalten nichts, bis du sie verifizierst, und bleiben zurück. Empfangene Einträge werden weiter angenommen; die Details zeigen, ob das signierende Gerät verifiziert ist.\n\nGilt nur für dieses Gerät und Konto.';
+      'Das betrifft nur, was dieses Gerät sendet: Deine Ausgaben, Zahlungen und Gruppenänderungen gehen nur noch an Geräte, die du per Emoji-Vergleich verifiziert hast (eigene auf der Geräteseite, andere auf der Mitgliederseite). Was andere Geräte senden, ändert sich nicht – die Geräte der Mitglieder und deine anderen Geräte synchronisieren weiter untereinander, solange sie das nicht auch einschalten.\n\nNicht verifizierte Geräte – auch das neue Handy eines Mitglieds – erhalten von diesem Gerät nichts, bis du sie verifizierst, und bleiben zurück.\n\nEine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie auf der Geräteseite verifizierst.\n\nEmpfangene Einträge werden weiter angenommen; die Details zeigen, ob das signierende Gerät verifiziert ist. Gilt nur für dieses Gerät und Konto.';
 
   @override
   String get verifiedOnlyTurnOn => 'Einschalten';
@@ -1708,4 +1708,23 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get debugRunBackgroundSync =>
+      'Hintergrund-Sync jetzt ausführen (Debug)';
+
+  @override
+  String debugRunBackgroundSyncBody(int seconds) {
+    return 'Plant eine Hintergrundrunde in $seconds s ein – schließe die App, um sie ohne App zu testen.';
+  }
+
+  @override
+  String get debugRunBackgroundSyncQueued => 'Hintergrundrunde eingeplant.';
+
+  @override
+  String get authInProgressTitle => 'Die Anmeldung läuft noch…';
+
+  @override
+  String get authInProgressHint =>
+      'Der vorherige Versuch wartet noch auf den Server. Klappt er, wirst du automatisch angemeldet – sonst versuche es gleich noch einmal.';
 }

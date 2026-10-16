@@ -50,6 +50,9 @@ dependencies:
   canonical_json: ^1.1.3
   crypto: ^3.0.7
   workmanager: ^0.10.10
+  # G36: request (header) timeout for the Matrix client — already transitive
+  # via matrix (BSD-3-Clause).
+  http: ^1.6.0
   cryptography: ^2.9.0
 
 dev_dependencies:

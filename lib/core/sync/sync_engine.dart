@@ -39,6 +39,19 @@ final pokeDebounceProvider = Provider<Duration>(
   (ref) => const Duration(seconds: 5),
 );
 
+/// G36: the shorter debounce for the ack digest after a **live record**
+/// (expense / settlement / member / meta) from a peer — the writer shows
+/// "waiting" until our digest arrives, and the 5 s [pokeDebounceProvider] was
+/// half of that wait. Bootstraps (many parts) keep the long debounce, and so
+/// does a second ack for the same group within [kFastAckMinGap] (a stream of
+/// edits still coalesces). Never longer than [pokeDebounceProvider].
+final ackDebounceProvider = Provider<Duration>(
+  (ref) => const Duration(seconds: 1),
+);
+
+/// G36: at most one fast ack per group per this window.
+const kFastAckMinGap = Duration(seconds: 10);
+
 /// Whether [SyncEngine.start] broadcasts every group's digest right away. The
 /// app does (a fresh start announces its state); the Android background round
 /// (G31) turns it off and decides itself — it only broadcasts when the last
@@ -51,6 +64,16 @@ final digestOnStartProvider = Provider<bool>((ref) => true);
 /// we ask at most once per this window (the bootstrap answer makes the group
 /// known; a lost answer is retried by the next digest after the window).
 const kGroupResyncCooldown = Duration(seconds: 30);
+
+/// G36: a `resync_request` is answered at most once per (requesting device,
+/// scope/group) within this window. A device that was offline gets every
+/// queued request at once (a new device's request + its G30 retries, or
+/// several peers' digests naming an unknown group) — each used to be answered
+/// with a full bootstrap. The first answer reaches the requesting device; a
+/// genuinely lost one is retried by the requester after the window.
+final resyncAnswerWindowProvider = Provider<Duration>(
+  (ref) => const Duration(seconds: 60),
+);
 
 final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
   // Rebuild (dispose + restart) when the signed-in account's ledger DB is
@@ -144,6 +167,9 @@ class SyncEngine {
   Timer? _periodic;
   final Map<String, Timer> _pokes = {};
   final Map<String, int> _groupResyncAskedAt = {};
+
+  /// G36: `'<user>|<device>|<scope or group>'` → when we last answered it.
+  final Map<String, int> _resyncAnsweredAt = {};
   bool _disposed = false;
 
   SyncEngine(Ref ref)
@@ -428,13 +454,46 @@ class SyncEngine {
 
   /// Debounced "something changed in [groupId]": coalesces a burst of inbound
   /// payloads into one digest, which acts as the delivery ack to the writer.
-  void pokeGroup(String groupId) {
+  void pokeGroup(String groupId, {bool liveRecord = false}) {
     if (!_alive) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final delay = pokeDelay(
+      liveRecord: liveRecord,
+      lastFastAckAt: _fastAckAt[groupId],
+      now: now,
+      normal: _ref.read(pokeDebounceProvider),
+      fast: _ref.read(ackDebounceProvider),
+    );
+    if (liveRecord && delay < _ref.read(pokeDebounceProvider)) {
+      _fastAckAt[groupId] = now;
+    }
     _pokes[groupId]?.cancel();
-    _pokes[groupId] = Timer(_ref.read(pokeDebounceProvider), () {
+    _pokes[groupId] = Timer(delay, () {
       _pokes.remove(groupId);
       _sendDigest(groupId);
     });
+  }
+
+  /// G36: when the last fast ack per group was scheduled.
+  final Map<String, int> _fastAckAt = {};
+
+  /// G36: the debounce before the ack digest — [fast] after a live record
+  /// from a peer unless a fast ack for the group was scheduled less than
+  /// [minGap] ago, else [normal]; never longer than [normal].
+  @visibleForTesting
+  static Duration pokeDelay({
+    required bool liveRecord,
+    required int? lastFastAckAt,
+    required int now,
+    required Duration normal,
+    required Duration fast,
+    Duration minGap = kFastAckMinGap,
+  }) {
+    if (!liveRecord || fast >= normal) return normal;
+    if (lastFastAckAt != null && now - lastFastAckAt < minGap.inMilliseconds) {
+      return normal;
+    }
+    return fast;
   }
 
   void _onMessage(TransportMessage msg) {
@@ -450,7 +509,9 @@ class SyncEngine {
           memberEventType ||
           bootstrapEventType:
         final group = msg.content['group'] as String?;
-        if (group != null) pokeGroup(group);
+        if (group != null) {
+          pokeGroup(group, liveRecord: msg.type != bootstrapEventType);
+        }
         // A bootstrap answers our new-device recovery: stop retrying. The
         // "Restoring…" state ends once LedgerSyncer has stored it (the groups
         // list is non-empty) — give it the poke window to land first.
@@ -772,8 +833,24 @@ class SyncEngine {
   Future<void> _onResyncRequest(TransportMessage msg) async {
     final transport = _transport;
     if (transport == null) return;
+    final scope = msg.content['scope'] as String?;
+    final what = scope == 'group' ? 'group:${msg.content['group']}' : '$scope';
+    final key = '${msg.senderId}|${msg.senderDevice ?? ''}|$what';
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (!shouldAnswerResync(
+      _resyncAnsweredAt[key],
+      now,
+      _ref.read(resyncAnswerWindowProvider),
+    )) {
+      if (kDebugMode) {
+        debugPrint(
+          '[sync] duplicate resync_request ($what) — already answered',
+        );
+      }
+      return;
+    }
+    _resyncAnsweredAt[key] = now;
     try {
-      final scope = msg.content['scope'] as String?;
       if (scope == 'group') {
         final groupId = msg.content['group'] as String?;
         if (groupId == null) return;
@@ -788,9 +865,17 @@ class SyncEngine {
         }
       }
     } catch (e) {
+      // Not answered after all: a repeated request may try again.
+      _resyncAnsweredAt.remove(key);
       if (_alive) debugPrint('[sync] resync handling failed: $e');
     }
   }
+
+  /// G36: whether a `resync_request` last answered at [answeredAt] (null =
+  /// never) may be answered again at [now].
+  @visibleForTesting
+  static bool shouldAnswerResync(int? answeredAt, int now, Duration window) =>
+      answeredAt == null || now - answeredAt >= window.inMilliseconds;
 
   Future<void> _sendBootstrapIfMember(
     LedgerTransport transport,

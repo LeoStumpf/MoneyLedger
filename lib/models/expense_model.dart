@@ -34,6 +34,11 @@ class ExpenseModel {
   /// before it is ever sent. Device-local, never on the wire.
   final bool pendingSign;
 
+  /// G37: the G27 content hash as cached in the DB (`version_hash`), set only
+  /// when read from a row the DAO hashed on write; null = compute on demand
+  /// (`expenseVersionHash`). Never on the wire.
+  final String? versionHash;
+
   const ExpenseModel({
     required this.id,
     required this.roomId,
@@ -51,6 +56,7 @@ class ExpenseModel {
     this.sig,
     this.origin,
     this.pendingSign = false,
+    this.versionHash,
   }) : category = category == '' ? null : category,
        note = note == '' ? null : note;
 
@@ -76,6 +82,7 @@ class ExpenseModel {
     sig: sig,
     origin: origin,
     pendingSign: pendingSign,
+    versionHash: versionHash,
   );
 }
 
@@ -96,6 +103,9 @@ class SettlementModel {
   final RecordSignature? origin;
   final bool pendingSign;
 
+  /// G37 — see [ExpenseModel.versionHash].
+  final String? versionHash;
+
   const SettlementModel({
     required this.id,
     required this.roomId,
@@ -110,6 +120,7 @@ class SettlementModel {
     this.sig,
     this.origin,
     this.pendingSign = false,
+    this.versionHash,
   });
 
   /// A copy with the G6 signing fields replaced (content unchanged).
@@ -131,5 +142,6 @@ class SettlementModel {
     sig: sig,
     origin: origin,
     pendingSign: pendingSign,
+    versionHash: versionHash,
   );
 }

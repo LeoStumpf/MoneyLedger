@@ -49,8 +49,17 @@ bool versionWins(RecordVersion incoming, RecordVersion? stored) =>
 String _hash(Map<String, Object?> content) =>
     sha256.convert(canonicalJson.encode(content)).toString();
 
-String expenseVersionHash(ExpenseModel e) => _hash(expenseContent(e));
-String settlementVersionHash(SettlementModel s) => _hash(settlementContent(s));
+/// The content hash of [e] — the DB-cached one (G37, `version_hash`) when the
+/// model was read from a row, else computed.
+String expenseVersionHash(ExpenseModel e) =>
+    e.versionHash ?? computeExpenseVersionHash(e);
+String settlementVersionHash(SettlementModel s) =>
+    s.versionHash ?? computeSettlementVersionHash(s);
+
+/// The content hash of [e], always computed (what the DAO stores, G37).
+String computeExpenseVersionHash(ExpenseModel e) => _hash(expenseContent(e));
+String computeSettlementVersionHash(SettlementModel s) =>
+    _hash(settlementContent(s));
 String memberVersionHash(MemberModel m) => _hash(memberContent(m));
 String groupMetaVersionHash(GroupModel g) => _hash(groupMetaContent(g));
 

@@ -71,8 +71,14 @@ class DeviceInfo {
 /// One short authentication string emoji to compare across the two devices.
 class SasEmoji {
   final String emoji;
+
+  /// The SDK's (English) name — the fallback when [number] is unknown.
   final String name;
-  const SasEmoji(this.emoji, this.name);
+
+  /// The spec's SAS emoji number (0–63), used to show the localized name
+  /// (`sasEmojiName`, G36).
+  final int? number;
+  const SasEmoji(this.emoji, this.name, {this.number});
 }
 
 /// Phases of an SAS verification as the UI sees them.

@@ -114,6 +114,9 @@ Expected results are in *italics*.
 | 7.6 | B kills the app, A adds; B relaunches → *expense arrives right after start (startup buffer, G24)* | 2dev |
 | 7.7 | New-device recovery: sign A in on a fresh device → *A's groups + history arrive via `resync_request{all}` from A's other device* | 2dev |
 | 7.8 | Leave on one of A's devices → *group also leaves A's other devices* | 2dev |
+| 7.9 | A adds an expense with B's app in the foreground → *A's cloud turns "Synced" within ~6 s (B's fast ack, G36)* | 2dev |
+| 7.10 | B (emulator): `svc wifi disable; svc data disable`, wait 1–3 min, enable one of them (network switch); A adds → *arrives on B without restarting the app* (G36) | 2dev |
+| 7.11 | Debug build only: Settings → "Run background sync now (debug)" → swipe the app away → *after ~15 s logcat shows a `[bg]` round*; release build → *no such entry* (G36) | emu |
 
 ## 8. Backup (JSON) and CSV
 
@@ -143,6 +146,7 @@ Expected results are in *italics*.
 | 9.5 | Members → tap "N unverified devices" under a member (or ⋮ → Devices) → Verify their device; they accept → *emoji dialog on both; both "Device verified."; the member's device and ours show Verified on both sides* | emu |
 | 9.6 | Settings → "Only sync with verified devices" → *confirmation explains the consequence*; on → add an expense → *verified devices (own + peers) get it; a member with no verified device: members page red "Not reachable — no verified device", sync tooltip "X has no verified device …", they don't receive it* | emu |
 | 9.7 | Signature details of a record from a device you haven't verified → *"You haven't verified this device (emoji comparison)."* | emu |
+| 9.8 | German UI: the SAS emoji dialog → *names in German (Hund, Katze, …), English UI in English* (G36) | 2dev |
 
 ## 10. Release build
 
@@ -161,6 +165,26 @@ iOS Rust/XCFramework build that has never been done. `ios/Runner` is template
 level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
+
+**2026-10-16 (G36+ follow-ups)** · working tree on `78c5b46` + G36+ ·
+release APK via `adb install -r` on emu-5554 (B, EN) and phone (A, DE), no
+logout / data clear; both kept their session, schema v8 migration ran
+(emu logcat: `[db] deleted the adopted legacy ledger`). 7.9 (G7a Test, emu on
+the group page): phone add → own cloud "Mit allen Mitgliedern
+synchronisiert" after **9.4 / 9.7 / 9.8 / 11.2 s before → 5.7 / 5.7 / 5.4 /
+6.0 s after** (uiautomator polling, ~2 s resolution). 7.10: emu wifi+data off
+50 s → data on; data → wifi; wifi off → data; off 170 s → wifi on — each
+time the phone's next expense was on the emulator within 2–3 s (before and
+after the build; the stall seen once on emu-5556 was not reproduced; no
+`[watchdog]` lines). 7.11 release: no debug entry in the settings sheet.
+9.6: the verified-only subtitle + confirmation now say "only limits what this
+device sends" and that a new own login can't restore from it until
+verified (EN + DE); left off. 9.8: not run — every MoneyLedger device pair is
+already verified (only Leo's Element session is unverified); covered by
+widget tests. Balance page (DE): suggested payment "mone… zahlt an dich"
+(NamesLine; the name ellipsizes, the words stay). Digest benchmark (5k
+records, in-memory DB, separate `.bench` package, uninstalled afterwards) —
+see open-points G37. Screenshots `g36_*.png` (session scratchpad).
 
 **2026-10-16 (G34 backup follow-ups)** · working tree on `ce20a75` + G34/G35 ·
 release APK via `adb install -r` on emu-5554 (B, EN) and phone (A, DE), no

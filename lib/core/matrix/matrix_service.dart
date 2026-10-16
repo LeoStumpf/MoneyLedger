@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http;
 import 'package:matrix/encryption.dart' show KeyVerificationMethod;
 import 'package:matrix/matrix.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
+
+import 'request_timeout_http_client.dart';
 
 Future<Client> buildMatrixClient() async {
   MatrixSdkDatabase db;
@@ -32,6 +35,9 @@ Future<Client> buildMatrixClient() async {
   return Client(
     'MoneyLedger',
     database: db,
+    // G36: bound every request's wait for response headers — a request on a
+    // socket that died in a network switch otherwise hangs the sync loop.
+    httpClient: RequestTimeoutHttpClient(http.Client()),
     nativeImplementations: NativeImplementations.dummy,
     // SAS (emoji) device verification over to-device messages (Phase F /
     // G11). Without these the SDK ignores every verification request and

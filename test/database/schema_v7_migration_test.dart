@@ -80,7 +80,7 @@ void main() {
       ),
     );
     addTearDown(db.close);
-    expect(db.schemaVersion, 7);
+    expect(db.schemaVersion, greaterThanOrEqualTo(7));
 
     final expenses = ExpensesDao(db);
     final e = (await expenses.getExpenseById('e1'))!;

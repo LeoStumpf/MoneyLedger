@@ -61,7 +61,7 @@ void main() {
       ),
     );
     addTearDown(db.close);
-    expect(db.schemaVersion, 7); // v5 → v6 → v7 (G16)
+    expect(db.schemaVersion, greaterThanOrEqualTo(6)); // v5 → v6 → … (G16, G37)
 
     final group = await GroupsDao(db).getGroup('g1');
     expect(group!.name, 'Trip');

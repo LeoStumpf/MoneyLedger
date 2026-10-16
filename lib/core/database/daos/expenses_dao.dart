@@ -37,15 +37,23 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
         final old = await (select(
           expenses,
         )..where((t) => t.id.equals(expense.id.value))).getSingleOrNull();
+        final incoming = _expenseFromCompanion(expense);
+        final hash = computeExpenseVersionHash(incoming);
         if (old != null &&
-            compareVersions(
-                  expenseVersion(_expenseFromCompanion(expense)),
-                  expenseVersion(_toExpenseModel(old)),
-                ) <
+            compareVersions((
+                  at: incoming.updatedAt,
+                  hash: hash,
+                ), expenseVersion(_toExpenseModel(old))) <
                 0) {
           return;
         }
-        await into(expenses).insertOnConflictUpdate(expense);
+        // G37: cache the hash — only when the companion carries the whole
+        // content (a partial one keeps stored columns the hash didn't see).
+        await into(expenses).insertOnConflictUpdate(
+          expense.copyWith(
+            versionHash: Value(_completeExpense(expense) ? hash : null),
+          ),
+        );
       });
 
   Future<void> upsertSettlementLww(SettlementsCompanion settlement) =>
@@ -53,15 +61,21 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
         final old = await (select(
           settlements,
         )..where((t) => t.id.equals(settlement.id.value))).getSingleOrNull();
+        final incoming = _settlementFromCompanion(settlement);
+        final hash = computeSettlementVersionHash(incoming);
         if (old != null &&
-            compareVersions(
-                  settlementVersion(_settlementFromCompanion(settlement)),
-                  settlementVersion(_toSettlementModel(old)),
-                ) <
+            compareVersions((
+                  at: incoming.updatedAt,
+                  hash: hash,
+                ), settlementVersion(_toSettlementModel(old))) <
                 0) {
           return;
         }
-        await into(settlements).insertOnConflictUpdate(settlement);
+        await into(settlements).insertOnConflictUpdate(
+          settlement.copyWith(
+            versionHash: Value(_completeSettlement(settlement) ? hash : null),
+          ),
+        );
       });
 
   Future<List<ExpenseModel>> getExpensesForRoom(String roomId) =>
@@ -129,6 +143,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     sig: RecordSignature.decode(e.sig),
     origin: RecordSignature.decode(e.origin),
     pendingSign: e.pendingSign,
+    versionHash: e.versionHash,
   );
 
   static SettlementModel _toSettlementModel(Settlement s) => SettlementModel(
@@ -145,6 +160,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     sig: RecordSignature.decode(s.sig),
     origin: RecordSignature.decode(s.origin),
     pendingSign: s.pendingSign,
+    versionHash: s.versionHash,
   );
 }
 
@@ -215,3 +231,61 @@ SettlementModel _settlementFromCompanion(SettlementsCompanion c) =>
       updatedAt: c.updatedAt.value,
       deleted: _v(c.deleted, false),
     );
+
+/// G37: whether [c] sets every column the expense content hash covers.
+bool _completeExpense(ExpensesCompanion c) =>
+    c.roomId.present &&
+    c.description.present &&
+    c.amountCents.present &&
+    c.currency.present &&
+    c.paidBy.present &&
+    c.splitsJson.present &&
+    c.createdAt.present &&
+    c.deleted.present &&
+    c.category.present &&
+    c.note.present;
+
+bool _completeSettlement(SettlementsCompanion c) =>
+    c.roomId.present &&
+    c.amountCents.present &&
+    c.currency.present &&
+    c.fromUser.present &&
+    c.toUser.present &&
+    c.createdAt.present &&
+    c.deleted.present;
+
+/// G37 (schema v8): stores the content hash of every expense / settlement
+/// that has none yet (rows from before v8, or written outside the DAO).
+Future<void> backfillVersionHashes(AppDatabase db) async {
+  final ex = await (db.select(
+    db.expenses,
+  )..where((t) => t.versionHash.isNull())).get();
+  final st = await (db.select(
+    db.settlements,
+  )..where((t) => t.versionHash.isNull())).get();
+  if (ex.isEmpty && st.isEmpty) return;
+  await db.batch((b) {
+    for (final e in ex) {
+      b.update(
+        db.expenses,
+        ExpensesCompanion(
+          versionHash: Value(
+            computeExpenseVersionHash(ExpensesDao._toExpenseModel(e)),
+          ),
+        ),
+        where: (t) => t.id.equals(e.id),
+      );
+    }
+    for (final s in st) {
+      b.update(
+        db.settlements,
+        SettlementsCompanion(
+          versionHash: Value(
+            computeSettlementVersionHash(ExpensesDao._toSettlementModel(s)),
+          ),
+        ),
+        where: (t) => t.id.equals(s.id),
+      );
+    }
+  });
+}

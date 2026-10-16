@@ -50,6 +50,7 @@ class AuthErrorMessage {
     AuthErrorKind.offline => l.authOfflineTitle,
     AuthErrorKind.serverUnreachable => l.authUnreachableTitle(host ?? ''),
     AuthErrorKind.timeout => l.authTimeoutTitle,
+    AuthErrorKind.inProgress => l.authInProgressTitle,
     AuthErrorKind.notAHomeserver => l.authNotAHomeserverTitle(host ?? ''),
     AuthErrorKind.wrongCredentials => l.authWrongCredentialsTitle,
     AuthErrorKind.userDeactivated => l.authDeactivatedTitle,
@@ -67,6 +68,7 @@ class AuthErrorMessage {
       ambiguousNetwork ? l.authUnreachableHint : l.authOfflineHint,
     AuthErrorKind.serverUnreachable => l.authUnreachableHint,
     AuthErrorKind.timeout => l.authTimeoutHint,
+    AuthErrorKind.inProgress => l.authInProgressHint,
     AuthErrorKind.notAHomeserver => l.authNotAHomeserverHint,
     AuthErrorKind.wrongCredentials => l.authWrongCredentialsHint,
     AuthErrorKind.userDeactivated => l.authDeactivatedHint,
@@ -90,6 +92,9 @@ enum AuthErrorKind {
   offline,
   serverUnreachable,
   timeout,
+
+  /// G36: an earlier sign-in / registration is still running.
+  inProgress,
   notAHomeserver,
   wrongCredentials,
   userDeactivated,
@@ -152,6 +157,7 @@ AuthErrorMessage describeAuthError(
     detail: detail,
   );
 
+  if (error is AuthInProgressException) return msg(AuthErrorKind.inProgress);
   if (error is AuthNetworkException) {
     return error.deviceOffline
         ? msg(AuthErrorKind.offline)

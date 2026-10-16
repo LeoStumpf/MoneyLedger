@@ -2,6 +2,8 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+import 'daos/expenses_dao.dart' show backfillVersionHashes;
+
 part 'app_database.g.dart';
 
 class Groups extends Table {
@@ -43,6 +45,9 @@ class Expenses extends Table {
   // free-text note; NULL = none. Part of the signed content when set.
   TextColumn get category => text().nullable()();
   TextColumn get note => text().nullable()();
+  // G37: cached G27 content hash (SHA-256 hex of the canonical content),
+  // written by the DAO's LWW upsert; NULL = compute on demand.
+  TextColumn get versionHash => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -64,6 +69,8 @@ class Settlements extends Table {
   TextColumn get sig => text().nullable()();
   TextColumn get origin => text().nullable()();
   BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
+  // G37 — see Expenses.versionHash.
+  TextColumn get versionHash => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -226,7 +233,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -307,6 +314,14 @@ class AppDatabase extends _$AppDatabase {
             "DELETE FROM rejected_versions WHERE kind = 'expense'",
           );
         }
+      }
+      // v8 (G37): cache the G27 content hash per expense / settlement — a
+      // digest of a 5k-record group took ~540 ms on a Pixel, mostly hashing.
+      // Existing rows are hashed once here.
+      if (from < 8) {
+        await m.addColumn(expenses, expenses.versionHash);
+        await m.addColumn(settlements, settlements.versionHash);
+        await backfillVersionHashes(this);
       }
     },
     beforeOpen: (_) async {

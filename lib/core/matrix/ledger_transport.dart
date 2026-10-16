@@ -34,6 +34,11 @@ const moneyLedgerTypePrefix = 'com.moneyledger.';
 /// One decrypted inbound to-device payload.
 class TransportMessage {
   final String senderId;
+
+  /// An opaque, stable id of the sending **device** when the transport knows
+  /// it (Matrix: the Olm sender's Curve25519 identity key; the fake: the
+  /// device id) — null otherwise. Used to dedupe answers per device (G36).
+  final String? senderDevice;
   final String type;
   final Map<String, dynamic> content;
 
@@ -41,6 +46,7 @@ class TransportMessage {
     required this.senderId,
     required this.type,
     required this.content,
+    this.senderDevice,
   });
 }
 

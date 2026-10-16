@@ -1384,14 +1384,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get verifiedOnlyOnBody =>
-      'On: devices you haven\'t verified by emoji comparison — yours or other members\' — receive nothing from this device.';
+      'On: this device sends nothing to devices you haven\'t verified by emoji comparison — yours or other members\'. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can\'t restore your groups from this device until you verify it.';
 
   @override
   String get verifiedOnlyConfirmTitle => 'Only sync with verified devices?';
 
   @override
   String get verifiedOnlyConfirmBody =>
-      'Your expenses, payments and group changes will only be sent to devices you have verified by comparing emojis (Devices page for your own, the members page for others).\n\nUnverified devices — including a member\'s new phone or your own new login — get nothing until you verify them, so they fall behind. Records you receive are still accepted; the details show whether the signing device is verified.\n\nApplies to this device and account only.';
+      'This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the members page for others). It doesn\'t change what other devices send — members\' devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including a member\'s new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can\'t restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.';
 
   @override
   String get verifiedOnlyTurnOn => 'Turn on';
@@ -1685,4 +1685,22 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get debugRunBackgroundSync => 'Run background sync now (debug)';
+
+  @override
+  String debugRunBackgroundSyncBody(int seconds) {
+    return 'Queues one background round in $seconds s — close the app to test it headless.';
+  }
+
+  @override
+  String get debugRunBackgroundSyncQueued => 'Background round queued.';
+
+  @override
+  String get authInProgressTitle => 'Still signing in…';
+
+  @override
+  String get authInProgressHint =>
+      'The previous attempt is still waiting for the server. If it succeeds you\'re signed in automatically — otherwise try again in a moment.';
 }

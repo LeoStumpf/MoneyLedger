@@ -20,9 +20,9 @@ class FakeDeviceGateway implements DeviceGateway {
     : peers = peers ?? {};
 
   static const sampleEmojis = [
-    SasEmoji('🐶', 'Dog'),
-    SasEmoji('🐱', 'Cat'),
-    SasEmoji('🦁', 'Lion'),
+    SasEmoji('🐶', 'Dog', number: 0),
+    SasEmoji('🐱', 'Cat', number: 1),
+    SasEmoji('🦁', 'Lion', number: 2),
   ];
 
   /// Push incoming verification requests here.

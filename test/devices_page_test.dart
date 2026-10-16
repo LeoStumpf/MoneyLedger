@@ -11,15 +11,19 @@ import 'package:money_ledger/features/devices/devices_page.dart';
 import 'helpers/fake_device_gateway.dart';
 import 'helpers/l10n.dart';
 
-Widget _app(FakeDeviceGateway gateway, {FakeTrustStore? store}) =>
-    ProviderScope(
-      overrides: (store ?? FakeTrustStore()).overrides(gateway),
-      child: MaterialApp(
-        localizationsDelegates: testLocalizationsDelegates,
-        supportedLocales: testSupportedLocales,
-        home: const DevicesPage(),
-      ),
-    );
+Widget _app(
+  FakeDeviceGateway gateway, {
+  FakeTrustStore? store,
+  Locale? locale,
+}) => ProviderScope(
+  overrides: (store ?? FakeTrustStore()).overrides(gateway),
+  child: MaterialApp(
+    locale: locale,
+    localizationsDelegates: testLocalizationsDelegates,
+    supportedLocales: testSupportedLocales,
+    home: const DevicesPage(),
+  ),
+);
 
 void main() {
   testWidgets('lists devices with status and a trust summary', (tester) async {
@@ -71,6 +75,7 @@ void main() {
 
     // SAS emojis shown.
     expect(find.text('🐶'), findsOneWidget);
+    expect(find.text('Dog'), findsOneWidget);
     expect(find.text('They match'), findsOneWidget);
 
     await tester.tap(find.text('They match'));
@@ -100,5 +105,25 @@ void main() {
 
     // Still unverified.
     expect(find.widgetWithText(TextButton, 'Verify'), findsOneWidget);
+  });
+
+  testWidgets('G36: the SAS emoji names follow the UI language', (
+    tester,
+  ) async {
+    final gateway = FakeDeviceGateway([
+      const DeviceInfo(deviceId: 'ME', isThisDevice: true, verified: true),
+      const DeviceInfo(deviceId: 'OLD', isThisDevice: false, verified: false),
+    ]);
+    await tester.pumpWidget(_app(gateway, locale: const Locale('de')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Verifizieren'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('🐶'), findsOneWidget);
+    expect(find.text('Hund'), findsOneWidget);
+    expect(find.text('Katze'), findsOneWidget);
+    expect(find.text('Löwe'), findsOneWidget);
+    expect(find.text('Dog'), findsNothing);
   });
 }
