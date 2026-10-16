@@ -8,6 +8,7 @@ import 'core/background/background_wait_app.dart';
 import 'core/demo/demo_mode.dart';
 import 'core/matrix/crypto_status.dart';
 import 'core/demo/demo_overrides.dart';
+import 'core/theme/web_fonts.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +47,11 @@ Future<void> main() async {
       ),
     ),
   );
+  // G43: the web fetches no font from Google — register the bundled
+  // fallback fonts (+ their licenses) before the first frame, so the engine
+  // never goes looking for a Noto font for our own texts. No-op off the web.
+  registerWebFontLicenses();
+  await loadWebOnlyFonts();
   // G15: offline demo (`--dart-define=OFFLINE_DEMO=true`) — seeded ledger,
   // fake relay + auth; no Matrix client, crypto or background sync at all.
   // A compile-time constant, so a normal build tree-shakes this branch.

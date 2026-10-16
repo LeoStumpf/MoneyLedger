@@ -47,6 +47,26 @@ The version-exact list of all packages (direct and transitive) is in
   (commit `7aaeac0`) — Copyright The Matrix.org Foundation C.I.C.,
   **Apache-2.0**. Listed on the in-app licenses page.
 
+### Fonts (web build only, G43)
+
+The web build loads no font from Google; it serves these itself (made by
+[`tool/fonts/make_web_fonts.py`](tool/fonts/make_web_fonts.py)). The Android
+app ships none of them (it uses the system fonts). All listed on the in-app
+licenses page of the web version.
+
+- **Roboto** Regular ([`web/fonts/roboto/`](web/fonts/roboto), from the Flutter
+  SDK's `material_fonts`) — Copyright 2011 Google Inc., **Apache-2.0**. The web
+  engine's default font.
+- **Noto Color Emoji** 2.051, subset to the 64 SAS verification emoji
+  ([`assets/fonts/sas_emoji/`](assets/fonts/sas_emoji)) — Copyright 2022 Google
+  Inc., **SIL Open Font License 1.1** (text in `OFL.txt` there).
+- **DejaVu Sans** 2.37, subset to symbol ranges — arrows, math operators,
+  punctuation, geometric shapes, dingbats
+  ([`assets/fonts/symbols/`](assets/fonts/symbols)) — Bitstream Vera license
+  (DejaVu changes public domain; text in `LICENSE.txt` there). The name
+  contains neither "Bitstream" nor "Vera", as the license requires for
+  modified fonts.
+
 ### Logo and icons
 
 The MoneyLedger logo, launcher icons, favicon and splash logo are MoneyLedger's
@@ -71,7 +91,9 @@ permissive — MIT, BSD-2/3-Clause or Apache-2.0 — plus:
 All of the above are compatible with distributing MoneyLedger under the
 AGPL-3.0: the AGPL-3.0 packages (`matrix`, `flutter_vodozemac`, `vodozemac`) are the
 reason the app itself is AGPL-licensed; MIT, BSD, Apache-2.0 (incl. the Matrix spec's SAS
-emoji data) and MPL-2.0 code may be combined with AGPL-3.0 code. **No incompatible license was found**
+emoji data) and MPL-2.0 code may be combined with AGPL-3.0 code; the web fonts
+(Apache-2.0, OFL-1.1, Bitstream Vera) are separate font files distributed
+alongside the app under their own licenses, which permit that. **No incompatible license was found**
 (checked against each package's `LICENSE` in the pub cache for the versions in
 `pubspec.lock`).
 

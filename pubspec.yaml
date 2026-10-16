@@ -72,4 +72,19 @@ flutter:
   # G17: brand assets (logo PNG rendered by tool/brand/render_icons.py).
   assets:
     - assets/brand/logo_512.png
-  # G42: no bundled fonts — the platform's own font (Roboto on Android).
+    # G43: the web fetches no font from Google, so it brings its own
+    # fallbacks (tool/fonts/make_web_fonts.py): the 64 SAS verification emoji
+    # (Noto Color Emoji subset, OFL-1.1) and symbols Roboto lacks (DejaVu Sans
+    # subset). Registered at runtime by loadWebOnlyFonts(); web only — Android
+    # uses its system fonts.
+    - path: assets/fonts/sas_emoji/NotoColorEmoji-SAS.ttf
+      platforms: [web]
+    - path: assets/fonts/sas_emoji/OFL.txt
+      platforms: [web]
+    - path: assets/fonts/symbols/DejaVuSans-Symbols.ttf
+      platforms: [web]
+    - path: assets/fonts/symbols/LICENSE.txt
+      platforms: [web]
+  # G42: no bundled fonts — the platform's own font (Roboto on Android). G43:
+  # the web engine's default Roboto is served from web/fonts/ (see
+  # web/flutter_bootstrap.js), not declared here, so Android is untouched.

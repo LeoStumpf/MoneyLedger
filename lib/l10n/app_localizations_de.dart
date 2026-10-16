@@ -619,20 +619,16 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get authOfflineTitle => 'Keine Internetverbindung';
-
-  @override
-  String get authOfflineHint =>
-      'Prüfe deine Verbindung und versuche es erneut.';
-
-  @override
   String authUnreachableTitle(Object host) {
     return '$host ist nicht erreichbar';
   }
 
   @override
   String get authUnreachableHint =>
-      'Prüfe die Homeserver-Adresse und deine Internetverbindung.';
+      'Der Server ist vielleicht nicht erreichbar oder die Adresse falsch – oder du bist offline. Prüfe die Homeserver-Adresse und deine Internetverbindung.';
+
+  @override
+  String get authUnreachableNoHostTitle => 'Server nicht erreichbar';
 
   @override
   String get authTimeoutTitle => 'Der Server hat zu lange nicht geantwortet';
@@ -736,6 +732,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get homeserverHint => 'matrix.org oder mozilla.modular.im';
+
+  @override
+  String get checkServerTooltip => 'Server prüfen';
 
   @override
   String resolvedTo(Object url) {
@@ -873,7 +872,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyNoTrackingBody =>
-      'Die App kommuniziert nur mit deinem Homeserver – und, wenn du Single Sign-on nutzt oder dich im Web registrierst, mit den Seiten, zu denen dich dein Homeserver im Browser schickt. Es gibt keine Analyse, keine Absturzberichte, keine Werbe-ID und keinerlei Tracking.';
+      'Die App kommuniziert nur mit Matrix-Homeservern: auf der Anmeldeseite mit dem Server, den du einträgst – und erst, wenn du ihn bestätigst oder dich anmeldest –, danach nur mit deinem eigenen Homeserver. Über ihn fragt sie auch die Matrix-Profilnamen und Geräte der Mitglieder deiner Gruppen ab (dein Homeserver fragt dafür ggf. deren Homeserver). Wenn du Single Sign-on nutzt oder dich im Web registrierst, öffnet dein Browser die Seiten, zu denen dich dein Homeserver schickt (bei matrix.org ggf. die Registrierungsseite von Element, app.element.io). Links in der App – etwa zum Quellcode auf GitHub – öffnen sich erst in deinem Browser, wenn du darauf tippst. Die Web-Version wird vollständig von der Seite geladen, auf der sie bereitgestellt wird: kein Code und keine Schriften von Google oder anderen Dritten. Es gibt keine Analyse, keine Absturzberichte, keine Werbe-ID und keinerlei Tracking.';
 
   @override
   String get privacyBackgroundTitle =>
@@ -1988,5 +1987,5 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLocalBody =>
-      'Wenn du MoneyLedger ohne Matrix-Konto nutzt, verlässt nichts dein Gerät: Es wird kein Server kontaktiert und nichts synchronisiert. Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben.';
+      'Wenn du MoneyLedger ohne Matrix-Konto nutzt, verlässt nichts dein Gerät: Die App kontaktiert keinen Server und synchronisiert nichts (die Web-Version wird nur von der Seite geladen, auf der sie bereitgestellt wird). Links, auf die du tippst – etwa zum Quellcode –, öffnen sich in deinem Browser. Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben.';
 }

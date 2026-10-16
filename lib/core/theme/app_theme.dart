@@ -1,12 +1,15 @@
 /// MoneyLedger's Material 3 theme (G17, "Paper & ink" since G42): one builder
 /// for light and dark, the platform's own font (no bundled or downloaded
-/// fonts), component themes and the spacing / radius tokens. Colours: see
-/// `app_colors.dart`.
+/// fonts; on the web the engine's Roboto, served by us, plus our own fallback
+/// fonts — G43, `web_fonts.dart`), component themes and the spacing / radius
+/// tokens. Colours: see `app_colors.dart`.
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'web_fonts.dart';
 
 export 'app_colors.dart';
 
@@ -46,8 +49,12 @@ const kContentMaxWidth = 680.0;
 const kTabularFigures = [FontFeature.tabularFigures()];
 
 abstract final class AppTheme {
-  static ThemeData light() => _build(Brightness.light);
-  static ThemeData dark() => _build(Brightness.dark);
+  /// [isWeb]: G43 — the web adds its bundled fallback fonts
+  /// ([kWebFontFallback]); elsewhere the platform's fonts are untouched.
+  static ThemeData light({bool isWeb = kIsWeb}) =>
+      _build(Brightness.light, isWeb: isWeb);
+  static ThemeData dark({bool isWeb = kIsWeb}) =>
+      _build(Brightness.dark, isWeb: isWeb);
 
   /// Cards and filled inputs: a lighter sheet on the paper background, one
   /// step *lighter* than the background in dark mode (elevation = light).
@@ -60,7 +67,7 @@ abstract final class AppTheme {
   static BorderSide ledgerRule(ColorScheme scheme) =>
       BorderSide(color: scheme.onSurface, width: 2);
 
-  static ThemeData _build(Brightness brightness) {
+  static ThemeData _build(Brightness brightness, {required bool isWeb}) {
     final isDark = brightness == Brightness.dark;
     final base = ColorScheme.fromSeed(
       seedColor: BrandColors.rust,
@@ -168,7 +175,12 @@ abstract final class AppTheme {
           ),
           bodyLarge: baseText.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
         )
-        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+        .apply(
+          bodyColor: scheme.onSurface,
+          displayColor: scheme.onSurface,
+          // G43: no Noto font is fetched on the web — our own fallbacks.
+          fontFamilyFallback: isWeb ? kWebFontFallback : null,
+        );
 
     final rounded = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(Radii.m),

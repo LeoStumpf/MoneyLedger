@@ -98,7 +98,9 @@ void main() {
       expect(find.text('groups-home'), findsNothing);
     });
 
-    testWidgets('raw network error → "No internet connection"', (tester) async {
+    testWidgets('raw network error → "Can\'t reach the server"', (
+      tester,
+    ) async {
       final gateway = FakeAuthGateway()
         ..failWith = Exception(
           'ClientException with SocketException: '
@@ -109,7 +111,7 @@ void main() {
 
       await _signIn(tester);
 
-      expect(find.text(en.authOfflineTitle), findsOneWidget);
+      expect(find.text(en.authUnreachableNoHostTitle), findsOneWidget);
       expect(find.textContaining('SocketException'), findsNothing);
     });
 

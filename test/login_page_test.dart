@@ -6,6 +6,13 @@ import 'package:money_ledger/models/login_flows_result.dart';
 
 import 'helpers/test_providers.dart';
 
+/// G43: the page looks nothing up on open — confirm the server first.
+Future<void> _checkServer(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('checkServerBtn')));
+  await tester.pump(); // lookup starts
+  await tester.pump(); // FutureProvider settles
+}
+
 void main() {
   group('LoginPage', () {
     testWidgets(
@@ -40,8 +47,8 @@ void main() {
           overrides: testOverrides(isLoggedIn: false, loginFlows: ssoFlows),
         ),
       );
-      await tester.pump(); // build
-      await tester.pump(); // FutureProvider settles
+      await tester.pump();
+      await _checkServer(tester);
 
       expect(find.byKey(const Key('ssoBtn')), findsOneWidget);
       expect(find.byKey(const Key('signInBtn')), findsOneWidget);
@@ -75,7 +82,7 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.pump();
+        await _checkServer(tester);
 
         expect(find.byKey(const Key('ssoBtn_oidc-google')), findsOneWidget);
         expect(find.byKey(const Key('ssoBtn_oidc-github')), findsOneWidget);
@@ -101,7 +108,7 @@ void main() {
         ),
       );
       await tester.pump();
-      await tester.pump();
+      await _checkServer(tester);
 
       expect(find.byKey(const Key('signInBtn')), findsNothing);
       expect(find.byKey(const Key('passwordField')), findsNothing);
@@ -167,7 +174,7 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.pump();
+        await _checkServer(tester);
 
         expect(find.byKey(const Key('ssoBtn')), findsOneWidget);
         expect(find.byKey(const Key('signInBtn')), findsNothing);
@@ -193,7 +200,7 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.pump();
+        await _checkServer(tester);
 
         expect(find.byKey(const Key('ssoBtn')), findsOneWidget);
         expect(find.byKey(const Key('signInBtn')), findsOneWidget);
@@ -251,7 +258,7 @@ void main() {
         ),
       );
       await tester.pump();
-      await tester.pump();
+      await _checkServer(tester);
 
       expect(find.text('or'), findsOneWidget);
     });
@@ -277,7 +284,7 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.pump();
+        await _checkServer(tester);
         expect(find.text('Continue with matrix.org'), findsOneWidget);
         expect(
           find.text('Continue with matrix-client.matrix.org'),

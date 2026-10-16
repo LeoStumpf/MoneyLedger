@@ -106,21 +106,17 @@ class AuthServerException implements Exception {
 }
 
 /// The homeserver couldn't be reached at all (DNS failure, refused connection,
-/// timeout). [deviceOffline] is true when a reference server was unreachable
-/// too — i.e. the device has no working internet connection.
+/// timeout). G43: the app never probes a third-party server to tell "this
+/// device is offline" from "that server is down" — the user's homeserver is
+/// the only server it talks to — so this one error covers both.
 class AuthNetworkException implements Exception {
   /// Host the app tried to reach (e.g. `matrix.org`).
   final String host;
-  final bool deviceOffline;
 
   /// The underlying error (shown only behind "Details").
   final Object cause;
 
-  const AuthNetworkException(
-    this.host, {
-    required this.deviceOffline,
-    required this.cause,
-  });
+  const AuthNetworkException(this.host, {required this.cause});
 
   @override
   String toString() => cause.toString();

@@ -20,7 +20,8 @@ MoneyLedger server that could receive your data.
 | Where your ledger lives | On the devices of the group's members |
 | What the homeserver can read | Nothing of the ledger — only encrypted messages and their metadata |
 | Analytics, crash reporting, ads, tracking | None |
-| Leaves the device | Encrypted sync messages to your homeserver; a CSV or backup file only when you export one |
+| Leaves the device | Encrypted sync messages, sign-in and profile / device lookups — to your homeserver only; a CSV or backup file only when you export one |
+| Third parties (Google, CDNs, …) | None — links open in your browser only when you tap them |
 
 ## Your ledger stays on your devices
 
@@ -42,10 +43,17 @@ policy.
 
 ## No analytics, no servers of ours
 
-The app only talks to your homeserver — and, if you use single sign-on or sign
-up on the web, to the pages your homeserver sends you to in your browser. There
-is no analytics, no crash reporting, no advertising ID and no tracking of any
-kind.
+The app talks only to Matrix homeservers: on the sign-in page to the server you
+enter — and only once you confirm it or sign in — and after that only to your
+own homeserver. Through it, the app also looks up the Matrix profile names and
+devices of your groups' members (your homeserver may ask theirs). If you use
+single sign-on or sign up on the web, your browser opens the pages your
+homeserver sends you to (for matrix.org possibly Element's sign-up page,
+app.element.io). Links in the app — to the source code on GitHub, for example —
+open in your browser only when you tap them. The web version is loaded entirely
+from the site that hosts it: no code or fonts from Google or any other third
+party. There is no analytics, no crash reporting, no advertising ID and no
+tracking of any kind.
 
 ## Background sync on Android
 
@@ -56,8 +64,10 @@ it off in Settings. The web version syncs only while its tab is open.
 
 ## Local mode (without an account)
 
-If you use MoneyLedger without a Matrix account, nothing leaves your device: no
-server is contacted and nothing is synced. Your name, groups, expenses and
+If you use MoneyLedger without a Matrix account, nothing leaves your device: the
+app contacts no server and nothing is synced (the web version is only loaded
+from the site that hosts it). Links you tap, e.g. to the source code, open in
+your browser. Your name, groups, expenses and
 payments are stored only in a local database on this device, plus a small
 preferences file (whether you saw the welcome, your local profile name).
 Deleting local data in the settings, or uninstalling the app, removes them. If

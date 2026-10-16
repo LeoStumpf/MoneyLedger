@@ -380,15 +380,17 @@
       }
     }
   },
-  "authOfflineTitle": "No internet connection",
-  "authOfflineHint": "Check your connection and try again.",
   "authUnreachableTitle": "Can't reach {host}",
   "@authUnreachableTitle": {
     "placeholders": {
       "host": {}
     }
   },
-  "authUnreachableHint": "Check the homeserver address and your internet connection.",
+  "authUnreachableHint": "The server may be down or the address mistyped — or you're offline. Check the homeserver address and your internet connection.",
+  "authUnreachableNoHostTitle": "Can't reach the server",
+  "@authUnreachableNoHostTitle": {
+    "description": "Login error title when the homeserver couldn't be reached and no host is known (server down, wrong address, or offline)."
+  },
   "authTimeoutTitle": "The server took too long to respond",
   "authTimeoutHint": "Check your connection and try again.",
   "authNotAHomeserverTitle": "{host} doesn't look like a Matrix homeserver",
@@ -428,6 +430,10 @@
   "signInSubtitle": "Sign in with your Matrix account",
   "homeserverLabel": "Homeserver",
   "homeserverHint": "matrix.org or mozilla.modular.im",
+  "checkServerTooltip": "Check server",
+  "@checkServerTooltip": {
+    "description": "Tooltip of the button next to the homeserver field that loads the server's sign-in options (nothing is requested before the user acts)."
+  },
   "resolvedTo": "Resolved to {url}",
   "@resolvedTo": {
     "placeholders": {
@@ -508,7 +514,7 @@
   "privacyHomeserverTitle": "What your Matrix homeserver sees",
   "privacyHomeserverBody": "To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the other members' devices. Your homeserver (and the homeservers of the other members) relay these messages and queue them until they are delivered, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.",
   "privacyNoTrackingTitle": "No analytics, no servers of ours",
-  "privacyNoTrackingBody": "The app only talks to your homeserver — and, if you use single sign-on or sign up on the web, to the pages your homeserver sends you to in your browser. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
+  "privacyNoTrackingBody": "The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of your groups' members (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element's sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
   "privacyBackgroundTitle": "Background sync on Android",
   "privacyBackgroundBody": "On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.",
   "privacyCsvTitle": "Export, backup and import",
@@ -1663,7 +1669,7 @@
   "@privacyLocalTitle": {
     "description": "Privacy policy section title (G40)"
   },
-  "privacyLocalBody": "If you use MoneyLedger without a Matrix account, nothing leaves your device: no server is contacted and nothing is synced. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.",
+  "privacyLocalBody": "If you use MoneyLedger without a Matrix account, nothing leaves your device: the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.",
   "@privacyLocalBody": {
     "description": "Privacy policy section body (G40)"
   }

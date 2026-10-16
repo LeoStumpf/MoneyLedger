@@ -147,7 +147,8 @@ dart run build_runner watch
 ## Run
 
 ```bash
-# Web (dev server on http://localhost:8080)
+# Web (dev server on http://localhost:8080; add --no-web-resources-cdn to
+# load CanvasKit locally like the release build does)
 flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0
 
 # Android (a device/emulator must be connected)
@@ -209,8 +210,9 @@ needs the Rust toolchain + NDK).
 
 `build.sh` runs `flutter pub get` → `dart run build_runner build` →
 `dart format --output=none --set-exit-if-changed lib test` → `flutter test` →
-`flutter build web --release`, stopping on the first failure — so a green run
-means codegen, formatting, all tests, and the release build passed. The code is
+`flutter build web --release --no-web-resources-cdn` → `tool/web/check_web_build.sh`,
+stopping on the first failure — so a green run means codegen, formatting, all
+tests, and the release build passed. The code is
 kept `dart format`ted (generated files included — the generators emit
 formatted code); fix a failing check with `dart format lib test`. Output
 lands in `build/web/`. Override the Flutter binary with
@@ -219,12 +221,21 @@ lands in `build/web/`. Override the Flutter binary with
 Per-platform release builds:
 
 ```bash
-flutter build web --release      # → build/web/
+flutter build web --release --no-web-resources-cdn   # → build/web/
 flutter build apk --release      # → build/app/outputs/flutter-apk/
 ```
 
 > The web build needs `web/sqlite3.wasm` and `web/drift_worker.js` (checked in,
 > not generated; taken from the matching drift GitHub release) — don't delete them.
+
+> **No CDN (G43):** always build the web app with `--no-web-resources-cdn`, so
+> CanvasKit is served from `build/web/canvaskit/` instead of `www.gstatic.com`.
+> `web/flutter_bootstrap.js` points the engine's font downloads at `fonts/` on
+> the app's own origin (Roboto lives in `web/fonts/`; SAS emoji + symbol
+> fallbacks are web-only assets), so the browser never contacts Google.
+> `tool/web/check_web_build.sh build/web` verifies a build (build.sh + CI run
+> it); after a Flutter upgrade it may ask you to re-run
+> `python3 -I tool/fonts/make_web_fonts.py` for a new engine Roboto path.
 
 ### Release signing (Android)
 

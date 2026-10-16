@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/matrix/device_gateway.dart';
+import '../../core/theme/web_fonts.dart';
 import '../auth/auth_provider.dart';
 import 'device_provider.dart';
 import 'sas_emoji_names.dart';
@@ -330,7 +331,14 @@ class _VerificationDialog extends StatelessWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(e.emoji, style: const TextStyle(fontSize: 30)),
+                      Text(
+                        e.emoji,
+                        // G43: the bundled emoji subset on the web.
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontFamily: sasEmojiFontFamily(),
+                        ),
+                      ),
                       Text(
                         sasEmojiName(
                               e.number,

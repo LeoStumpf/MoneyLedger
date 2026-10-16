@@ -511,17 +511,20 @@ ntfy.sh (4 KB msgs, 250/day/IP, 12 h cache) rejected in favour of Nostr
 snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 
 ### G43. Privacy promises must be true (goal 7) 🔴
-- [ ] Web build without Google CDN: `--no-web-resources-cdn` in `build.sh` +
-      CI; bundle Roboto (web only) + a local `fontFallbackBaseUrl` so no
-      Noto fetches leave the app; check the SAS emoji still render
-- [ ] Remove the matrix.org offline probe (`matrix_auth_gateway.dart`);
-      transport error → "server unreachable or you're offline"
-- [ ] Login page must not query `matrix.org` on open — load login flows only
-      after the user confirms the server / taps sign in
-- [ ] PRIVACY.md + in-app `privacy*` / local-mode texts (EN+DE) match
-      reality; CLAUDE.md "no font fetched" line fixed
-- [ ] Verify in a browser (network tab): no request to gstatic / matrix.org
-      in local mode and on the untouched login page
+- [x] Web build without Google CDN: `--no-web-resources-cdn` in `build.sh` +
+      CI (+ `tool/web/check_web_build.sh`); Roboto served locally at the
+      engine's own path (web only), `fontFallbackBaseUrl: "fonts/"`, web-only
+      subset fonts `SasEmoji` (64 SAS emoji) + `AppSymbols` (→, ⋮, …)
+- [x] Remove the matrix.org offline probe (`matrix_auth_gateway.dart`);
+      transport error → "Can't reach <host>" (server down / typo / offline)
+- [x] Login page queries no server until the user acts (edit + debounce,
+      "Check server", Matrix ID typed, Sign in / SSO)
+- [x] PRIVACY.md + in-app `privacy*` / local-mode texts (EN+DE) match
+      reality; CLAUDE.md, README, open-points updated
+- [x] Headless Chrome (CDP): welcome, untouched login, local mode → zero
+      requests outside the app's origin
+- [ ] Manual browser pass (network tab): local mode, untouched login, then
+      "Check server" contacts only the entered server → `docs/smoke-test.md`
 
 ### G44. Small release fixes (goal 6/7) 🟠
 - [ ] About page shows `AGPL-3.0-or-later`
@@ -606,6 +609,15 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       menu, "How it works" and once as a dismissible hint (no nagging); EN+DE
 - [ ] Welcome/onboarding reordered for "link = default", Matrix as the upgrade
 
+### G55. Web glyph coverage without Google (found in G43) 🟢
+- [ ] Emoji / CJK / Arabic typed by users render as boxes on web and cause
+      local 404 retries: mirror the engine's Noto fallback set (~725 files,
+      ~30 MB, OFL) into `build/web/fonts/` at build time, or accept + document
+- [ ] Flutter upgrades may move the engine's Roboto path — `check_web_build.sh`
+      catches it; rerun `tool/fonts/make_web_fonts.py --roboto-path …`
+- [ ] Optional copy: welcome / connect flow says nothing is contacted until
+      you confirm your server
+
 ---
 
 ## Execution queue (conductor process)
@@ -655,7 +667,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G41 — local-mode follow-ups (restore adoption, empty local DB file)
 - [x] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
 - [x] G18 — final release review
-- [ ] G43 — privacy promises true (web CDN, matrix.org probes, privacy texts)
+- [x] G43 — privacy promises true (web CDN, matrix.org probes, privacy texts)
 - [ ] G44 — small release fixes (license label, AGP blob, release logging)
 - [ ] G45 — minimal Matrix footprint (sync filter, presence)
 - [ ] G46 — UX quick wins
@@ -667,6 +679,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G52 — link groups implementation
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
+- [ ] G55 — web glyph coverage without Google (found in G43)
 
 ---
 

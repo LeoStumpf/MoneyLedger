@@ -37,6 +37,10 @@ class FakeAuthGateway implements AuthGateway {
   /// G36: how many homeserver login / registration requests were started.
   int requestsStarted = 0;
 
+  /// G43: every server whose login flows were asked for (each is a
+  /// `.well-known` + `/login` request in the real gateway).
+  final List<String> loginFlowsRequests = [];
+
   /// The same single-flight guard as the real gateway.
   final AuthSingleFlight _flight = AuthSingleFlight();
 
@@ -74,6 +78,7 @@ class FakeAuthGateway implements AuthGateway {
 
   @override
   Future<LoginFlowsResult> loginFlows(String input) async {
+    loginFlowsRequests.add(input);
     if (failWith != null) throw failWith!;
     return _flows;
   }

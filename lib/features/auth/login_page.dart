@@ -36,9 +36,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   /// The last sign-in failure, shown inline as a friendly card (G20).
   AuthErrorMessage? _error;
 
-  /// The input currently being used to look up login flows.
-  String _lookupInput = 'matrix.org';
+  /// G43: the server whose login flows are looked up — **null until the user
+  /// acts** (edits / submits the server field, taps *Check server*, *Sign in*
+  /// or SSO). Opening the page must not contact any homeserver (not even the
+  /// prefilled matrix.org): until then the form is the optimistic one.
+  String? _lookupInput;
+
+  /// The user typed in the server field (a tap outside it then confirms it).
+  bool _serverEdited = false;
+
+  /// *Sign in* / SSO is waiting for the server's login flows.
+  bool _resolving = false;
   Timer? _debounce;
+
+  /// The server as entered (trimmed; the prefill if the field is empty).
+  String get _enteredServer {
+    final t = _serverCtrl.text.trim();
+    return t.isEmpty ? 'matrix.org' : t;
+  }
 
   @override
   void initState() {
@@ -114,9 +129,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   // ── Homeserver / login-flows ─────────────────────────────────────────────
 
+  /// The user edited the server (typed, or a Matrix ID in the username
+  /// field filled it in): look its flows up once typing pauses.
   void _scheduleFlowsLookup(String input) {
+    _serverEdited = true;
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
       final trimmed = input.trim();
       if (trimmed.isNotEmpty && trimmed != _lookupInput) {
         setState(() => _lookupInput = trimmed);
@@ -124,14 +143,36 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
   }
 
-  /// Called when the user leaves the server field or presses Enter there.
-  void _commitServerInput() {
+  /// The user confirmed the server (Enter, *Check server*, or leaving the
+  /// field after editing it): look its flows up now.
+  void _commitServerInput({bool explicit = true}) {
+    if (!explicit && !_serverEdited) return; // just focused, nothing typed
     _debounce?.cancel();
-    final trimmed = _serverCtrl.text.trim();
-    if (trimmed.isNotEmpty && trimmed != _lookupInput) {
-      setState(() => _lookupInput = trimmed);
+    final server = _enteredServer;
+    if (server != _lookupInput) setState(() => _lookupInput = server);
+  }
+
+  /// The login flows of the entered server — looks them up now if needed
+  /// (the user tapped *Sign in* / SSO). Null when the lookup failed.
+  Future<LoginFlowsResult?> _flowsForEnteredServer() async {
+    _commitServerInput();
+    final input = _lookupInput!;
+    setState(() => _resolving = true);
+    try {
+      // Let build() watch this key first: the provider is autoDispose, a
+      // bare read would start (and drop) a lookup of its own.
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return null;
+      return await ref.read(loginFlowsProvider(input).future);
+    } catch (_) {
+      return null;
+    } finally {
+      if (mounted) setState(() => _resolving = false);
     }
   }
+
+  static String _asUrl(String input) =>
+      input.startsWith('http') ? input : 'https://${input.trim()}';
 
   /// If the username looks like a Matrix ID, auto-fill the server field.
   void _onUsernameChanged(String value) {
@@ -148,18 +189,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _startSso({String? providerId}) async {
     // Resolve the homeserver (.well-known) before redirecting. Uses the cached
-    // loginFlows result if discovery already settled; otherwise awaits it now,
-    // so tapping SSO before discovery finished still works (build() already
-    // kicked the lookup off, so this is usually an instant cache read).
-    var resolvedUrl = _lookupInput.startsWith('http')
-        ? _lookupInput
-        : 'https://${_lookupInput.trim()}';
-    try {
-      final r = await ref.read(loginFlowsProvider(_lookupInput).future);
-      if (r.resolvedUrl.isNotEmpty) resolvedUrl = r.resolvedUrl;
-    } catch (_) {
-      // Discovery failed — fall back to the entered homeserver as-is.
-    }
+    // loginFlows result if discovery already settled; otherwise looks it up
+    // now (G43: the page doesn't before the user acts).
+    var resolvedUrl = _asUrl(_enteredServer);
+    final r = await _flowsForEnteredServer();
+    if (!mounted) return;
+    // Discovery failed — fall back to the entered homeserver as-is.
+    if (r != null && r.resolvedUrl.isNotEmpty) resolvedUrl = r.resolvedUrl;
 
     final hsUri = Uri.tryParse(resolvedUrl);
     if (hsUri == null) return;
@@ -183,9 +219,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   // ── Password submit ───────────────────────────────────────────────────────
 
-  Future<void> _submitPassword(String resolvedHomeserver) async {
+  Future<void> _submitPassword() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _error = null);
+    // G43: the flows are looked up only now if the user didn't confirm the
+    // server before. A server without password login → the form refines to
+    // its SSO buttons instead of a doomed attempt.
+    final flows = await _flowsForEnteredServer();
+    if (!mounted) return;
+    if (flows != null && !flows.hasPassword && flows.hasSso) return;
+    final resolvedHomeserver = flows != null && flows.resolvedUrl.isNotEmpty
+        ? flows.resolvedUrl
+        : _asUrl(_lookupInput!);
     await ref
         .read(authProvider.notifier)
         .login(
@@ -213,29 +258,36 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
 
     final authState = ref.watch(authProvider);
-    final flowsAsync = ref.watch(loginFlowsProvider(_lookupInput));
-    // While discovery is still in flight (or if it failed), show an optimistic
-    // form — generic SSO + password — so the screen is usable immediately
-    // instead of frozen behind the homeserver lookup. It's refined once the
-    // real flows arrive.
+    // G43: nothing is looked up until the user acts (see [_lookupInput]).
+    final lookup = _lookupInput;
+    final flowsAsync = lookup == null
+        ? null
+        : ref.watch(loginFlowsProvider(lookup));
+    final checking = flowsAsync?.isLoading ?? false;
+    // Before the lookup, while discovery is still in flight (or if it failed),
+    // show an optimistic form — generic SSO + password — so the screen is
+    // usable immediately instead of frozen behind the homeserver lookup. It's
+    // refined once the real flows arrive.
     LoginFlowsResult optimistic() => LoginFlowsResult(
-      resolvedUrl: _lookupInput.startsWith('http')
-          ? _lookupInput
-          : 'https://${_lookupInput.trim()}',
+      resolvedUrl: _asUrl(lookup ?? _enteredServer),
       hasPassword: true,
       hasSso: true,
       ssoProviders: const [],
     );
-    final result = flowsAsync.when(
-      data: (r) => r,
-      loading: optimistic,
-      error: (_, _) => optimistic(),
-    );
+    final result =
+        flowsAsync?.when(
+          data: (r) => r,
+          loading: optimistic,
+          error: (_, _) => optimistic(),
+        ) ??
+        optimistic();
 
     // Show resolved URL as a hint when it differs from what the user typed.
     final resolvedLabel =
-        result.resolvedUrl.isNotEmpty &&
-            result.resolvedUrl != 'https://${_lookupInput.trim()}'
+        lookup != null &&
+            flowsAsync?.hasValue == true &&
+            result.resolvedUrl.isNotEmpty &&
+            result.resolvedUrl != _asUrl(lookup)
         ? result.resolvedUrl
         : null;
 
@@ -243,7 +295,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // while we're still discovering login flows. Gating the whole form behind
     // that network round-trip made the screen feel frozen for seconds after
     // launch. Discovery shows as the subtle spinner on the homeserver field.
-    final authBusy = authState.isLoading;
+    final authBusy = authState.isLoading || _resolving;
     final l = context.l10n;
     // G40: "Connect a Matrix account" from local mode — cancellable, and the
     // local groups move into the account after signing in.
@@ -303,7 +355,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       helperText: resolvedLabel != null
                           ? l.resolvedTo(resolvedLabel)
                           : null,
-                      suffix: flowsAsync.isLoading
+                      suffix: checking
                           ? const SizedBox(
                               width: 16,
                               height: 16,
@@ -312,11 +364,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                             )
                           : null,
+                      // G43: the sign-in options are only asked for when the
+                      // user wants them — this button, Enter, or signing in.
+                      suffixIcon: lookup == null
+                          ? IconButton(
+                              key: const Key('checkServerBtn'),
+                              icon: const Icon(Icons.arrow_forward),
+                              tooltip: l.checkServerTooltip,
+                              onPressed: _commitServerInput,
+                            )
+                          : null,
                     ),
                     keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.go,
                     onChanged: _scheduleFlowsLookup,
                     onEditingComplete: _commitServerInput,
-                    onTapOutside: (_) => _commitServerInput(),
+                    onTapOutside: (_) => _commitServerInput(explicit: false),
                   ),
                   const SizedBox(height: 24),
 
@@ -343,7 +406,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           key: const Key('ssoBtn'),
                           // The entered server name, stable while discovery
                           // resolves it (G29); providers above use their names.
-                          label: l.continueWith(ssoServerLabel(_lookupInput)),
+                          label: l.continueWith(
+                            ssoServerLabel(lookup ?? _enteredServer),
+                          ),
                           onTap: authBusy ? null : () => _startSso(),
                         ),
                       ),
@@ -403,26 +468,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                             ),
                             obscureText: _obscurePassword,
-                            onFieldSubmitted: (_) => authBusy
-                                ? null
-                                : _submitPassword(
-                                    result.resolvedUrl.isNotEmpty
-                                        ? result.resolvedUrl
-                                        : 'https://$_lookupInput',
-                                  ),
+                            onFieldSubmitted: (_) =>
+                                authBusy ? null : _submitPassword(),
                             validator: (v) =>
                                 (v == null || v.isEmpty) ? l.required : null,
                           ),
                           const SizedBox(height: 20),
                           FilledButton(
                             key: const Key('signInBtn'),
-                            onPressed: authBusy
-                                ? null
-                                : () => _submitPassword(
-                                    result.resolvedUrl.isNotEmpty
-                                        ? result.resolvedUrl
-                                        : 'https://$_lookupInput',
-                                  ),
+                            onPressed: authBusy ? null : _submitPassword,
                             child: authBusy
                                 ? const SizedBox(
                                     height: 20,

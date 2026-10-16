@@ -16,16 +16,18 @@ AuthErrorKind kindOf(Object e, [AuthAction action = AuthAction.login]) =>
 
 void main() {
   group('network', () {
-    test('device offline', () {
+    test('G43: offline and server down are one message (no probe)', () {
       final m = describeAuthError(
         AuthNetworkException(
           'matrix.org',
-          deviceOffline: true,
           cause: Exception("Failed host lookup: 'matrix.org'"),
         ),
       );
-      expect(m.kind, AuthErrorKind.offline);
-      expect(m.title(en), en.authOfflineTitle);
+      expect(m.kind, AuthErrorKind.serverUnreachable);
+      expect(m.title(en), "Can't reach matrix.org");
+      expect(m.hint(en), en.authUnreachableHint);
+      expect(m.hint(en), contains('offline'));
+      expect(m.hint(de), contains('offline'));
       expect(m.detail, contains('Failed host lookup'));
     });
 
@@ -33,7 +35,6 @@ void main() {
       final m = describeAuthError(
         AuthNetworkException(
           'nope.example',
-          deviceOffline: false,
           cause: Exception('Connection refused'),
         ),
       );
@@ -43,13 +44,7 @@ void main() {
 
     test('timeout (wrapped or raw)', () {
       expect(
-        kindOf(
-          AuthNetworkException(
-            'x.org',
-            deviceOffline: false,
-            cause: TimeoutException('slow'),
-          ),
-        ),
+        kindOf(AuthNetworkException('x.org', cause: TimeoutException('slow'))),
         AuthErrorKind.timeout,
       );
       expect(kindOf(TimeoutException('slow')), AuthErrorKind.timeout);
@@ -63,7 +58,8 @@ void main() {
       );
       expect(isNetworkError(e), isTrue);
       final m = describeAuthError(e);
-      expect(m.kind, AuthErrorKind.offline);
+      expect(m.kind, AuthErrorKind.serverUnreachable);
+      expect(m.title(en), en.authUnreachableNoHostTitle);
       expect(m.title(en), isNot(contains('ClientException')));
       expect(m.detail, contains('ClientException'));
     });
@@ -252,10 +248,9 @@ void main() {
         expect(m.hint(en), en.authTimeoutHint);
         expect(m.detail, contains('checkHomeserver timed out after 10s'));
       }
-      // As the gateway wraps it (no offline probe for a timeout).
+      // As the gateway wraps it.
       final wrapped = AuthNetworkException(
         'matrix.org',
-        deviceOffline: false,
         cause: AuthTimeoutException('login', kAuthRequestTimeout),
       );
       expect(kindOf(wrapped), AuthErrorKind.timeout);
@@ -275,16 +270,16 @@ void main() {
       final m = describeAuthError(
         AuthNetworkException(
           'nope.example',
-          deviceOffline: false,
           cause: Exception('Connection refused'),
         ),
       );
       expect(m.title(en), "Can't reach nope.example");
       expect(m.title(de), 'nope.example ist nicht erreichbar');
     });
-    test('raw network error: offline title, broader hint', () {
+    test('raw network error: host-less title, same hint', () {
       final m = describeAuthError(Exception('SocketException: boom'));
-      expect(m.title(en), en.authOfflineTitle);
+      expect(m.title(en), en.authUnreachableNoHostTitle);
+      expect(m.title(de), de.authUnreachableNoHostTitle);
       expect(m.hint(en), en.authUnreachableHint);
     });
   });

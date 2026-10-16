@@ -55,5 +55,8 @@ jobs:
       - name: Tests
         run: flutter test --reporter compact
 
-      - name: Web release build
-        run: flutter build web --release
+      - name: Web release build (no CDN — G43)
+        run: flutter build web --release --no-web-resources-cdn
+
+      - name: Web build loads nothing from a CDN
+        run: tool/web/check_web_build.sh build/web

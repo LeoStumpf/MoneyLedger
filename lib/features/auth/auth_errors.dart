@@ -27,28 +27,26 @@ class AuthErrorMessage {
   final AuthErrorKind kind;
 
   /// The homeserver host, for [AuthErrorKind.serverUnreachable] /
-  /// [AuthErrorKind.notAHomeserver].
+  /// [AuthErrorKind.notAHomeserver]. Null for a raw transport error the
+  /// gateway didn't wrap (the title then names no host).
   final String? host;
 
   /// Server-provided wait for [AuthErrorKind.rateLimited], if any.
   final int? retryAfterSeconds;
-
-  /// A raw transport error the gateway didn't wrap: "offline" title, but the
-  /// hint covers both "offline" and "bad server".
-  final bool ambiguousNetwork;
   final String? detail;
 
   const AuthErrorMessage(
     this.kind, {
     this.host,
     this.retryAfterSeconds,
-    this.ambiguousNetwork = false,
     this.detail,
   });
 
   String title(AppLocalizations l) => switch (kind) {
-    AuthErrorKind.offline => l.authOfflineTitle,
-    AuthErrorKind.serverUnreachable => l.authUnreachableTitle(host ?? ''),
+    AuthErrorKind.serverUnreachable =>
+      host == null || host!.isEmpty
+          ? l.authUnreachableNoHostTitle
+          : l.authUnreachableTitle(host!),
     AuthErrorKind.timeout => l.authTimeoutTitle,
     AuthErrorKind.inProgress => l.authInProgressTitle,
     AuthErrorKind.notAHomeserver => l.authNotAHomeserverTitle(host ?? ''),
@@ -64,8 +62,6 @@ class AuthErrorMessage {
   };
 
   String? hint(AppLocalizations l) => switch (kind) {
-    AuthErrorKind.offline =>
-      ambiguousNetwork ? l.authUnreachableHint : l.authOfflineHint,
     AuthErrorKind.serverUnreachable => l.authUnreachableHint,
     AuthErrorKind.timeout => l.authTimeoutHint,
     AuthErrorKind.inProgress => l.authInProgressHint,
@@ -89,7 +85,9 @@ class AuthErrorMessage {
 }
 
 enum AuthErrorKind {
-  offline,
+  /// The homeserver couldn't be reached — it may be down / mistyped, or the
+  /// device is offline. G43: deliberately one kind; telling the two apart
+  /// would need a request to a third-party server.
   serverUnreachable,
   timeout,
 
@@ -146,22 +144,12 @@ AuthErrorMessage describeAuthError(
   AuthAction action = AuthAction.login,
 }) {
   final detail = error.toString();
-  AuthErrorMessage msg(
-    AuthErrorKind k, {
-    String? host,
-    bool ambiguousNetwork = false,
-  }) => AuthErrorMessage(
-    k,
-    host: host,
-    ambiguousNetwork: ambiguousNetwork,
-    detail: detail,
-  );
+  AuthErrorMessage msg(AuthErrorKind k, {String? host}) =>
+      AuthErrorMessage(k, host: host, detail: detail);
 
   if (error is AuthInProgressException) return msg(AuthErrorKind.inProgress);
   if (error is AuthNetworkException) {
-    return error.deviceOffline
-        ? msg(AuthErrorKind.offline)
-        : _isTimeout(error.cause)
+    return _isTimeout(error.cause)
         ? msg(AuthErrorKind.timeout)
         : msg(AuthErrorKind.serverUnreachable, host: error.host);
   }
@@ -187,9 +175,8 @@ AuthErrorMessage describeAuthError(
 
   if (_isTimeout(error)) return msg(AuthErrorKind.timeout);
   if (isNetworkError(error)) {
-    // Raw network error the gateway didn't wrap: we can't tell "offline"
-    // from "bad server", so give the advice covering both.
-    return msg(AuthErrorKind.offline, ambiguousNetwork: true);
+    // Raw network error the gateway didn't wrap: no host to name.
+    return msg(AuthErrorKind.serverUnreachable);
   }
   return msg(AuthErrorKind.unknown);
 }

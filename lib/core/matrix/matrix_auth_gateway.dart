@@ -204,11 +204,6 @@ class MatrixAuthGateway implements AuthGateway {
 
   // ── error translation (G20) ───────────────────────────────────────────────
 
-  /// Reference server probed when the homeserver is unreachable, to tell "the
-  /// device is offline" from "that server is down / doesn't exist".
-  static final _connectivityProbe = Uri.parse('https://matrix.org');
-  static const _probeTimeout = Duration(seconds: 5);
-
   /// `checkHomeserver`, with any non-network failure (no `/versions`, HTML
   /// instead of JSON, …) reported as [NotAHomeserverException].
   Future<void> _checkHomeserver(String homeserver) async {
@@ -247,32 +242,9 @@ class MatrixAuthGateway implements AuthGateway {
           !isNetworkError(e)) {
         rethrow;
       }
-      // A timeout means the server didn't answer in time — no need to spend
-      // another few seconds probing whether the device is offline.
-      if (e is TimeoutException) {
-        throw AuthNetworkException(
-          _host(homeserver),
-          deviceOffline: false,
-          cause: e,
-        );
-      }
-      throw AuthNetworkException(
-        _host(homeserver),
-        deviceOffline: !await _referenceServerReachable(),
-        cause: e,
-      );
-    }
-  }
-
-  static Future<bool> _referenceServerReachable() async {
-    final api = MatrixApi(homeserver: _connectivityProbe);
-    try {
-      await api.getVersions().timeout(_probeTimeout);
-      return true;
-    } catch (_) {
-      return false;
-    } finally {
-      api.httpClient.close();
+      // G43: no probe of a reference server (that would contact a third
+      // party) — "server unreachable or you're offline" is one error.
+      throw AuthNetworkException(_host(homeserver), cause: e);
     }
   }
 

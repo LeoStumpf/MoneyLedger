@@ -1082,18 +1082,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 device needs verification.} other{{count} devices need verification.}}'**
   String devicesNeedVerification(int count);
 
-  /// No description provided for @authOfflineTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'No internet connection'**
-  String get authOfflineTitle;
-
-  /// No description provided for @authOfflineHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Check your connection and try again.'**
-  String get authOfflineHint;
-
   /// No description provided for @authUnreachableTitle.
   ///
   /// In en, this message translates to:
@@ -1103,8 +1091,14 @@ abstract class AppLocalizations {
   /// No description provided for @authUnreachableHint.
   ///
   /// In en, this message translates to:
-  /// **'Check the homeserver address and your internet connection.'**
+  /// **'The server may be down or the address mistyped — or you\'re offline. Check the homeserver address and your internet connection.'**
   String get authUnreachableHint;
+
+  /// Login error title when the homeserver couldn't be reached and no host is known (server down, wrong address, or offline).
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the server'**
+  String get authUnreachableNoHostTitle;
 
   /// No description provided for @authTimeoutTitle.
   ///
@@ -1267,6 +1261,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'matrix.org or mozilla.modular.im'**
   String get homeserverHint;
+
+  /// Tooltip of the button next to the homeserver field that loads the server's sign-in options (nothing is requested before the user acts).
+  ///
+  /// In en, this message translates to:
+  /// **'Check server'**
+  String get checkServerTooltip;
 
   /// No description provided for @resolvedTo.
   ///
@@ -1499,7 +1499,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyNoTrackingBody.
   ///
   /// In en, this message translates to:
-  /// **'The app only talks to your homeserver — and, if you use single sign-on or sign up on the web, to the pages your homeserver sends you to in your browser. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.'**
+  /// **'The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of your groups\' members (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.'**
   String get privacyNoTrackingBody;
 
   /// No description provided for @privacyBackgroundTitle.
@@ -3131,7 +3131,7 @@ abstract class AppLocalizations {
   /// Privacy policy section body (G40)
   ///
   /// In en, this message translates to:
-  /// **'If you use MoneyLedger without a Matrix account, nothing leaves your device: no server is contacted and nothing is synced. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.'**
+  /// **'If you use MoneyLedger without a Matrix account, nothing leaves your device: the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.'**
   String get privacyLocalBody;
 }
 

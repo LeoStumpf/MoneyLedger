@@ -40,13 +40,44 @@ keep both in sync.
 ./build.sh          # codegen → format check → tests → web release build (one-liner)
 ```
 
-The script runs in order: `flutter pub get` → `dart run build_runner build` → `dart format --output=none --set-exit-if-changed lib test` → `flutter test` → `flutter build web --release`. It exits non-zero on the first failure, so a green run means codegen, formatting, all tests, and the release build all passed.
+The script runs in order: `flutter pub get` → `dart run build_runner build` → `dart format --output=none --set-exit-if-changed lib test` → `flutter test` → `flutter build web --release --no-web-resources-cdn` → `tool/web/check_web_build.sh`. It exits non-zero on the first failure, so a green run means codegen, formatting, all tests, and the release build all passed.
 
 **Formatting:** the repo is `dart format`ted (lib/ + test/, generated files included — the generators emit formatted code). Run `dart format lib test` before committing; build.sh and CI fail on unformatted code.
 
 To override the Flutter binary: `FLUTTER=/path/to/flutter ./build.sh`
 
 Output lands in `build/web/`.
+
+**Web build without CDNs (G43):** the privacy promise is that the app talks
+only to Matrix homeservers, so the web build loads nothing from Google:
+- **Always** `flutter build web --release --no-web-resources-cdn` (build.sh, CI)
+  → CanvasKit from `build/web/canvaskit/` (`"useLocalCanvasKit":true` in the
+  built `flutter_bootstrap.js`); without the flag it comes from
+  `www.gstatic.com/flutter-canvaskit/<engine rev>/`.
+- **Fonts:** the engine fetches its default Roboto and Noto fallback fonts
+  from `fontFallbackBaseUrl` (default `https://fonts.gstatic.com/s/`).
+  `web/flutter_bootstrap.js` (custom; keeps the service-worker settings) sets
+  it to `fonts/` on our origin and `web/fonts/roboto/v32/KFOm….woff2` is
+  Roboto Regular at exactly the engine's path. Glyphs Roboto lacks come from
+  two **web-only assets** (`platforms: [web]` in pubspec, so the APK ships
+  neither) registered by `loadWebOnlyFonts()` (`core/theme/web_fonts.dart`,
+  awaited in `main()` before `runApp`) and used as the theme's
+  `fontFamilyFallback` on the web only (`AppTheme.light(isWeb:)`): `SasEmoji`
+  (the 64 SAS emoji, Noto Color Emoji subset, OFL) and `AppSymbols` (arrows,
+  "⋮", ✓ … — DejaVu Sans subset). Anything else (most emoji, CJK, …) shows as
+  boxes on the web, and the engine asks our origin for a Noto file (404,
+  retried on each layout) — see `docs/open-points.md`. **Never declare a
+  `Roboto` font family in pubspec** — Android would then use it instead of
+  the system font.
+- Font files come from `tool/fonts/make_web_fonts.py` (fontTools; committed).
+  `tool/web/check_web_build.sh build/web` fails if CanvasKit would come from
+  the CDN, the bootstrap lost `fontFallbackBaseUrl`, or the engine's Roboto
+  path (a string in `main.dart.js`, it changes with Flutter upgrades) has no
+  file under `build/web/fonts/` — then re-run the script with
+  `--roboto-path <new path>`. Remaining `gstatic` strings in `flutter.js` /
+  `main.dart.js` are the dead defaults of those two settings.
+- `flutter run -d web-server` (dev) still uses the CDN unless you pass
+  `--no-web-resources-cdn` too.
 
 Android E2EE: `flutter_vodozemac` (**0.8.x**, pinned by `matrix` 14's `vodozemac ^0.8.0`; Rust vodozemac 0.10) compiles the vodozemac Rust crate during the Gradle build via cargokit, so Android builds need `rustup` (**stable** toolchain) with targets `aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android`. No pub-cache patches are needed (0.5.0 required hand-patches; don't downgrade). Web uses the prebuilt wasm committed in `web/pkg/` (no Rust needed to build the app).
 
@@ -97,7 +128,7 @@ flutter devices                      # list available run targets
 flutter test --reporter compact      # run all tests (exit 0 = green)
 flutter test test/foo_test.dart      # run a single test file
 flutter build apk                    # Android release build
-flutter build web                    # web build
+flutter build web --release --no-web-resources-cdn   # web build (no CDN — G43)
 dart run build_runner build          # regenerate Drift + Riverpod code-gen files
 dart run build_runner watch          # watch mode for code generation
 ```
@@ -120,7 +151,8 @@ lib/
     demo/            # G15 offline demo mode: kOfflineDemo, demo fakes, seedDemoLedger, demoOverrides
     timer_factory.dart # TimerFactory typedef (injectable timers, G15)
     widgets/         # shared widgets (incl. text_prompt_dialog.dart: one-field prompt owning its controller)
-    theme/           # G17 design tokens: app_theme.dart, app_colors.dart (LedgerColors)
+    theme/           # G17 design tokens: app_theme.dart, app_colors.dart (LedgerColors),
+                     #   web_fonts.dart (G43 web-only fallback fonts + their licenses)
     widgets/         # G17 PersonAvatar/AvatarStack, ContentWidth, EmptyState, BrandLogo
     router.dart      # go_router + routerRedirect() pure function (generated: router.g.dart)
     session/         # G39/G40: who uses the app — device_prefs.dart (device-wide flags: welcome seen,
@@ -250,6 +282,18 @@ is obsolete.)
 Authentication is pure Matrix — no separate auth system. Users connect to their own homeserver (self-hosted, matrix.org, etc.). The single transport seam is `LedgerTransport` (real adapter `MatrixLedgerTransport`); fakes back all tests. Login (password + SSO) and **in-app registration** go through `AuthGateway` (`auth_provider.dart`'s `AuthNotifier`).
 
 **Registration (Phase F).** `RegisterPage` → `AuthGateway.register`. The real adapter attempts `client.register`, and on a UIA challenge classifies the flows with the pure `register_flows.dart`: a flow needing only `m.login.dummy` is completed in-app; anything requiring a CAPTCHA / email / phone / terms / token throws `RegistrationRequiresWebException` (with friendly labels) and the page shows a **web-registration fallback**; so does an `M_FORBIDDEN` with no UIA flows (`isClientRegistrationDisabled` — e.g. matrix.org, whose sign-up moved to MAS/OIDC) (we don't reimplement every UIA stage). `/register` is reachable while signed out (see `routerRedirect`).
+
+**Login page requests (G43).** Opening `/login` contacts **no** server — not
+even the prefilled `matrix.org` (welcome → Sign in, signed-out starts,
+connect-from-local-mode). `LoginPage._lookupInput` is null until the user
+acts: edits the server field (600 ms debounce), presses Enter / the
+*Check server* arrow (`checkServerBtn`), leaves the field after editing it,
+types a full MXID in the username field, or taps *Sign in* / SSO (which look
+the flows up first via `_flowsForEnteredServer`, then log in on the resolved
+URL; an SSO-only server → no password attempt, the form switches to its SSO
+buttons). Until then the optimistic form (generic SSO + password) is shown.
+`RegisterPage` sends nothing before *Create account*. Pinned by
+`test/features/login_no_requests_test.dart` (`FakeAuthGateway.loginFlowsRequests`).
 
 **Device verification (Phase F + G11).** `DeviceGateway` (`core/matrix/device_gateway.dart`, matrix-free port; real adapter `matrix_device_gateway.dart`) lists the user's own devices **and (G11) another member's** (`userDevices`), runs an SAS (emoji) verification **over to-device messages** — with our own other devices and with another member's device alike (no rooms needed) — and streams **incoming** requests (`incomingVerifications`, answered app-wide by `IncomingVerificationListener` in `App`'s builder: "Accept / Decline" → the same emoji dialog). The client must advertise `verificationMethods: {emoji, numbers}` (`buildMatrixClient`) — without it the SDK ignores every request (it was missing before G11, so SAS never worked). `askSSSS` (account has cross-signing from another client, keys not cached) is skipped automatically: the app does no cross-signing. `DevicesPage` (`/devices`) shows own devices; the **members page** shows a subtle "N unverified devices" line under a member (red "Not reachable — no verified device" when verified-only is on and none is verified) and ⋮ → *Devices* opens their device list with *Verify*. The real adapter imports `package:matrix/matrix.dart` **`hide DeviceInfo`** plus `package:matrix/encryption.dart`. **SAS emoji names (G36)** are localized: `SasEmoji.number` (the SDK's `KeyVerificationEmoji.number`, 0–63) → `sasEmojiName(number, languageCode)` from `features/devices/sas_emoji_names.dart`, an EN+DE table generated once from the Matrix spec's `data-definitions/sas-emoji.json` (Apache-2.0 — THIRD_PARTY_NOTICES + an in-app license entry in `main.dart`); unknown number → the SDK's English name.
 - **The app keeps its own verified-device record** (`AppSettings` `verified_device:<mxid>|<device>` → Ed25519 key, per account, device-local; `SettingsDao.markDeviceVerified`, written by `recordingTrust` on SAS success whether or not the dialog is still open). Reason: in a roomless app the SDK evicts other users' device lists from memory on every `updateUserDeviceKeys` that doesn't name them and re-stores them with `verified: false` — a peer's SAS result would not survive. "Verified" = SDK flag **or** our record for the exact (user, device, **current key**) (`isDeviceTrusted`; a changed key voids it). Own devices: the SDK flag persists too.
@@ -1183,7 +1227,8 @@ group's *Your balance*) are **not cards**: a 2 px ink rule above
 (`AppTheme.ledgerRule`), a hairline below, caps labels. Buttons / chips /
 segments are pills; cards are flat sheets with a hairline border; group
 badges are ink-ringed monograms. Dark mode = warm near-black with the same
-roles. **No bundled font** — the platform's own (Roboto on Android).
+roles. **No bundled font** — the platform's own (Roboto on Android); the web
+serves the engine's Roboto itself + two fallback subsets (G43, see Building).
 
 - **Tokens** live in `lib/core/theme/`: `app_theme.dart` (`AppTheme.light()` /
   `.dark()`, `ThemeMode.system`; component themes for cards, list tiles, FAB,
@@ -1197,8 +1242,10 @@ roles. **No bundled font** — the platform's own (Roboto on Android).
   lent", "gets back") and `negative` (rust — "you owe", "you borrowed"),
   plus `*Container` variants; light and dark values are pinned to WCAG-AA
   contrast by `test/core/design_system_test.dart`.
-- **Font:** none bundled or fetched (G42 removed Manrope) — Material's
-  platform default; the design test pins that no custom family is set.
+- **Font:** none bundled on Android (G42 removed Manrope) — Material's
+  platform default (`Roboto` = the system font); the design test pins that,
+  and that the web theme only adds `fontFamilyFallback: kWebFontFallback`
+  (G43). Nothing is fetched from Google on the web (see Building).
 - **People:** always shown by `MemberModel.label` (display name → MXID
   localpart → raw id; `participantNamesProvider` uses it) with a
   `PersonAvatar` (`lib/core/widgets/person_avatar.dart`): colour from the
@@ -1283,7 +1330,7 @@ tokens (`redactSsoUri`). Text-prompt dialogs must own their
 `TextEditingController` (`showTextPrompt`) — disposing it when `showDialog`
 returns crashes the closing animation.
 
-**Auth errors (G20):** login / SSO callback / register pages never show raw exception text. `MatrixAuthGateway` translates failures into plain port types (`auth_gateway.dart`): `AuthServerException(errcode, retryAfterMs)`, `AuthNetworkException(host, deviceOffline)` (on a transport error it probes matrix.org to tell "offline" from "server unreachable"), `NotAHomeserverException` (`checkHomeserver` failed with a non-network error). The pure `describeAuthError(error, action:)` (`features/auth/auth_errors.dart`; falls back to matching the error text) maps them to `AuthErrorMessage{title, hint, detail}`, rendered by `AuthErrorCard` with the raw text behind a collapsed **Details**. All English strings live in `AuthErrorStrings` (one place, for G12). **Timeouts (G30):** `checkHomeserver` is capped at `kHomeserverCheckTimeout` (10 s), login/register requests at `kAuthRequestTimeout` (20 s) via the pure `withAuthTimeout` → `AuthTimeoutException` (a `TimeoutException`, wrapped as `AuthNetworkException(deviceOffline: false)` without the offline probe) → "The server took too long to respond". The SDK call isn't cancelled — a late success still signs in (**adopted**, G36). **Single flight (G36):** `AuthSingleFlight` (`auth_gateway.dart`) wraps each login / token login / registration (`operation`) and every raw homeserver request inside it (`track`) in `MatrixAuthGateway`; while an operation **or a timed-out request** is still running, a new attempt throws `AuthInProgressException` → "Still signing in…" (`AuthErrorKind.inProgress`) instead of starting a parallel `client.login` (two devices / session race). `FakeAuthGateway` uses the same guard (`pendingRequest`, `requestTimeout`, `requestsStarted`); tests: `test/features/auth_single_flight_test.dart`. Web sign-up fallback: `RegistrationRequiresWebException.signUpUrl` comes from the pure `resolveSignUpUrl` (`sign_up_url.dart`): OIDC auth metadata (MAS with `prompt=create` → `<issuer>register`, else `account_management_uri`) → `.well-known` `org.matrix.msc2965.authentication.account` → matrix.org: `app.element.io/#/register` → homeserver URL.
+**Auth errors (G20):** login / SSO callback / register pages never show raw exception text. `MatrixAuthGateway` translates failures into plain port types (`auth_gateway.dart`): `AuthServerException(errcode, retryAfterMs)`, `AuthNetworkException(host)` (a transport error: **one** message "Can't reach <host>" whose hint covers "server down / wrong address / you're offline" — G43 removed the matrix.org probe that told them apart, it contacted a third party; an unwrapped raw network error → host-less `authUnreachableNoHostTitle`), `NotAHomeserverException` (`checkHomeserver` failed with a non-network error). The pure `describeAuthError(error, action:)` (`features/auth/auth_errors.dart`; falls back to matching the error text) maps them to `AuthErrorMessage{title, hint, detail}`, rendered by `AuthErrorCard` with the raw text behind a collapsed **Details**. All English strings live in `AuthErrorStrings` (one place, for G12). **Timeouts (G30):** `checkHomeserver` is capped at `kHomeserverCheckTimeout` (10 s), login/register requests at `kAuthRequestTimeout` (20 s) via the pure `withAuthTimeout` → `AuthTimeoutException` (a `TimeoutException`, wrapped as `AuthNetworkException`) → "The server took too long to respond". The SDK call isn't cancelled — a late success still signs in (**adopted**, G36). **Single flight (G36):** `AuthSingleFlight` (`auth_gateway.dart`) wraps each login / token login / registration (`operation`) and every raw homeserver request inside it (`track`) in `MatrixAuthGateway`; while an operation **or a timed-out request** is still running, a new attempt throws `AuthInProgressException` → "Still signing in…" (`AuthErrorKind.inProgress`) instead of starting a parallel `client.login` (two devices / session race). `FakeAuthGateway` uses the same guard (`pendingRequest`, `requestTimeout`, `requestsStarted`); tests: `test/features/auth_single_flight_test.dart`. Web sign-up fallback: `RegistrationRequiresWebException.signUpUrl` comes from the pure `resolveSignUpUrl` (`sign_up_url.dart`): OIDC auth metadata (MAS with `prompt=create` → `<issuer>register`, else `account_management_uri`) → `.well-known` `org.matrix.msc2965.authentication.account` → matrix.org: `app.element.io/#/register` → homeserver URL.
 
 **Async work vs. account switch / dispose (G19):** on an account switch Riverpod 3 closes the old ledger DB **eagerly** (when `appDatabaseProvider` rebuilds), but dependents like `SyncEngine`/`LedgerSyncer` are only disposed on the next scheduler flush — so in-flight async work can outlive both its DB and its `Ref`. Rules: (1) capture the DB + DAOs (and transport/health notifier) **before the first await** — `SyncEngine`/`LedgerSyncer` read them in their constructor, `ExpenseAdder` via `_WriteContext`, the group mutators (`GroupCreator`/`MemberAdder`/`MemberRemover`/`GroupExiter`) via `_GroupWriteContext` (G23) — never re-read DAO providers after an await; (2) after **every** await check `_alive` (`!_disposed && !_db.isClosed`; `AppDatabase.isClosed` is set by `close()`) and bail silently; (3) in notifiers, only set `state` / use `ref` after an await when `ref.mounted`; (4) errors caught after the DB closed are expected — don't log them or report them to `SyncHealth` (its `report*` also no-op when unmounted). Regression tests: `test/integration/account_switch_sync_test.dart`, `test/features/group_mutators_lifecycle_test.dart`.
 

@@ -277,6 +277,36 @@ for further accounts would be needed to make use of it (test devices only).
   adoption — unless some instance is still open at that moment (logged, kept;
   the next deletion takes it). No start-up sweep for leftovers.
 
+### No third-party contacts (G43) — limits
+
+- **Web glyph coverage.** The web build fetches no Noto fallback fonts from
+  Google any more. It serves Roboto Regular (Latin, Greek, Cyrillic) plus two
+  web-only subsets (the 64 SAS emoji; arrows / math / dingbats). Anything else
+  — most emoji typed into a description, CJK / Arabic / … names — renders as
+  boxes on the web, and the engine asks our own origin for the Noto file
+  (`fonts/<family>/v…/….woff2` → 404) again on every layout of such text
+  (local requests + console warnings, no privacy issue). Android is
+  unaffected (system fonts). Fix if it matters: mirror the engine's whole
+  fallback set at build time (725 files listed in `main.dart.js`, ≈ 30 MB,
+  downloaded from fonts.gstatic.com by the build machine, OFL) into
+  `build/web/fonts/` — full parity, nothing fetched by users from Google.
+- **Only Roboto Regular** on the web (as before with the CDN): bold weights are
+  synthesized by the engine.
+- **Engine paths.** The Roboto file name is the engine's (`roboto/v32/…`);
+  a Flutter upgrade may change it — `tool/web/check_web_build.sh` fails the
+  build then (re-run `tool/fonts/make_web_fonts.py --roboto-path …`).
+- **Offline vs. server down** can't be told apart at sign-in any more (the
+  matrix.org probe is gone): one message covers both.
+- **Login flows** load only when the user acts, so the SSO-only / password-only
+  shape of a server shows after *Check server* / Enter / *Sign in*; before
+  that the generic form (SSO + password) is shown.
+- **Still contacted by design:** the server entered on the login page (once
+  confirmed), the user's homeserver (sync, keys, profile names via federation),
+  the browser pages of SSO / web sign-up (incl. `app.element.io` as matrix.org's
+  fallback) and links the user taps (GitHub). The web host itself serves the
+  app. Dev runs (`flutter run -d web-server`) still use the CDN unless given
+  `--no-web-resources-cdn`.
+
 ---
 
 ## Architecture limitations (reference)

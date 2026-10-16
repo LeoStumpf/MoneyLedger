@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:money_ledger/core/l10n/l10n.dart';
 import 'package:money_ledger/core/theme/app_theme.dart';
+import 'package:money_ledger/core/theme/web_fonts.dart';
 import 'package:money_ledger/core/widgets/person_avatar.dart';
 
 import '../helpers/l10n.dart';
@@ -59,8 +60,29 @@ void main() {
 
       test('uses the platform font and the right brightness', () {
         expect(theme.colorScheme.brightness, brightness);
-        // G42: no bundled font — Material's platform default (Roboto).
-        expect(theme.textTheme.bodyMedium?.fontFamily, isNot('Manrope'));
+        // G42: no bundled font — Material's platform default (Roboto, the
+        // system font on Android), no fallback list of our own (G43).
+        expect(theme.textTheme.bodyMedium?.fontFamily, 'Roboto');
+        expect(theme.textTheme.bodyMedium?.fontFamilyFallback, isNull);
+        expect(theme.textTheme.titleLarge?.fontFamilyFallback, isNull);
+      });
+
+      test('G43: the web adds only its bundled fallbacks', () {
+        final web = brightness == Brightness.dark
+            ? AppTheme.dark(isWeb: true)
+            : AppTheme.light(isWeb: true);
+        for (final style in [
+          web.textTheme.bodyMedium,
+          web.textTheme.titleLarge,
+          web.textTheme.labelLarge,
+          web.appBarTheme.titleTextStyle,
+        ]) {
+          // Same family (the engine's Roboto, served by us) …
+          expect(style?.fontFamily, 'Roboto');
+          // … plus the emoji + symbols subsets, emoji first.
+          expect(style?.fontFamilyFallback, kWebFontFallback);
+        }
+        expect(kWebFontFallback.first, kSasEmojiFontFamily);
       });
 
       test('ink, paper and the accent are readable', () {
