@@ -54,7 +54,8 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
   be bootstrapped to new members/devices (an unsigned group meta → the whole
   group is refused; unsigned records → the group arrives incomplete). The app
   is unreleased and only the test groups contain such rows, so there is **no
-  re-sign step**; **before the release the test groups get recreated**.
+  re-sign step**; the test groups were recreated with the G38 device reset
+  (done — no pre-G6 rows left on the test devices).
   The receiving side is told instead of silently showing a half-empty or
   missing group: a `[g6] refused unsigned …` log line and a dismissible
   groups-page hint ("Some data couldn't be received … ask X to recreate the
@@ -110,9 +111,17 @@ Remaining ceilings / costs:
   local hashes. Now cached in `version_hash` (schema v8): **174 ms** (read
   125 + build 49), local hashes ~0 ms; the one-off v8 backfill of 5k rows
   took 367 ms. The DB read (row → model mapping) is now the main cost.
-- A refused version (G6) keeps its bucket's hash different, so each cycle
-  costs one extra three-message detail exchange for that bucket (bounded;
-  still counts as in sync).
+- **Refused versions (G37, assessed for v1 — accepted).** Only groups with
+  a *bucketed* digest (≳ 720 records) pay anything: a refused version keeps
+  its bucket's hash different from the peer's, so every digest cycle with
+  that peer is summary → reply detailing that bucket (~16 entries, ≈ 1 KB)
+  → `final` — one extra message per cycle and peer, never a loop, and both
+  sides still count as in sync (pinned by
+  `test/integration/large_group_sync_test.dart`, "G37: …"). Flat digests
+  cost nothing extra. The old "refusals are per clock" part is fixed (G18
+  review: a refusal names the exact version, clock + hash; up to 4 per
+  record). Removing the remaining cost would need refusal-aware bucket
+  hashes — not worth it for v1.
 - **Wall-clock LWW**: within the 5-min clamp a skewed clock can still win.
 
 ### Device-verification enforcement (G11) — limits
@@ -136,12 +145,6 @@ peers'), and SAS works with other members' devices (members page). Open:
   (all test devices were already verified) — smoke 9.8.
 - The verified-device record lives in the per-account DB on this device
   (not in backups; lost with the app data).
-
-### Offline demo mode (`OFFLINE_DEMO`) — nice-to-have
-A `--dart-define=OFFLINE_DEMO=true` that overrides `ledgerTransportProvider` +
-`authGatewayProvider` with pre-seeded fakes would let the **real UI** run with no
-homeserver — useful for screenshots and manual multi-user inspection. The fakes
-already exist for tests.
 
 ### Categories / notes / archive (G16) — limits
 - **Receipt photos** are out of scope: there is no media channel (to-device
@@ -189,22 +192,16 @@ already exist for tests.
   others restore.
 
 ### Real-device smoke tests
-Three flows can only be verified on a real device + homeserver, not in
-`flutter test` or the web build — worth a manual pass before relying on them:
-- **SSO** native deep link (`moneyledger://sso-callback`).
-- **Registration** UIA on a real homeserver (dummy path + the captcha/email/terms
-  fallback).
+Flows that can only be verified on a real device + homeserver, not in
+`flutter test` or the web build (`docs/smoke-test.md`):
+- **SSO** native deep link (`moneyledger://sso-callback`) — used for the
+  matrix.org sign-in of the G41 run (emu-5556); the invalid-token path is
+  smoke 2.6.
+- **Registration** UIA: the web fallback (matrix.org, no client
+  registration) is verified; the in-app **dummy-UIA path** on an open
+  homeserver (smoke 2.9) has never run on a device.
 - **SAS device verification** round-trip — done app↔app on 2026-10-16
-  (G11); against Element not tried.
-
-### Found in the 2026-10-15 audit (see plan.md)
-- **Android release build has no INTERNET permission** (only debug/profile
-  manifests have it) — release APK can't reach a homeserver. (G1)
-- **Release signing uses the debug key.** (G3)
-- **Local ledger is shared across accounts** on one device: the Drift DB is
-  global and logout doesn't touch it. (G4)
-- **Settlements can't be listed or undone** — `deleteSettlement` has no UI caller. (G8)
-- **No delete/leave group** — `GroupsDao.deleteGroup` is unused. (G9)
+  (G11, again G38 with German emoji names); against Element not tried.
 
 ### Dependencies (G22) — what is still held back
 - **`sqlite3` ≥ 3.6** (and so the newest drift point releases' minimums) needs
@@ -280,15 +277,6 @@ for further accounts would be needed to make use of it (test devices only).
   adoption — unless some instance is still open at that moment (logged, kept;
   the next deletion takes it). No start-up sweep for leftovers.
 
-### Smaller items
-- (G18 review 2, done) Suggested payments / payment rows (`NamesLine`) wrap
-  onto two lines; names are only shortened (each on its own) when even two
-  lines don't fit.
-- The `router` provider's `refreshListenable`/redirect wiring (against
-  `isLoggedInProvider` + `onboardingSeenProvider`) is untested; `routerRedirect`
-  (pure) is well covered.
-- Group rename + currency edit; participant avatars.
-
 ---
 
 ## Architecture limitations (reference)
@@ -332,6 +320,19 @@ Durable constraints of the current design — not bugs, but worth knowing.
 
 ## Resolved
 
+- **G38 / G18 release pass** (2026-10-16): app id
+  `io.github.leostumpf.moneyledger`, test devices reset and test groups
+  recreated (no pre-G6 rows left); G37 refused-version cost assessed and
+  documented (above); release notes in [`release-notes.md`](release-notes.md).
+- **Smaller items** (G10 / G17 / G25 / G18 review 2): group rename +
+  currency edit, participant avatars, the real `routerProvider`
+  refresh/redirect wiring is tested (`test/core/router_provider_test.dart`),
+  suggested payments / payment rows (`NamesLine`) wrap onto two lines.
+- **2026-10-15 audit** (G1 / G3 / G4 / G8 / G9): release INTERNET
+  permission, upload-key signing, per-account ledger DBs, settlements list +
+  undo, leave / delete group.
+- **Offline demo mode** (G15): `--dart-define=OFFLINE_DEMO=true` runs the real
+  UI on seeded fakes (screenshots, quick checks).
 - **G18 second review** (2026-10-16): a crafted backup can no longer make
   this device sign forged versions (only truly local groups of a local
   backup / rows local mode wrote are signed; unsigned restored rows keep no

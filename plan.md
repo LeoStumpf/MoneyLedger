@@ -52,7 +52,7 @@ see G5).
 - [x] Document the signing setup (README "Release signing")
 - [ ] **Leo:** back up the keystore + password from `key.properties` (password manager)
 - [ ] Play Store: enroll Play App Signing with this key as upload key (G18)
-- [ ] Release notes: debug-signed installs must be uninstalled once (local data lost → export first)
+- [x] Release notes: debug-signed installs must be uninstalled once (local data lost → export first)
 
 ### G4. Local ledger is shared across Matrix accounts on one device 🟠 (privacy)
 The Drift DB is a single global file (`money_ledger_db`); `logout()` only calls
@@ -421,7 +421,7 @@ Ceilings today: ~80 members per group (every bootstrap part / digest repeats
 all members), ~30k records (2,048-bucket summary). See CLAUDE.md "Message size".
 - [x] Store the G27 version hash in a DB column if digest hashing (~150 ms /
       5k records on desktop) is slow on phones — measure on the Pixel
-- [ ] A refused version costs one extra 3-message bucket exchange per cycle
+- [x] (assessed, accepted for v1: only bucketed digests, ≤ 1 extra 3-message exchange per peer/cycle, pinned by a test) A refused version costs one extra 3-message bucket exchange per cycle
       (bounded); refusals are per clock (blocks other versions at the same ms)
 
 ### G40. Fully local mode — use the app without a Matrix account (Leo, 2026-10-16) 🟠
@@ -490,8 +490,8 @@ Must happen before the first Play upload (the id is permanent there).
       dich") — allow 2 lines instead of single-line NamesLine there
 - [x] Delete the local emulator app-data safety copy
       (scratchpad `emu_appdata_backup.tgz`, contains test-account keys)
-- [ ] `./build.sh` green; release APK on emulator + phone
-- [ ] Docs in sync (CLAUDE.md, README, open-points); release notes
+- [x] `./build.sh` green; release APK on emulator + phone
+- [x] Docs in sync (CLAUDE.md, README, open-points); release notes (`docs/release-notes.md`)
 
 ---
 
@@ -536,12 +536,12 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G33 — design follow-ups (settlement title, test display names)
 - [x] G34+G35 — backup + signed-records follow-ups
 - [x] G36+ — verification follow-ups + robustness leftovers (G29/G30/G31/G33/G37)
-- [ ] G37 — scale follow-ups (optional)
+- [x] G37 — scale follow-ups (optional)
 - [ ] *(G32+ — newly discovered points)*
 - [x] G40+G39 — fully local mode (no Matrix account) + first-open welcome
 - [x] G41 — local-mode follow-ups (restore adoption, empty local DB file)
 - [x] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
-- [~] G18 — final release review
+- [x] G18 — final release review
 
 ---
 

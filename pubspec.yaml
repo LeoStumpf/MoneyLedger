@@ -21,8 +21,8 @@ dependencies:
   # State management
   flutter_riverpod: ^3.4.3
   riverpod_annotation: ^4.0.7
-  # Local database — drift 2.31 + drift_flutter 0.2.8 share sqlite3 ^2.x with
-  # the matrix SDK, eliminating the version conflict and any dependency_overrides.
+  # Local database — drift 2.35 + drift_flutter 0.3 share sqlite3 3.x with the
+  # matrix SDK (G22: upgrade them together), no dependency_overrides needed.
   drift: ^2.35.2
   drift_flutter: ^0.3.1
   # sqflite for matrix SDK internal storage

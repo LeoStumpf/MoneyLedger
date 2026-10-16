@@ -76,6 +76,10 @@ Smoke test: `test/core/demo_mode_test.dart`. Used for README/store screenshots.
 Manual smoke checklist (real devices, real homeserver): `docs/smoke-test.md` —
 update its "Last run" table after a device pass.
 
+Android app id (G38): **`io.github.leostumpf.moneyledger`** (namespace +
+applicationId; permanent once on Play — never change it). Release notes:
+`docs/release-notes.md` (incl. the Play "What's new" texts).
+
 Android release signing: `android/app/build.gradle.kts` signs `release` with the upload keystore (`~/moneyledger-upload-keystore.jks`) configured via the gitignored `android/key.properties`; without that file it falls back to the debug key. Never commit `key.properties` or keystores — see README "Release signing".
 
 Android backup (G32): `android:allowBackup="false"`, `fullBackupContent="false"` and
@@ -821,7 +825,10 @@ at **~52 records**, a flat digest at **~720**. Hence:
   needed). Exchange, bounded to three messages (SyncEngine rule 9):
   primary summary → reply (same bits) detailing our *unresolved* (hash differs,
   no entries) + differing buckets → one `final` detailing the same buckets
-  (never answered). Rule 4 (in sync) needs no unresolved bucket.
+  (never answered). Rule 4 (in sync) needs no unresolved bucket. **G37:** a
+  refused version keeps its bucket's hash different, so a bucketed group
+  with a refusal pays summary → reply → `final` on every cycle (one extra
+  message per peer, still "in sync", never a loop) — accepted for v1.
 - Ceilings now: ~80 members per group (all members ride in every part /
   digest), ~30k records (2 048-bucket summary ≈ 31 KB). See
   `docs/open-points.md` for the table and costs.

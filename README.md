@@ -2,7 +2,8 @@
 
 **License: AGPL-3.0** (or later) — see [`LICENSE`](LICENSE) and
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Privacy policy:
-[`PRIVACY.md`](PRIVACY.md).
+[`PRIVACY.md`](PRIVACY.md). Release notes (v1.0.0):
+[`docs/release-notes.md`](docs/release-notes.md).
 
 A decentralized expense-sharing app (a Splitwise / Tricount alternative) with
 **no central server**. You sign in with your [Matrix](https://matrix.org)
@@ -86,7 +87,7 @@ regenerate after visible UI changes).
 
 | Platform | Status |
 |----------|--------|
-| Android | supported (release APK, tested on device + emulator) |
+| Android | supported (release APK, tested on device + emulator); app id `io.github.leostumpf.moneyledger` |
 | Web | supported (no background sync — syncs while the tab is open) |
 | iOS | **not supported for v1** |
 
@@ -155,8 +156,9 @@ flutter run -d android
 flutter devices                  # list available run targets
 ```
 
-On first launch, enter your homeserver (e.g. `matrix.org`) and sign in with
-password or SSO.
+On first launch a short welcome explains the app and lets you choose: *Sign
+in with Matrix* (enter your homeserver, e.g. `matrix.org`, then password or
+SSO), *Create a Matrix account*, or *Use without an account* (local mode).
 
 ### Offline demo mode
 

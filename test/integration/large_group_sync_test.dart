@@ -347,6 +347,66 @@ void main() {
     expect(await lastInSync(b, groupId, alice), greaterThan(0));
   });
 
+  test('G37: a refused version in a bucketed group costs at most one '
+      'three-message exchange per cycle and still proves sync', () async {
+    final net = FakeMatrixNetwork()..maxPayloadBytes = _smallBudget;
+    final a = makeUser(net, alice);
+    final b = makeUser(net, bob);
+    final groupId = await createGroup(a, net);
+    final seeded = await seedExpenses(a, net, alice, groupId, 80);
+    await a.read(memberAdderProvider.notifier).add(groupId, bob);
+    await net.settle();
+    final mine = seeded.first;
+
+    // Bob holds a tampered copy (same clock, higher hash, bad signature).
+    late ExpenseModel tampered;
+    for (var i = 0; ; i++) {
+      tampered = ExpenseModel(
+        id: mine.id,
+        roomId: groupId,
+        description: 'Tampered $i',
+        amountCents: mine.amountCents,
+        currency: 'EUR',
+        paidBy: alice,
+        splitsJson: mine.splitsJson,
+        createdAt: mine.createdAt,
+        updatedAt: mine.updatedAt,
+        sig: mine.sig,
+        origin: mine.origin,
+      );
+      if (expenseVersionHash(tampered).compareTo(expenseVersionHash(mine)) >
+          0) {
+        break;
+      }
+    }
+    await b
+        .read(expensesDaoProvider)
+        .upsertExpenseLww(expenseCompanion(tampered));
+    await b.read(syncEngineProvider).broadcastDigests();
+    await net.settle();
+    expect(
+      await a
+          .read(signingDaoProvider)
+          .rejectedClock(groupId, 'expense', mine.id),
+      mine.updatedAt,
+    );
+
+    // Steady state: the bucket holding the refused version never matches,
+    // so each cycle is summary → detailed reply → final — and nothing more.
+    for (final starter in [a, b, a]) {
+      net.sent.clear();
+      await starter.read(syncEngineProvider).broadcastDigests();
+      await net.settle();
+      final digests = sentOf(net, digestEventType).toList();
+      expect(digests.every((d) => d.containsKey('bucket_bits')), isTrue);
+      expect(digests, hasLength(3), reason: 'summary, reply, final');
+      expect(digests.last['final'], isTrue);
+      expect(sentOf(net, expenseEventType), isEmpty);
+    }
+    expect(await lastInSync(a, groupId, bob), greaterThan(0));
+    expect(await lastInSync(b, groupId, alice), greaterThan(0));
+  });
+
   test(
     'a payload over the limit fails loudly instead of being dropped',
     () async {

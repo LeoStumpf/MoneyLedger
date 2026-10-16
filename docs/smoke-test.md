@@ -180,6 +180,17 @@ level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
 
+**2026-10-16 (G18 release check, v1.0.0+1)** · working tree on `e59fb91` +
+G18 docs/G37 test · `./build.sh` green (979 tests) · release APK signed with
+the upload key, `install -r` over the G38 installs on the phone (A, DE) and
+emu-5554 (B, EN) — both kept their session and data. Groups page loads on
+both ("Testgruppe A+B", "Lokal-Test", totals agree: €15.50 owed / owing).
+Testgruppe on emu: *Add expense* "Release check" €1.00 equal → phone shows it
+after ~3.3 s ("du schuldest 0,50 €"); deleted on emu → gone on the phone
+after ~3.6 s, balances back to 3,50 € / €3.50, cloud "Synced" on both.
+**0** `refused` / `[g6]` lines and no Flutter exceptions in either logcat.
+Screenshots `g18f_*.png` (session scratchpad).
+
 **2026-10-16 (G38 app id `io.github.leostumpf.moneyledger`, device reset)** ·
 working tree on `4fa6995` + G38 · release APK signed with the upload key
 (`aapt2 dump badging`: `package: name='io.github.leostumpf.moneyledger'`).
