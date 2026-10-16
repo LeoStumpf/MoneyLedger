@@ -138,6 +138,23 @@ List<dynamic> signingUiOverrides({
   groupArchivesProvider.overrideWith((_) => Stream.value(archives)),
 ];
 
+/// For widget tests that run a page against a **real** in-memory Drift DB
+/// (`appDatabaseProvider.overrideWithValue(db)`): a Drift *watch* stream
+/// never settles under the widget-test fake clock (its timers outlive the
+/// tree / `pumpAndSettle` hangs), so the DB-watching providers a page shell
+/// reads without the test caring about them get static values — the group
+/// list ([groups], for the app-bar title / group cards), the G16 archive
+/// entries ([archives]) and the G6 signature streams ([keys]). Override
+/// anything the test *does* care about (members, expenses, …) yourself.
+List<dynamic> realDbWidgetOverrides({
+  List<GroupModel> groups = const [],
+  Map<String, GroupArchive> archives = const {},
+  List<KnownKey> keys = const [],
+}) => [
+  ledgerGroupsProvider.overrideWith((_) => Stream.value(groups)),
+  ...signingUiOverrides(keys: keys, archives: archives),
+];
+
 /// Additional override for groups tests where you want to control the group list.
 /// Pass a list of fake display names — the groups page uses room.name so we can't
 /// pass real Room objects here; test just the empty/non-empty branching instead.

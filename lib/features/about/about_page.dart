@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/l10n/l10n.dart';
 
@@ -49,11 +50,17 @@ class AboutPage extends ConsumerWidget {
             style: theme.textTheme.headlineSmall,
           ),
           if (version != null)
-            Text(
-              l.aboutVersion(version),
-              key: const Key('aboutVersion'),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
+            Padding(
+              // G33: a little air between the name and the version line.
+              padding: const EdgeInsets.only(top: Insets.xs),
+              child: Text(
+                l.aboutVersion(version),
+                key: const Key('aboutVersion'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),

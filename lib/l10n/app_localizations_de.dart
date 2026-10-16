@@ -117,6 +117,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Im Browser synchronisiert MoneyLedger nur, solange dieser Tab geöffnet ist. Die Android-App synchronisiert zusätzlich regelmäßig im Hintergrund.';
 
   @override
+  String backgroundSyncScheduleFailed(String error) {
+    return 'Die Hintergrund-Synchronisierung konnte auf diesem Gerät nicht eingerichtet werden: $error';
+  }
+
+  @override
+  String get encryptionUnavailableBanner =>
+      'Die Verschlüsselung konnte auf diesem Gerät nicht gestartet werden, daher ist die Synchronisierung mit anderen Personen und Geräten aus. Deine Gruppen bleiben hier verfügbar. Starte die App neu; wenn das Problem bleibt, aktualisiere die App oder installiere sie neu.';
+
+  @override
   String get aboutTitle => 'Über MoneyLedger';
 
   @override

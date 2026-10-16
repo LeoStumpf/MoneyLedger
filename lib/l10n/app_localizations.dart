@@ -272,6 +272,18 @@ abstract class AppLocalizations {
   /// **'In the browser, MoneyLedger syncs only while this tab is open. The Android app also syncs periodically in the background.'**
   String get noBackgroundSyncBody;
 
+  /// Settings sheet, under the background-sync switch, when Android refused to register/cancel the periodic task; error is technical text
+  ///
+  /// In en, this message translates to:
+  /// **'Background sync couldn\'t be set up on this device: {error}'**
+  String backgroundSyncScheduleFailed(String error);
+
+  /// Persistent banner on the groups page when the end-to-end encryption library (vodozemac) failed to load at startup
+  ///
+  /// In en, this message translates to:
+  /// **'Encryption couldn\'t be started on this device, so syncing with other people and devices is off. Your groups stay available here. Restart the app; if this persists, reinstall or update it.'**
+  String get encryptionUnavailableBanner;
+
   /// No description provided for @aboutTitle.
   ///
   /// In en, this message translates to:

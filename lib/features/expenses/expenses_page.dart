@@ -15,6 +15,7 @@ import '../backup/backup_ui.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/names_line.dart';
 import '../balance/balance_calculator.dart';
 import '../balance/balance_provider.dart';
 import '../balance/settle_up.dart';
@@ -396,13 +397,19 @@ class ExpensesPage extends ConsumerWidget {
       if (record is SettlementModel) {
         final from = names[record.fromUser] ?? localpartOf(record.fromUser);
         final to = names[record.toUser] ?? localpartOf(record.toUser);
+        // G33: each name ellipsizes on its own, so both stay visible.
+        final a = NamesLine.sentinel(0), b = NamesLine.sentinel(1);
         return _SettlementTile(
           settlement: record,
-          title: record.fromUser == myId
-              ? l.settlementYouPaid(to)
-              : record.toUser == myId
-              ? l.settlementPaidYou(from)
-              : l.settlementTitle(from, to),
+          title: NamesLine(
+            key: const Key('settlementTitle'),
+            template: record.fromUser == myId
+                ? l.settlementYouPaid(b)
+                : record.toUser == myId
+                ? l.settlementPaidYou(a)
+                : l.settlementTitle(a, b),
+            names: {a: from, b: to},
+          ),
           pending: syncStatus.isRecordPending(record.updatedAt),
           attention: attention(record.origin, record.sig),
           onDelete: readOnly
@@ -440,12 +447,12 @@ class ExpensesPage extends ConsumerWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         Insets.page,
         Insets.s,
         Insets.page,
-        96,
-      ), // clear the FAB
+        Insets.fabClearance(context),
+      ),
       children: [
         if (filter != null)
           ContentWidth(
@@ -1173,12 +1180,15 @@ class _LeadingTile extends StatelessWidget {
   );
 }
 
-/// Shared row layout for expenses and settlements: icon tile, two text
-/// lines (never more — long names ellipsize), the amount column and an
-/// options menu.
+/// Shared row layout for expenses and settlements (G33): icon tile, then two
+/// independent lines — *title … amount* and *subtitle … note* (payer and
+/// "you lent / you borrowed") — so a long localized note never squeezes the
+/// title; everything ellipsizes to one line. Then an options menu.
 class _LedgerRow extends StatelessWidget {
   final Widget leading;
-  final String title;
+
+  /// The title line's text widget (ellipsizing — a [Text] or a [NamesLine]).
+  final Widget title;
   final String subtitle;
   final String amount;
   final Widget? amountNote;
@@ -1226,90 +1236,108 @@ class _LedgerRow extends StatelessWidget {
             const SizedBox(width: Insets.m),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
-                      Flexible(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: DefaultTextStyle.merge(
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                child: title,
+                              ),
+                            ),
+                            if (hasNote)
+                              Padding(
+                                padding: const EdgeInsets.only(left: Insets.xs),
+                                child: Tooltip(
+                                  message: l.expenseHasNote,
+                                  child: Icon(
+                                    Icons.notes,
+                                    key: const Key('expenseNoteIcon'),
+                                    size: 16,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            if (attention)
+                              Padding(
+                                padding: const EdgeInsets.only(left: Insets.xs),
+                                child: Tooltip(
+                                  message: l.recordSignatureWarning,
+                                  child: Icon(
+                                    Icons.gpp_maybe_outlined,
+                                    key: const Key('recordAttention'),
+                                    size: 16,
+                                    color: scheme.error,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (hasNote)
+                      const SizedBox(width: Insets.s),
+                      if (pending)
                         Padding(
-                          padding: const EdgeInsets.only(left: Insets.xs),
-                          child: Tooltip(
-                            message: l.expenseHasNote,
-                            child: Icon(
-                              Icons.notes,
-                              key: const Key('expenseNoteIcon'),
-                              size: 16,
+                          padding: const EdgeInsets.only(right: Insets.xs),
+                          child: Icon(
+                            Icons.cloud_queue,
+                            size: 16,
+                            color: scheme.outline,
+                          ),
+                        ),
+                      Text(
+                        amount,
+                        key: const Key('ledgerRowAmount'),
+                        maxLines: 1,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: kTabularFigures,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  LayoutBuilder(
+                    builder: (context, c) => Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
                         ),
-                      if (attention)
-                        Padding(
-                          padding: const EdgeInsets.only(left: Insets.xs),
-                          child: Tooltip(
-                            message: l.recordSignatureWarning,
-                            child: Icon(
-                              Icons.gpp_maybe_outlined,
-                              key: const Key('recordAttention'),
-                              size: 16,
-                              color: scheme.error,
+                        if (amountNote != null) ...[
+                          const SizedBox(width: Insets.s),
+                          // The note keeps its natural width (it's what the
+                          // row is about for me), capped so the payer always
+                          // keeps some room.
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: c.maxWidth * 0.7,
+                            ),
+                            child: DefaultTextStyle.merge(
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              child: amountNote!,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                        ],
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: Insets.s),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (pending)
-                      Padding(
-                        padding: const EdgeInsets.only(right: Insets.xs),
-                        child: Icon(
-                          Icons.cloud_queue,
-                          size: 16,
-                          color: scheme.outline,
-                        ),
-                      ),
-                    Text(
-                      amount,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: kTabularFigures,
-                      ),
-                    ),
-                  ],
-                ),
-                if (amountNote != null) ...[
-                  const SizedBox(height: 2),
-                  amountNote!,
-                ],
-              ],
             ),
             if (onDelete != null)
               PopupMenuButton<String>(
@@ -1382,6 +1410,8 @@ class _ExpenseTile extends StatelessWidget {
       note = Text(
         text,
         key: const Key('expenseEffect'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: small?.copyWith(color: color),
       );
     }
@@ -1391,7 +1421,7 @@ class _ExpenseTile extends StatelessWidget {
         key: Key('categoryTile-${expense.category ?? 'none'}'),
         category: ExpenseCategory.fromWire(expense.category),
       ),
-      title: expense.description,
+      title: Text(expense.description, key: const Key('expenseTitle')),
       hasNote: expense.note != null,
       subtitle: payerLine,
       amount: context.money(expense.amountCents, expense.currency),
@@ -1410,7 +1440,7 @@ class _ExpenseTile extends StatelessWidget {
 /// (tombstoned) and re-recorded from the balance page.
 class _SettlementTile extends StatelessWidget {
   final SettlementModel settlement;
-  final String title;
+  final Widget title;
   final bool pending;
   final bool attention;
   final VoidCallback? onDelete;

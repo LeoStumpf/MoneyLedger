@@ -29,6 +29,8 @@
   "backgroundSyncBody": "Auch etwa alle 15 Minuten synchronisieren, wenn die App geschlossen ist (mit Netzwerk, nicht bei niedrigem Akku).",
   "noBackgroundSyncTitle": "Hier keine Hintergrund-Synchronisierung",
   "noBackgroundSyncBody": "Im Browser synchronisiert MoneyLedger nur, solange dieser Tab geöffnet ist. Die Android-App synchronisiert zusätzlich regelmäßig im Hintergrund.",
+  "backgroundSyncScheduleFailed": "Die Hintergrund-Synchronisierung konnte auf diesem Gerät nicht eingerichtet werden: {error}",
+  "encryptionUnavailableBanner": "Die Verschlüsselung konnte auf diesem Gerät nicht gestartet werden, daher ist die Synchronisierung mit anderen Personen und Geräten aus. Deine Gruppen bleiben hier verfügbar. Starte die App neu; wenn das Problem bleibt, aktualisiere die App oder installiere sie neu.",
   "aboutTitle": "Über MoneyLedger",
   "somethingWentWrong": "Etwas ist schiefgelaufen",
   "signOutAndRestart": "Abmelden und neu starten",

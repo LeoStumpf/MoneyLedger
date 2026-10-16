@@ -92,12 +92,12 @@ class GroupMembersPage extends ConsumerWidget {
                 ),
               );
               return ListView(
-                padding: const EdgeInsets.fromLTRB(
+                padding: EdgeInsets.fromLTRB(
                   Insets.page,
                   Insets.s,
                   Insets.page,
-                  96,
-                ), // clear the FAB
+                  Insets.fabClearance(context),
+                ),
                 children: [
                   if (members.isNotEmpty)
                     ContentWidth(

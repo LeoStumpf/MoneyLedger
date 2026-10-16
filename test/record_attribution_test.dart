@@ -243,7 +243,8 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Added by Alex · Last edited by Sam'), findsOneWidget);
+    expect(find.text('Added by Alex ·'), findsOneWidget);
+    expect(find.text('Last edited by Sam'), findsOneWidget);
     expect(find.text(en.recordSigUnverified), findsNothing);
 
     await tester.tap(find.byKey(const Key('recordSignatureInfo')));

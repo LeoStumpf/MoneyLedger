@@ -23,6 +23,14 @@ abstract final class Insets {
 
   /// Horizontal page gutter on phones.
   static const page = 16.0;
+
+  /// Bottom padding of a scroll view under an extended FAB (G33): the FAB
+  /// (56) + its margin (16) + a gap (16), plus the system navigation inset —
+  /// the Scaffold lifts the FAB above it, but a ListView with an explicit
+  /// padding does not add it, so on 3-button navigation the FAB used to
+  /// cover the last row.
+  static double fabClearance(BuildContext context) =>
+      88 + MediaQuery.paddingOf(context).bottom;
 }
 
 /// Corner radii.

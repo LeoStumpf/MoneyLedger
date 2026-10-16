@@ -116,6 +116,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'In the browser, MoneyLedger syncs only while this tab is open. The Android app also syncs periodically in the background.';
 
   @override
+  String backgroundSyncScheduleFailed(String error) {
+    return 'Background sync couldn\'t be set up on this device: $error';
+  }
+
+  @override
+  String get encryptionUnavailableBanner =>
+      'Encryption couldn\'t be started on this device, so syncing with other people and devices is off. Your groups stay available here. Restart the app; if this persists, reinstall or update it.';
+
+  @override
   String get aboutTitle => 'About MoneyLedger';
 
   @override

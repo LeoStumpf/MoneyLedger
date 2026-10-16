@@ -836,7 +836,22 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
   groups page, once per account session) upgrades stored names that are still
   the bare localpart (LWW rename + relay, only in groups where we're active).
 - **Shared widgets** (`lib/core/widgets/`): `ContentWidth` (centre + cap width
-  on wide screens — wrap page content in it), `EmptyState`, `BrandLogo`.
+  on wide screens — wrap page content in it), `EmptyState`, `BrandLogo`,
+  `NamesLine` (G33: a localized sentence whose **names ellipsize
+  independently** — build the template with `NamesLine.sentinel(i)` in place
+  of each name, e.g. settlement rows "A paid B").
+- **Lists under an extended FAB** pad their bottom with
+  `Insets.fabClearance(context)` (88 dp + the system navigation inset — a
+  ListView with explicit padding doesn't add it itself), never a fixed number.
+- **Ledger rows** (G33) are two independent lines — *title … amount* and
+  *payer … you lent/borrowed* — so a long (German) note never squeezes the
+  title. The attribution footer ("Added by X · Last edited by Y") wraps
+  between its parts, each ellipsized.
+- **E2EE unavailable** (`vod.init()` threw in `main()`):
+  `cryptoAvailableProvider` is overridden to `false` and the groups page shows
+  a persistent banner (sync is off). A failed background-sync (un)registration
+  lands in `backgroundSyncSchedulingErrorProvider` and is shown under the
+  settings toggle.
 - **Screens:** groups page = totals card (`balanceTotals`, owed and owing kept
   apart per currency) + `GroupCard`s (`groupOverviewProvider`: members, my
   balance via `netBalanceOf`, last activity); group page = summary card
@@ -899,6 +914,16 @@ timer/stream code can use `fakeAsync` (dev dep `fake_async`). In widget tests,
 wait for a Drift write with `eventually(condition, tester: tester)`
 (`test/helpers/eventually.dart`, inside `tester.runAsync`) — never a fixed
 `Future.delayed(50 ms)`.
+
+**Widget tests with a real in-memory DB (G33):** a Drift *watch* stream
+never settles under the widget-test fake clock (`pumpAndSettle` hangs, its
+timers outlive the tree). A page test that overrides `appDatabaseProvider`
+with a real `AppDatabase.forTesting(...)` must still give the DB-watching
+providers the page shell reads static values — `ledgerGroupsProvider`,
+`groupArchivesProvider`, the G6 signature streams: spread
+`...realDbWidgetOverrides(groups: [...])` (`test/helpers/test_providers.dart`)
+and override what the test is about (members, expenses, …) yourself
+(example: `test/group_exit_test.dart`).
 
 **Deterministic sync tests:** never wait with a fixed sleep. `FakeMatrixNetwork.settle()` waits until the relay is quiescent (N consecutive 2 ms ticks with no send/delivery — load-independent because pending microtasks and earlier-due timers like the 1 ms poke debounce always run first). Teardown: dispose the `ProviderContainer` **before** closing its DB.
 

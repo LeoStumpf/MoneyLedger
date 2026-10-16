@@ -12,7 +12,7 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
@@ -169,7 +169,7 @@ Future<BackgroundRoundResult> runBackgroundRound({
   BackgroundSession? session;
   AppDatabase? db;
   ProviderContainer? container;
-  _TrackingTransport? tracked;
+  TrackingTransport? tracked;
   var broadcast = false;
   try {
     try {
@@ -212,7 +212,7 @@ Future<BackgroundRoundResult> runBackgroundRound({
       return const BackgroundRoundResult(BackgroundRoundStatus.failed);
     }
 
-    final t = tracked = _TrackingTransport(session.transport);
+    final t = tracked = TrackingTransport(session.transport);
     final openedDb = db;
     final c = container = ProviderContainer(
       overrides: [
@@ -299,7 +299,7 @@ const Object _stopped = Object();
 
 BackgroundRoundResult _ended(
   bool aborted,
-  _TrackingTransport t,
+  TrackingTransport t,
   bool broadcast,
 ) {
   final status = aborted
@@ -317,11 +317,18 @@ BackgroundRoundResult _ended(
 
 /// Wraps the session's transport to observe traffic: inbound payloads and
 /// sends (in flight + completed) — the round is "quiet" when nothing moved
-/// for a while and no send is pending.
-class _TrackingTransport implements LedgerTransport {
-  _TrackingTransport(this._inner);
+/// for a while and no send is pending. Public only for its unit test
+/// (`test/core/tracking_transport_test.dart`); [now] is injectable so the
+/// test drives the clock with `fakeAsync`.
+@visibleForTesting
+class TrackingTransport implements LedgerTransport {
+  TrackingTransport(this._inner, {DateTime Function()? now})
+    : _now = now ?? DateTime.now {
+    _lastActivity = _now();
+  }
 
   final LedgerTransport _inner;
+  final DateTime Function() _now;
 
   /// Inbound payloads already counted — the mapped stream runs once per
   /// listener (LedgerSyncer + SyncEngine), each payload counts once. (No own
@@ -334,11 +341,11 @@ class _TrackingTransport implements LedgerTransport {
 
   /// Bumped on every inbound payload and every send start / end.
   int activity = 0;
-  DateTime _lastActivity = DateTime.now();
+  late DateTime _lastActivity;
 
   void _touch() {
     activity++;
-    _lastActivity = DateTime.now();
+    _lastActivity = _now();
   }
 
   @override
@@ -393,10 +400,10 @@ class _TrackingTransport implements LedgerTransport {
   /// "quiet" before that replay ran and shut down without applying it (G15).
   Future<void> quiet(Duration period, {required DateTime deadline}) async {
     const tick = Duration(milliseconds: 50);
-    final start = DateTime.now();
-    while (DateTime.now().isBefore(deadline)) {
+    final start = _now();
+    while (_now().isBefore(deadline)) {
       final since = _lastActivity.isAfter(start) ? _lastActivity : start;
-      if (_inFlight == 0 && DateTime.now().difference(since) >= period) {
+      if (_inFlight == 0 && _now().difference(since) >= period) {
         return;
       }
       await Future<void>.delayed(tick);

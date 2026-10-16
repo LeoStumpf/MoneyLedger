@@ -10,6 +10,7 @@ import 'package:money_ledger/core/l10n/formatting.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/core/sync/sync_health.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
+import 'package:money_ledger/core/widgets/names_line.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
@@ -23,6 +24,10 @@ import 'helpers/test_providers.dart';
 import 'helpers/eventually.dart';
 
 const _roomId = '!test:matrix.org';
+
+/// A settlement title (G33: a [NamesLine], each name its own Text).
+Finder _namesLine(String text) =>
+    find.byWidgetPredicate((w) => w is NamesLine && w.fullText == text);
 
 void main() {
   group('ExpensesPage', () {
@@ -576,7 +581,7 @@ void main() {
 
         // Only a settlement — the empty state must not show.
         expect(find.textContaining('No expenses'), findsNothing);
-        expect(find.text('Alex paid Sam'), findsOneWidget);
+        expect(_namesLine('Alex paid Sam'), findsOneWidget);
         expect(find.text('€12.50'), findsOneWidget);
         // G17: the date moved into the day header above the row.
         expect(find.text('Payment'), findsOneWidget);
@@ -608,7 +613,7 @@ void main() {
 
         final dy = [
           tester.getTopLeft(find.text('Hotel')).dy,
-          tester.getTopLeft(find.text('Alex paid Sam')).dy,
+          tester.getTopLeft(_namesLine('Alex paid Sam')).dy,
           tester.getTopLeft(find.text('Taxi')).dy,
         ];
         expect(dy[0], lessThan(dy[1]));
@@ -674,7 +679,7 @@ void main() {
           await tester.pump();
           await tester.pump();
           // This device (@alice:x.org) is Alex → "You paid Sam" (G17).
-          expect(find.text('You paid Sam'), findsOneWidget);
+          expect(_namesLine('You paid Sam'), findsOneWidget);
 
           await tester.tap(find.byTooltip('Settlement options'));
           await tester.pumpAndSettle();
@@ -697,7 +702,7 @@ void main() {
           await tester.pump();
           await tester.pump();
 
-          expect(find.text('You paid Sam'), findsNothing);
+          expect(_namesLine('You paid Sam'), findsNothing);
           expect(find.textContaining('No expenses'), findsOneWidget);
         },
       );
@@ -725,7 +730,7 @@ void main() {
         await tester.tap(find.text('Cancel'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Alex paid Sam'), findsOneWidget);
+        expect(_namesLine('Alex paid Sam'), findsOneWidget);
       });
     });
   });

@@ -357,23 +357,25 @@ stale crypto identity (broken sessions) and is a privacy concern.
       long names wrap the settlement title over 4 lines; expense tiles show no date
 
 ### G33. Design follow-ups (found in G17) 🟡
-- [ ] Settlement row title with long names (MXID localparts) truncates to the
+- [x] Settlement row title with long names (MXID localparts) truncates to the
       payer only — keep both names visible ("A → B"), e.g. ellipsize each name
-- [ ] Expense row: the right column width (amount vs. "du schuldest 12,25 €")
+- [x] Expense row: the right column width (amount vs. "du schuldest 12,25 €")
       squeezes the title ("Taxi to a…") — lay out title+amount and
       payer+lent/borrowed as two independent rows so the title gets the space
-- [ ] The extended FAB covers the last list row's amount on the group and
+- [x] The extended FAB covers the last list row's amount on the group and
       groups pages — add bottom padding (~88 dp) to the scroll views
-- [ ] G15 follow-ups: unit test for `_TrackingTransport.quiet` (background
+- [x] G15 follow-ups: unit test for `_TrackingTransport.quiet` (background
       round); show an error when background-sync scheduling fails; clear banner
       when vodozemac init fails (E2EE off); German screenshots + web demo deploy
-      for the README
-- [ ] Test accounts' Matrix profile names equal their localparts, so devices
+      for the README (screenshots in docs/screenshots/; web demo deploy skipped — repo private)
+- [x] (won't do — profile path covered by tests) Test accounts' Matrix profile names equal their localparts, so devices
       still show `moneyledger-test-a-c725` — optionally set display names
       ("Anna"/"Ben") on the test accounts to exercise the profile-name path
-- [ ] Widget tests with a real in-memory DB must override `ledgerGroupsProvider`
+- [x] Widget tests with a real in-memory DB must override `ledgerGroupsProvider`
       (Drift watch stream hangs under the widget-test clock) — document in
       CLAUDE.md testing notes / provide a helper
+
+- [ ] Balance page "You pay <long name>" could use `NamesLine` (wraps today)
 
 ### G34. Backup follow-ups (found in G5) 🟡
 - [ ] Nudge ignores a second device of the same account (would also protect
@@ -466,7 +468,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G16 — nice-to-haves
 - [x] G22 — dependency upgrades (matrix, file_picker)
 - [x] G27 — LWW tie-break
-- [ ] G33 — design follow-ups (settlement title, test display names)
+- [x] G33 — design follow-ups (settlement title, test display names)
 - [ ] G34 — backup follow-ups
 - [ ] G35 — signed-records follow-ups
 - [ ] G36 — verification follow-ups

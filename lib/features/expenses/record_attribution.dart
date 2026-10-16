@@ -55,6 +55,11 @@ class Attribution {
   /// "Added by X · Last edited by Y", or the legacy / unsigned note.
   final String line;
 
+  /// The pieces of [line] ("Added by X", "Last edited by Y") — shown one per
+  /// line, each ellipsized, when [line] doesn't fit on one (G33: long MXID
+  /// localparts used to wrap mid-name).
+  final List<String> parts;
+
   /// A warning or hint under the line (unverifiable, conflict, "not from
   /// one of your devices"); null when all is well.
   final String? hint;
@@ -63,7 +68,12 @@ class Attribution {
   /// such records too).
   final bool problem;
 
-  const Attribution({required this.line, this.hint, this.problem = false});
+  const Attribution({
+    required this.line,
+    List<String>? parts,
+    this.hint,
+    this.problem = false,
+  }) : parts = parts ?? const [];
 }
 
 Attribution attributionFor({
@@ -97,6 +107,7 @@ Attribution attributionFor({
         (st == SigStatus.unverified || st == SigStatus.conflict)) {
       return Attribution(
         line: parts.join(' · '),
+        parts: parts,
         hint: l.recordNotYourDevice,
         problem: true,
       );
@@ -108,7 +119,12 @@ Attribution attributionFor({
       hint = l.recordSigUnverified;
     }
   }
-  return Attribution(line: parts.join(' · '), hint: hint, problem: problem);
+  return Attribution(
+    line: parts.join(' · '),
+    parts: parts,
+    hint: hint,
+    problem: problem,
+  );
 }
 
 /// Whether the list should flag a record (G6): a key conflict, or someone
@@ -195,7 +211,7 @@ class RecordAttribution extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text(a.line, style: muted)),
+            Expanded(child: _AttributionLine(a, style: muted)),
             if (sig != null)
               IconButton(
                 key: const Key('recordSignatureInfo'),
@@ -299,6 +315,37 @@ class RecordAttribution extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(MaterialLocalizations.of(ctx).okButtonLabel),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The attribution line: "Added by X · Last edited by Y" on one line when it
+/// fits, else wrapped **between** the parts, each ellipsized — never a long
+/// name broken across lines (G33). A [Wrap], not a LayoutBuilder: this also
+/// sits in dialogs, which measure intrinsic widths.
+class _AttributionLine extends StatelessWidget {
+  const _AttributionLine(this.a, {this.style});
+  final Attribution a;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    if (a.parts.length < 2) return Text(a.line, style: style);
+    return Semantics(
+      label: a.line,
+      excludeSemantics: true,
+      child: Wrap(
+        spacing: Insets.xs,
+        children: [
+          for (var i = 0; i < a.parts.length; i++)
+            Text(
+              i < a.parts.length - 1 ? '${a.parts[i]} ·' : a.parts[i],
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
+            ),
         ],
       ),
     );

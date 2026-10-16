@@ -256,10 +256,16 @@ class _SplitEditorState extends State<SplitEditor> {
         ],
       ),
     );
-    final preview = SizedBox(
-      width: 96,
+    // Natural width (right-aligned, so the column still lines up): a fixed
+    // 96 dp box left the long names (MXID localparts) cut short next to a
+    // mostly empty amount cell (G33).
+    final preview = Container(
+      constraints: const BoxConstraints(minWidth: 56),
+      padding: const EdgeInsetsDirectional.only(start: Insets.s),
+      alignment: AlignmentDirectional.centerEnd,
       child: Text(
         _money(cents),
+        maxLines: 1,
         textAlign: TextAlign.right,
         style: TextStyle(
           fontFeatures: kTabularFigures,

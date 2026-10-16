@@ -17,7 +17,6 @@ import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
-import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_exit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/group_model.dart';
@@ -27,6 +26,7 @@ import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
 import 'helpers/l10n.dart';
 import 'helpers/eventually.dart';
+import 'helpers/test_providers.dart';
 
 const alice = '@alice:x.org';
 const bob = '@bob:y.org';
@@ -155,11 +155,11 @@ void main() {
               const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null),
         ),
         // The page title reads the group list; Drift watch streams don't mix
-        // with the widget-test fake clock (G17).
-        ledgerGroupsProvider.overrideWith(
-          (ref) => Stream.value(const [
+        // with the widget-test fake clock (G17) — see realDbWidgetOverrides.
+        ...realDbWidgetOverrides(
+          groups: const [
             GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
-          ]),
+          ],
         ),
         appDatabaseProvider.overrideWithValue(db),
         ledgerTransportProvider.overrideWith((ref) => net.clientFor(alice)),
@@ -168,8 +168,6 @@ void main() {
         currentParticipantProvider.overrideWith(
           (ref, g) => Future<MemberModel?>.value(members.first),
         ),
-        // G16: no archived groups (no drift stream in widget tests).
-        groupArchivesProvider.overrideWith((_) => Stream.value(const {})),
       ],
       child: MaterialApp.router(
         localizationsDelegates: testLocalizationsDelegates,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/matrix/crypto_status.dart';
 import '../../core/l10n/l10n.dart';
 import '../auth/auth_provider.dart';
 import '../onboarding/onboarding_provider.dart';
@@ -77,10 +78,19 @@ class GroupsPage extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: Text(l.newGroup),
       ),
-      body: _GroupsBody(
-        groupsAsync: groupsAsync,
-        restoring: ref.watch(selfRecoveryProvider),
-        onImport: () => _importCsv(context, ref),
+      body: Column(
+        children: [
+          // G33: E2EE failed to start (vodozemac init) — nothing can sync.
+          if (!ref.watch(cryptoAvailableProvider))
+            const _EncryptionUnavailableBanner(),
+          Expanded(
+            child: _GroupsBody(
+              groupsAsync: groupsAsync,
+              restoring: ref.watch(selfRecoveryProvider),
+              onImport: () => _importCsv(context, ref),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -121,6 +131,44 @@ class GroupsPage extends ConsumerWidget {
 
   Future<void> _importCsv(BuildContext context, WidgetRef ref) =>
       importCsvWithPreview(context, ref);
+}
+
+/// Persistent notice that end-to-end encryption is off on this device, so
+/// nothing syncs (G33).
+class _EncryptionUnavailableBanner extends StatelessWidget {
+  const _EncryptionUnavailableBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      key: const Key('encryptionUnavailableBanner'),
+      color: scheme.errorContainer,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Insets.page,
+            vertical: Insets.m,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.sync_disabled, color: scheme.onErrorContainer),
+              const SizedBox(width: Insets.m),
+              Expanded(
+                child: Text(
+                  context.l10n.encryptionUnavailableBanner,
+                  style: TextStyle(color: scheme.onErrorContainer),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _GroupsBody extends ConsumerWidget {
@@ -193,12 +241,12 @@ class _GroupsBody extends ConsumerWidget {
         ];
         final nudge = ref.watch(backupNudgeProvider);
         return ListView(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             Insets.page,
             Insets.s,
             Insets.page,
-            96,
-          ), // clear the FAB
+            Insets.fabClearance(context),
+          ),
           children: [
             ContentWidth(child: _TotalsCard(totals: totals)),
             const SizedBox(height: Insets.l),
@@ -643,6 +691,7 @@ class SyncSettingsSheet extends ConsumerWidget {
     final l = context.l10n;
     final supported = ref.watch(backgroundSyncSupportedProvider);
     final enabled = ref.watch(backgroundSyncEnabledProvider).value ?? true;
+    final schedulingError = ref.watch(backgroundSyncSchedulingErrorProvider);
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -663,8 +712,21 @@ class SyncSettingsSheet extends ConsumerWidget {
                 value: enabled,
                 onChanged: (v) =>
                     ref.read(settingsDaoProvider).setBackgroundSyncEnabled(v),
-              )
-            else
+              ),
+            // G33: the OS refused to (un)register the task — say so.
+            if (supported && schedulingError != null)
+              ListTile(
+                key: const Key('backgroundSyncError'),
+                leading: Icon(
+                  Icons.error_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                title: Text(
+                  l.backgroundSyncScheduleFailed(schedulingError.toString()),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            if (!supported)
               ListTile(
                 leading: const Icon(Icons.sync_disabled),
                 title: Text(l.noBackgroundSyncTitle),

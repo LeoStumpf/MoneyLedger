@@ -20,8 +20,15 @@ import '../helpers/fake_auth_gateway.dart';
 
 class RecordingScheduler implements BackgroundScheduler {
   final calls = <String>[];
+
+  /// G33: make `schedule()` throw (the OS refused the registration).
+  bool failSchedule = false;
   @override
-  Future<void> schedule() async => calls.add('schedule');
+  Future<void> schedule() async {
+    calls.add('schedule');
+    if (failSchedule) throw StateError('WorkManager refused');
+  }
+
   @override
   Future<void> cancel() async => calls.add('cancel');
 }
@@ -82,5 +89,53 @@ void main() {
 
     await c.read(authProvider.notifier).logout();
     await lastCallIs('cancel');
+  });
+
+  test('a scheduling failure is kept for the settings sheet and cleared by '
+      'the next successful call (G33)', () async {
+    final gateway = FakeAuthGateway();
+    final scheduler = RecordingScheduler()..failSchedule = true;
+    final c = ProviderContainer(
+      overrides: [
+        authGatewayProvider.overrideWith((ref) => gateway),
+        ledgerTransportProvider.overrideWith(
+          (ref) => Completer<LedgerTransport>().future,
+        ),
+        accountDatabaseOpenerProvider.overrideWithValue(
+          (_) => AppDatabase.forTesting(NativeDatabase.memory()),
+        ),
+        backgroundSchedulerProvider.overrideWithValue(scheduler),
+      ],
+    );
+    addTearDown(() {
+      c.dispose();
+      gateway.dispose();
+    });
+    c.listen(backgroundSyncSchedulingProvider, (_, _) {});
+    Future<void> until(bool Function() ok) async {
+      final sw = Stopwatch()..start();
+      while (!ok()) {
+        if (sw.elapsed > const Duration(seconds: 5)) fail('timed out');
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+    }
+
+    await c.read(loginStateProvider.future);
+    await c
+        .read(authProvider.notifier)
+        .login(
+          resolvedHomeserver: 'https://x.test',
+          username: 'bob',
+          password: 'pw',
+        );
+    await until(() => c.read(backgroundSyncSchedulingErrorProvider) != null);
+    expect(
+      c.read(backgroundSyncSchedulingErrorProvider).toString(),
+      contains('WorkManager refused'),
+    );
+
+    // Turning it off (cancel succeeds) clears the error.
+    await c.read(settingsDaoProvider).setBackgroundSyncEnabled(false);
+    await until(() => c.read(backgroundSyncSchedulingErrorProvider) == null);
   });
 }

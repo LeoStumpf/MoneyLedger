@@ -28,6 +28,23 @@ final backgroundSyncEnabledProvider = StreamProvider<bool>((ref) {
   return ref.watch(settingsDaoProvider).watchBackgroundSyncEnabled();
 });
 
+/// The last error of registering / cancelling the OS task (G33), null once a
+/// later attempt succeeded — shown under the settings toggle instead of only
+/// being logged.
+final backgroundSyncSchedulingErrorProvider =
+    NotifierProvider<BackgroundSyncSchedulingError, Object?>(
+      BackgroundSyncSchedulingError.new,
+    );
+
+class BackgroundSyncSchedulingError extends Notifier<Object?> {
+  @override
+  Object? build() => null;
+
+  void report(Object? error) {
+    if (ref.mounted) state = error;
+  }
+}
+
 /// Keeps the OS registration in line with the session: registered while an
 /// account with background sync enabled is signed in, cancelled when it is
 /// turned off or the user signs out. Watched by `LedgerSyncHost`.
@@ -37,11 +54,16 @@ final backgroundSyncSchedulingProvider = Provider.autoDispose<void>((ref) {
   final account = ref.watch(accountUserIdProvider);
   final enabled = ref.watch(backgroundSyncEnabledProvider);
 
+  // Captured before any await (G19); keepAlive, so it outlives this provider.
+  final errors = ref.read(backgroundSyncSchedulingErrorProvider.notifier);
+
   Future<void> apply(bool on) async {
     try {
       await (on ? scheduler.schedule() : scheduler.cancel());
+      errors.report(null);
     } catch (e) {
       debugPrint('[bg] scheduling failed: $e');
+      errors.report(e);
     }
   }
 

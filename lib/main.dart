@@ -6,6 +6,7 @@ import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'app.dart';
 import 'core/background/background_sync.dart';
 import 'core/demo/demo_mode.dart';
+import 'core/matrix/crypto_status.dart';
 import 'core/demo/demo_overrides.dart';
 
 Future<void> main() async {
@@ -48,12 +49,19 @@ Future<void> main() async {
   // Loads the native library on Android/iOS and the wasm (web/pkg/) on web.
   // Guarded so a crypto-init failure (e.g. a missing web wasm) degrades to
   // encryption-disabled instead of blank-screening the whole app.
+  var cryptoAvailable = true;
   try {
     await vod.init();
   } catch (e, st) {
     debugPrint('[crypto] vodozemac init failed; E2EE disabled: $e\n$st');
+    cryptoAvailable = false;
   }
-  final container = ProviderContainer();
+  final container = ProviderContainer(
+    overrides: [
+      // G33: surfaced as a banner on the groups page.
+      if (!cryptoAvailable) cryptoAvailableProvider.overrideWithValue(false),
+    ],
+  );
   // A background round that finds the app alive lets the app sync instead.
   attachForegroundSync(container);
   runApp(UncontrolledProviderScope(container: container, child: const App()));

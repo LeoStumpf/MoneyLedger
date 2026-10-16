@@ -53,6 +53,19 @@ and sees only ciphertext.
   new devices. Toggle per account under *Settings* (gear) on the groups screen.
   The web app syncs only while its tab is open.
 
+## Screenshots
+
+Taken from the [offline demo mode](#offline-demo-mode) (Android, 540 px wide;
+regenerate after visible UI changes).
+
+| Groups | Group | Balances | Add expense |
+|---|---|---|---|
+| <img src="docs/screenshots/en-light-groups.png" width="180" alt="en-light groups"> | <img src="docs/screenshots/en-light-group.png" width="180" alt="en-light group"> | <img src="docs/screenshots/en-light-balance.png" width="180" alt="en-light balance"> | <img src="docs/screenshots/en-light-add.png" width="180" alt="en-light add"> |
+| <img src="docs/screenshots/en-dark-groups.png" width="180" alt="en-dark groups"> | <img src="docs/screenshots/en-dark-group.png" width="180" alt="en-dark group"> | <img src="docs/screenshots/en-dark-balance.png" width="180" alt="en-dark balance"> | <img src="docs/screenshots/en-dark-add.png" width="180" alt="en-dark add"> |
+| <img src="docs/screenshots/de-light-groups.png" width="180" alt="de-light groups"> | <img src="docs/screenshots/de-light-group.png" width="180" alt="de-light group"> | <img src="docs/screenshots/de-light-balance.png" width="180" alt="de-light balance"> | <img src="docs/screenshots/de-light-add.png" width="180" alt="de-light add"> |
+
+*Rows: English (light), English (dark), German (light).*
+
 ## Platform support
 
 | Platform | Status |
