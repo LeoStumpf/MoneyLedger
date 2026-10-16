@@ -736,7 +736,7 @@ final class GroupEditorProvider
   }
 }
 
-String _$groupEditorHash() => r'e5c4f6581851354ffd8ef0d8a176b2497b177070';
+String _$groupEditorHash() => r'1462665eb8d12e3eb5a100a8d27b9875a945f22b';
 
 /// Edits a group's meta — name and default currency (G10). Any active member
 /// may edit. Persisted as an LWW meta upsert with a fresh clock and relayed

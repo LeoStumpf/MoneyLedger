@@ -1,6 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../models/expense_category.dart';
 import 'expense_filter.dart';
 
 part 'ledger_search_provider.g.dart';
@@ -20,7 +19,8 @@ class LedgerSearch extends _$LedgerSearch {
   void setQuery(String query) =>
       state = (state ?? LedgerFilter.none).copyWith(query: query);
 
-  void toggleCategory(ExpenseCategory c) =>
+  /// Toggles the category filter key [c] (built-in wire id or custom id).
+  void toggleCategory(String c) =>
       state = (state ?? LedgerFilter.none).toggleCategory(c);
 
   void toggleInvolvingMe() {

@@ -98,6 +98,8 @@ List<dynamic> testOverrides({
   String? localProfile,
   // G40: "Connect a Matrix account" in progress (needs [localProfile]).
   bool connecting = false,
+  // G47: the group list the pages see (e.g. a group's custom categories).
+  List<GroupModel> groups = const [],
 }) => [
   isLoggedInProvider.overrideWith((ref) => isLoggedIn),
   // loginFlowsLoading: future never completes, simulating homeserver
@@ -112,7 +114,7 @@ List<dynamic> testOverrides({
     (ref, roomId) => settlementsStream ?? Stream.value(settlements),
   ),
   balanceForRoomProvider.overrideWith((ref, roomId) => debts),
-  ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
+  ledgerGroupsProvider.overrideWith((_) => Stream.value(groups)),
   // The participant-name resolver and members page read the members stream
   // off the DB; default it to empty so unrelated widget tests stay offline.
   groupMembersProvider.overrideWith((ref, groupId) => Stream.value(members)),

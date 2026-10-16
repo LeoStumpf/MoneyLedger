@@ -158,13 +158,35 @@ peers'), and SAS works with other members' devices (members page). Open:
   update; mixed old/new devices disagree until every device is updated. A
   future protocol could sign the raw payload (minus transport fields) so
   unknown optional fields survive older verifiers.
-- **Category set is fixed** (10 ids); an unknown id from a newer peer is kept
-  verbatim and shown as "Other". No per-group custom categories, no
-  category statistics yet.
+- **Built-in category set is fixed** (10 ids); an unknown id from a newer
+  peer is kept verbatim and shown as "Other". No category statistics yet.
+  Per-group custom categories: G47 below.
 - **Archive is device-local** (not synced to your other devices) and only
   ledger activity (expenses / payments incl. deletions) un-archives; member
   or group-name changes don't. A same-millisecond LWW tie-break version
   (G27) doesn't change the fingerprint (practically irrelevant).
+
+### Custom categories (G47) — limits
+- **Mixed versions:** the custom categories live in the signed group meta
+  (`categories`, only when non-empty). A pre-G47 build rebuilds the meta body
+  without them → bad signature → it refuses **every** later meta version of
+  that group (also renames / currency changes) until it is updated. Same
+  caveat and fix as G16: the v11 migration forgets refused *meta* versions,
+  so peers re-send them after the update. Unreleased app → accepted.
+- **Concurrent edits are whole-meta LWW:** two members adding a category at
+  the same time (or one renaming the group while another adds a category)
+  → the newer meta version wins and the other change is lost (the loser sees
+  it vanish). A per-category CRDT / merge would fix it; rare in practice.
+- **No delete** — only *hide* (old expenses stay labelled). An expense whose
+  `c:` id the group doesn't define (e.g. a CSV from another group without a
+  name column, or the definition lost to the LWW case above) shows as
+  "Other" and keeps its id. At most 50 per group (≈ 5 KB in every meta /
+  bootstrap part at the maximum).
+- **CSV:** the `Category Name` column recreates missing definitions on
+  import (default icon); icons and the hidden flag aren't in the CSV. The
+  JSON backup is lossless (signed meta).
+- Duplicate names are prevented in the dialog (case-insensitive) but not by
+  the content rules (two peers may create "Dog" concurrently).
 
 ### Backups (G5 / G34) — limits
 - **Encrypted backups** (optional passphrase): Argon2id (32 MiB, t = 3,

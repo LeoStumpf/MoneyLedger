@@ -82,7 +82,7 @@ void main() {
       ),
     );
     addTearDown(db.close);
-    expect(db.schemaVersion, 10);
+    expect(db.schemaVersion, greaterThanOrEqualTo(10));
     final signing = SigningDao(db);
     expect(await signing.rejectedVersion('g1', 'expense', 'e1'), (
       at: 70,

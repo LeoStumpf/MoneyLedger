@@ -7,12 +7,13 @@ import '../balance/balance_calculator.dart' show splitsOf;
 
 /// What the expense list currently shows: a free-text [query] (description,
 /// note, payer name; for payments the two names), a set of [categories]
-/// (empty = any; an expense without a category matches none of them,
+/// (empty = any; keys of [ResolvedCategory] — a built-in wire id or a
+/// custom `c:` id, G47; an expense without a category matches none of them,
 /// payments never match a category filter) and [involvingMe] (I paid, I
 /// share in it, or I'm one side of the payment).
 class LedgerFilter {
   final String query;
-  final Set<ExpenseCategory> categories;
+  final Set<String> categories;
   final bool involvingMe;
 
   const LedgerFilter({
@@ -29,7 +30,7 @@ class LedgerFilter {
 
   LedgerFilter copyWith({
     String? query,
-    Set<ExpenseCategory>? categories,
+    Set<String>? categories,
     bool? involvingMe,
   }) => LedgerFilter(
     query: query ?? this.query,
@@ -37,8 +38,8 @@ class LedgerFilter {
     involvingMe: involvingMe ?? this.involvingMe,
   );
 
-  /// A copy with [c] toggled in [categories].
-  LedgerFilter toggleCategory(ExpenseCategory c) => copyWith(
+  /// A copy with the category key [c] toggled in [categories].
+  LedgerFilter toggleCategory(String c) => copyWith(
     categories: categories.contains(c)
         ? ({...categories}..remove(c))
         : {...categories, c},
@@ -62,15 +63,18 @@ String _fold(String s) {
 /// Whether [e] passes [f]. [nameOf] resolves participant ids to display
 /// names (for the payer search); [myId] is this account's participant id
 /// (null = not a participant → "involving me" matches nothing).
+/// [customCategories]: the group's custom categories (G47) — an id the
+/// group doesn't define counts as "other".
 bool expenseMatches(
   ExpenseModel e,
   LedgerFilter f, {
   required String Function(String id) nameOf,
   required String? myId,
+  List<CustomCategory> customCategories = const [],
 }) {
   if (f.categories.isNotEmpty) {
-    final c = ExpenseCategory.fromWire(e.category);
-    if (c == null || !f.categories.contains(c)) return false;
+    final c = resolveCategory(e.category, customCategories);
+    if (c == null || !f.categories.contains(c.key)) return false;
   }
   if (f.involvingMe) {
     if (myId == null) return false;
@@ -108,14 +112,20 @@ bool settlementMatches(
   ].any((field) => field.isNotEmpty && _fold(field).contains(q));
 }
 
-/// The categories used by the live [expenses], in picker order — the
+/// The categories used by the live [expenses], in picker order (built-in
+/// ones, then the group's [custom] ones — hidden ones too while used) — the
 /// filter chips offered for this group.
-List<ExpenseCategory> usedCategories(Iterable<ExpenseModel> expenses) {
+List<ResolvedCategory> usedCategories(
+  Iterable<ExpenseModel> expenses, [
+  List<CustomCategory> custom = const [],
+]) {
   final used = {
-    for (final e in expenses) ?ExpenseCategory.fromWire(e.category),
+    for (final e in expenses) ?resolveCategory(e.category, custom)?.key,
   };
   return [
     for (final c in ExpenseCategory.values)
-      if (used.contains(c)) c,
+      if (used.contains(c.wire)) ResolvedCategory.builtin(c),
+    for (final c in custom)
+      if (used.contains(c.id)) ResolvedCategory.custom(c),
   ];
 }

@@ -551,12 +551,14 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [x] Hide signature/device details behind "Details" unless there is a real problem
 
 ### G47. Custom categories + dropdown picker 🟡
-- [ ] Category selection becomes a dropdown/selector (icon + name, "None",
+- [x] Category selection becomes a dropdown/selector (icon + name, "None",
       suggestion stays the preselection) instead of the chip row
-- [ ] Per-group custom categories in the signed group meta
+- [x] Per-group custom categories in the signed group meta
       (`categories: [{id: "c:<uuid>", name, icon}]`, hashed only when set),
-      create / rename / hide (group edit + "+ New category" in the dropdown);
-      unknown / hidden id → "Other"; filter chips, search, CSV aware
+      create / rename / hide (⋮ → Categories page + "+ New category" in the
+      dropdown); unknown id → "Other" (hidden ones still label old
+      expenses); filter chips, search, CSV (`Category Name` column) aware;
+      schema v11
 
 ### G48. Automatic restore points + revert (git-like) 🟡
 - [ ] `record_history` table: every version a DAO writes (local or inbound)
@@ -627,6 +629,11 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [ ] Groups app bar "Devices" icon → move into the settings sheet
 - [ ] "Add people" prompt also when I'm alone but the group already has expenses
 
+### G57. Custom-category follow-ups (found in G47) 🟢
+- [ ] Concurrent category edits lose one (whole meta is LWW) — per-category
+      merge if it matters; duplicate names only blocked in the dialog
+- [ ] Offline demo seed: add a custom category (screenshots)
+
 ---
 
 ## Execution queue (conductor process)
@@ -680,7 +687,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G44 — small release fixes (license label, AGP blob, release logging)
 - [x] G45 — minimal Matrix footprint (sync filter, presence) — device smoke 7.12 moved to the end
 - [x] G46 — UX quick wins
-- [ ] G47 — custom categories + dropdown
+- [x] G47 — custom categories + dropdown
 - [ ] G48 — restore points + revert
 - [ ] G49 — expense date
 - [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
@@ -689,7 +696,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
 - [ ] G55 — web glyph coverage without Google (found in G43)
-- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list)
+- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices
+- [ ] G57 — custom-category follow-ups (found in G47)
 - [ ] G56 — UX follow-ups (found in G46)
 
 ---

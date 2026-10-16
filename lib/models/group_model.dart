@@ -1,3 +1,4 @@
+import 'expense_category.dart';
 import 'record_signature.dart';
 
 class GroupModel {
@@ -5,6 +6,10 @@ class GroupModel {
   final String name;
   final String currency;
   final int updatedAt; // ms epoch, LWW clock for the group meta (name/currency)
+
+  /// G47: the group's custom expense categories, in definition order (part
+  /// of the signed meta, and of its hash, only when non-empty).
+  final List<CustomCategory> categories;
 
   /// G6: signature of this meta version (null = legacy / unsigned).
   final RecordSignature? sig;
@@ -17,6 +22,7 @@ class GroupModel {
     required this.name,
     required this.currency,
     this.updatedAt = 0,
+    this.categories = const [],
     this.sig,
     this.pendingSign = false,
   });
@@ -28,7 +34,14 @@ class GroupModel {
         name: name,
         currency: currency,
         updatedAt: updatedAt,
+        categories: categories,
         sig: sig,
         pendingSign: pendingSign,
       );
+
+  /// The custom categories offered for new expenses (not hidden).
+  List<CustomCategory> get visibleCategories => [
+    for (final c in categories)
+      if (!c.hidden) c,
+  ];
 }

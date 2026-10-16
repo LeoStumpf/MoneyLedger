@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/backup/csv_import.dart';
 import 'package:money_ledger/features/backup/ledger_csv.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
+import 'package:money_ledger/models/expense_category.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
@@ -439,6 +440,86 @@ void main() {
         expect(parseGroupCsv(withAmount('-1')).rows.single.problem, isNotNull);
       },
     );
+  });
+
+  group('custom categories (G47)', () {
+    const dog = CustomCategory(id: 'c:dog', name: 'Dog', icon: 'pets');
+    ExpenseModel catExp(String id, String? category) => ExpenseModel(
+      id: id,
+      roomId: 'g1',
+      description: 'Vet',
+      amountCents: 4200,
+      currency: 'EUR',
+      paidBy: 'pa',
+      splitsJson: '{"pa":2100,"pb":2100}',
+      createdAt: 1760000000000,
+      updatedAt: 1000,
+      category: category,
+    );
+
+    test('a new group gets the custom categories back (name, default icon); '
+        'an id without a name stays verbatim', () async {
+      const source = GroupModel(
+        roomId: 'g1',
+        name: 'Trip',
+        currency: 'EUR',
+        updatedAt: 1000,
+        categories: [dog],
+      );
+      await import(
+        buildGroupCsv(source, members, [
+          catExp('e1', 'c:dog'),
+          catExp('e2', 'c:orphan'),
+        ]),
+      );
+      final g = (await c.read(groupsDaoProvider).getGroup('g1'))!;
+      expect(g.categories, [
+        const CustomCategory(id: 'c:dog', name: 'Dog', icon: 'tag'),
+      ]);
+      final e2 = await c.read(expensesDaoProvider).getExpenseById('e2');
+      expect(e2!.category, 'c:orphan');
+    });
+
+    test('an existing group gains missing ones (new signed meta version); '
+        'known ones are left alone', () async {
+      await import(buildGroupCsv(grp, members, [exp()]));
+      final before = (await c.read(groupsDaoProvider).getGroup('g1'))!;
+      expect(before.categories, isEmpty);
+      const source = GroupModel(
+        roomId: 'g1',
+        name: 'Trip',
+        currency: 'EUR',
+        categories: [dog],
+      );
+      await import(buildGroupCsv(source, members, [catExp('e9', 'c:dog')]));
+      final after = (await c.read(groupsDaoProvider).getGroup('g1'))!;
+      expect(after.categories.single.id, 'c:dog');
+      expect(after.updatedAt, greaterThan(before.updatedAt));
+      expect(after.sig!.user, '@importer:x.org');
+      // Re-importing doesn't write another version.
+      await import(buildGroupCsv(source, members, [catExp('e9', 'c:dog')]));
+      expect(
+        (await c.read(groupsDaoProvider).getGroup('g1'))!.updatedAt,
+        after.updatedAt,
+      );
+    });
+
+    test('csvCategoriesToAdd: trims / cuts names, skips invalid ids', () {
+      final parsed = parseGroupCsv(
+        'Date,Type,Description,Category,Category Name,Note,Currency,Amount,'
+        'Paid By,Alex,Expense ID,Group,Group ID,Updated At\r\n'
+        '2025-10-09T10:00:00.000,Expense,a,c:a,${'x' * 50},,EUR,1.00,Alex,'
+        '1.00,e1,T,g1,1\r\n'
+        '2025-10-09T10:00:00.000,Expense,b,c:,Empty id,,EUR,1.00,Alex,'
+        '1.00,e2,T,g1,1\r\n'
+        '2025-10-09T10:00:00.000,Expense,c,c:a,Other name,,EUR,1.00,Alex,'
+        '1.00,e3,T,g1,1',
+      );
+      final add = csvCategoriesToAdd(parsed, const []);
+      expect(add.single.id, 'c:a');
+      expect(add.single.name, 'x' * kMaxCategoryNameLength);
+      expect(csvCategoriesToAdd(parsed, [add.single]), isEmpty);
+    });
   });
 }
 

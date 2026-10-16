@@ -99,11 +99,13 @@ Expected results are in *italics*.
 | 5.5 | Edit an expense (tap) → *form prefilled (equal → Equal, else Exact); save updates list + peer* | 2dev |
 | 5.6 | ⋮ Delete → confirm → *gone here and on the peer (tombstone)* | 2dev |
 | 5.7 | Keyboard open on the form → *Add/Save button reachable (known: covered, G17)* | emu |
-| 5.8 | Type "Pizza" → *Food & drink chip preselected*; pick another chip → *typing no longer changes it*; tap the selected chip → *none* (G16) | emu |
+| 5.8 | Type "Pizza" → *Category field shows Food & drink*; open it, pick another → *typing no longer changes it*; pick *No category* → *none* (G16, selector since G47) | emu |
 | 5.9 | Add a category + note → *category icon in the list, note icon after the title; peer shows the same icon + note (DE labels on a German device)* (G16) | 2dev |
 | 5.10 | 🔍 in the group app bar → type part of a description / note / payer → *list filtered, "N entries"*; category chips + "Involving me" narrow it; nothing found → *"Clear filters"* (G16) | emu |
 | 5.11 | Amount field: German device, type `1.234` → *preview "= 1.234,00 €" (thousands)*; English device `1.234` → *"= €1.23"*; `0` / `-5` → *Add disabled, no preview* (G18) | 2dev |
 | 5.12 | Start the app while a background round runs (trigger the job, open the app at once) → *"Finishing background sync…" briefly, then the app; logcat `[bg-gate] background round finished`* (G18) | phone |
+| 5.13 | Category field → *New category…* → name "Dog" + an icon → *selected on the form*; the peer's selector offers "Dog" too (G47) | 2dev |
+| 5.14 | ⋮ → Categories → rename "Dog", hide it → *peer shows the new name; hidden: not offered for new expenses, old expenses keep the label* (G47) | 2dev |
 
 ## 6. Settlements & balances
 

@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
+import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 
 /// Content rules every expense / payment must satisfy (G18 review) — plain
@@ -56,6 +58,32 @@ String? settlementProblem(SettlementModel s) {
   if (s.currency.isEmpty) return 'no currency';
   if (s.fromUser.isEmpty || s.toUser.isEmpty) return 'missing participant';
   if (s.fromUser == s.toUser) return 'payment to oneself';
+  return null;
+}
+
+/// Why [g] is not a valid group-meta version, or null when it is (G47): its
+/// custom categories break the bounds — more than [kMaxCustomCategories], an
+/// id that isn't `c:…` (≤ [kMaxCustomCategoryIdLength]) or appears twice, a
+/// name that isn't trimmed / 1 … [kMaxCategoryNameLength] long
+/// ([isValidCategoryName]), or an icon outside [kCustomCategoryIcons].
+String? groupMetaProblem(GroupModel g) {
+  final cats = g.categories;
+  if (cats.length > kMaxCustomCategories) {
+    return '${cats.length} categories';
+  }
+  final ids = <String>{};
+  for (final c in cats) {
+    if (!isCustomCategoryId(c.id) ||
+        c.id.length <= kCustomCategoryPrefix.length ||
+        c.id.length > kMaxCustomCategoryIdLength) {
+      return 'category id "${c.id}"';
+    }
+    if (!ids.add(c.id)) return 'duplicate category ${c.id}';
+    if (!isValidCategoryName(c.name)) return 'category name of ${c.id}';
+    if (!kCustomCategoryIcons.contains(c.icon)) {
+      return 'category icon "${c.icon}"';
+    }
+  }
   return null;
 }
 

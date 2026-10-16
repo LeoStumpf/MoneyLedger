@@ -28,7 +28,9 @@ import 'record_verifier.dart';
 ///    looked at on their own (G18 review: a refusal used to block every
 ///    version up to its clock, so one far-future refusal froze a record).
 /// 3. Content validation (`record_validation.dart`): a malformed / out of
-///    range expense or payment is refused as `invalid_record`.
+///    range expense or payment — or (G47) a group meta whose custom
+///    categories break the bounds (`groupMetaProblem`) — is refused as
+///    `invalid_record`.
 /// 4. [RecordVerifier] decides; a refused version is logged and — for the
 ///    recorded reasons — stored in `rejected_versions` (never one with a
 ///    clock beyond `now + kSignedClockSkewTolerance`), so our digest tells
@@ -477,6 +479,20 @@ class RecordGate {
       return false;
     }
     if (await _refusedExactly(g.roomId, RecordKind.meta, g.roomId, version)) {
+      return false;
+    }
+    final problem = groupMetaProblem(g);
+    if (problem != null) {
+      await _refuse(
+        g.roomId,
+        RecordKind.meta,
+        g.roomId,
+        version,
+        const Verdict.reject(RejectReason.invalid),
+        relayedBy,
+        g.sig,
+        detail: problem,
+      );
       return false;
     }
     final v = await verifier.meta(g);

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
@@ -60,6 +61,9 @@ Map<String, dynamic> groupMetaPayload(GroupModel g) => {
   'name': g.name,
   'currency': g.currency,
   'updated_at': g.updatedAt,
+  // G47: optional — absent when the group has no custom categories.
+  if (g.categories.isNotEmpty)
+    'categories': [for (final c in g.categories) c.toJson()],
   if (g.sig != null) 'sig': g.sig!.toJson(),
 };
 
@@ -314,6 +318,8 @@ GroupModel? groupMetaFromPayload(Map<String, dynamic> c) {
     name: c['name'] as String? ?? group,
     currency: c['currency'] as String? ?? 'EUR',
     updatedAt: c['updated_at'] as int? ?? 0,
+    // G47 (optional; malformed → an invalid entry, refused by the gate).
+    categories: parseCustomCategories(c['categories']),
     sig: RecordSignature.fromJson(c['sig']),
   );
 }

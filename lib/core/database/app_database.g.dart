@@ -74,6 +74,17 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _categoriesJsonMeta = const VerificationMeta(
+    'categoriesJson',
+  );
+  @override
+  late final GeneratedColumn<String> categoriesJson = GeneratedColumn<String>(
+    'categories_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     roomId,
@@ -82,6 +93,7 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
     updatedAt,
     sig,
     pendingSign,
+    categoriesJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -138,6 +150,15 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         ),
       );
     }
+    if (data.containsKey('categories_json')) {
+      context.handle(
+        _categoriesJsonMeta,
+        categoriesJson.isAcceptableOrUnknown(
+          data['categories_json']!,
+          _categoriesJsonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -171,6 +192,10 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         DriftSqlType.bool,
         data['${effectivePrefix}pending_sign'],
       )!,
+      categoriesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}categories_json'],
+      ),
     );
   }
 
@@ -187,6 +212,7 @@ class Group extends DataClass implements Insertable<Group> {
   final int updatedAt;
   final String? sig;
   final bool pendingSign;
+  final String? categoriesJson;
   const Group({
     required this.roomId,
     required this.name,
@@ -194,6 +220,7 @@ class Group extends DataClass implements Insertable<Group> {
     required this.updatedAt,
     this.sig,
     required this.pendingSign,
+    this.categoriesJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -206,6 +233,9 @@ class Group extends DataClass implements Insertable<Group> {
       map['sig'] = Variable<String>(sig);
     }
     map['pending_sign'] = Variable<bool>(pendingSign);
+    if (!nullToAbsent || categoriesJson != null) {
+      map['categories_json'] = Variable<String>(categoriesJson);
+    }
     return map;
   }
 
@@ -217,6 +247,9 @@ class Group extends DataClass implements Insertable<Group> {
       updatedAt: Value(updatedAt),
       sig: sig == null && nullToAbsent ? const Value.absent() : Value(sig),
       pendingSign: Value(pendingSign),
+      categoriesJson: categoriesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoriesJson),
     );
   }
 
@@ -232,6 +265,7 @@ class Group extends DataClass implements Insertable<Group> {
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       sig: serializer.fromJson<String?>(json['sig']),
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
+      categoriesJson: serializer.fromJson<String?>(json['categoriesJson']),
     );
   }
   @override
@@ -244,6 +278,7 @@ class Group extends DataClass implements Insertable<Group> {
       'updatedAt': serializer.toJson<int>(updatedAt),
       'sig': serializer.toJson<String?>(sig),
       'pendingSign': serializer.toJson<bool>(pendingSign),
+      'categoriesJson': serializer.toJson<String?>(categoriesJson),
     };
   }
 
@@ -254,6 +289,7 @@ class Group extends DataClass implements Insertable<Group> {
     int? updatedAt,
     Value<String?> sig = const Value.absent(),
     bool? pendingSign,
+    Value<String?> categoriesJson = const Value.absent(),
   }) => Group(
     roomId: roomId ?? this.roomId,
     name: name ?? this.name,
@@ -261,6 +297,9 @@ class Group extends DataClass implements Insertable<Group> {
     updatedAt: updatedAt ?? this.updatedAt,
     sig: sig.present ? sig.value : this.sig,
     pendingSign: pendingSign ?? this.pendingSign,
+    categoriesJson: categoriesJson.present
+        ? categoriesJson.value
+        : this.categoriesJson,
   );
   Group copyWithCompanion(GroupsCompanion data) {
     return Group(
@@ -272,6 +311,9 @@ class Group extends DataClass implements Insertable<Group> {
       pendingSign: data.pendingSign.present
           ? data.pendingSign.value
           : this.pendingSign,
+      categoriesJson: data.categoriesJson.present
+          ? data.categoriesJson.value
+          : this.categoriesJson,
     );
   }
 
@@ -283,14 +325,22 @@ class Group extends DataClass implements Insertable<Group> {
           ..write('currency: $currency, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('sig: $sig, ')
-          ..write('pendingSign: $pendingSign')
+          ..write('pendingSign: $pendingSign, ')
+          ..write('categoriesJson: $categoriesJson')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(roomId, name, currency, updatedAt, sig, pendingSign);
+  int get hashCode => Object.hash(
+    roomId,
+    name,
+    currency,
+    updatedAt,
+    sig,
+    pendingSign,
+    categoriesJson,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -300,7 +350,8 @@ class Group extends DataClass implements Insertable<Group> {
           other.currency == this.currency &&
           other.updatedAt == this.updatedAt &&
           other.sig == this.sig &&
-          other.pendingSign == this.pendingSign);
+          other.pendingSign == this.pendingSign &&
+          other.categoriesJson == this.categoriesJson);
 }
 
 class GroupsCompanion extends UpdateCompanion<Group> {
@@ -310,6 +361,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
   final Value<int> updatedAt;
   final Value<String?> sig;
   final Value<bool> pendingSign;
+  final Value<String?> categoriesJson;
   final Value<int> rowid;
   const GroupsCompanion({
     this.roomId = const Value.absent(),
@@ -318,6 +370,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.updatedAt = const Value.absent(),
     this.sig = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.categoriesJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupsCompanion.insert({
@@ -327,6 +380,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.updatedAt = const Value.absent(),
     this.sig = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.categoriesJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : roomId = Value(roomId),
        name = Value(name);
@@ -337,6 +391,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Expression<int>? updatedAt,
     Expression<String>? sig,
     Expression<bool>? pendingSign,
+    Expression<String>? categoriesJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -346,6 +401,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (sig != null) 'sig': sig,
       if (pendingSign != null) 'pending_sign': pendingSign,
+      if (categoriesJson != null) 'categories_json': categoriesJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -357,6 +413,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Value<int>? updatedAt,
     Value<String?>? sig,
     Value<bool>? pendingSign,
+    Value<String?>? categoriesJson,
     Value<int>? rowid,
   }) {
     return GroupsCompanion(
@@ -366,6 +423,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
       updatedAt: updatedAt ?? this.updatedAt,
       sig: sig ?? this.sig,
       pendingSign: pendingSign ?? this.pendingSign,
+      categoriesJson: categoriesJson ?? this.categoriesJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -391,6 +449,9 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     if (pendingSign.present) {
       map['pending_sign'] = Variable<bool>(pendingSign.value);
     }
+    if (categoriesJson.present) {
+      map['categories_json'] = Variable<String>(categoriesJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -406,6 +467,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
           ..write('updatedAt: $updatedAt, ')
           ..write('sig: $sig, ')
           ..write('pendingSign: $pendingSign, ')
+          ..write('categoriesJson: $categoriesJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4347,6 +4409,7 @@ typedef $$GroupsTableCreateCompanionBuilder =
       Value<int> updatedAt,
       Value<String?> sig,
       Value<bool> pendingSign,
+      Value<String?> categoriesJson,
       Value<int> rowid,
     });
 typedef $$GroupsTableUpdateCompanionBuilder =
@@ -4357,6 +4420,7 @@ typedef $$GroupsTableUpdateCompanionBuilder =
       Value<int> updatedAt,
       Value<String?> sig,
       Value<bool> pendingSign,
+      Value<String?> categoriesJson,
       Value<int> rowid,
     });
 
@@ -4396,6 +4460,11 @@ class $$GroupsTableFilterComposer
 
   ColumnFilters<bool> get pendingSign => $composableBuilder(
     column: $table.pendingSign,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoriesJson => $composableBuilder(
+    column: $table.categoriesJson,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4438,6 +4507,11 @@ class $$GroupsTableOrderingComposer
     column: $table.pendingSign,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get categoriesJson => $composableBuilder(
+    column: $table.categoriesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GroupsTableAnnotationComposer
@@ -4466,6 +4540,11 @@ class $$GroupsTableAnnotationComposer
 
   GeneratedColumn<bool> get pendingSign => $composableBuilder(
     column: $table.pendingSign,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoriesJson => $composableBuilder(
+    column: $table.categoriesJson,
     builder: (column) => column,
   );
 }
@@ -4504,6 +4583,7 @@ class $$GroupsTableTableManager
                 Value<int> updatedAt = const Value.absent(),
                 Value<String?> sig = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> categoriesJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion(
                 roomId: roomId,
@@ -4512,6 +4592,7 @@ class $$GroupsTableTableManager
                 updatedAt: updatedAt,
                 sig: sig,
                 pendingSign: pendingSign,
+                categoriesJson: categoriesJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4522,6 +4603,7 @@ class $$GroupsTableTableManager
                 Value<int> updatedAt = const Value.absent(),
                 Value<String?> sig = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> categoriesJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion.insert(
                 roomId: roomId,
@@ -4530,6 +4612,7 @@ class $$GroupsTableTableManager
                 updatedAt: updatedAt,
                 sig: sig,
                 pendingSign: pendingSign,
+                categoriesJson: categoriesJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

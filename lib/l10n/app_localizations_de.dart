@@ -1995,4 +1995,61 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get privacyLocalBody =>
       'Wenn du MoneyLedger ohne Matrix-Konto nutzt, verlässt nichts dein Gerät: Die App kontaktiert keinen Server und synchronisiert nichts (die Web-Version wird nur von der Seite geladen, auf der sie bereitgestellt wird). Links, auf die du tippst – etwa zum Quellcode –, öffnen sich in deinem Browser. Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben.';
+
+  @override
+  String get categoryNone => 'Keine Kategorie';
+
+  @override
+  String get newCategoryEntry => 'Neue Kategorie …';
+
+  @override
+  String get newCategoryTitle => 'Neue Kategorie';
+
+  @override
+  String get editCategoryTitle => 'Kategorie bearbeiten';
+
+  @override
+  String get categoryNameLabel => 'Name';
+
+  @override
+  String get categoryIconLabel => 'Symbol';
+
+  @override
+  String categoryNameTooLong(int max) {
+    return 'Höchstens $max Zeichen';
+  }
+
+  @override
+  String get categoryNameTaken =>
+      'Diese Gruppe hat schon eine Kategorie mit diesem Namen';
+
+  @override
+  String get manageCategories => 'Kategorien';
+
+  @override
+  String get customCategoriesHint =>
+      'Eigene Kategorien sehen alle in dieser Gruppe. Ausgeblendete werden für neue Ausgaben nicht mehr angeboten, bleiben aber an älteren stehen.';
+
+  @override
+  String get noCustomCategories => 'Noch keine eigenen Kategorien.';
+
+  @override
+  String get hideCategory => 'Ausblenden';
+
+  @override
+  String get showCategory => 'Wieder einblenden';
+
+  @override
+  String get categoryHidden => 'Ausgeblendet';
+
+  @override
+  String categoryLimitReached(int max) {
+    return 'Eine Gruppe kann höchstens $max eigene Kategorien haben.';
+  }
+
+  @override
+  String get builtInCategories => 'Standard';
+
+  @override
+  String get groupCategories => 'Diese Gruppe';
 }

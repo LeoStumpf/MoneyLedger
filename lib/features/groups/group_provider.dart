@@ -16,6 +16,8 @@ import '../../core/sync/payload_budget.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
+import '../../core/sync/record_validation.dart' show groupMetaProblem;
+import '../../models/expense_category.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
@@ -699,16 +701,88 @@ class GroupEditor extends _$GroupEditor {
     final current = await w.groups.getGroup(groupId);
     if (current == null) return;
     if (current.name == name && current.currency == currency) return;
-    final updated = await w.signer.group(
+    await _write(
+      w,
       GroupModel(
         roomId: groupId,
         name: name,
         currency: currency,
         updatedAt: nextLwwClock(current.updatedAt),
+        categories: current.categories, // G47: kept
       ),
     );
-    if (w.db.isClosed) return;
-    await w.groups.upsertGroupLww(groupCompanion(updated));
-    await w.replicate(groupId, groupMetaEventType, groupMetaPayload(updated));
   });
+
+  /// G47: adds a custom category ([name] trimmed, [icon] a key of
+  /// [kCustomCategoryIcons]) to [groupId]'s meta — a new signed meta version
+  /// relayed like [edit]. Returns its id (`c:<uuidv7>`), or null when the
+  /// write failed (see [state]), the group is unknown or full.
+  Future<String?> addCategory(
+    String groupId, {
+    required String name,
+    required String icon,
+  }) async {
+    String? id;
+    await _runGroupWrite(ref, (s) => state = s, (w) async {
+      final current = await w.groups.getGroup(groupId);
+      if (current == null ||
+          current.categories.length >= kMaxCustomCategories) {
+        return;
+      }
+      final category = CustomCategory(
+        id: '$kCustomCategoryPrefix${const Uuid().v7()}',
+        name: name.trim(),
+        icon: icon,
+      );
+      if (await _writeCategories(w, current, [
+        ...current.categories,
+        category,
+      ])) {
+        id = category.id;
+      }
+    });
+    return id;
+  }
+
+  /// G47: replaces the custom category [updated] (same id) — rename, new
+  /// icon, hide / show. Unknown id or no change → nothing is written.
+  Future<void> updateCategory(String groupId, CustomCategory updated) =>
+      _runGroupWrite(ref, (s) => state = s, (w) async {
+        final current = await w.groups.getGroup(groupId);
+        if (current == null) return;
+        final i = current.categories.indexWhere((c) => c.id == updated.id);
+        if (i < 0 || current.categories[i] == updated) return;
+        await _writeCategories(w, current, [
+          for (final c in current.categories) c.id == updated.id ? updated : c,
+        ]);
+      });
+
+  /// Writes [current] with [categories] as a new meta version; false when
+  /// they break the content rules (nothing written) or the DB closed.
+  static Future<bool> _writeCategories(
+    _GroupWriteContext w,
+    GroupModel current,
+    List<CustomCategory> categories,
+  ) async {
+    final next = GroupModel(
+      roomId: current.roomId,
+      name: current.name,
+      currency: current.currency,
+      updatedAt: nextLwwClock(current.updatedAt),
+      categories: categories,
+    );
+    final problem = groupMetaProblem(next);
+    if (problem != null) throw ArgumentError(problem);
+    return _write(w, next);
+  }
+
+  /// Signs, stores and relays [g] (a new meta version).
+  static Future<bool> _write(_GroupWriteContext w, GroupModel g) async {
+    if (w.db.isClosed) return false;
+    final updated = await w.signer.group(g);
+    if (w.db.isClosed) return false;
+    await w.groups.upsertGroupLww(groupCompanion(updated));
+    await w.replicate(g.roomId, groupMetaEventType, groupMetaPayload(updated));
+    return true;
+  }
 }

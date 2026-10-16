@@ -507,5 +507,22 @@
   "onboardingConnectLaterTitle": "Später teilen",
   "onboardingConnectLaterBody": "Einstellungen → Matrix-Konto verbinden übernimmt deine Gruppen in ein Konto, damit du andere einladen und deine Geräte synchronisieren kannst.",
   "privacyLocalTitle": "Lokaler Modus (ohne Konto)",
-  "privacyLocalBody": "Wenn du MoneyLedger ohne Matrix-Konto nutzt, verlässt nichts dein Gerät: Die App kontaktiert keinen Server und synchronisiert nichts (die Web-Version wird nur von der Seite geladen, auf der sie bereitgestellt wird). Links, auf die du tippst – etwa zum Quellcode –, öffnen sich in deinem Browser. Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben."
+  "privacyLocalBody": "Wenn du MoneyLedger ohne Matrix-Konto nutzt, verlässt nichts dein Gerät: Die App kontaktiert keinen Server und synchronisiert nichts (die Web-Version wird nur von der Seite geladen, auf der sie bereitgestellt wird). Links, auf die du tippst – etwa zum Quellcode –, öffnen sich in deinem Browser. Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben.",
+  "categoryNone": "Keine Kategorie",
+  "newCategoryEntry": "Neue Kategorie …",
+  "newCategoryTitle": "Neue Kategorie",
+  "editCategoryTitle": "Kategorie bearbeiten",
+  "categoryNameLabel": "Name",
+  "categoryIconLabel": "Symbol",
+  "categoryNameTooLong": "Höchstens {max} Zeichen",
+  "categoryNameTaken": "Diese Gruppe hat schon eine Kategorie mit diesem Namen",
+  "manageCategories": "Kategorien",
+  "customCategoriesHint": "Eigene Kategorien sehen alle in dieser Gruppe. Ausgeblendete werden für neue Ausgaben nicht mehr angeboten, bleiben aber an älteren stehen.",
+  "noCustomCategories": "Noch keine eigenen Kategorien.",
+  "hideCategory": "Ausblenden",
+  "showCategory": "Wieder einblenden",
+  "categoryHidden": "Ausgeblendet",
+  "categoryLimitReached": "Eine Gruppe kann höchstens {max} eigene Kategorien haben.",
+  "builtInCategories": "Standard",
+  "groupCategories": "Diese Gruppe"
 }

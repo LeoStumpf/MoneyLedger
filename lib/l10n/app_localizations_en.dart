@@ -1972,4 +1972,61 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get privacyLocalBody =>
       'If you use MoneyLedger without a Matrix account, nothing leaves your device: the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.';
+
+  @override
+  String get categoryNone => 'No category';
+
+  @override
+  String get newCategoryEntry => 'New category…';
+
+  @override
+  String get newCategoryTitle => 'New category';
+
+  @override
+  String get editCategoryTitle => 'Edit category';
+
+  @override
+  String get categoryNameLabel => 'Name';
+
+  @override
+  String get categoryIconLabel => 'Icon';
+
+  @override
+  String categoryNameTooLong(int max) {
+    return 'At most $max characters';
+  }
+
+  @override
+  String get categoryNameTaken =>
+      'This group already has a category with this name';
+
+  @override
+  String get manageCategories => 'Categories';
+
+  @override
+  String get customCategoriesHint =>
+      'Your own categories are shared with everyone in this group. Hidden ones aren\'t offered for new expenses but still label older ones.';
+
+  @override
+  String get noCustomCategories => 'No categories of your own yet.';
+
+  @override
+  String get hideCategory => 'Hide';
+
+  @override
+  String get showCategory => 'Show again';
+
+  @override
+  String get categoryHidden => 'Hidden';
+
+  @override
+  String categoryLimitReached(int max) {
+    return 'A group can have at most $max categories of its own.';
+  }
+
+  @override
+  String get builtInCategories => 'Built-in';
+
+  @override
+  String get groupCategories => 'This group';
 }

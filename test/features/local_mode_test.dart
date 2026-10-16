@@ -274,6 +274,23 @@ void main() {
       },
     );
 
+    test('G47: custom categories work locally (stored unsigned, nothing '
+        'sent)', () async {
+      final c = makeApp();
+      await settle(c);
+      final groupId = await createLocalGroup(c);
+      c.listen(groupEditorProvider, (_, _) {});
+      final id = await c
+          .read(groupEditorProvider.notifier)
+          .addCategory(groupId, name: 'Dog', icon: 'pets');
+      expect(id, startsWith('c:'));
+      final g = (await c.read(groupsDaoProvider).getGroup(groupId))!;
+      expect(g.categories.single.name, 'Dog');
+      expect(g.pendingSign, isTrue);
+      await settle(c);
+      expect(net.sent, isEmpty);
+    });
+
     test('"Delete local data" wipes the ledger and ends local mode', () async {
       final c = makeApp();
       await settle(c);

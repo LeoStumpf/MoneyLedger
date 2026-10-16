@@ -3145,6 +3145,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'If you use MoneyLedger without a Matrix account, nothing leaves your device: the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.'**
   String get privacyLocalBody;
+
+  /// Category selector entry / value for an expense without a category (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'No category'**
+  String get categoryNone;
+
+  /// Last entry of the category selector: create a custom category (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'New category…'**
+  String get newCategoryEntry;
+
+  /// Title of the dialog creating a custom category (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get newCategoryTitle;
+
+  /// Title of the dialog renaming a custom category (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Edit category'**
+  String get editCategoryTitle;
+
+  /// Name field of the custom category dialog (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get categoryNameLabel;
+
+  /// Icon picker label of the custom category dialog (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get categoryIconLabel;
+
+  /// Validation error: custom category name too long (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'At most {max} characters'**
+  String categoryNameTooLong(int max);
+
+  /// Validation error: duplicate custom category name (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'This group already has a category with this name'**
+  String get categoryNameTaken;
+
+  /// Group menu item + page title: manage the group's custom categories (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get manageCategories;
+
+  /// Explanation on the group categories page (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Your own categories are shared with everyone in this group. Hidden ones aren\'t offered for new expenses but still label older ones.'**
+  String get customCategoriesHint;
+
+  /// Empty state of the group categories page (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'No categories of your own yet.'**
+  String get noCustomCategories;
+
+  /// Tooltip: hide a custom category (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get hideCategory;
+
+  /// Tooltip: un-hide a custom category (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Show again'**
+  String get showCategory;
+
+  /// Subtitle of a hidden custom category (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get categoryHidden;
+
+  /// Shown when the custom category limit is reached (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'A group can have at most {max} categories of its own.'**
+  String categoryLimitReached(int max);
+
+  /// Section header in the category selector (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get builtInCategories;
+
+  /// Section header in the category selector: the group's own categories (G47)
+  ///
+  /// In en, this message translates to:
+  /// **'This group'**
+  String get groupCategories;
 }
 
 class _AppLocalizationsDelegate

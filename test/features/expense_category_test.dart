@@ -158,17 +158,11 @@ void main() {
     });
 
     test('categories: any of the selected; none never matches', () {
-      expect(run(const LedgerFilter(categories: {ExpenseCategory.food})), [
+      expect(run(const LedgerFilter(categories: {'food'})), ['1']);
+      expect(run(const LedgerFilter(categories: {'food', 'transport'})), [
         '1',
+        '3',
       ]);
-      expect(
-        run(
-          const LedgerFilter(
-            categories: {ExpenseCategory.food, ExpenseCategory.transport},
-          ),
-        ),
-        ['1', '3'],
-      );
     });
 
     test('involving me: payer or in the split; nobody when not a member', () {
@@ -182,7 +176,7 @@ void main() {
           const LedgerFilter(
             query: 'a',
             involvingMe: true,
-            categories: {ExpenseCategory.food},
+            categories: {'food'},
           ),
         ),
         ['1'],
@@ -190,13 +184,9 @@ void main() {
     });
 
     test('toggleCategory / copyWith', () {
-      final f = LedgerFilter.none
-          .toggleCategory(ExpenseCategory.food)
-          .toggleCategory(ExpenseCategory.home);
-      expect(f.categories, {ExpenseCategory.food, ExpenseCategory.home});
-      expect(f.toggleCategory(ExpenseCategory.food).categories, {
-        ExpenseCategory.home,
-      });
+      final f = LedgerFilter.none.toggleCategory('food').toggleCategory('home');
+      expect(f.categories, {'food', 'home'});
+      expect(f.toggleCategory('food').categories, {'home'});
       expect(f.copyWith(query: 'x').categories, f.categories);
     });
   });
@@ -219,10 +209,7 @@ void main() {
 
     test('a category filter hides payments; involving me = either side', () {
       expect(
-        m(
-          _s('me', 'bea'),
-          const LedgerFilter(categories: {ExpenseCategory.food}),
-        ),
+        m(_s('me', 'bea'), const LedgerFilter(categories: {'food'})),
         isFalse,
       );
       expect(m(_s('bea', 'me'), const LedgerFilter(involvingMe: true)), isTrue);
@@ -242,7 +229,102 @@ void main() {
         _e('4', 'd', category: 'pets'),
         _e('5', 'e', category: 'food'),
       ]),
-      [ExpenseCategory.food, ExpenseCategory.transport, ExpenseCategory.other],
+      [
+        const ResolvedCategory.builtin(ExpenseCategory.food),
+        const ResolvedCategory.builtin(ExpenseCategory.transport),
+        const ResolvedCategory.builtin(ExpenseCategory.other),
+      ],
     );
+  });
+
+  // ── G47: custom categories ──────────────────────────────────────────────
+  group('custom categories', () {
+    const dog = CustomCategory(id: 'c:dog', name: 'Dog', icon: 'pets');
+    const kids = CustomCategory(
+      id: 'c:kids',
+      name: 'Kids',
+      icon: 'child',
+      hidden: true,
+    );
+    const custom = [dog, kids];
+
+    test('resolveCategory: built-in, custom (hidden too), unknown → other', () {
+      expect(resolveCategory(null, custom), isNull);
+      expect(resolveCategory('', custom), isNull);
+      expect(
+        resolveCategory('food', custom),
+        const ResolvedCategory.builtin(ExpenseCategory.food),
+      );
+      expect(
+        resolveCategory('c:dog', custom),
+        const ResolvedCategory.custom(dog),
+      );
+      expect(resolveCategory('c:kids', custom)!.custom, kids);
+      expect(
+        resolveCategory('c:gone', custom),
+        const ResolvedCategory.builtin(ExpenseCategory.other),
+      );
+      expect(resolveCategory('c:dog', const [])!.key, 'other');
+      expect(resolveCategory('c:dog', custom)!.key, 'c:dog');
+    });
+
+    test(
+      'filter by a custom category; undefined custom ids count as other',
+      () {
+        final vet = _e('1', 'Vet', category: 'c:dog');
+        final toys = _e('2', 'Toys', category: 'c:kids');
+        final lost = _e('3', 'Lost', category: 'c:gone');
+        final pizza = _e('4', 'Pizza', category: 'food');
+        List<String> run(LedgerFilter f) => [
+          for (final e in [vet, toys, lost, pizza])
+            if (expenseMatches(
+              e,
+              f,
+              nameOf: _nameOf,
+              myId: 'me',
+              customCategories: custom,
+            ))
+              e.id,
+        ];
+        expect(run(const LedgerFilter(categories: {'c:dog'})), ['1']);
+        expect(run(const LedgerFilter(categories: {'c:kids', 'food'})), [
+          '2',
+          '4',
+        ]);
+        expect(run(const LedgerFilter(categories: {'other'})), ['3']);
+        // Combined with a text query.
+        expect(run(const LedgerFilter(query: 'toy', categories: {'c:kids'})), [
+          '2',
+        ]);
+        expect(
+          usedCategories([vet, toys, lost, pizza], custom).map((c) => c.key),
+          ['food', 'other', 'c:dog', 'c:kids'],
+        );
+      },
+    );
+
+    test('parseCustomCategories: lenient shape, invalid entries kept', () {
+      expect(parseCustomCategories(null), isEmpty);
+      expect(parseCustomCategories([dog.toJson(), kids.toJson()]), custom);
+      expect(kids.toJson()['hidden'], isTrue);
+      expect(dog.toJson().containsKey('hidden'), isFalse);
+      // Malformed → an (invalid) entry, so the content rules refuse it.
+      expect(parseCustomCategories('x').single.id, '');
+      expect(parseCustomCategories([42]).single.id, '');
+      expect(
+        parseCustomCategories([
+          {'id': 'c:a', 'name': 7, 'icon': 'tag'},
+        ]).single.name,
+        '',
+      );
+    });
+
+    test('isValidCategoryName', () {
+      expect(isValidCategoryName('Dog'), isTrue);
+      expect(isValidCategoryName(''), isFalse);
+      expect(isValidCategoryName(' Dog'), isFalse);
+      expect(isValidCategoryName('x' * kMaxCategoryNameLength), isTrue);
+      expect(isValidCategoryName('x' * (kMaxCategoryNameLength + 1)), isFalse);
+    });
   });
 }

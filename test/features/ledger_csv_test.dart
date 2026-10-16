@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/backup/ledger_csv.dart';
+import 'package:money_ledger/models/expense_category.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
@@ -138,14 +139,17 @@ void main() {
       final lines = csv.split('\r\n');
       expect(
         lines.first,
-        'Date,Type,Description,Category,Note,Currency,Amount,Paid By,'
-        'Alex,Sam,Expense ID,Group,Group ID,Updated At',
+        'Date,Type,Description,Category,Category Name,Note,Currency,Amount,'
+        'Paid By,Alex,Sam,Expense ID,Group,Group ID,Updated At',
       );
       expect(
         lines[1],
-        contains(',Expense,Dinner,,,EUR,42.00,Alex,21.00,21.00,'),
+        contains(',Expense,Dinner,,,,EUR,42.00,Alex,21.00,21.00,'),
       );
-      expect(lines[2], contains(',Payment,Payment,,,EUR,21.00,Sam,21.00,,s1,'));
+      expect(
+        lines[2],
+        contains(',Payment,Payment,,,,EUR,21.00,Sam,21.00,,s1,'),
+      );
     });
 
     test('payments round-trip; deleted ones are skipped', () {
@@ -243,6 +247,43 @@ void main() {
       expect(r.category, isNull);
       expect(r.note, isNull);
       expect(r.sharesByName, {'Alex': 2100, 'Sam': 2100});
+    });
+  });
+
+  group('custom categories (G47)', () {
+    test('the id travels in Category, the name in Category Name', () {
+      const g = GroupModel(
+        roomId: 'g1',
+        name: 'Trip',
+        currency: 'EUR',
+        updatedAt: 1000,
+        categories: [
+          CustomCategory(id: 'c:dog', name: 'Dog, Vet', icon: 'pets'),
+        ],
+      );
+      ExpenseModel withCat(String id, String? cat) => ExpenseModel(
+        id: id,
+        roomId: 'g1',
+        description: 'x',
+        amountCents: 4200,
+        currency: 'EUR',
+        paidBy: 'pa',
+        splitsJson: '{"pa":2100,"pb":2100}',
+        createdAt: 1760000000000,
+        updatedAt: 1760000050000,
+        category: cat,
+      );
+      final csv = buildGroupCsv(g, members, [
+        withCat('e1', 'c:dog'),
+        withCat('e2', 'food'),
+        withCat('e3', 'c:unknown'),
+      ]);
+      expect(csv.split('\r\n')[1], contains(',x,c:dog,"Dog, Vet",,EUR,'));
+      final rows = parseGroupCsv(csv).rows;
+      expect((rows[0].category, rows[0].categoryName), ('c:dog', 'Dog, Vet'));
+      expect((rows[1].category, rows[1].categoryName), ('food', null));
+      expect((rows[2].category, rows[2].categoryName), ('c:unknown', null));
+      expect(rows[0].sharesByName, {'Alex': 2100, 'Sam': 2100});
     });
   });
 }

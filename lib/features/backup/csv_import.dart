@@ -10,6 +10,7 @@ import '../../core/database/daos/members_dao.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/record_signing.dart';
 import '../../core/sync/record_validation.dart';
+import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
@@ -77,6 +78,41 @@ Set<String> _referencedNames(ParsedCsv parsed) => {
   ...parsed.participantNames,
   for (final r in parsed.rows) r.paidByName,
 };
+
+/// G47: the custom categories to define for an import of [parsed] into a
+/// group that has [existing] ones — every `c:` id a row names with a
+/// `Category Name` that the group doesn't define yet (first name wins; the
+/// name is trimmed and cut to [kMaxCategoryNameLength]; default icon), as
+/// long as the group stays within [kMaxCustomCategories]. Ids without a name
+/// stay undefined (shown as "Other", kept verbatim).
+List<CustomCategory> csvCategoriesToAdd(
+  ParsedCsv parsed,
+  List<CustomCategory> existing,
+) {
+  final known = {for (final c in existing) c.id};
+  final out = <CustomCategory>[];
+  for (final r in parsed.rows) {
+    final id = r.category;
+    var name = r.categoryName?.trim() ?? '';
+    if (!isCustomCategoryId(id) ||
+        id!.length <= kCustomCategoryPrefix.length ||
+        id.length > kMaxCustomCategoryIdLength ||
+        known.contains(id) ||
+        name.isEmpty) {
+      continue;
+    }
+    if (known.length >= kMaxCustomCategories) break;
+    if (name.length > kMaxCategoryNameLength) {
+      name = name.substring(0, kMaxCategoryNameLength).trim();
+    }
+    if (!isValidCategoryName(name)) continue;
+    known.add(id);
+    out.add(
+      CustomCategory(id: id, name: name, icon: kDefaultCustomCategoryIcon),
+    );
+  }
+  return out;
+}
 
 /// What importing a CSV would do — shown for confirmation first (G13).
 class CsvImportPreview {
@@ -235,6 +271,24 @@ class CsvImporter extends _$CsvImporter {
     final groupId = parsed.groupId ?? const Uuid().v7();
     final existing = await groupsDao.getGroup(groupId);
     if (db.isClosed) return (expenses: 0, payments: 0);
+    // G47: custom categories the rows name but the group doesn't define.
+    final newCategories = csvCategoriesToAdd(
+      parsed,
+      existing?.categories ?? const [],
+    );
+    if (existing != null && newCategories.isNotEmpty) {
+      final group = await signer.group(
+        GroupModel(
+          roomId: groupId,
+          name: existing.name,
+          currency: existing.currency,
+          updatedAt: nextLwwClock(existing.updatedAt, now: now),
+          categories: [...existing.categories, ...newCategories],
+        ),
+      );
+      if (db.isClosed) return (expenses: 0, payments: 0);
+      await groupsDao.upsertGroupLww(groupCompanion(group));
+    }
     if (existing == null) {
       final currency = parsed.rows.isNotEmpty
           ? parsed.rows.first.currency
@@ -245,6 +299,7 @@ class CsvImporter extends _$CsvImporter {
           name: parsed.groupName ?? 'Imported group',
           currency: currency,
           updatedAt: now,
+          categories: newCategories,
         ),
       );
       if (db.isClosed) return (expenses: 0, payments: 0);

@@ -9,6 +9,7 @@ import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/features/expenses/add_expense_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/expenses/split_editor.dart';
+import 'package:money_ledger/models/expense_category.dart';
 import 'package:money_ledger/models/expense_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
@@ -19,14 +20,17 @@ void main() {
   group('AddExpensePage', () {
     // Seeds a roomless group 'g1' (CHF) with alice + bob as active members in a
     // shared in-memory DB, and returns it plus the fake network.
-    Future<(AppDatabase, FakeMatrixNetwork)> seedGroup() async {
+    Future<(AppDatabase, FakeMatrixNetwork)> seedGroup({
+      List<CustomCategory> categories = const [],
+    }) async {
       final db = openTestDatabase();
       await GroupsDao(db).upsertGroupLww(
-        const GroupsCompanion(
-          roomId: Value('g1'),
-          name: Value('Trip'),
-          currency: Value('CHF'),
-          updatedAt: Value(1000),
+        GroupsCompanion(
+          roomId: const Value('g1'),
+          name: const Value('Trip'),
+          currency: const Value('CHF'),
+          updatedAt: const Value(1000),
+          categoriesJson: Value(encodeCategories(categories)),
         ),
       );
       final memberDao = MembersDao(db);
@@ -378,6 +382,7 @@ void main() {
         '20',
       );
       // Uncheck bob (second checkbox) → whole amount falls on alice.
+      await tester.ensureVisible(find.byType(Checkbox).at(1));
       await tester.tap(find.byType(Checkbox).at(1));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
@@ -633,8 +638,11 @@ void main() {
       WidgetTester tester, {
       ExpenseModel? initial,
       Locale? locale,
+      List<CustomCategory> categories = const [],
+      AppDatabase? database,
     }) async {
-      final (db, net) = await seedGroup();
+      final (seeded, net) = await seedGroup(categories: categories);
+      final db = database ?? seeded;
       final received = <TransportMessage>[];
       net.clientFor('@bob:x.org').onMessage.listen(received.add);
       await tester.pumpWidget(
@@ -662,20 +670,52 @@ void main() {
       }
     }
 
-    bool chipSelected(WidgetTester tester, String wire) =>
-        tester.widget<ChoiceChip>(find.byKey(Key('category-$wire'))).selected;
+    /// G47: the category selector's shown value.
+    String selectedLabel(WidgetTester tester) =>
+        tester.widget<Text>(find.byKey(const Key('categoryPickerValue'))).data!;
+
+    Future<void> openPicker(WidgetTester tester) async {
+      await tester.ensureVisible(find.byKey(const Key('categoryPickerField')));
+      await tester.tap(find.byKey(const Key('categoryPickerField')));
+      await tester.pumpAndSettle();
+    }
+
+    Finder sheetEntry(String key) => find.byKey(Key('category-$key'));
+
+    Future<void> scrollToEntry(WidgetTester tester, String key) async {
+      await tester.scrollUntilVisible(
+        sheetEntry(key),
+        120,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('categorySheet')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.ensureVisible(sheetEntry(key));
+      await tester.pumpAndSettle();
+    }
+
+    /// Opens the selector and picks [key] (`none`, a wire id, a custom id or
+    /// `new`).
+    Future<void> pick(WidgetTester tester, String key) async {
+      await openPicker(tester);
+      await scrollToEntry(tester, key);
+      await tester.tap(sheetEntry(key));
+      await tester.pumpAndSettle();
+    }
 
     testWidgets('the description suggests a category; a note is sent', (
       tester,
     ) async {
       final received = await pumpForm(tester);
       expect(find.byKey(const Key('categoryPicker')), findsOneWidget);
+      expect(selectedLabel(tester), 'No category');
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Description'),
         'Pizza',
       );
       await tester.pumpAndSettle();
-      expect(chipSelected(tester, 'food'), isTrue);
+      expect(selectedLabel(tester), 'Food & drink');
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Amount'),
         '20',
@@ -690,27 +730,28 @@ void main() {
       expect(received.single.content['note'], 'Margherita x2');
     });
 
-    testWidgets('a picked category wins over later suggestions; tap again '
-        'clears it', (tester) async {
+    testWidgets('a picked category wins over later suggestions; "No '
+        'category" clears it', (tester) async {
       final received = await pumpForm(tester);
-      final chip = find.byKey(const Key('category-health'));
-      await tester.ensureVisible(chip);
-      await tester.tap(chip);
-      await tester.pumpAndSettle();
-      expect(chipSelected(tester, 'health'), isTrue);
+      await pick(tester, 'health');
+      expect(selectedLabel(tester), 'Health');
       // Typing no longer changes the user's choice.
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Description'),
         'Taxi',
       );
       await tester.pumpAndSettle();
-      expect(chipSelected(tester, 'health'), isTrue);
-      expect(chipSelected(tester, 'transport'), isFalse);
-      // Tapping the selected chip clears the category.
-      await tester.ensureVisible(chip);
-      await tester.tap(chip);
+      expect(selectedLabel(tester), 'Health');
+      // The sheet marks the selection; "No category" clears it.
+      await openPicker(tester);
+      await scrollToEntry(tester, 'health');
+      expect(tester.widget<ListTile>(sheetEntry('health')).selected, isTrue);
+      // Dismissing the sheet changes nothing.
+      await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
-      expect(chipSelected(tester, 'health'), isFalse);
+      expect(selectedLabel(tester), 'Health');
+      await pick(tester, 'none');
+      expect(selectedLabel(tester), 'No category');
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Amount'),
@@ -739,13 +780,13 @@ void main() {
       );
       final received = await pumpForm(tester, initial: initial);
       expect(find.text('From the station'), findsOneWidget);
-      expect(chipSelected(tester, 'other'), isTrue); // unknown → "other"
+      expect(selectedLabel(tester), 'Other'); // unknown → "other"
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Description'),
         'Pizza',
       );
       await tester.pumpAndSettle();
-      expect(chipSelected(tester, 'food'), isFalse);
+      expect(selectedLabel(tester), 'Other');
       await submit(tester, 'Save');
       expect(received.single.content['category'], 'pets');
       expect(received.single.content['note'], 'From the station');
@@ -753,8 +794,131 @@ void main() {
 
     testWidgets('German: category labels and note field', (tester) async {
       await pumpForm(tester, locale: const Locale('de'));
-      expect(find.text('Essen & Trinken'), findsOneWidget);
+      expect(find.text('Keine Kategorie'), findsOneWidget);
       expect(find.text('Notiz (optional)'), findsOneWidget);
+      await openPicker(tester);
+      expect(find.text('Essen & Trinken'), findsOneWidget);
+      await scrollToEntry(tester, 'new');
+      expect(find.text('Neue Kategorie …'), findsOneWidget);
+    });
+
+    // ── G47: custom categories ────────────────────────────────────────────
+    const dog = CustomCategory(id: 'c:dog', name: 'Dog', icon: 'pets');
+    const kids = CustomCategory(
+      id: 'c:kids',
+      name: 'Kids',
+      icon: 'child',
+      hidden: true,
+    );
+
+    testWidgets('custom categories are offered; hidden ones are not', (
+      tester,
+    ) async {
+      final received = await pumpForm(tester, categories: [dog, kids]);
+      await openPicker(tester);
+      await scrollToEntry(tester, 'c:dog');
+      expect(find.text('This group'.toUpperCase()), findsOneWidget);
+      expect(sheetEntry('c:kids'), findsNothing);
+      await tester.tap(sheetEntry('c:dog'));
+      await tester.pumpAndSettle();
+      expect(selectedLabel(tester), 'Dog');
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Vet',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
+      await submit(tester, 'Add');
+      expect(received.single.content['category'], 'c:dog');
+    });
+
+    testWidgets('edit: a hidden category still labels the expense', (
+      tester,
+    ) async {
+      const initial = ExpenseModel(
+        id: 'e1',
+        roomId: 'g1',
+        description: 'Toys',
+        amountCents: 2000,
+        currency: 'CHF',
+        paidBy: '@alice:x.org',
+        splitsJson: '{"@alice:x.org":1000,"@bob:x.org":1000}',
+        createdAt: 1000,
+        updatedAt: 1000,
+        category: 'c:kids',
+      );
+      final received = await pumpForm(
+        tester,
+        initial: initial,
+        categories: [dog, kids],
+      );
+      expect(selectedLabel(tester), 'Kids');
+      await submit(tester, 'Save');
+      expect(received.single.content['category'], 'c:kids');
+    });
+
+    testWidgets('"New category…" creates one in the group meta (relayed) '
+        'and selects it', (tester) async {
+      final (db, _) = await seedGroup(categories: [dog]);
+      final received = await pumpForm(tester, database: db);
+      await pick(tester, 'new');
+      expect(find.text('New category'), findsOneWidget);
+      // Validation: empty and duplicate names are refused.
+      await tester.tap(find.byKey(const Key('categoryDialogSave')));
+      await tester.pumpAndSettle();
+      expect(find.text('Required'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('categoryNameField')), 'dog');
+      await tester.tap(find.byKey(const Key('categoryDialogSave')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('This group already has a category with this name'),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('categoryNameField')),
+        '  Climbing gym ',
+      );
+      await tester.tap(find.byKey(const Key('categoryIcon-sports')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('categoryDialogSave')));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+      await tester.pumpAndSettle();
+      expect(selectedLabel(tester), 'Climbing gym');
+
+      final group = await tester.runAsync(() => GroupsDao(db).getGroup('g1'));
+      final created = group!.categories.last;
+      expect((created.name, created.icon), ('Climbing gym', 'sports'));
+      expect(created.id, startsWith('c:'));
+      expect(group.categories.first, dog);
+      // The new meta version went to the members.
+      expect(
+        received
+            .where((m) => m.type == groupMetaEventType)
+            .single
+            .content['categories'],
+        hasLength(2),
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Bouldering',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
+      await submit(tester, 'Add');
+      expect(
+        received
+            .where((m) => m.type == expenseEventType)
+            .single
+            .content['category'],
+        created.id,
+      );
     });
   });
 }

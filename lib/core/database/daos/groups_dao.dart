@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import '../app_database.dart';
+import '../../../models/expense_category.dart';
 import '../../../models/group_model.dart';
 import '../../../models/record_signature.dart';
 import '../../sync/record_version.dart';
@@ -31,6 +34,9 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
                   name: group.name.present ? group.name.value : '',
                   currency: group.currency.present ? group.currency.value : '',
                   updatedAt: group.updatedAt.value,
+                  categories: group.categoriesJson.present
+                      ? decodeCategories(group.categoriesJson.value)
+                      : const [],
                 ),
               ),
               groupMetaVersion(_toModel(old)),
@@ -54,10 +60,26 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
     name: g.name,
     currency: g.currency,
     updatedAt: g.updatedAt,
+    categories: decodeCategories(g.categoriesJson),
     sig: RecordSignature.decode(g.sig),
     pendingSign: g.pendingSign,
   );
 }
+
+/// G47: the stored `categories_json` (NULL / unreadable → none).
+List<CustomCategory> decodeCategories(String? json) {
+  if (json == null || json.isEmpty) return const [];
+  try {
+    return parseCustomCategories(jsonDecode(json));
+  } catch (_) {
+    return const [];
+  }
+}
+
+/// G47: [categories] as stored (none → NULL).
+String? encodeCategories(List<CustomCategory> categories) => categories.isEmpty
+    ? null
+    : jsonEncode([for (final c in categories) c.toJson()]);
 
 /// A fully-populated companion for an LWW upsert of [g] (G6 fields included).
 GroupsCompanion groupCompanion(GroupModel g) => GroupsCompanion(
@@ -65,6 +87,7 @@ GroupsCompanion groupCompanion(GroupModel g) => GroupsCompanion(
   name: Value(g.name),
   currency: Value(g.currency),
   updatedAt: Value(g.updatedAt),
+  categoriesJson: Value(encodeCategories(g.categories)),
   sig: Value(g.sig?.encode()),
   pendingSign: Value(g.pendingSign),
 );

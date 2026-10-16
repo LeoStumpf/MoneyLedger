@@ -43,6 +43,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   /// description. Edits never get suggestions.
   bool _categoryChosen = false;
 
+  /// G47: the group's custom categories (hidden ones too — they label the
+  /// edited expense; the selector offers only the visible ones).
+  List<CustomCategory> _customCategories = const [];
+
   bool get _isEdit => widget.initial != null;
 
   // null = still loading. Loaded from the local DB (roomless).
@@ -124,8 +128,50 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         _currency = widget.initial?.currency ?? group?.currency ?? 'EUR';
         _initialCurrency = _currency;
         _paidBy = defaultPayer;
+        _customCategories = group?.categories ?? const [];
       });
     }
+  }
+
+  /// G47: "New category…" — name + icon, written to the group meta (synced
+  /// to every member), then selected for this expense.
+  Future<void> _createCategory() async {
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    if (_customCategories.length >= kMaxCustomCategories) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.categoryLimitReached(kMaxCustomCategories))),
+      );
+      return;
+    }
+    final input = await showCategoryDialog(
+      context,
+      existing: _customCategories,
+    );
+    if (input == null || !mounted) return;
+    final editor = ref.read(groupEditorProvider.notifier);
+    final id = await editor.addCategory(
+      widget.roomId,
+      name: input.name,
+      icon: input.icon,
+    );
+    if (!mounted) return;
+    final error = ref.read(groupEditorProvider).error;
+    if (id == null || error != null) {
+      if (error != null) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l.failedWithError(error.toString()))),
+        );
+      }
+      return;
+    }
+    final group = await ref.read(groupsDaoProvider).getGroup(widget.roomId);
+    if (!mounted) return;
+    setState(() {
+      _customCategories = group?.categories ?? _customCategories;
+      _category = id;
+      _categoryChosen = true;
+    });
   }
 
   @override
@@ -190,6 +236,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   @override
   Widget build(BuildContext context) {
     final adderState = ref.watch(expenseAdderProvider);
+    ref.watch(groupEditorProvider); // G47: keep "New category…" alive
     final members = _members;
     final l = context.l10n;
     final theme = Theme.of(context);
@@ -234,7 +281,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                 labelText: l.descriptionLabel,
                                 prefixIcon: Icon(
                                   categoryIcon(
-                                    ExpenseCategory.fromWire(_category),
+                                    resolveCategory(
+                                      _category,
+                                      _customCategories,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -252,11 +302,13 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                             ),
                             const SizedBox(height: Insets.m),
                             CategoryPicker(
-                              selected: ExpenseCategory.fromWire(_category),
+                              selected: _category,
+                              custom: _customCategories,
                               onChanged: (c) => setState(() {
                                 _categoryChosen = true;
-                                _category = c?.wire;
+                                _category = c;
                               }),
+                              onCreate: _createCategory,
                             ),
                             const SizedBox(height: Insets.l),
                             Row(

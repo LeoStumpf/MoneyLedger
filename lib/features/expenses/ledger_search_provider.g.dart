@@ -67,7 +67,7 @@ final class LedgerSearchProvider
   }
 }
 
-String _$ledgerSearchHash() => r'b0febec91e08e67fb19a2a1fa1658d09f710c3cf';
+String _$ledgerSearchHash() => r'd6ca5d9bdcbaf73cba655b8762107f425933249a';
 
 /// G16: the expense list's search / filter state for one group — null while
 /// the search bar is closed (everything shown). Auto-disposed with the

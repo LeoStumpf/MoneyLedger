@@ -39,7 +39,15 @@ import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../models/record_signature.dart';
 import 'record_attribution.dart';
 
-enum _GroupMenuAction { addMember, edit, archive, export, backup, exit }
+enum _GroupMenuAction {
+  addMember,
+  edit,
+  categories,
+  archive,
+  export,
+  backup,
+  exit,
+}
 
 class ExpensesPage extends ConsumerWidget {
   final String roomId;
@@ -151,6 +159,9 @@ class ExpensesPage extends ConsumerWidget {
                       roomId,
                     ),
                     _GroupMenuAction.edit => _editGroup(context, ref),
+                    _GroupMenuAction.categories => context.push(
+                      '/groups/$roomId/categories',
+                    ),
                     _GroupMenuAction.archive => _toggleArchive(
                       context,
                       ref,
@@ -177,6 +188,15 @@ class ExpensesPage extends ConsumerWidget {
                       child: ListTile(
                         leading: const Icon(Icons.edit_outlined),
                         title: Text(l.editGroup),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _GroupMenuAction.categories,
+                      child: ListTile(
+                        key: const Key('categoriesMenuItem'),
+                        leading: const Icon(Icons.label_outline),
+                        title: Text(l.manageCategories),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
@@ -278,6 +298,7 @@ class ExpensesPage extends ConsumerWidget {
                 filter: search,
                 categories: usedCategories(
                   expensesAsync.value ?? const <ExpenseModel>[],
+                  group?.categories ?? const [],
                 ),
                 canFilterMe: meAsync.value != null,
               ),
@@ -310,6 +331,7 @@ class ExpensesPage extends ConsumerWidget {
                   // G46: I'm the group's only active participant.
                   onlyMe: canEdit && activeCount <= 1,
                   filter: search,
+                  customCategories: group?.categories ?? const [],
                 ),
                 if (adderState.isLoading)
                   ColoredBox(
@@ -340,6 +362,7 @@ class ExpensesPage extends ConsumerWidget {
     required String? myId,
     bool onlyMe = false,
     LedgerFilter? filter,
+    List<CustomCategory> customCategories = const [],
   }) {
     final l = context.l10n;
     if (expensesAsync.hasError) {
@@ -361,7 +384,14 @@ class ExpensesPage extends ConsumerWidget {
     final f = filter ?? LedgerFilter.none;
     final entries = <({int createdAt, Object record})>[
       for (final e in expensesAsync.value!)
-        if (!f.isActive || expenseMatches(e, f, nameOf: searchName, myId: myId))
+        if (!f.isActive ||
+            expenseMatches(
+              e,
+              f,
+              nameOf: searchName,
+              myId: myId,
+              customCategories: customCategories,
+            ))
           (createdAt: e.createdAt, record: e),
       for (final s in settlementsAsync.value!)
         if (!f.isActive ||
@@ -456,6 +486,7 @@ class ExpensesPage extends ConsumerWidget {
       final expense = record as ExpenseModel;
       return _ExpenseTile(
         expense: expense,
+        category: resolveCategory(expense.category, customCategories),
         payerLine: expense.paidBy == myId
             ? l.youPaid
             : l.paidByName(nameOf(expense.paidBy)),
@@ -1043,7 +1074,7 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
 class _FilterBar extends ConsumerWidget {
   final String roomId;
   final LedgerFilter filter;
-  final List<ExpenseCategory> categories;
+  final List<ResolvedCategory> categories;
   final bool canFilterMe;
   const _FilterBar({
     required this.roomId,
@@ -1083,12 +1114,12 @@ class _FilterBar extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(right: Insets.s),
               child: FilterChip(
-                key: Key('filterCategory-${c.wire}'),
+                key: Key('filterCategory-${c.key}'),
                 avatar: Icon(c.icon, size: 18),
                 label: Text(c.label(l)),
-                selected: filter.categories.contains(c),
+                selected: filter.categories.contains(c.key),
                 showCheckmark: false,
-                onSelected: (_) => search.toggleCategory(c),
+                onSelected: (_) => search.toggleCategory(c.key),
               ),
             ),
         ],
@@ -1438,6 +1469,9 @@ class _LedgerRow extends StatelessWidget {
 
 class _ExpenseTile extends StatelessWidget {
   final ExpenseModel expense;
+
+  /// The expense's category as shown (G47: custom ones resolved).
+  final ResolvedCategory? category;
   final String payerLine;
 
   /// What this expense means for me — null when I'm not a participant.
@@ -1448,6 +1482,7 @@ class _ExpenseTile extends StatelessWidget {
   final VoidCallback? onDelete;
   const _ExpenseTile({
     required this.expense,
+    required this.category,
     required this.payerLine,
     required this.effect,
     required this.pending,
@@ -1493,7 +1528,7 @@ class _ExpenseTile extends StatelessWidget {
       // G16: the category's icon (generic receipt without one).
       leading: CategoryIconTile(
         key: Key('categoryTile-${expense.category ?? 'none'}'),
-        category: ExpenseCategory.fromWire(expense.category),
+        category: category,
       ),
       title: Text(expense.description, key: const Key('expenseTitle')),
       hasNote: expense.note != null,

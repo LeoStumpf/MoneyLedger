@@ -216,6 +216,7 @@ lib/
     group_model.dart           # Plain Dart model (GroupModel)
     member_model.dart          # MemberModel; sync_state_model.dart (PeerSyncStateModel)
     expense_category.dart      # G16: ExpenseCategory (stable wire ids), suggestCategory heuristic, normalizeNote
+                               # G47: CustomCategory, resolveCategory, kCustomCategoryIcons, bounds
     group_archive.dart         # G16: GroupArchive (device-local) + ledgerFingerprint
   features/
     auth/                      # Matrix login, in-app registration, session mgmt
@@ -225,12 +226,14 @@ lib/
     groups/                    # Group list + create (local-only groups, member add/remove)
                                #   GroupExiter (leave/delete, G9) + group_exit_dialog.dart
                                #   group_archive_provider.dart: G16 archive (groupArchived, GroupArchiver)
+                               #   group_categories_page.dart: G47 custom categories (add / rename / hide)
     expenses/                  # Expense list, add/edit/delete, ledger sync
       ledger_syncer.dart       # LedgerSyncer: subscribes to to-device onMessage → writes to Drift
                                # Static @visibleForTesting methods for unit-testable event processing
       split_calculator.dart    # Pure-Dart split math (largest-remainder) — see "Custom splits"
       split_editor.dart        # SplitEditor widget: Equal/Exact/Shares/% modes → SplitPlan
       expense_category_ui.dart # G16: category icon / colours / label, CategoryIconTile, CategoryPicker
+                               # (G47: dropdown-style selector + showCategoryDialog, custom icon keys)
       expense_filter.dart      # G16: pure LedgerFilter + expenseMatches / settlementMatches
       ledger_search_provider.dart # G16: per-group search state (null = search bar closed)
     balance/
@@ -1050,13 +1053,16 @@ column per participant** (header = display name), then trailing machine
 columns that drive the merge:
 
 ```
-Date, Type, Description, Category, Note, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
-2026-06-13T…, Expense, Dinner, food, Tip incl., EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
-2026-06-14T…, Payment, Payment, , , EUR, 21.00, Sam, 21.00, , …, <uuid>, Trip, <gid>, 1760000090000
+Date, Type, Description, Category, Category Name, Note, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
+2026-06-13T…, Expense, Dinner, food, , Tip incl., EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
+2026-06-13T…, Expense, Vet, c:<uuid>, Dog, , EUR, 80.00, Sam, 40.00, 40.00, …, <uuid>, Trip, <gid>, 1760000070000
+2026-06-14T…, Payment, Payment, , , , EUR, 21.00, Sam, 21.00, , …, <uuid>, Trip, <gid>, 1760000090000
 ```
 
 **G16:** `Category` (the stable English wire id) and `Note` follow
-`Description` (empty when unset and for payments). A CSV without them
+`Description` (empty when unset and for payments). **G47:** `Category Name` (after
+`Category`) holds a custom category's name (empty for built-ins); an import
+recreates `c:` ids the group lacks from it. A CSV without them
 (pre-G16) imports with no category / note; older parsers ignore them (they sit
 before `Paid By`, outside the share columns).
 
@@ -1108,11 +1114,49 @@ Use the full JSON backup for a lossless copy.
   (`expense_category_ui.dart`): Material icon + colours from the
   `LedgerColors` avatar palette (light/dark, contrast already pinned), the
   `CategoryIconTile` replaces the receipt icon in the ledger list, and the
-  add/edit form has a horizontally scrolling `CategoryPicker` (choice chips;
-  tap the selected one → none). `suggestCategory(description)` is a small
+  add/edit form has the `CategoryPicker` — **G47:** a form field (icon tile +
+  name, "No category") that opens a bottom-sheet list: *No category*, the
+  built-ins, the group's visible custom ones, *New category…* last (keys
+  `categoryPickerField`, `category-<id>`, `category-none`, `category-new`).
+  `suggestCategory(description)` is a small
   EN+DE keyword heuristic (word-start stems, ≤ 4-letter stems whole-word
-  only) that **prefills** the chip for new expenses until the user picks one
-  — never on edit.
+  only) that **prefills** the selection for new expenses until the user
+  picks one — never on edit.
+- **Custom categories (G47)**, per group, synced: the **signed group meta**
+  carries an optional `categories` list `[{id: "c:<uuidv7>", name, icon,
+  hidden?}]` (`CustomCategory`, `GroupModel.categories`) — in the meta's
+  signed body / G27 hash / payload **only when non-empty** (so every
+  pre-G47 meta signature and hash is unchanged — golden in
+  `test/core/group_categories_wire_test.dart`); `hidden` only when true.
+  Content rules (`groupMetaProblem`, `RecordGate.meta` → `invalid_record`):
+  ≤ `kMaxCustomCategories` (50), ids `c:…` ≤ 64 chars and unique, names
+  trimmed 1 … 40 UTF-16 units (`isValidCategoryName`), icon a key of the
+  fixed `kCustomCategoryIcons` (16 stable keys → Material icons in
+  `customCategoryIconData`; never rename a key). A malformed `categories`
+  value parses to an invalid entry, so it's refused rather than trimmed.
+  Expense `category` stays a string: a built-in wire id or a `c:` id;
+  `resolveCategory(id, group.categories)` → `ResolvedCategory` (built-in or
+  custom; a hidden custom one still labels its expenses; an id the group
+  doesn't define → *Other*, kept verbatim). Colour of a custom category:
+  `avatarIndexFor(id)`. Managed by `GroupEditor.addCategory` /
+  `updateCategory` (rename / icon / hide; no delete) — a new meta version
+  with `nextLwwClock`, signed, relayed as `com.moneyledger.group` to the
+  active claimed members like a G10 edit (`GroupEditor.edit` keeps the
+  categories); any active member may. UI: *New category…* in the selector
+  (`showCategoryDialog`: name + icon grid, duplicate names refused
+  case-insensitively) and group ⋮ → *Categories*
+  (`GroupCategoriesPage`, `/groups/:id/categories`; add / rename / hide,
+  read-only for non-members). Drift **schema v11**: nullable
+  `groups.categories_json` (`encodeCategories` / `decodeCategories`); the
+  v10 → v11 migration deletes `rejected_versions` rows of kind `meta` (a
+  pre-G47 build refuses metas carrying categories — like G16). Filters use
+  string keys (`LedgerFilter.categories`: built-in wire id / custom id /
+  `other`). CSV: `Category` = the id, new `Category Name` column after it
+  (custom name; empty for built-ins); an import defines missing `c:` ids
+  that have a name (`csvCategoriesToAdd`, default icon; a new meta version
+  for an existing group). Local mode: same code, the meta is stored
+  `pendingSign`, nothing relayed. Limits (mixed versions, whole-meta LWW
+  loses a concurrent edit): `docs/open-points.md`.
 - **Notes**: optional free text (form limit `kMaxNoteLength` = 500; trimmed,
   blank → none via `normalizeNote`; inbound notes are kept as signed). Shown
   on the edit form; the list marks a note with a small icon after the title.
@@ -1422,7 +1466,7 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 
 **`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "origin", "sig" }` (`from`/`to` are participant ids).
 
-**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "sig" }`.
+**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "categories"?, "sig" }` — `categories` (G47, optional, only when the group has custom categories): `[{ "id": "c:<uuidv7>", "name": "Dog", "icon": "pets", "hidden": true? }]`, part of the signed body and the G27 hash only when present.
 
 **`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → "<updated_at>:<hash8>"` (G27; a bare int = clock only), **tombstones included**; `meta_hash` is the meta's hash8; the `members` map (keyed by participant id) doubles as membership/identity gossip — each entry is the full **signed** member version (verified like a member payload). `rejected` (optional, G6) lists versions the sender refused (`{expenses: {id: T}, settlements: {…}, members: {pid: T}, meta: T}`) so peers don't re-send them; G18 review 2: the highest refused version per id — further ones ride in an optional `rejected_more` (`{expenses: {id: ["T:hash8", …]}, …, meta: [...]}`). A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
 ```json

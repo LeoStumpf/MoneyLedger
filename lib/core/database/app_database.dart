@@ -16,6 +16,9 @@ class Groups extends Table {
   TextColumn get sig => text().nullable()();
   // G6: written while the signer wasn't ready; signed before it's sent.
   BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
+  // G47: the group's custom expense categories (JSON list, the wire
+  // `categories` verbatim); NULL = none. Part of the signed meta when set.
+  TextColumn get categoriesJson => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {roomId};
@@ -274,7 +277,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -387,6 +390,19 @@ class AppDatabase extends _$AppDatabase {
       // (clock + hash) joins the primary key; the existing rows are kept.
       if (from < 10 && from >= 6) {
         await m.alterTable(TableMigration(rejectedVersions));
+      }
+      // v11 (G47): per-group custom categories in the signed group meta
+      // (nullable — existing metas have none; signatures and hashes are
+      // unchanged). Like v7: a pre-G47 build refused signed metas carrying
+      // them (its rebuilt body lacks the field) — forget meta refusals so
+      // peers re-send and this build verifies them properly.
+      if (from < 11) {
+        await m.addColumn(groups, groups.categoriesJson);
+        if (from >= 6) {
+          await customStatement(
+            "DELETE FROM rejected_versions WHERE kind = 'meta'",
+          );
+        }
       }
     },
     beforeOpen: (_) async {

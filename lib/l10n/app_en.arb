@@ -1680,5 +1680,83 @@
   "privacyLocalBody": "If you use MoneyLedger without a Matrix account, nothing leaves your device: the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.",
   "@privacyLocalBody": {
     "description": "Privacy policy section body (G40)"
+  },
+  "categoryNone": "No category",
+  "@categoryNone": {
+    "description": "Category selector entry / value for an expense without a category (G47)"
+  },
+  "newCategoryEntry": "New category…",
+  "@newCategoryEntry": {
+    "description": "Last entry of the category selector: create a custom category (G47)"
+  },
+  "newCategoryTitle": "New category",
+  "@newCategoryTitle": {
+    "description": "Title of the dialog creating a custom category (G47)"
+  },
+  "editCategoryTitle": "Edit category",
+  "@editCategoryTitle": {
+    "description": "Title of the dialog renaming a custom category (G47)"
+  },
+  "categoryNameLabel": "Name",
+  "@categoryNameLabel": {
+    "description": "Name field of the custom category dialog (G47)"
+  },
+  "categoryIconLabel": "Icon",
+  "@categoryIconLabel": {
+    "description": "Icon picker label of the custom category dialog (G47)"
+  },
+  "categoryNameTooLong": "At most {max} characters",
+  "@categoryNameTooLong": {
+    "description": "Validation error: custom category name too long (G47)",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "categoryNameTaken": "This group already has a category with this name",
+  "@categoryNameTaken": {
+    "description": "Validation error: duplicate custom category name (G47)"
+  },
+  "manageCategories": "Categories",
+  "@manageCategories": {
+    "description": "Group menu item + page title: manage the group's custom categories (G47)"
+  },
+  "customCategoriesHint": "Your own categories are shared with everyone in this group. Hidden ones aren't offered for new expenses but still label older ones.",
+  "@customCategoriesHint": {
+    "description": "Explanation on the group categories page (G47)"
+  },
+  "noCustomCategories": "No categories of your own yet.",
+  "@noCustomCategories": {
+    "description": "Empty state of the group categories page (G47)"
+  },
+  "hideCategory": "Hide",
+  "@hideCategory": {
+    "description": "Tooltip: hide a custom category (G47)"
+  },
+  "showCategory": "Show again",
+  "@showCategory": {
+    "description": "Tooltip: un-hide a custom category (G47)"
+  },
+  "categoryHidden": "Hidden",
+  "@categoryHidden": {
+    "description": "Subtitle of a hidden custom category (G47)"
+  },
+  "categoryLimitReached": "A group can have at most {max} categories of its own.",
+  "@categoryLimitReached": {
+    "description": "Shown when the custom category limit is reached (G47)",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "builtInCategories": "Built-in",
+  "@builtInCategories": {
+    "description": "Section header in the category selector (G47)"
+  },
+  "groupCategories": "This group",
+  "@groupCategories": {
+    "description": "Section header in the category selector: the group's own categories (G47)"
   }
 }

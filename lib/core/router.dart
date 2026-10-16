@@ -18,6 +18,7 @@ import '../features/balance/balance_page.dart';
 import '../features/expenses/add_expense_page.dart';
 import '../features/expenses/expenses_page.dart';
 import '../features/groups/create_group_page.dart';
+import '../features/groups/group_categories_page.dart';
 import '../features/groups/group_members_page.dart';
 import '../features/groups/groups_page.dart';
 
@@ -198,6 +199,11 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/groups/:roomId/balance',
         builder: (_, s) => BalancePage(roomId: s.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: '/groups/:roomId/categories',
+        builder: (_, s) =>
+            GroupCategoriesPage(roomId: s.pathParameters['roomId']!),
       ),
       GoRoute(
         path: '/groups/:roomId/members',

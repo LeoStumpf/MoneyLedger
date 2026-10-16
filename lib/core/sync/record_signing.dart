@@ -148,6 +148,10 @@ Map<String, Object?> groupMetaContent(GroupModel g) => {
   'name': g.name,
   'currency': g.currency,
   'updated_at': g.updatedAt,
+  // G47: only when the group has custom categories — a meta without them
+  // has exactly the pre-G47 body, so older signatures and hashes stay valid.
+  if (g.categories.isNotEmpty)
+    'categories': [for (final c in g.categories) c.toJson()],
 };
 
 Map<String, Object?> groupMetaBody(GroupModel g, SignerId signer) => {
