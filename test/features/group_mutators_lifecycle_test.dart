@@ -18,6 +18,7 @@ import 'package:money_ledger/features/groups/group_provider.dart';
 
 import '../helpers/fake_ledger_network.dart';
 import '../helpers/in_memory_database.dart';
+import '../helpers/eventually.dart';
 
 const alice = '@alice:x.org';
 const bob = '@bob:y.org';
@@ -32,12 +33,14 @@ void main() {
     net.clientFor(bob);
     transportGate = Completer<LedgerTransport>();
     final db = openTestDatabase();
-    c = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      // The transport resolves only when the test opens the gate — i.e. the
-      // mutation is parked on an await while its notifier gets disposed.
-      ledgerTransportProvider.overrideWith((ref) => transportGate.future),
-    ]);
+    c = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        // The transport resolves only when the test opens the gate — i.e. the
+        // mutation is parked on an await while its notifier gets disposed.
+        ledgerTransportProvider.overrideWith((ref) => transportGate.future),
+      ],
+    );
     addTearDown(() {
       c.dispose();
       db.close();
@@ -46,51 +49,70 @@ void main() {
 
   /// Starts [action] with a listener, then drops the listener so the
   /// auto-dispose notifier is disposed while [action] is still in flight.
-  Future<void> runThenDispose(ProviderSubscription<Object?> sub,
-      bool Function() exists, Future<void> Function() action) async {
+  Future<void> runThenDispose(
+    ProviderSubscription<Object?> sub,
+    bool Function() exists,
+    Future<void> Function() action,
+  ) async {
     final pending = action();
     sub.close();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(exists(), isFalse, reason: 'sanity: notifier disposed mid-flight');
+    await eventually(() => !exists(), reason: 'notifier disposed mid-flight');
     transportGate.complete(net.clientFor(alice));
     await pending; // must not throw (no ref use / state set after dispose)
   }
 
-  test('GroupCreator.create completes after its notifier is disposed',
-      () async {
-    await runThenDispose(c.listen(groupCreatorProvider, (_, _) {}),
+  test(
+    'GroupCreator.create completes after its notifier is disposed',
+    () async {
+      await runThenDispose(
+        c.listen(groupCreatorProvider, (_, _) {}),
         () => c.exists(groupCreatorProvider),
-        () => c.read(groupCreatorProvider.notifier).create('Trip', 'EUR'));
+        () => c.read(groupCreatorProvider.notifier).create('Trip', 'EUR'),
+      );
 
-    final groups = await c.read(groupsDaoProvider).getAllGroups();
-    expect(groups.map((g) => g.name), ['Trip']);
-    expect(
+      final groups = await c.read(groupsDaoProvider).getAllGroups();
+      expect(groups.map((g) => g.name), ['Trip']);
+      expect(
         (await c.read(membersDaoProvider).getMembers(groups.single.roomId))
             .single
             .matrixId,
-        alice);
-  });
+        alice,
+      );
+    },
+  );
 
-  test('MemberAdder.add still bootstraps the new member after dispose',
-      () async {
-    // Seed a group directly (no transport needed).
-    const groupId = 'g1';
-    await c.read(groupsDaoProvider).upsertGroupLww(GroupsCompanion(
-        roomId: Value(groupId),
-        name: const Value('Trip'),
-        currency: const Value('EUR'),
-        updatedAt: const Value(1)));
-    await runThenDispose(c.listen(memberAdderProvider, (_, _) {}),
+  test(
+    'MemberAdder.add still bootstraps the new member after dispose',
+    () async {
+      // Seed a group directly (no transport needed).
+      const groupId = 'g1';
+      await c
+          .read(groupsDaoProvider)
+          .upsertGroupLww(
+            GroupsCompanion(
+              roomId: Value(groupId),
+              name: const Value('Trip'),
+              currency: const Value('EUR'),
+              updatedAt: const Value(1),
+            ),
+          );
+      await runThenDispose(
+        c.listen(memberAdderProvider, (_, _) {}),
         () => c.exists(memberAdderProvider),
-        () => c.read(memberAdderProvider.notifier).add(groupId, bob));
+        () => c.read(memberAdderProvider.notifier).add(groupId, bob),
+      );
 
-    expect(
-        net.sent.where((s) =>
-            s.type == bootstrapEventType && s.targets.contains(bob)),
-        hasLength(1));
-    expect(
+      expect(
+        net.sent.where(
+          (s) => s.type == bootstrapEventType && s.targets.contains(bob),
+        ),
+        hasLength(1),
+      );
+      expect(
         (await c.read(membersDaoProvider).memberByMatrixId(groupId, bob))
             ?.status,
-        'active');
-  });
+        'active',
+      );
+    },
+  );
 }

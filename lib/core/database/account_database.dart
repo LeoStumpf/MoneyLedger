@@ -121,17 +121,21 @@ Future<bool> adoptLegacyLedger({
     var adopted = false;
     if (legacy != null) {
       try {
-        final claimed = (await legacy
-                .customSelect('SELECT DISTINCT matrix_id FROM members '
-                    'WHERE matrix_id IS NOT NULL')
-                .get())
-            .map((r) => r.read<String>('matrix_id'))
-            .toSet();
+        final claimed =
+            (await legacy
+                    .customSelect(
+                      'SELECT DISTINCT matrix_id FROM members '
+                      'WHERE matrix_id IS NOT NULL',
+                    )
+                    .get())
+                .map((r) => r.read<String>('matrix_id'))
+                .toSet();
         final adoptedInto = await _getSetting(legacy, legacyAdoptedIntoKey);
         if (shouldAdoptLegacy(
-            mxid: mxid,
-            legacyClaimedMatrixIds: claimed,
-            adoptedInto: adoptedInto)) {
+          mxid: mxid,
+          legacyClaimedMatrixIds: claimed,
+          adoptedInto: adoptedInto,
+        )) {
           await _copyAll(from: legacy, to: target);
           await _setSetting(legacy, legacyAdoptedIntoKey, targetName);
           adopted = true;
@@ -175,13 +179,15 @@ Future<void> _copyAll({
 }
 
 Future<String?> _getSetting(AppDatabase db, String key) async =>
-    (await (db.select(db.appSettings)..where((t) => t.key.equals(key)))
-            .getSingleOrNull())
-        ?.value;
+    (await (db.select(
+      db.appSettings,
+    )..where((t) => t.key.equals(key))).getSingleOrNull())?.value;
 
-Future<void> _setSetting(AppDatabase db, String key, String value) =>
-    db.into(db.appSettings).insertOnConflictUpdate(
-        AppSettingsCompanion(key: Value(key), value: Value(value)));
+Future<void> _setSetting(AppDatabase db, String key, String value) => db
+    .into(db.appSettings)
+    .insertOnConflictUpdate(
+      AppSettingsCompanion(key: Value(key), value: Value(value)),
+    );
 
 /// Executor behind `appDatabaseProvider` while **signed out**: opens no
 /// storage at all, every read returns no rows, every write fails. Keeps the
@@ -197,8 +203,9 @@ class SignedOutExecutor extends QueryExecutor {
 
   @override
   Future<List<Map<String, Object?>>> runSelect(
-          String statement, List<Object?> args) async =>
-      const [];
+    String statement,
+    List<Object?> args,
+  ) async => const [];
 
   Never _deny() =>
       throw StateError('No Matrix account signed in: no ledger database');

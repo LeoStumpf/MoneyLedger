@@ -86,6 +86,13 @@
       "group": {}
     }
   },
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "description": "Snackbar when writing the CSV export failed (G15).",
+    "placeholders": {
+      "error": {}
+    }
+  },
   "exportedFile": "Exported {fileName}",
   "@exportedFile": {
     "placeholders": {

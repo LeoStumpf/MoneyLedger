@@ -54,7 +54,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       _needsWeb = null;
       _error = null;
     });
-    await ref.read(authProvider.notifier).register(
+    await ref
+        .read(authProvider.notifier)
+        .register(
           resolvedHomeserver: _resolvedHomeserver,
           username: _usernameCtrl.text.trim(),
           password: _passwordCtrl.text,
@@ -66,8 +68,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     } else if (err is RegistrationRequiresWebException) {
       setState(() => _needsWeb = err);
     } else {
-      setState(() =>
-          _error = describeAuthError(err, action: AuthAction.register));
+      setState(
+        () => _error = describeAuthError(err, action: AuthAction.register),
+      );
     }
   }
 
@@ -119,11 +122,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         labelText: l.passwordLabel,
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword
-                              ? Icons.visibility
-                              : Icons.visibility_off),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
                           onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                       obscureText: _obscurePassword,
@@ -139,8 +145,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(l.createAccount),
                     ),
@@ -178,14 +183,16 @@ class _WebFallbackCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final labels = [
-      for (final s in info.stages) registrationRequirementLabel(s, l)
+      for (final s in info.stages) registrationRequirementLabel(s, l),
     ];
     final reqs = labels.isEmpty
         ? l.regReqExtraVerification
         : labels.length == 1
-            ? labels.single
-            : l.listAnd(labels.sublist(0, labels.length - 1).join(', '),
-                labels.last);
+        ? labels.single
+        : l.listAnd(
+            labels.sublist(0, labels.length - 1).join(', '),
+            labels.last,
+          );
     return Card(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Padding(
@@ -193,8 +200,10 @@ class _WebFallbackCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l.registerOnWebTitle,
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              l.registerOnWebTitle,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             Text(l.registerOnWebBody(reqs)),
             const SizedBox(height: 12),

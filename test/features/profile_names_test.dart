@@ -35,35 +35,44 @@ void main() {
   tearDown(() => db.close());
 
   ProviderContainer container() {
-    final c = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      ledgerTransportProvider.overrideWith((ref) => net.clientFor(alice)),
-    ]);
+    final c = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith((ref) => net.clientFor(alice)),
+      ],
+    );
     addTearDown(c.dispose);
     return c;
   }
 
   Future<void> seedGroup(Map<String, String> members) async {
-    await GroupsDao(db).upsertGroupLww(const GroupsCompanion(
+    await GroupsDao(db).upsertGroupLww(
+      const GroupsCompanion(
         roomId: Value('g1'),
         name: Value('Trip'),
         currency: Value('EUR'),
-        updatedAt: Value(1)));
+        updatedAt: Value(1),
+      ),
+    );
     for (final MapEntry(key: mxid, value: name) in members.entries) {
-      await MembersDao(db).upsertMemberLww(memberCompanion(MemberModel(
-          groupId: 'g1',
-          userId: mxid,
-          displayName: name,
-          matrixId: mxid,
-          status: 'active',
-          updatedAt: 1)));
+      await MembersDao(db).upsertMemberLww(
+        memberCompanion(
+          MemberModel(
+            groupId: 'g1',
+            userId: mxid,
+            displayName: name,
+            matrixId: mxid,
+            status: 'active',
+            updatedAt: 1,
+          ),
+        ),
+      );
     }
   }
 
-  Future<String> nameOf(String id) async =>
-      (await MembersDao(db).getMembers('g1'))
-          .firstWhere((m) => m.userId == id)
-          .displayName;
+  Future<String> nameOf(String id) async => (await MembersDao(
+    db,
+  ).getMembers('g1')).firstWhere((m) => m.userId == id).displayName;
 
   test('the transport normalises profile names', () async {
     net.profiles[bob] = '  Bea  ';
@@ -83,8 +92,7 @@ void main() {
     await net.settle();
     expect(await nameOf(bob), 'Bea Müller');
     // The relayed member payload carries the name too.
-    final bootstrap =
-        net.sent.firstWhere((s) => s.type == bootstrapEventType);
+    final bootstrap = net.sent.firstWhere((s) => s.type == bootstrapEventType);
     expect(bootstrap.targets, {bob});
   });
 
@@ -117,28 +125,30 @@ void main() {
     expect(me.displayName, 'Alice A.');
   });
 
-  test('refresh upgrades localpart names, keeps chosen names, relays',
-      () async {
-    net.profiles
-      ..[alice] = 'Alice A.'
-      ..[bob] = 'Bea'
-      ..[carol] = 'Caro';
-    // alice + bob still have the old localpart default; carol was renamed.
-    await seedGroup({alice: 'alice', bob: 'bob', carol: 'Carol C.'});
-    final c = container();
-    final renamed = await c.read(profileNameRefreshProvider.future);
-    await net.settle();
+  test(
+    'refresh upgrades localpart names, keeps chosen names, relays',
+    () async {
+      net.profiles
+        ..[alice] = 'Alice A.'
+        ..[bob] = 'Bea'
+        ..[carol] = 'Caro';
+      // alice + bob still have the old localpart default; carol was renamed.
+      await seedGroup({alice: 'alice', bob: 'bob', carol: 'Carol C.'});
+      final c = container();
+      final renamed = await c.read(profileNameRefreshProvider.future);
+      await net.settle();
 
-    expect(renamed, 2);
-    expect(await nameOf(alice), 'Alice A.');
-    expect(await nameOf(bob), 'Bea');
-    expect(await nameOf(carol), 'Carol C.');
-    final relayed = net.sent
-        .where((s) => s.type == memberEventType)
-        .map((s) => s.content['name'])
-        .toSet();
-    expect(relayed, {'Alice A.', 'Bea'});
-  });
+      expect(renamed, 2);
+      expect(await nameOf(alice), 'Alice A.');
+      expect(await nameOf(bob), 'Bea');
+      expect(await nameOf(carol), 'Carol C.');
+      final relayed = net.sent
+          .where((s) => s.type == memberEventType)
+          .map((s) => s.content['name'])
+          .toSet();
+      expect(relayed, {'Alice A.', 'Bea'});
+    },
+  );
 
   test('refresh skips groups this account is not active in', () async {
     net.profiles[bob] = 'Bea';
@@ -150,13 +160,25 @@ void main() {
 
   test('MemberModel.label falls back to the localpart, then the id', () {
     const named = MemberModel(
-        groupId: 'g', userId: bob, displayName: 'Bea', status: 'active',
-        updatedAt: 1);
+      groupId: 'g',
+      userId: bob,
+      displayName: 'Bea',
+      status: 'active',
+      updatedAt: 1,
+    );
     const claimed = MemberModel(
-        groupId: 'g', userId: 'p1', matrixId: bob, status: 'active',
-        updatedAt: 1);
+      groupId: 'g',
+      userId: 'p1',
+      matrixId: bob,
+      status: 'active',
+      updatedAt: 1,
+    );
     const local = MemberModel(
-        groupId: 'g', userId: 'p-local', status: 'active', updatedAt: 1);
+      groupId: 'g',
+      userId: 'p-local',
+      status: 'active',
+      updatedAt: 1,
+    );
     expect(named.label, 'Bea');
     expect(claimed.label, 'bob');
     expect(local.label, 'p-local');

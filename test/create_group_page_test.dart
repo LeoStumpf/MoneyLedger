@@ -8,11 +8,13 @@ import 'package:money_ledger/features/groups/create_group_page.dart';
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
 import 'helpers/test_providers.dart';
+import 'helpers/eventually.dart';
 
 void main() {
   group('CreateGroupPage', () {
-    testWidgets('renders name field, currency dropdown and create button',
-        (tester) async {
+    testWidgets('renders name field, currency dropdown and create button', (
+      tester,
+    ) async {
       await tester.pumpWidget(testApp(const CreateGroupPage()));
       await tester.pumpAndSettle();
 
@@ -21,20 +23,24 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'Create'), findsOneWidget);
     });
 
-    testWidgets('creating a group saves it to Drift and pops back',
-        (tester) async {
+    testWidgets('creating a group saves it to Drift and pops back', (
+      tester,
+    ) async {
       final net = FakeMatrixNetwork();
       final db = openTestDatabase();
       addTearDown(db.close);
 
-      await tester.pumpWidget(testRouterApp(
-        const CreateGroupPage(),
-        overrides: [
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-          appDatabaseProvider.overrideWithValue(db),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const CreateGroupPage(),
+          overrides: [
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+            appDatabaseProvider.overrideWithValue(db),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField), 'Holiday');
 
@@ -43,9 +49,10 @@ void main() {
       // under runAsync, otherwise the submit future never completes.
       await tester.runAsync(() async {
         await tester.tap(find.widgetWithText(FilledButton, 'Create'));
-        await tester.pump();
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        await tester.pump();
+        await eventually(
+          () async => (await GroupsDao(db).getAllGroups()).isNotEmpty,
+          tester: tester,
+        );
 
         final groups = await GroupsDao(db).watchAllGroups().first;
         expect(groups, hasLength(1));

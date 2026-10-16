@@ -96,7 +96,8 @@ class BackgroundRoundResult {
   });
 
   @override
-  String toString() => 'BackgroundRoundResult(${status.name}, '
+  String toString() =>
+      'BackgroundRoundResult(${status.name}, '
       'received: $received, sent: $sent, digests: $broadcastDigests)';
 }
 
@@ -141,20 +142,25 @@ Future<BackgroundRoundResult> runBackgroundRound({
   final budget = Timer(timeout, () {
     if (!stop.isCompleted) stop.complete();
   });
-  unawaited(abort?.then((_) {
-    aborted = true;
-    if (!stop.isCompleted) stop.complete();
-  }));
+  unawaited(
+    abort?.then((_) {
+      aborted = true;
+      if (!stop.isCompleted) stop.complete();
+    }),
+  );
 
   /// Awaits [f] unless the round is stopped first. Returns false if stopped.
   Future<bool> guard(Future<void> f) async {
     if (stop.isCompleted) return false;
     var done = false;
     await Future.any([
-      f.then((_) => done = true, onError: (Object e) {
-        debugPrint('[bg] step failed: $e');
-        done = true;
-      }),
+      f.then(
+        (_) => done = true,
+        onError: (Object e) {
+          debugPrint('[bg] step failed: $e');
+          done = true;
+        },
+      ),
       stop.future,
     ]);
     return done && !stop.isCompleted;
@@ -168,14 +174,18 @@ Future<BackgroundRoundResult> runBackgroundRound({
   try {
     try {
       final opening = openSession();
-      final first = await Future.any<Object?>(
-          [opening, stop.future.then((_) => _stopped)]);
+      final first = await Future.any<Object?>([
+        opening,
+        stop.future.then((_) => _stopped),
+      ]);
       if (identical(first, _stopped)) {
         // Timed out / aborted while restoring: close it once it's open.
         unawaited(opening.then((s) => s?.close(), onError: (_) {}));
-        return BackgroundRoundResult(aborted
-            ? BackgroundRoundStatus.aborted
-            : BackgroundRoundStatus.timedOut);
+        return BackgroundRoundResult(
+          aborted
+              ? BackgroundRoundStatus.aborted
+              : BackgroundRoundStatus.timedOut,
+        );
       }
       session = first as BackgroundSession?;
     } catch (e) {
@@ -185,7 +195,8 @@ Future<BackgroundRoundResult> runBackgroundRound({
     if (session == null || session.userId.isEmpty) {
       debugPrint('[bg] skipped: signed out');
       return const BackgroundRoundResult(
-          BackgroundRoundStatus.skippedSignedOut);
+        BackgroundRoundStatus.skippedSignedOut,
+      );
     }
     final mxid = session.userId;
     try {
@@ -193,7 +204,8 @@ Future<BackgroundRoundResult> runBackgroundRound({
       if (!await SettingsDao(db).backgroundSyncEnabled()) {
         debugPrint('[bg] skipped: background sync disabled for $mxid');
         return const BackgroundRoundResult(
-            BackgroundRoundStatus.skippedDisabled);
+          BackgroundRoundStatus.skippedDisabled,
+        );
       }
     } catch (e) {
       debugPrint('[bg] could not open the ledger DB: $e');
@@ -202,28 +214,30 @@ Future<BackgroundRoundResult> runBackgroundRound({
 
     final t = tracked = _TrackingTransport(session.transport);
     final openedDb = db;
-    final c = container = ProviderContainer(overrides: [
-      accountUserIdProvider.overrideWithValue(mxid),
-      accountDatabaseOpenerProvider.overrideWithValue((_) => openedDb),
-      ledgerTransportProvider.overrideWith((ref) async => t),
-      // No periodic timer inside a round, a short ack debounce (the round
-      // must see the ack digests go out before it shuts down), no startup
-      // digest (decided below), no new-device retry loop.
-      syncIntervalProvider.overrideWithValue(const Duration(days: 1)),
-      pokeDebounceProvider.overrideWithValue(pokeDebounce),
-      digestOnStartProvider.overrideWithValue(false),
-      selfResyncRetryDelaysProvider.overrideWithValue(const []),
-    ]);
+    final c = container = ProviderContainer(
+      overrides: [
+        accountUserIdProvider.overrideWithValue(mxid),
+        accountDatabaseOpenerProvider.overrideWithValue((_) => openedDb),
+        ledgerTransportProvider.overrideWith((ref) async => t),
+        // No periodic timer inside a round, a short ack debounce (the round
+        // must see the ack digests go out before it shuts down), no startup
+        // digest (decided below), no new-device retry loop.
+        syncIntervalProvider.overrideWithValue(const Duration(days: 1)),
+        pokeDebounceProvider.overrideWithValue(pokeDebounce),
+        digestOnStartProvider.overrideWithValue(false),
+        selfResyncRetryDelaysProvider.overrideWithValue(const []),
+      ],
+    );
     c.listen(ledgerSyncerProvider, (_, _) {});
     c.listen(syncEngineProvider, (_, _) {});
     final engine = c.read(syncEngineProvider);
-    if (!await guard(Future.wait(
-        [c.read(ledgerSyncerProvider).ready, engine.ready]))) {
+    if (!await guard(
+      Future.wait([c.read(ledgerSyncerProvider).ready, engine.ready]),
+    )) {
       return _ended(aborted, t, broadcast);
     }
 
-    Future<bool> waitQuiet() =>
-        guard(t.quiet(quietPeriod, deadline: deadline));
+    Future<bool> waitQuiet() => guard(t.quiet(quietPeriod, deadline: deadline));
 
     debugPrint('[bg] round started for $mxid');
     var activityBefore = t.activity;
@@ -254,8 +268,12 @@ Future<BackgroundRoundResult> runBackgroundRound({
       }
       if (!await waitQuiet()) return _ended(aborted, t, broadcast);
     }
-    final result = BackgroundRoundResult(BackgroundRoundStatus.completed,
-        received: t.received, sent: t.sent, broadcastDigests: broadcast);
+    final result = BackgroundRoundResult(
+      BackgroundRoundStatus.completed,
+      received: t.received,
+      sent: t.sent,
+      broadcastDigests: broadcast,
+    );
     debugPrint('[bg] round done: $result');
     return result;
   } finally {
@@ -280,12 +298,19 @@ Future<BackgroundRoundResult> runBackgroundRound({
 const Object _stopped = Object();
 
 BackgroundRoundResult _ended(
-    bool aborted, _TrackingTransport t, bool broadcast) {
+  bool aborted,
+  _TrackingTransport t,
+  bool broadcast,
+) {
   final status = aborted
       ? BackgroundRoundStatus.aborted
       : BackgroundRoundStatus.timedOut;
-  final result = BackgroundRoundResult(status,
-      received: t.received, sent: t.sent, broadcastDigests: broadcast);
+  final result = BackgroundRoundResult(
+    status,
+    received: t.received,
+    sent: t.sent,
+    broadcastDigests: broadcast,
+  );
   debugPrint('[bg] round stopped early: $result');
   return result;
 }
@@ -320,16 +345,18 @@ class _TrackingTransport implements LedgerTransport {
   String get userId => _inner.userId;
 
   @override
-  Stream<TransportMessage> get onMessage =>
-      _inner.onMessage.map((m) {
-        if (_seen.add(m)) received++;
-        _touch();
-        return m;
-      });
+  Stream<TransportMessage> get onMessage => _inner.onMessage.map((m) {
+    if (_seen.add(m)) received++;
+    _touch();
+    return m;
+  });
 
   @override
   Future<SendResult> sendToUsers(
-      Set<String> userIds, String type, Map<String, dynamic> content) async {
+    Set<String> userIds,
+    String type,
+    Map<String, dynamic> content,
+  ) async {
     _inFlight++;
     _touch();
     try {
@@ -346,12 +373,18 @@ class _TrackingTransport implements LedgerTransport {
   Future<String?> profileName(String matrixId) => _inner.profileName(matrixId);
 
   /// Completes once no send is in flight and nothing happened for [period]
-  /// (or at [deadline]).
+  /// **since this call** (or at [deadline]). Measuring from the call too, not
+  /// only from the last activity, matters on a slow / loaded device: opening
+  /// the DB and attaching the sync components can take longer than [period],
+  /// and the inbox replay of payloads queued while the app was closed is only
+  /// scheduled once they attach — without this the round could judge itself
+  /// "quiet" before that replay ran and shut down without applying it (G15).
   Future<void> quiet(Duration period, {required DateTime deadline}) async {
     const tick = Duration(milliseconds: 50);
+    final start = DateTime.now();
     while (DateTime.now().isBefore(deadline)) {
-      if (_inFlight == 0 &&
-          DateTime.now().difference(_lastActivity) >= period) {
+      final since = _lastActivity.isAfter(start) ? _lastActivity : start;
+      if (_inFlight == 0 && DateTime.now().difference(since) >= period) {
         return;
       }
       await Future<void>.delayed(tick);

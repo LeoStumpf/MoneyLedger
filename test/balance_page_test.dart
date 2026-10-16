@@ -18,17 +18,21 @@ import 'package:money_ledger/models/member_model.dart';
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
 import 'helpers/test_providers.dart';
+import 'helpers/eventually.dart';
 
 const _roomId = '!test:matrix.org';
 
 void main() {
   group('BalancePage', () {
-    testWidgets('shows "All settled up!" when there are no debts',
-        (tester) async {
-      await tester.pumpWidget(testApp(
-        const BalancePage(roomId: _roomId),
-        overrides: testOverrides(isLoggedIn: true, debts: []),
-      ));
+    testWidgets('shows "All settled up!" when there are no debts', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        testApp(
+          const BalancePage(roomId: _roomId),
+          overrides: testOverrides(isLoggedIn: true, debts: []),
+        ),
+      );
       await tester.pump();
 
       expect(find.textContaining('All settled up'), findsOneWidget);
@@ -37,15 +41,25 @@ void main() {
     testWidgets('renders debt cards when debts exist', (tester) async {
       final debts = [
         const DebtEntry(
-            from: '@bob:matrix.org', to: '@alice:matrix.org', cents: 2100, currency: 'EUR'),
+          from: '@bob:matrix.org',
+          to: '@alice:matrix.org',
+          cents: 2100,
+          currency: 'EUR',
+        ),
         const DebtEntry(
-            from: '@carol:matrix.org', to: '@alice:matrix.org', cents: 1050, currency: 'EUR'),
+          from: '@carol:matrix.org',
+          to: '@alice:matrix.org',
+          cents: 1050,
+          currency: 'EUR',
+        ),
       ];
 
-      await tester.pumpWidget(testApp(
-        const BalancePage(roomId: _roomId),
-        overrides: testOverrides(isLoggedIn: true, debts: debts),
-      ));
+      await tester.pumpWidget(
+        testApp(
+          const BalancePage(roomId: _roomId),
+          overrides: testOverrides(isLoggedIn: true, debts: debts),
+        ),
+      );
       await tester.pump();
 
       // G17: per-person balances (names fall back to the MXID localpart)…
@@ -60,10 +74,12 @@ void main() {
     });
 
     testWidgets('shows "Balance" AppBar title', (tester) async {
-      await tester.pumpWidget(testApp(
-        const BalancePage(roomId: _roomId),
-        overrides: testOverrides(isLoggedIn: true),
-      ));
+      await tester.pumpWidget(
+        testApp(
+          const BalancePage(roomId: _roomId),
+          overrides: testOverrides(isLoggedIn: true),
+        ),
+      );
       await tester.pump();
 
       expect(find.text('Balance'), findsOneWidget);
@@ -73,13 +89,19 @@ void main() {
     testWidgets('shows arrow_forward icon for each debt', (tester) async {
       final debts = [
         const DebtEntry(
-            from: '@bob:matrix.org', to: '@alice:matrix.org', cents: 500, currency: 'EUR'),
+          from: '@bob:matrix.org',
+          to: '@alice:matrix.org',
+          cents: 500,
+          currency: 'EUR',
+        ),
       ];
 
-      await tester.pumpWidget(testApp(
-        const BalancePage(roomId: _roomId),
-        overrides: testOverrides(isLoggedIn: true, debts: debts),
-      ));
+      await tester.pumpWidget(
+        testApp(
+          const BalancePage(roomId: _roomId),
+          overrides: testOverrides(isLoggedIn: true, debts: debts),
+        ),
+      );
       await tester.pump();
 
       expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
@@ -87,25 +109,39 @@ void main() {
 
     // G26: a participant removed by another member can't record settlements.
     for (final status in ['active', 'removed']) {
-      testWidgets('own debt is settleable only while active ($status)',
-          (tester) async {
+      testWidgets('own debt is settleable only while active ($status)', (
+        tester,
+      ) async {
         const me = '@bob:matrix.org';
-        await tester.pumpWidget(testApp(
-          const BalancePage(roomId: _roomId),
-          overrides: [
-            ...testOverrides(isLoggedIn: true, debts: const [
-              DebtEntry(
-                  from: me, to: '@alice:matrix.org', cents: 500, currency: 'EUR'),
-            ]),
-            currentParticipantProvider.overrideWith((ref, g) =>
-                Future<MemberModel?>.value(MemberModel(
+        await tester.pumpWidget(
+          testApp(
+            const BalancePage(roomId: _roomId),
+            overrides: [
+              ...testOverrides(
+                isLoggedIn: true,
+                debts: const [
+                  DebtEntry(
+                    from: me,
+                    to: '@alice:matrix.org',
+                    cents: 500,
+                    currency: 'EUR',
+                  ),
+                ],
+              ),
+              currentParticipantProvider.overrideWith(
+                (ref, g) => Future<MemberModel?>.value(
+                  MemberModel(
                     groupId: g,
                     userId: me,
                     matrixId: me,
                     status: status,
-                    updatedAt: 1))),
-          ],
-        ));
+                    updatedAt: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
         await tester.pump();
         await tester.pump();
 
@@ -121,49 +157,66 @@ void main() {
     const bob = '@bob:x.org';
     const carl = 'carl-local-id';
 
-    MemberModel member(String id, String? mx, String name,
-            {String status = 'active'}) =>
-        MemberModel(
-            groupId: 'g1',
-            userId: id,
-            displayName: name,
-            matrixId: mx,
-            status: status,
-            updatedAt: 1000);
+    MemberModel member(
+      String id,
+      String? mx,
+      String name, {
+      String status = 'active',
+    }) => MemberModel(
+      groupId: 'g1',
+      userId: id,
+      displayName: name,
+      matrixId: mx,
+      status: status,
+      updatedAt: 1000,
+    );
 
     /// Group g1 (CHF): alice (us), bob (claimed) and Carl (local, no
     /// account); bob and Carl each owe alice 10.00. The page's reads are
     /// stubbed; the write goes through the real ExpenseAdder into [db].
-    Future<void> pumpPage(WidgetTester tester, AppDatabase db,
-        FakeMatrixNetwork net,
-        {String aliceStatus = 'active'}) async {
+    Future<void> pumpPage(
+      WidgetTester tester,
+      AppDatabase db,
+      FakeMatrixNetwork net, {
+      String aliceStatus = 'active',
+    }) async {
       final members = [
         member(alice, alice, 'Alice', status: aliceStatus),
         member(bob, bob, 'Bob'),
         member(carl, null, 'Carl'),
       ];
-      await tester.pumpWidget(testApp(
-        const BalancePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          ledgerTransportProvider.overrideWith((ref) => net.clientFor(alice)),
-          currentUserIdProvider.overrideWith((ref) => alice),
-          groupMembersProvider.overrideWith((ref, g) => Stream.value(members)),
-          currentParticipantProvider.overrideWith(
-              (ref, g) => Future<MemberModel?>.value(members.first)),
-          ledgerGroupsProvider.overrideWith((ref) => Stream.value(const [
+      await tester.pumpWidget(
+        testApp(
+          const BalancePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWithValue(db),
+            ledgerTransportProvider.overrideWith((ref) => net.clientFor(alice)),
+            currentUserIdProvider.overrideWith((ref) => alice),
+            groupMembersProvider.overrideWith(
+              (ref, g) => Stream.value(members),
+            ),
+            currentParticipantProvider.overrideWith(
+              (ref, g) => Future<MemberModel?>.value(members.first),
+            ),
+            ledgerGroupsProvider.overrideWith(
+              (ref) => Stream.value(const [
                 GroupModel(
-                    roomId: 'g1',
-                    name: 'Trip',
-                    currency: 'CHF',
-                    updatedAt: 1000),
-              ])),
-          balanceForRoomProvider.overrideWith((ref, g) => const [
+                  roomId: 'g1',
+                  name: 'Trip',
+                  currency: 'CHF',
+                  updatedAt: 1000,
+                ),
+              ]),
+            ),
+            balanceForRoomProvider.overrideWith(
+              (ref, g) => const [
                 DebtEntry(from: bob, to: alice, cents: 1000, currency: 'CHF'),
                 DebtEntry(from: carl, to: alice, cents: 1000, currency: 'CHF'),
-              ]),
-        ],
-      ));
+              ],
+            ),
+          ],
+        ),
+      );
       await tester.pump();
       await tester.pump();
     }
@@ -171,20 +224,25 @@ void main() {
     /// Taps the dialog's Record button and lets the Drift write + relay run
     /// on the real event loop (see create_group_page_test.dart).
     Future<List<SettlementModel>> recordAndRead(
-        WidgetTester tester, AppDatabase db) async {
+      WidgetTester tester,
+      AppDatabase db,
+    ) async {
       late List<SettlementModel> result;
       await tester.runAsync(() async {
         await tester.tap(find.widgetWithText(FilledButton, 'Record'));
-        await tester.pump();
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-        await tester.pump();
+        await eventually(
+          () async =>
+              (await ExpensesDao(db).getSettlementsForRoom('g1')).isNotEmpty,
+          tester: tester,
+        );
         result = await ExpensesDao(db).getSettlementsForRoom('g1');
       });
       return result;
     }
 
-    testWidgets('tapping a local person\'s debt records Carl → Alice',
-        (tester) async {
+    testWidgets('tapping a local person\'s debt records Carl → Alice', (
+      tester,
+    ) async {
       final db = openTestDatabase();
       addTearDown(db.close);
       final net = FakeMatrixNetwork();
@@ -193,13 +251,15 @@ void main() {
       // The relay targets the claimed members stored in the DB.
       await tester.runAsync(() async {
         for (final id in [alice, bob]) {
-          await MembersDao(db).upsertMemberLww(MembersCompanion(
-            groupId: const Value('g1'),
-            userId: Value(id),
-            matrixId: Value(id),
-            status: const Value('active'),
-            updatedAt: const Value(1000),
-          ));
+          await MembersDao(db).upsertMemberLww(
+            MembersCompanion(
+              groupId: const Value('g1'),
+              userId: Value(id),
+              matrixId: Value(id),
+              status: const Value('active'),
+              updatedAt: const Value(1000),
+            ),
+          );
         }
       });
       await pumpPage(tester, db, net);
@@ -214,11 +274,15 @@ void main() {
       final settlements = await recordAndRead(tester, db);
       expect(settlements, hasLength(1));
       final s = settlements.single;
-      expect((s.fromUser, s.toUser, s.amountCents, s.currency),
-          (carl, alice, 1000, 'CHF'));
+      expect(
+        (s.fromUser, s.toUser, s.amountCents, s.currency),
+        (carl, alice, 1000, 'CHF'),
+      );
       // Replicated to the claimed members like any settlement.
-      expect(received.where((m) => m.type == settlementEventType),
-          hasLength(1));
+      expect(
+        received.where((m) => m.type == settlementEventType),
+        hasLength(1),
+      );
       expect(received.first.content['from'], carl);
     });
 
@@ -234,8 +298,9 @@ void main() {
       expect(find.byKey(const Key('paymentExceedsWarning')), findsOneWidget);
     });
 
-    testWidgets('"Record payment" action: creditor records bob paid them',
-        (tester) async {
+    testWidgets('"Record payment" action: creditor records bob paid them', (
+      tester,
+    ) async {
       final db = openTestDatabase();
       addTearDown(db.close);
       await pumpPage(tester, db, FakeMatrixNetwork());
@@ -256,8 +321,10 @@ void main() {
       await tester.pump();
 
       final s = (await recordAndRead(tester, db)).single;
-      expect((s.fromUser, s.toUser, s.amountCents, s.currency),
-          (bob, alice, 450, 'CHF'));
+      expect(
+        (s.fromUser, s.toUser, s.amountCents, s.currency),
+        (bob, alice, 450, 'CHF'),
+      );
     });
 
     testWidgets('same payer and recipient cannot be recorded', (tester) async {
@@ -273,13 +340,15 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byKey(const Key('paymentAmount')), '5');
       await tester.pump();
-      final record = tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Record'));
+      final record = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Record'),
+      );
       expect(record.onPressed, isNull);
     });
 
-    testWidgets('removed from the group → nothing can be recorded',
-        (tester) async {
+    testWidgets('removed from the group → nothing can be recorded', (
+      tester,
+    ) async {
       final db = openTestDatabase();
       addTearDown(db.close);
       await pumpPage(tester, db, FakeMatrixNetwork(), aliceStatus: 'removed');

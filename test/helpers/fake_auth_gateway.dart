@@ -24,17 +24,16 @@ class FakeAuthGateway implements AuthGateway {
 
   final StreamController<bool> _controller = StreamController.broadcast();
 
-  FakeAuthGateway({
-    String? initialUserId,
-    LoginFlowsResult? flows,
-  })  : _userId = initialUserId,
-        _flows = flows ??
-            const LoginFlowsResult(
-              resolvedUrl: 'https://fake.test',
-              hasPassword: true,
-              hasSso: false,
-              ssoProviders: [],
-            );
+  FakeAuthGateway({String? initialUserId, LoginFlowsResult? flows})
+    : _userId = initialUserId,
+      _flows =
+          flows ??
+          const LoginFlowsResult(
+            resolvedUrl: 'https://fake.test',
+            hasPassword: true,
+            hasSso: false,
+            ssoProviders: [],
+          );
 
   @override
   bool get isLoggedIn => _userId != null;
@@ -78,8 +77,11 @@ class FakeAuthGateway implements AuthGateway {
   }) async {
     if (failWith != null) throw failWith!;
     if (registerRequiresWeb != null) {
-      throw RegistrationRequiresWebException(homeserver, registerRequiresWeb!,
-          signUpUrl: registerSignUpUrl);
+      throw RegistrationRequiresWebException(
+        homeserver,
+        registerRequiresWeb!,
+        signUpUrl: registerSignUpUrl,
+      );
     }
     _setUser('@$username:${Uri.parse(homeserver).host}');
   }

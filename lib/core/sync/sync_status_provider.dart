@@ -49,7 +49,7 @@ GroupSyncStatus computeSyncStatus({
   // self; pure-local participants can't sync, so they never count as pending.
   final activePeers = [
     for (final m in members)
-      if (m.isActive && m.matrixId != null && m.matrixId != selfId) m.matrixId!
+      if (m.isActive && m.matrixId != null && m.matrixId != selfId) m.matrixId!,
   ];
   if (activePeers.isEmpty) {
     return const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null);
@@ -83,18 +83,22 @@ GroupSyncStatus groupSyncStatus(Ref ref, String groupId) {
   final self = ref.watch(currentUserIdProvider);
   final members =
       ref.watch(groupMembersProvider(groupId)).value ?? const <MemberModel>[];
-  final syncStates = ref.watch(peerSyncStatesProvider(groupId)).value ??
+  final syncStates =
+      ref.watch(peerSyncStatesProvider(groupId)).value ??
       const <PeerSyncStateModel>[];
-  final expenses = ref.watch(allExpensesForGroupProvider(groupId)).value ??
+  final expenses =
+      ref.watch(allExpensesForGroupProvider(groupId)).value ??
       const <ExpenseModel>[];
   final settlements =
       ref.watch(allSettlementsForGroupProvider(groupId)).value ??
-          const <SettlementModel>[];
+      const <SettlementModel>[];
   final groups = ref.watch(ledgerGroupsProvider).value ?? const <GroupModel>[];
 
   var maxUpdated = 0;
   for (final g in groups) {
-    if (g.roomId == groupId && g.updatedAt > maxUpdated) maxUpdated = g.updatedAt;
+    if (g.roomId == groupId && g.updatedAt > maxUpdated) {
+      maxUpdated = g.updatedAt;
+    }
   }
   for (final m in members) {
     if (m.updatedAt > maxUpdated) maxUpdated = m.updatedAt;

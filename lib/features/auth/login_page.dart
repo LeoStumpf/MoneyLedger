@@ -67,7 +67,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   /// Native: the SSO redirect returns as a `moneyledger://sso-callback` deep link.
   void _onSsoCallbackUri(Uri uri) {
-    debugPrint('[sso] callback uri received: $uri');
+    debugPrint('[sso] callback uri received: ${redactSsoUri(uri)}');
     final cb = parseSsoCallback(uri);
     if (cb == null) {
       debugPrint('[sso] no loginToken in callback uri — ignoring');
@@ -160,10 +160,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final hsUri = Uri.tryParse(resolvedUrl);
     if (hsUri == null) return;
 
-    final callbackBase =
-        kIsWeb ? Uri.base.origin : 'moneyledger://sso-callback';
-    final callbackUrl =
-        '$callbackBase/?hs=${Uri.encodeComponent(resolvedUrl)}';
+    final callbackBase = kIsWeb
+        ? Uri.base.origin
+        : 'moneyledger://sso-callback';
+    final callbackUrl = '$callbackBase/?hs=${Uri.encodeComponent(resolvedUrl)}';
 
     final ssoUrl = buildSsoRedirectUrl(
       homeserver: resolvedUrl,
@@ -182,7 +182,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submitPassword(String resolvedHomeserver) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _error = null);
-    await ref.read(authProvider.notifier).login(
+    await ref
+        .read(authProvider.notifier)
+        .login(
           resolvedHomeserver: resolvedHomeserver,
           username: _usernameCtrl.text.trim(),
           password: _passwordCtrl.text,
@@ -213,13 +215,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // instead of frozen behind the homeserver lookup. It's refined once the
     // real flows arrive.
     LoginFlowsResult optimistic() => LoginFlowsResult(
-          resolvedUrl: _lookupInput.startsWith('http')
-              ? _lookupInput
-              : 'https://${_lookupInput.trim()}',
-          hasPassword: true,
-          hasSso: true,
-          ssoProviders: const [],
-        );
+      resolvedUrl: _lookupInput.startsWith('http')
+          ? _lookupInput
+          : 'https://${_lookupInput.trim()}',
+      hasPassword: true,
+      hasSso: true,
+      ssoProviders: const [],
+    );
     final result = flowsAsync.when(
       data: (r) => r,
       loading: optimistic,
@@ -227,7 +229,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
 
     // Show resolved URL as a hint when it differs from what the user typed.
-    final resolvedLabel = result.resolvedUrl.isNotEmpty &&
+    final resolvedLabel =
+        result.resolvedUrl.isNotEmpty &&
             result.resolvedUrl != 'https://${_lookupInput.trim()}'
         ? result.resolvedUrl
         : null;
@@ -251,19 +254,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 children: [
                   const Center(child: BrandLogo(size: 88)),
                   const SizedBox(height: 20),
-                  Text(l.appTitle,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                      textAlign: TextAlign.center),
+                  Text(
+                    l.appTitle,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 8),
-                  Text(l.signInSubtitle,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant),
-                      textAlign: TextAlign.center),
+                  Text(
+                    l.signInSubtitle,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 32),
 
                   if (_error != null) ...[
@@ -286,8 +289,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 1.5),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                              ),
                             )
                           : null,
                     ),
@@ -301,17 +305,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   // ── SSO buttons ────────────────────────────────────────
                   if (result.hasSso) ...[
                     if (result.ssoProviders.isNotEmpty)
-                      ...result.ssoProviders.map((p) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _SsoButton(
-                              key: Key('ssoBtn_${p.id}'),
-                              label: l.continueWith(p.name),
-                              brand: p.brand,
-                              onTap: authBusy
-                                  ? null
-                                  : () => _startSso(providerId: p.id),
-                            ),
-                          ))
+                      ...result.ssoProviders.map(
+                        (p) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _SsoButton(
+                            key: Key('ssoBtn_${p.id}'),
+                            label: l.continueWith(p.name),
+                            brand: p.brand,
+                            onTap: authBusy
+                                ? null
+                                : () => _startSso(providerId: p.id),
+                          ),
+                        ),
+                      )
                     else
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -324,17 +330,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ),
                       ),
                     if (result.hasPassword) ...[
-                      Row(children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(l.orDivider,
-                              style:
-                                  Theme.of(context).textTheme.bodySmall),
-                        ),
-                        const Expanded(child: Divider()),
-                      ]),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              l.orDivider,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
                       const SizedBox(height: 16),
                     ],
                   ],
@@ -355,9 +363,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               prefixIcon: const Icon(Icons.person),
                             ),
                             onChanged: _onUsernameChanged,
-                            validator: (v) => (v == null || v.isEmpty)
-                                ? l.required
-                                : null,
+                            validator: (v) =>
+                                (v == null || v.isEmpty) ? l.required : null,
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
@@ -367,11 +374,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               labelText: l.passwordLabel,
                               prefixIcon: const Icon(Icons.lock),
                               suffixIcon: IconButton(
-                                icon: Icon(_obscurePassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off),
-                                onPressed: () => setState(() =>
-                                    _obscurePassword = !_obscurePassword),
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                ),
+                                onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
                               ),
                             ),
                             obscureText: _obscurePassword,
@@ -380,10 +390,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 : _submitPassword(
                                     result.resolvedUrl.isNotEmpty
                                         ? result.resolvedUrl
-                                        : 'https://$_lookupInput'),
-                            validator: (v) => (v == null || v.isEmpty)
-                                ? l.required
-                                : null,
+                                        : 'https://$_lookupInput',
+                                  ),
+                            validator: (v) =>
+                                (v == null || v.isEmpty) ? l.required : null,
                           ),
                           const SizedBox(height: 20),
                           FilledButton(
@@ -393,13 +403,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 : () => _submitPassword(
                                     result.resolvedUrl.isNotEmpty
                                         ? result.resolvedUrl
-                                        : 'https://$_lookupInput'),
+                                        : 'https://$_lookupInput',
+                                  ),
                             child: authBusy
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : Text(l.signIn),
                           ),
@@ -459,9 +471,7 @@ class _SsoButton extends StatelessWidget {
       onPressed: onTap,
       icon: Icon(_icon),
       label: Text(label),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
-      ),
+      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
     );
   }
 }

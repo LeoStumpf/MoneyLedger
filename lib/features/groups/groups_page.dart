@@ -39,7 +39,8 @@ class GroupsPage extends ConsumerWidget {
             const BrandLogo(size: 30),
             const SizedBox(width: Insets.m),
             Flexible(
-                child: Text(l.groupsTitle, overflow: TextOverflow.ellipsis)),
+              child: Text(l.groupsTitle, overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
         actions: [
@@ -87,6 +88,7 @@ class GroupsPage extends ConsumerWidget {
   /// reopened on the next sign-in with the same account.
   Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
     final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -94,28 +96,52 @@ class GroupsPage extends ConsumerWidget {
         content: Text(l.signOutConfirmBody),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(l.cancel)),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.cancel),
+          ),
           FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(l.signOut)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.signOut),
+          ),
         ],
       ),
     );
-    if (ok == true) await ref.read(authProvider.notifier).logout();
+    if (ok != true) return;
+    await ref.read(authProvider.notifier).logout();
+    if (!context.mounted) return;
+    final error = ref.read(authProvider).error;
+    if (error != null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.failedWithError(error.toString()))),
+      );
+    }
   }
 
   Future<void> _importCsv(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
-    final text = await pickCsvText();
+    final String? text;
+    try {
+      text = await pickCsvText();
+    } catch (e) {
+      // The picked file couldn't be read (G15: never fail silently).
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.importFailed(e.toString()))),
+      );
+      return;
+    }
     if (text == null) return; // cancelled
     final count = await ref.read(csvImporterProvider.notifier).importCsv(text);
     final error = ref.read(csvImporterProvider).error;
-    messenger.showSnackBar(SnackBar(
-        content: Text(error != null
-            ? l.importFailed(error.toString())
-            : l.importedExpenses(count))));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          error != null
+              ? l.importFailed(error.toString())
+              : l.importedExpenses(count),
+        ),
+      ),
+    );
   }
 }
 
@@ -126,10 +152,11 @@ class _GroupsBody extends ConsumerWidget {
   /// instead of the empty state.
   final bool restoring;
   final VoidCallback onImport;
-  const _GroupsBody(
-      {required this.groupsAsync,
-      required this.restoring,
-      required this.onImport});
+  const _GroupsBody({
+    required this.groupsAsync,
+    required this.restoring,
+    required this.onImport,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -175,7 +202,11 @@ class _GroupsBody extends ConsumerWidget {
         final totals = balanceTotals(overviews.map((o) => o.myBalance));
         return ListView(
           padding: const EdgeInsets.fromLTRB(
-              Insets.page, Insets.s, Insets.page, 96), // clear the FAB
+            Insets.page,
+            Insets.s,
+            Insets.page,
+            96,
+          ), // clear the FAB
           children: [
             ContentWidth(child: _TotalsCard(totals: totals)),
             const SizedBox(height: Insets.l),
@@ -204,32 +235,39 @@ class _TotalsCard extends StatelessWidget {
     final theme = Theme.of(context);
     final settled = totals.owed.isEmpty && totals.owing.isEmpty;
     const onBrand = Colors.white;
-    final labelStyle = theme.textTheme.labelMedium
-        ?.copyWith(color: onBrand.withValues(alpha: 0.8));
+    final labelStyle = theme.textTheme.labelMedium?.copyWith(
+      color: onBrand.withValues(alpha: 0.8),
+    );
     final amountStyle = theme.textTheme.titleLarge?.copyWith(
-        color: onBrand, fontFeatures: kTabularFigures, height: 1.25);
+      color: onBrand,
+      fontFeatures: kTabularFigures,
+      height: 1.25,
+    );
 
     Widget column(String label, Map<String, int> amounts, Key key) => Expanded(
-          child: Column(
-            key: key,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: labelStyle),
-              const SizedBox(height: Insets.xs),
-              if (amounts.isEmpty)
-                Text(l.totalNothing,
-                    style: amountStyle?.copyWith(
-                        color: onBrand.withValues(alpha: 0.7)))
-              else
-                for (final MapEntry(key: c, value: v) in amounts.entries)
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(context.money(v, c), style: amountStyle),
-                  ),
-            ],
-          ),
-        );
+      child: Column(
+        key: key,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: labelStyle),
+          const SizedBox(height: Insets.xs),
+          if (amounts.isEmpty)
+            Text(
+              l.totalNothing,
+              style: amountStyle?.copyWith(
+                color: onBrand.withValues(alpha: 0.7),
+              ),
+            )
+          else
+            for (final MapEntry(key: c, value: v) in amounts.entries)
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(context.money(v, c), style: amountStyle),
+              ),
+        ],
+      ),
+    );
 
     return Container(
       key: const Key('groupsTotals'),
@@ -245,33 +283,42 @@ class _TotalsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l.overviewTitle,
-              style: theme.textTheme.titleSmall?.copyWith(color: onBrand)),
+          Text(
+            l.overviewTitle,
+            style: theme.textTheme.titleSmall?.copyWith(color: onBrand),
+          ),
           const SizedBox(height: Insets.m),
           if (settled)
-            Row(children: [
-              const Icon(Icons.check_circle_outline, color: onBrand),
-              const SizedBox(width: Insets.s),
-              Expanded(
-                child: Text(l.overallSettledUp,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(color: onBrand)),
-              ),
-            ])
+            Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: onBrand),
+                const SizedBox(width: Insets.s),
+                Expanded(
+                  child: Text(
+                    l.overallSettledUp,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: onBrand,
+                    ),
+                  ),
+                ),
+              ],
+            )
           else
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                column(l.totalOwedLabel, totals.owed,
-                    const Key('totalsOwed')),
+                column(l.totalOwedLabel, totals.owed, const Key('totalsOwed')),
                 Container(
                   width: 1,
                   height: 44,
                   margin: const EdgeInsets.symmetric(horizontal: Insets.m),
                   color: onBrand.withValues(alpha: 0.25),
                 ),
-                column(l.totalOwingLabel, totals.owing,
-                    const Key('totalsOwing')),
+                column(
+                  l.totalOwingLabel,
+                  totals.owing,
+                  const Key('totalsOwing'),
+                ),
               ],
             ),
         ],
@@ -313,17 +360,23 @@ class GroupCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(group.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(
+                          group.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text(subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant)),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -334,10 +387,12 @@ class GroupCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  AvatarStack(people: [
-                    for (final m in overview.members)
-                      (id: m.userId, name: m.label),
-                  ]),
+                  AvatarStack(
+                    people: [
+                      for (final m in overview.members)
+                        (id: m.userId, name: m.label),
+                    ],
+                  ),
                   const SizedBox(width: Insets.m),
                   Expanded(
                     child: BalanceSummaryText(
@@ -360,8 +415,12 @@ class GroupBadge extends StatelessWidget {
   final String id;
   final String name;
   final double size;
-  const GroupBadge(
-      {super.key, required this.id, required this.name, this.size = 48});
+  const GroupBadge({
+    super.key,
+    required this.id,
+    required this.name,
+    this.size = 48,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -395,22 +454,26 @@ class BalanceSummaryText extends StatelessWidget {
   final GroupOverview overview;
   final TextAlign textAlign;
   final TextStyle? style;
-  const BalanceSummaryText(
-      {super.key,
-      required this.overview,
-      this.textAlign = TextAlign.start,
-      this.style});
+  const BalanceSummaryText({
+    super.key,
+    required this.overview,
+    this.textAlign = TextAlign.start,
+    this.style,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final theme = Theme.of(context);
     final colors = context.ledgerColors;
-    final base = (style ?? theme.textTheme.bodyMedium)
-        ?.copyWith(fontWeight: FontWeight.w700, fontFeatures: kTabularFigures);
+    final base = (style ?? theme.textTheme.bodyMedium)?.copyWith(
+      fontWeight: FontWeight.w700,
+      fontFeatures: kTabularFigures,
+    );
     final neutral = base?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-        fontWeight: FontWeight.w600);
+      color: theme.colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w600,
+    );
     final crossAlign = textAlign == TextAlign.end
         ? CrossAxisAlignment.end
         : CrossAxisAlignment.start;
@@ -418,16 +481,19 @@ class BalanceSummaryText extends StatelessWidget {
     if (overview.me == null) {
       neutralText = l.notParticipating;
     } else if (overview.myBalance.isEmpty) {
-      neutralText =
-          overview.recordCount == 0 ? l.expensesEmptyTitle : l.settledUp;
+      neutralText = overview.recordCount == 0
+          ? l.expensesEmptyTitle
+          : l.settledUp;
     }
     if (neutralText != null) {
-      return Text(neutralText,
-          key: const Key('balanceSummary'),
-          textAlign: textAlign,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: neutral);
+      return Text(
+        neutralText,
+        key: const Key('balanceSummary'),
+        textAlign: textAlign,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: neutral,
+      );
     }
     return Column(
       key: const Key('balanceSummary'),
@@ -443,7 +509,8 @@ class BalanceSummaryText extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: base?.copyWith(
-                color: v > 0 ? colors.positive : colors.negative),
+              color: v > 0 ? colors.positive : colors.negative,
+            ),
           ),
       ],
     );
@@ -479,9 +546,8 @@ class SyncSettingsSheet extends ConsumerWidget {
                 title: Text(l.backgroundSyncTitle),
                 subtitle: Text(l.backgroundSyncBody),
                 value: enabled,
-                onChanged: (v) => ref
-                    .read(settingsDaoProvider)
-                    .setBackgroundSyncEnabled(v),
+                onChanged: (v) =>
+                    ref.read(settingsDaoProvider).setBackgroundSyncEnabled(v),
               )
             else
               ListTile(

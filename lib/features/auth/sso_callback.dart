@@ -20,3 +20,15 @@ SsoCallback? parseSsoCallback(Uri uri) {
     homeserver: (hs != null && hs.isNotEmpty) ? hs : null,
   );
 }
+
+/// [uri] with its single-use `loginToken` value replaced by `<redacted>` —
+/// for log lines (G15: logcat is readable by `adb` in release builds too, so
+/// the token itself must never be printed).
+String redactSsoUri(Uri uri) {
+  if (!uri.queryParameters.containsKey('loginToken')) return uri.toString();
+  return uri
+      .replace(
+        queryParameters: {...uri.queryParameters, 'loginToken': '<redacted>'},
+      )
+      .toString();
+}

@@ -38,22 +38,29 @@ String buildGroupCsv(
   List<ExpenseModel> expenses,
 ) {
   // Stable participant column order; map id -> column name.
-  final cols = [...members]
-    ..sort((a, b) => _nameOf(a).compareTo(_nameOf(b)));
+  final cols = [...members]..sort((a, b) => _nameOf(a).compareTo(_nameOf(b)));
   final colNames = cols.map(_nameOf).toList();
   final nameById = {for (final m in members) m.userId: _nameOf(m)};
 
   final header = [
-    _date, _description, _currency, _amount, _paidBy,
+    _date,
+    _description,
+    _currency,
+    _amount,
+    _paidBy,
     ...colNames,
-    _expenseId, _group, _groupId, _updatedAt,
+    _expenseId,
+    _group,
+    _groupId,
+    _updatedAt,
   ];
 
   final rows = <List<String>>[header];
   for (final e in expenses) {
     if (e.deleted) continue;
     final splits = (jsonDecode(e.splitsJson) as Map).map(
-        (k, v) => MapEntry(k as String, (v as num).toInt()));
+      (k, v) => MapEntry(k as String, (v as num).toInt()),
+    );
     // Share per column, keyed by the column participant's id.
     final shareByColName = <String, String>{};
     for (final m in cols) {
@@ -120,7 +127,11 @@ ParsedCsv parseGroupCsv(String csv) {
   final table = _decode(csv);
   if (table.isEmpty) {
     return const ParsedCsv(
-        groupId: null, groupName: null, participantNames: [], rows: []);
+      groupId: null,
+      groupName: null,
+      participantNames: [],
+      rows: [],
+    );
   }
   final header = table.first;
   int idx(String name) => header.indexOf(name);
@@ -162,16 +173,18 @@ ParsedCsv parseGroupCsv(String csv) {
     }
     final created = DateTime.tryParse(at(iDate))?.millisecondsSinceEpoch;
     final updated = int.tryParse(at(iUpd).trim());
-    rows.add(ParsedExpenseRow(
-      id: at(iId).isEmpty ? null : at(iId),
-      createdAt: created ?? updated ?? 0,
-      updatedAt: updated ?? created ?? 0,
-      description: at(iDesc),
-      currency: at(iCur).isEmpty ? 'EUR' : at(iCur),
-      amountCents: _parseMoney(at(iAmt)) ?? 0,
-      paidByName: at(iPaid),
-      sharesByName: shares,
-    ));
+    rows.add(
+      ParsedExpenseRow(
+        id: at(iId).isEmpty ? null : at(iId),
+        createdAt: created ?? updated ?? 0,
+        updatedAt: updated ?? created ?? 0,
+        description: at(iDesc),
+        currency: at(iCur).isEmpty ? 'EUR' : at(iCur),
+        amountCents: _parseMoney(at(iAmt)) ?? 0,
+        paidByName: at(iPaid),
+        sharesByName: shares,
+      ),
+    );
   }
   return ParsedCsv(
     groupId: groupId,
@@ -193,7 +206,9 @@ int? _parseMoney(String s) {
 String _encodeRow(List<String> fields) => fields.map(_encodeField).join(',');
 
 String _encodeField(String f) {
-  if (f.contains(',') || f.contains('"') || f.contains('\n') ||
+  if (f.contains(',') ||
+      f.contains('"') ||
+      f.contains('\n') ||
       f.contains('\r')) {
     return '"${f.replaceAll('"', '""')}"';
   }

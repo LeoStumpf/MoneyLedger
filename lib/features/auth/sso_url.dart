@@ -22,7 +22,8 @@ String buildSsoRedirectUrl({
 String ssoServerLabel(String input) {
   final trimmed = input.trim();
   final uri = Uri.tryParse(
-      trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    trimmed.contains('://') ? trimmed : 'https://$trimmed',
+  );
   final host = uri?.host ?? '';
   if (host.isEmpty) return trimmed;
   return uri!.hasPort ? '$host:${uri.port}' : host;

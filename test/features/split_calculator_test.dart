@@ -10,7 +10,11 @@ int _sum(Map<String, int> m) => m.values.fold(0, (a, b) => a + b);
 void main() {
   group('splitEqually', () {
     test('divides evenly when it divides evenly', () {
-      expect(splitEqually(900, ['a', 'b', 'c']), {'a': 300, 'b': 300, 'c': 300});
+      expect(splitEqually(900, ['a', 'b', 'c']), {
+        'a': 300,
+        'b': 300,
+        'c': 300,
+      });
     });
 
     test('gives the leftover cents to the first ids (100¢ ÷ 3)', () {
@@ -33,8 +37,11 @@ void main() {
       for (final total in [1, 7, 99, 100, 4201, 99999]) {
         for (final n in [1, 2, 3, 4, 7, 13]) {
           final ids = [for (var i = 0; i < n; i++) 'p$i'];
-          expect(_sum(splitEqually(total, ids)), total,
-              reason: 'total=$total n=$n');
+          expect(
+            _sum(splitEqually(total, ids)),
+            total,
+            reason: 'total=$total n=$n',
+          );
         }
       }
     });
@@ -42,8 +49,11 @@ void main() {
 
   group('splitByShares', () {
     test('distributes in proportion to weights', () {
-      expect(splitByShares(400, {'a': 2, 'b': 1, 'c': 1}),
-          {'a': 200, 'b': 100, 'c': 100});
+      expect(splitByShares(400, {'a': 2, 'b': 1, 'c': 1}), {
+        'a': 200,
+        'b': 100,
+        'c': 100,
+      });
     });
 
     test('proportional with a remainder still sums exactly', () {

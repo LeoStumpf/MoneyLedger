@@ -19,35 +19,41 @@ import 'helpers/fake_auth_gateway.dart';
 import 'helpers/l10n.dart';
 import 'package:money_ledger/features/auth/register_flows.dart';
 
-Widget _app(FakeAuthGateway gateway, String initial,
-    {Stream<Uri>? ssoLinks}) {
+Widget _app(FakeAuthGateway gateway, String initial, {Stream<Uri>? ssoLinks}) {
   final router = GoRouter(
     initialLocation: initial,
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
       GoRoute(
-          path: '/groups',
-          builder: (_, _) =>
-              const Scaffold(body: Center(child: Text('groups-home')))),
+        path: '/groups',
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('groups-home'))),
+      ),
     ],
   );
   return ProviderScope(
     overrides: [
       authGatewayProvider.overrideWith((ref) => gateway),
-      loginFlowsProvider.overrideWith((ref, input) => Future.value(
+      loginFlowsProvider.overrideWith(
+        (ref, input) => Future.value(
           const LoginFlowsResult(
-              resolvedUrl: 'https://matrix.org',
-              hasPassword: true,
-              hasSso: false,
-              ssoProviders: []))),
-      ssoCallbackProvider
-          .overrideWith((_) => ssoLinks ?? const Stream<Uri>.empty()),
+            resolvedUrl: 'https://matrix.org',
+            hasPassword: true,
+            hasSso: false,
+            ssoProviders: [],
+          ),
+        ),
+      ),
+      ssoCallbackProvider.overrideWith(
+        (_) => ssoLinks ?? const Stream<Uri>.empty(),
+      ),
     ],
     child: MaterialApp.router(
-        localizationsDelegates: testLocalizationsDelegates,
-        supportedLocales: testSupportedLocales,
-        routerConfig: router),
+      localizationsDelegates: testLocalizationsDelegates,
+      supportedLocales: testSupportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
@@ -61,8 +67,7 @@ Future<void> _signIn(WidgetTester tester) async {
 
 Future<void> _register(WidgetTester tester) async {
   await tester.enterText(find.byKey(const Key('usernameField')), 'alice');
-  await tester.enterText(
-      find.byKey(const Key('passwordField')), 'password123');
+  await tester.enterText(find.byKey(const Key('passwordField')), 'password123');
   await tester.ensureVisible(find.byKey(const Key('createAccountBtn')));
   await tester.tap(find.byKey(const Key('createAccountBtn')));
   await tester.pumpAndSettle();
@@ -70,11 +75,14 @@ Future<void> _register(WidgetTester tester) async {
 
 void main() {
   group('login page', () {
-    testWidgets('wrong password: friendly title, raw text only in Details',
-        (tester) async {
+    testWidgets('wrong password: friendly title, raw text only in Details', (
+      tester,
+    ) async {
       final gateway = FakeAuthGateway()
-        ..failWith = const AuthServerException('M_FORBIDDEN',
-            serverMessage: 'Invalid username or password');
+        ..failWith = const AuthServerException(
+          'M_FORBIDDEN',
+          serverMessage: 'Invalid username or password',
+        );
       await tester.pumpWidget(_app(gateway, '/login'));
       await tester.pumpAndSettle();
 
@@ -90,11 +98,12 @@ void main() {
       expect(find.text('groups-home'), findsNothing);
     });
 
-    testWidgets('raw network error → "No internet connection"',
-        (tester) async {
+    testWidgets('raw network error → "No internet connection"', (tester) async {
       final gateway = FakeAuthGateway()
-        ..failWith = Exception('ClientException with SocketException: '
-            "Failed host lookup: 'matrix.org'");
+        ..failWith = Exception(
+          'ClientException with SocketException: '
+          "Failed host lookup: 'matrix.org'",
+        );
       await tester.pumpWidget(_app(gateway, '/login'));
       await tester.pumpAndSettle();
 
@@ -106,8 +115,10 @@ void main() {
 
     testWidgets('the error card clears on a successful retry', (tester) async {
       final gateway = FakeAuthGateway()
-        ..failWith = const AuthServerException('M_LIMIT_EXCEEDED',
-            retryAfterMs: 5000);
+        ..failWith = const AuthServerException(
+          'M_LIMIT_EXCEEDED',
+          retryAfterMs: 5000,
+        );
       await tester.pumpWidget(_app(gateway, '/login'));
       await tester.pumpAndSettle();
       await _signIn(tester);
@@ -119,14 +130,25 @@ void main() {
       expect(find.text('groups-home'), findsOneWidget);
     });
 
-    testWidgets('SSO callback with a rejected token → friendly message',
-        (tester) async {
+    testWidgets('SSO callback with a rejected token → friendly message', (
+      tester,
+    ) async {
       final gateway = FakeAuthGateway()
-        ..failWith = const AuthServerException('M_FORBIDDEN',
-            serverMessage: 'Invalid login token');
-      await tester.pumpWidget(_app(gateway, '/login',
-          ssoLinks: Stream.value(Uri.parse(
-              'moneyledger://sso-callback/?loginToken=t1&hs=https%3A%2F%2Fmatrix.org'))));
+        ..failWith = const AuthServerException(
+          'M_FORBIDDEN',
+          serverMessage: 'Invalid login token',
+        );
+      await tester.pumpWidget(
+        _app(
+          gateway,
+          '/login',
+          ssoLinks: Stream.value(
+            Uri.parse(
+              'moneyledger://sso-callback/?loginToken=t1&hs=https%3A%2F%2Fmatrix.org',
+            ),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text(en.authSsoTokenTitle), findsOneWidget);
@@ -138,8 +160,10 @@ void main() {
   group('register page', () {
     testWidgets('username taken → friendly message', (tester) async {
       final gateway = FakeAuthGateway()
-        ..failWith = const AuthServerException('M_USER_IN_USE',
-            serverMessage: 'User ID already taken.');
+        ..failWith = const AuthServerException(
+          'M_USER_IN_USE',
+          serverMessage: 'User ID already taken.',
+        );
       await tester.pumpWidget(_app(gateway, '/register'));
       await tester.pumpAndSettle();
 
@@ -150,17 +174,23 @@ void main() {
       expect(find.textContaining('M_USER_IN_USE'), findsNothing);
     });
 
-    testWidgets('web fallback opens the advertised sign-up page',
-        (tester) async {
+    testWidgets('web fallback opens the advertised sign-up page', (
+      tester,
+    ) async {
       final launched = <Object?>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          const MethodChannel('plugins.flutter.io/url_launcher'), (call) async {
-        launched.add(call.arguments);
-        return true;
-      });
-      addTearDown(() => tester.binding.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-              const MethodChannel('plugins.flutter.io/url_launcher'), null));
+        const MethodChannel('plugins.flutter.io/url_launcher'),
+        (call) async {
+          launched.add(call.arguments);
+          return true;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/url_launcher'),
+          null,
+        ),
+      );
 
       final gateway = FakeAuthGateway()
         ..registerRequiresWeb = [kWebSignupStage]
@@ -173,8 +203,10 @@ void main() {
       await tester.tap(find.byKey(const Key('openSignUpWebsiteBtn')));
       await tester.pumpAndSettle();
 
-      expect(launched.toString(),
-          contains('https://account.matrix.org/register'));
+      expect(
+        launched.toString(),
+        contains('https://account.matrix.org/register'),
+      );
     });
   });
 }

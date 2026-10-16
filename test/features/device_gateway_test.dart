@@ -6,13 +6,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/matrix/device_gateway.dart';
 import '../helpers/l10n.dart';
 
-DeviceInfo _d(String id,
-        {String? name, bool thisDevice = false, bool verified = false}) =>
-    DeviceInfo(
-        deviceId: id,
-        displayName: name,
-        isThisDevice: thisDevice,
-        verified: verified);
+DeviceInfo _d(
+  String id, {
+  String? name,
+  bool thisDevice = false,
+  bool verified = false,
+}) => DeviceInfo(
+  deviceId: id,
+  displayName: name,
+  isThisDevice: thisDevice,
+  verified: verified,
+);
 
 void main() {
   group('DeviceInfo', () {
@@ -49,43 +53,38 @@ void main() {
 
   group('deviceTrustSummary', () {
     test('only device', () {
-      expect(deviceTrustSummary([_d('me', thisDevice: true)], en),
-          'This is your only device.');
+      expect(
+        deviceTrustSummary([_d('me', thisDevice: true)], en),
+        'This is your only device.',
+      );
     });
 
     test('all verified', () {
       expect(
-          deviceTrustSummary([
-            _d('me', thisDevice: true),
-            _d('a', verified: true),
-          ], en),
-          'All your devices are verified.');
+        deviceTrustSummary([
+          _d('me', thisDevice: true),
+          _d('a', verified: true),
+        ], en),
+        'All your devices are verified.',
+      );
     });
 
     test('counts the ones needing verification', () {
       expect(
-          deviceTrustSummary([
-            _d('me', thisDevice: true),
-            _d('a'),
-            _d('b'),
-          ], en),
-          '2 devices need verification.');
+        deviceTrustSummary([_d('me', thisDevice: true), _d('a'), _d('b')], en),
+        '2 devices need verification.',
+      );
       expect(
-          deviceTrustSummary([
-            _d('me', thisDevice: true),
-            _d('a'),
-          ], en),
-          '1 device needs verification.');
+        deviceTrustSummary([_d('me', thisDevice: true), _d('a')], en),
+        '1 device needs verification.',
+      );
     });
 
     test('German plural', () {
       expect(
-          deviceTrustSummary([
-            _d('me', thisDevice: true),
-            _d('a'),
-            _d('b'),
-          ], de),
-          '2 Geräte müssen verifiziert werden.');
+        deviceTrustSummary([_d('me', thisDevice: true), _d('a'), _d('b')], de),
+        '2 Geräte müssen verifiziert werden.',
+      );
     });
   });
 }

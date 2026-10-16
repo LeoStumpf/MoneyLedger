@@ -21,36 +21,45 @@ void main() {
     // shared in-memory DB, and returns it plus the fake network.
     Future<(AppDatabase, FakeMatrixNetwork)> seedGroup() async {
       final db = openTestDatabase();
-      await GroupsDao(db).upsertGroupLww(const GroupsCompanion(
+      await GroupsDao(db).upsertGroupLww(
+        const GroupsCompanion(
           roomId: Value('g1'),
           name: Value('Trip'),
           currency: Value('CHF'),
-          updatedAt: Value(1000)));
+          updatedAt: Value(1000),
+        ),
+      );
       final memberDao = MembersDao(db);
       for (final u in ['@alice:x.org', '@bob:x.org']) {
-        await memberDao.upsertMemberLww(MembersCompanion(
-          groupId: const Value('g1'),
-          userId: Value(u),
-          matrixId: Value(u), // real members, claimed by their own account
-          status: const Value('active'),
-          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
-        ));
+        await memberDao.upsertMemberLww(
+          MembersCompanion(
+            groupId: const Value('g1'),
+            userId: Value(u),
+            matrixId: Value(u), // real members, claimed by their own account
+            status: const Value('active'),
+            updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+          ),
+        );
       }
       return (db, FakeMatrixNetwork());
     }
 
-    testWidgets('renders the form with the group currency and member count',
-        (tester) async {
+    testWidgets('renders the form with the group currency and member count', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
 
-      await tester.pumpWidget(testApp(
-        const AddExpensePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(TextFormField, 'Description'), findsOneWidget);
@@ -60,27 +69,35 @@ void main() {
       expect(find.text('CHF'), findsWidgets); // amount suffix + share previews
     });
 
-    testWidgets('submitting relays the expense to members and pops back',
-        (tester) async {
+    testWidgets('submitting relays the expense to members and pops back', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
       final bob = net.clientFor('@bob:x.org');
       final received = <TransportMessage>[];
       bob.onMessage.listen(received.add);
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle(); // navigate + load members
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Description'), 'Pizza');
+        find.widgetWithText(TextFormField, 'Description'),
+        'Pizza',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), '20');
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
       // Bounded pumps rather than pumpAndSettle: the in-button progress spinner
       // is a perpetual animation, so pumpAndSettle would never return. (Don't
@@ -97,34 +114,44 @@ void main() {
       // Defaults to the current user as payer.
       expect(received.first.content['paid_by'], '@alice:x.org');
       // Split equally across the two members.
-      expect(received.first.content['split'],
-          {'@alice:x.org': 1000, '@bob:x.org': 1000});
+      expect(received.first.content['split'], {
+        '@alice:x.org': 1000,
+        '@bob:x.org': 1000,
+      });
     });
 
-    testWidgets('German locale: comma decimal input, localized form (G12)',
-        (tester) async {
+    testWidgets('German locale: comma decimal input, localized form (G12)', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
       final bob = net.clientFor('@bob:x.org');
       final received = <TransportMessage>[];
       bob.onMessage.listen(received.add);
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1'),
-        locale: const Locale('de'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          locale: const Locale('de'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Ausgabe hinzufügen'), findsOneWidget); // app bar
       expect(find.textContaining('Gleichmäßig auf 2 Personen'), findsOneWidget);
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Beschreibung'), 'Pizza');
+        find.widgetWithText(TextFormField, 'Beschreibung'),
+        'Pizza',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Betrag'), '1.234,50');
+        find.widgetWithText(TextFormField, 'Betrag'),
+        '1.234,50',
+      );
       await tester.pump();
       // Previews in German currency format.
       expect(find.text('617,25\u00a0CHF'), findsNWidgets(2));
@@ -135,8 +162,10 @@ void main() {
 
       expect(received, hasLength(1));
       expect(received.first.content['amount'], 123450);
-      expect(received.first.content['split'],
-          {'@alice:x.org': 61725, '@bob:x.org': 61725});
+      expect(received.first.content['split'], {
+        '@alice:x.org': 61725,
+        '@bob:x.org': 61725,
+      });
     });
 
     testWidgets('the payer dropdown sets paid_by', (tester) async {
@@ -145,20 +174,27 @@ void main() {
       final received = <TransportMessage>[];
       bob.onMessage.listen(received.add);
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Description'), 'Pizza');
+        find.widgetWithText(TextFormField, 'Description'),
+        'Pizza',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), '20');
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
       // Switch the payer from alice (default) to bob (the form scrolls).
       await tester.ensureVisible(find.text('Paid by'));
       await tester.tap(find.text('Paid by'));
@@ -177,27 +213,38 @@ void main() {
 
     // Per-member fields inside the SplitEditor, in member order (alice, bob).
     Finder splitFields() => find.descendant(
-        of: find.byType(SplitEditor), matching: find.byType(TextField));
+      of: find.byType(SplitEditor),
+      matching: find.byType(TextField),
+    );
 
-    testWidgets('exact mode relays the typed per-person amounts', (tester) async {
+    testWidgets('exact mode relays the typed per-person amounts', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
       final received = <TransportMessage>[];
       net.clientFor('@bob:x.org').onMessage.listen(received.add);
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Description'), 'Taxi');
+        find.widgetWithText(TextFormField, 'Description'),
+        'Taxi',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), '20');
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
       await tester.tap(find.text('Exact'));
       await tester.pumpAndSettle();
       await tester.enterText(splitFields().at(0), '15'); // alice
@@ -209,8 +256,10 @@ void main() {
       }
 
       expect(received, hasLength(1));
-      expect(received.first.content['split'],
-          {'@alice:x.org': 1500, '@bob:x.org': 500});
+      expect(received.first.content['split'], {
+        '@alice:x.org': 1500,
+        '@bob:x.org': 500,
+      });
     });
 
     testWidgets('shares mode relays a proportional split', (tester) async {
@@ -218,20 +267,27 @@ void main() {
       final received = <TransportMessage>[];
       net.clientFor('@bob:x.org').onMessage.listen(received.add);
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Description'), 'Groceries');
+        find.widgetWithText(TextFormField, 'Description'),
+        'Groceries',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), '20');
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
       await tester.tap(find.text('Shares'));
       await tester.pumpAndSettle();
       await tester.enterText(splitFields().at(0), '3'); // alice : 3
@@ -243,30 +299,40 @@ void main() {
       }
 
       expect(received, hasLength(1));
-      expect(received.first.content['split'],
-          {'@alice:x.org': 1500, '@bob:x.org': 500});
+      expect(received.first.content['split'], {
+        '@alice:x.org': 1500,
+        '@bob:x.org': 500,
+      });
     });
 
-    testWidgets('deselecting a member in Equal mode excludes them',
-        (tester) async {
+    testWidgets('deselecting a member in Equal mode excludes them', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
       final received = <TransportMessage>[];
       net.clientFor('@bob:x.org').onMessage.listen(received.add);
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Description'), 'Solo');
+        find.widgetWithText(TextFormField, 'Description'),
+        'Solo',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), '20');
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
       // Uncheck bob (second checkbox) → whole amount falls on alice.
       await tester.tap(find.byType(Checkbox).at(1));
       await tester.pumpAndSettle();
@@ -284,28 +350,36 @@ void main() {
       final received = <TransportMessage>[];
       net.clientFor('@bob:x.org').onMessage.listen(received.add);
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Description'), 'Oops');
+        find.widgetWithText(TextFormField, 'Description'),
+        'Oops',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), '20');
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
       await tester.tap(find.text('Exact'));
       await tester.pumpAndSettle();
       await tester.enterText(splitFields().at(0), '5'); // only 5 of 20
       await tester.pumpAndSettle();
 
       // Button is disabled, so tapping relays nothing.
-      final button =
-          tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Add'));
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Add'),
+      );
       expect(button.onPressed, isNull);
       expect(find.textContaining('Remaining'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
@@ -315,8 +389,9 @@ void main() {
       expect(received, isEmpty);
     });
 
-    testWidgets('editing an unequal expense opens Exact mode prefilled',
-        (tester) async {
+    testWidgets('editing an unequal expense opens Exact mode prefilled', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
       const initial = ExpenseModel(
         id: 'e9',
@@ -330,14 +405,17 @@ void main() {
         updatedAt: 1000,
       );
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1', initial: initial),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1', initial: initial),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       // Unequal → reopened as exact amounts, prefilled per person.
@@ -345,8 +423,9 @@ void main() {
       expect(find.widgetWithText(TextField, '12.00'), findsOneWidget);
     });
 
-    testWidgets('edit mode prefills the form and saves as the same record',
-        (tester) async {
+    testWidgets('edit mode prefills the form and saves as the same record', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
       final bob = net.clientFor('@bob:x.org');
       final received = <TransportMessage>[];
@@ -364,14 +443,17 @@ void main() {
         updatedAt: 1000,
       );
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1', initial: initial),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1', initial: initial),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       // Prefilled from the initial expense, with edit labels.
@@ -380,9 +462,13 @@ void main() {
       expect(find.text('42.00'), findsOneWidget);
 
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Description'), 'Dinner v2');
+        find.widgetWithText(TextFormField, 'Description'),
+        'Dinner v2',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), '50');
+        find.widgetWithText(TextFormField, 'Amount'),
+        '50',
+      );
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 25));
@@ -399,30 +485,39 @@ void main() {
     });
 
     // G29: per-expense currency, defaulting to the group's.
-    testWidgets('the currency picker defaults to the group and sets currency',
-        (tester) async {
+    testWidgets('the currency picker defaults to the group and sets currency', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
       final received = <TransportMessage>[];
       net.clientFor('@bob:x.org').onMessage.listen(received.add);
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1'),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       final picker = find.byKey(const Key('expenseCurrency'));
       expect(
-          find.descendant(of: picker, matching: find.text('CHF')),
-          findsOneWidget);
+        find.descendant(of: picker, matching: find.text('CHF')),
+        findsOneWidget,
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Description'), 'Souvenir');
+        find.widgetWithText(TextFormField, 'Description'),
+        'Souvenir',
+      );
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), '10');
+        find.widgetWithText(TextFormField, 'Amount'),
+        '10',
+      );
       await tester.tap(picker);
       await tester.pumpAndSettle();
       await tester.tap(find.text('USD').last);
@@ -439,8 +534,9 @@ void main() {
       expect(received.first.content['amount'], 1000);
     });
 
-    testWidgets('editing keeps the expense\'s own (unlisted) currency',
-        (tester) async {
+    testWidgets('editing keeps the expense\'s own (unlisted) currency', (
+      tester,
+    ) async {
       final (db, net) = await seedGroup();
       final received = <TransportMessage>[];
       net.clientFor('@bob:x.org').onMessage.listen(received.add);
@@ -456,21 +552,26 @@ void main() {
         updatedAt: 1000,
       );
 
-      await tester.pumpWidget(testRouterApp(
-        const AddExpensePage(roomId: 'g1', initial: initial),
-        overrides: [
-          appDatabaseProvider.overrideWith((ref) => db),
-          ledgerTransportProvider
-              .overrideWith((ref) => net.clientFor('@alice:x.org')),
-        ],
-      ));
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1', initial: initial),
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(
-          find.descendant(
-              of: find.byKey(const Key('expenseCurrency')),
-              matching: find.text('THB')),
-          findsOneWidget);
+        find.descendant(
+          of: find.byKey(const Key('expenseCurrency')),
+          matching: find.text('THB'),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 25));

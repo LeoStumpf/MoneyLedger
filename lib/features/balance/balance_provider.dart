@@ -10,6 +10,7 @@ List<DebtEntry> balanceForRoom(Ref ref, String roomId) {
   final expenses =
       ref.watch(expensesForRoomProvider(roomId)).value ?? <ExpenseModel>[];
   final settlements =
-      ref.watch(settlementsForRoomProvider(roomId)).value ?? <SettlementModel>[];
+      ref.watch(settlementsForRoomProvider(roomId)).value ??
+      <SettlementModel>[];
   return calculateDebts(expenses, settlements);
 }

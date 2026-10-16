@@ -70,13 +70,13 @@ class LedgerSyncer {
   StreamSubscription<TransportMessage>? _sub;
 
   LedgerSyncer(Ref ref)
-      : _ref = ref,
-        _db = ref.read(appDatabaseProvider),
-        _expenses = ref.read(expensesDaoProvider),
-        _groups = ref.read(groupsDaoProvider),
-        _members = ref.read(membersDaoProvider),
-        _settings = SettingsDao(ref.read(appDatabaseProvider)),
-        _syncStates = ref.read(syncStatesDaoProvider);
+    : _ref = ref,
+      _db = ref.read(appDatabaseProvider),
+      _expenses = ref.read(expensesDaoProvider),
+      _groups = ref.read(groupsDaoProvider),
+      _members = ref.read(membersDaoProvider),
+      _settings = SettingsDao(ref.read(appDatabaseProvider)),
+      _syncStates = ref.read(syncStatesDaoProvider);
 
   /// False once disposed or once the captured DB is closed (on an account
   /// switch the old DB closes before this syncer's `onDispose` runs).
@@ -160,8 +160,10 @@ class LedgerSyncer {
         members: members,
         groupKnown: groupKnown,
       )) {
-        debugPrint('[ledger] dropped ${msg.type} from non-member '
-            '${msg.senderId} for group $group');
+        debugPrint(
+          '[ledger] dropped ${msg.type} from non-member '
+          '${msg.senderId} for group $group',
+        );
         return;
       }
 
@@ -175,12 +177,20 @@ class LedgerSyncer {
         case memberEventType:
           await processMember(msg.content, _members);
           if (isOwnLeaveFromOtherDevice(
-              senderId: msg.senderId, content: msg.content, myMxid: _myMxid)) {
+            senderId: msg.senderId,
+            content: msg.content,
+            myMxid: _myMxid,
+          )) {
             await _applyOwnLeave(group);
           }
         case bootstrapEventType:
-          await processBootstrap(msg.content, _groups, _members, _expenses,
-              isAlive: () => _alive);
+          await processBootstrap(
+            msg.content,
+            _groups,
+            _members,
+            _expenses,
+            isAlive: () => _alive,
+          );
       }
       if (!_alive) return;
       await _proveConvergence(group, msg);
@@ -213,20 +223,23 @@ class LedgerSyncer {
     if (!_alive) return;
     final states = await _syncStates.getSyncStates(groupId);
     if (!_alive) return;
-    final inSyncAt = states
+    final inSyncAt =
+        states
             .where((s) => s.userId == peer)
             .map((s) => s.lastInSyncAt)
             .firstOrNull ??
         0;
     final local = localRecordClocks(
-        group: group,
-        members: members,
-        expenses: expenses,
-        settlements: settlements);
+      group: group,
+      members: members,
+      expenses: expenses,
+      settlements: settlements,
+    );
     if (!peerHoldsEverything(
-        local: local,
-        inSyncAt: inSyncAt,
-        heldByPeer: _convergence.heldBy(groupId, peer))) {
+      local: local,
+      inSyncAt: inSyncAt,
+      heldByPeer: _convergence.heldBy(groupId, peer),
+    )) {
       return;
     }
     // Our wall clock, like rule 4 — not the newest record's clock, which may
@@ -248,9 +261,12 @@ class LedgerSyncer {
     final me = await _members.memberByMatrixId(groupId, _myMxid!);
     if (!_alive || me == null || me.isActive) return;
     await _settings.purgeGroupAsLeft(
-        groupId,
-        LeftGroupTombstone(
-            leftAt: me.updatedAt, removalNotice: memberPayload(me)));
+      groupId,
+      LeftGroupTombstone(
+        leftAt: me.updatedAt,
+        removalNotice: memberPayload(me),
+      ),
+    );
   }
 
   /// Whether an inbound `member` payload is **our own leave relayed from
@@ -294,7 +310,8 @@ class LedgerSyncer {
     required bool groupKnown,
   }) {
     final senderIsActiveMember = members.any(
-        (m) => m.isActive && m.matrixId == senderId);
+      (m) => m.isActive && m.matrixId == senderId,
+    );
 
     switch (type) {
       case bootstrapEventType:
@@ -303,16 +320,18 @@ class LedgerSyncer {
         if (senderIsActiveMember) return true;
         // Non-members may only assert membership for their own account.
         final claimedMxid = content['matrix_id'] as String?;
-        final participantId = content['participant_id'] as String? ??
-            content['user'] as String?;
-        if (claimedMxid == null || claimedMxid != senderId ||
+        final participantId =
+            content['participant_id'] as String? ?? content['user'] as String?;
+        if (claimedMxid == null ||
+            claimedMxid != senderId ||
             participantId == null) {
           return false;
         }
         // Allow a new participant (join-as-new) or one that is unclaimed / their
         // own — but never overwrite a participant another account already owns.
-        final existing =
-            members.where((m) => m.userId == participantId).toList();
+        final existing = members
+            .where((m) => m.userId == participantId)
+            .toList();
         return existing.isEmpty ||
             existing.first.matrixId == null ||
             existing.first.matrixId == senderId;
@@ -361,76 +380,104 @@ class LedgerSyncer {
   // record `id`; membership uses last-writer-wins via [MembersDao].
 
   @visibleForTesting
-  static Future<void> processExpense(Map<String, dynamic> content, ExpensesDao dao) {
+  static Future<void> processExpense(
+    Map<String, dynamic> content,
+    ExpensesDao dao,
+  ) {
     final id = content['id'] as String?;
     final group = content['group'] as String?;
     if (id == null || group == null) return Future.value();
     final createdAt =
         content['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch;
-    return dao.upsertExpenseLww(ExpensesCompanion(
-      id: Value(id),
-      roomId: Value(group),
-      description: Value(content['description'] as String? ?? ''),
-      amountCents: Value(content['amount'] as int? ?? 0),
-      currency: Value(content['currency'] as String? ?? 'EUR'),
-      paidBy: Value(content['paid_by'] as String? ?? ''),
-      splitsJson: Value(jsonEncode(content['split'] ?? {})),
-      createdAt: Value(createdAt),
-      updatedAt: Value(clampInboundClock(content['updated_at'] as int? ?? createdAt)),
-      deleted: Value(content['deleted'] as bool? ?? false),
-    ));
+    return dao.upsertExpenseLww(
+      ExpensesCompanion(
+        id: Value(id),
+        roomId: Value(group),
+        description: Value(content['description'] as String? ?? ''),
+        amountCents: Value(content['amount'] as int? ?? 0),
+        currency: Value(content['currency'] as String? ?? 'EUR'),
+        paidBy: Value(content['paid_by'] as String? ?? ''),
+        splitsJson: Value(jsonEncode(content['split'] ?? {})),
+        createdAt: Value(createdAt),
+        updatedAt: Value(
+          clampInboundClock(content['updated_at'] as int? ?? createdAt),
+        ),
+        deleted: Value(content['deleted'] as bool? ?? false),
+      ),
+    );
   }
 
   @visibleForTesting
-  static Future<void> processSettlement(Map<String, dynamic> content, ExpensesDao dao) {
+  static Future<void> processSettlement(
+    Map<String, dynamic> content,
+    ExpensesDao dao,
+  ) {
     final id = content['id'] as String?;
     final group = content['group'] as String?;
     if (id == null || group == null) return Future.value();
     final createdAt =
         content['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch;
-    return dao.upsertSettlementLww(SettlementsCompanion(
-      id: Value(id),
-      roomId: Value(group),
-      amountCents: Value(content['amount'] as int? ?? 0),
-      currency: Value(content['currency'] as String? ?? 'EUR'),
-      fromUser: Value(content['from'] as String? ?? ''),
-      toUser: Value(content['to'] as String? ?? ''),
-      createdAt: Value(createdAt),
-      updatedAt: Value(clampInboundClock(content['updated_at'] as int? ?? createdAt)),
-      deleted: Value(content['deleted'] as bool? ?? false),
-    ));
+    return dao.upsertSettlementLww(
+      SettlementsCompanion(
+        id: Value(id),
+        roomId: Value(group),
+        amountCents: Value(content['amount'] as int? ?? 0),
+        currency: Value(content['currency'] as String? ?? 'EUR'),
+        fromUser: Value(content['from'] as String? ?? ''),
+        toUser: Value(content['to'] as String? ?? ''),
+        createdAt: Value(createdAt),
+        updatedAt: Value(
+          clampInboundClock(content['updated_at'] as int? ?? createdAt),
+        ),
+        deleted: Value(content['deleted'] as bool? ?? false),
+      ),
+    );
   }
 
   @visibleForTesting
-  static Future<void> processGroupMeta(Map<String, dynamic> content, GroupsDao dao) {
+  static Future<void> processGroupMeta(
+    Map<String, dynamic> content,
+    GroupsDao dao,
+  ) {
     final group = content['group'] as String?;
     if (group == null) return Future.value();
     // Missing clock means a pre-v1 payload: treat as oldest (0) so it can
     // create the group but never overwrite a newer local rename.
-    return dao.upsertGroupLww(GroupsCompanion(
-      roomId: Value(group),
-      name: Value(content['name'] as String? ?? group),
-      currency: Value(content['currency'] as String? ?? 'EUR'),
-      updatedAt: Value(clampInboundClock(content['updated_at'] as int? ?? 0)),
-    ));
+    return dao.upsertGroupLww(
+      GroupsCompanion(
+        roomId: Value(group),
+        name: Value(content['name'] as String? ?? group),
+        currency: Value(content['currency'] as String? ?? 'EUR'),
+        updatedAt: Value(clampInboundClock(content['updated_at'] as int? ?? 0)),
+      ),
+    );
   }
 
   @visibleForTesting
-  static Future<void> processMember(Map<String, dynamic> content, MembersDao dao) {
+  static Future<void> processMember(
+    Map<String, dynamic> content,
+    MembersDao dao,
+  ) {
     final group = content['group'] as String?;
     // `participant_id` is the virtual-users key; `user` is the older key.
     final participantId =
         content['participant_id'] as String? ?? content['user'] as String?;
     if (group == null || participantId == null) return Future.value();
-    return dao.upsertMemberLww(MembersCompanion(
-      groupId: Value(group),
-      userId: Value(participantId),
-      displayName: Value(content['name'] as String? ?? ''),
-      matrixId: Value(content['matrix_id'] as String?),
-      status: Value(content['status'] as String? ?? 'active'),
-      updatedAt: Value(clampInboundClock(
-          content['updated_at'] as int? ?? DateTime.now().millisecondsSinceEpoch)),
-    ));
+    return dao.upsertMemberLww(
+      MembersCompanion(
+        groupId: Value(group),
+        userId: Value(participantId),
+        displayName: Value(content['name'] as String? ?? ''),
+        matrixId: Value(content['matrix_id'] as String?),
+        status: Value(content['status'] as String? ?? 'active'),
+        updatedAt: Value(
+          clampInboundClock(
+            content['updated_at'] as int? ??
+                DateTime.now().millisecondsSinceEpoch,
+          ),
+        ),
+      ),
+    );
   }
 
   /// New-member bootstrap: a single payload carrying the group meta, full member

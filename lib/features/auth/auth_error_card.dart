@@ -33,14 +33,20 @@ class AuthErrorCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(message.title(l),
-                          style: text.titleSmall
-                              ?.copyWith(color: scheme.onErrorContainer)),
+                      Text(
+                        message.title(l),
+                        style: text.titleSmall?.copyWith(
+                          color: scheme.onErrorContainer,
+                        ),
+                      ),
                       if (hint != null) ...[
                         const SizedBox(height: 4),
-                        Text(hint,
-                            style: text.bodyMedium
-                                ?.copyWith(color: scheme.onErrorContainer)),
+                        Text(
+                          hint,
+                          style: text.bodyMedium?.copyWith(
+                            color: scheme.onErrorContainer,
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -50,25 +56,35 @@ class AuthErrorCard extends StatelessWidget {
             if (detail != null && detail.isNotEmpty)
               Theme(
                 // No divider lines around the expansion inside the card.
-                data: Theme.of(context)
-                    .copyWith(dividerColor: Colors.transparent),
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   key: const Key('authErrorDetails'),
                   tilePadding: const EdgeInsets.only(left: 36, right: 8),
-                  childrenPadding:
-                      const EdgeInsets.only(left: 36, right: 8, bottom: 8),
+                  childrenPadding: const EdgeInsets.only(
+                    left: 36,
+                    right: 8,
+                    bottom: 8,
+                  ),
                   dense: true,
                   expandedAlignment: Alignment.centerLeft,
-                  title: Text(l.authErrorDetails,
-                      style: text.labelLarge
-                          ?.copyWith(color: scheme.onErrorContainer)),
+                  title: Text(
+                    l.authErrorDetails,
+                    style: text.labelLarge?.copyWith(
+                      color: scheme.onErrorContainer,
+                    ),
+                  ),
                   iconColor: scheme.onErrorContainer,
                   collapsedIconColor: scheme.onErrorContainer,
                   children: [
-                    SelectableText(detail,
-                        style: text.bodySmall?.copyWith(
-                            fontFamily: 'monospace',
-                            color: scheme.onErrorContainer)),
+                    SelectableText(
+                      detail,
+                      style: text.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        color: scheme.onErrorContainer,
+                      ),
+                    ),
                   ],
                 ),
               )

@@ -10,9 +10,18 @@ import 'package:money_ledger/models/member_model.dart';
 
 void main() {
   const testGroup = GroupModel(
-      roomId: 'g1', name: 'Trip', currency: 'EUR', updatedAt: 1000);
-  MemberModel m(String id, String name) =>
-      MemberModel(groupId: 'g1', userId: id, displayName: name, status: 'active', updatedAt: 1);
+    roomId: 'g1',
+    name: 'Trip',
+    currency: 'EUR',
+    updatedAt: 1000,
+  );
+  MemberModel m(String id, String name) => MemberModel(
+    groupId: 'g1',
+    userId: id,
+    displayName: name,
+    status: 'active',
+    updatedAt: 1,
+  );
   final members = [m('pa', 'Alex'), m('pb', 'Sam')];
 
   ExpenseModel expense({
@@ -24,19 +33,19 @@ void main() {
     int createdAt = 1760000000000,
     int updatedAt = 1760000050000,
     bool deleted = false,
-  }) =>
-      ExpenseModel(
-        id: id,
-        roomId: 'g1',
-        description: description,
-        amountCents: amount,
-        currency: 'EUR',
-        paidBy: paidBy,
-        splitsJson: '{${split.entries.map((e) => '"${e.key}":${e.value}').join(',')}}',
-        createdAt: createdAt,
-        updatedAt: updatedAt,
-        deleted: deleted,
-      );
+  }) => ExpenseModel(
+    id: id,
+    roomId: 'g1',
+    description: description,
+    amountCents: amount,
+    currency: 'EUR',
+    paidBy: paidBy,
+    splitsJson:
+        '{${split.entries.map((e) => '"${e.key}":${e.value}').join(',')}}',
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    deleted: deleted,
+  );
 
   group('buildGroupCsv / parseGroupCsv', () {
     test('round-trips an expense (names, shares, ids, clock)', () {
@@ -59,8 +68,9 @@ void main() {
     });
 
     test('decimal amounts convert to and from cents', () {
-      final csv = buildGroupCsv(
-          testGroup, members, [expense(amount: 1500, split: {'pa': 1500})]);
+      final csv = buildGroupCsv(testGroup, members, [
+        expense(amount: 1500, split: {'pa': 1500}),
+      ]);
       expect(csv, contains('15.00'));
       final r = parseGroupCsv(csv).rows.single;
       expect(r.amountCents, 1500);
@@ -69,15 +79,18 @@ void main() {
 
     test('quotes fields with commas, quotes and newlines (round-trip)', () {
       final tricky = 'Dinner, with "friends"\nand wine';
-      final csv = buildGroupCsv(testGroup, members, [expense(description: tricky)]);
+      final csv = buildGroupCsv(testGroup, members, [
+        expense(description: tricky),
+      ]);
       final r = parseGroupCsv(csv).rows.single;
       expect(r.description, tricky);
     });
 
     test('a participant name containing a comma survives round-trip', () {
       final weird = [m('pa', 'Alex, Jr.'), m('pb', 'Sam')];
-      final csv = buildGroupCsv(testGroup, weird,
-          [expense(split: {'pa': 1000, 'pb': 1000}, amount: 2000)]);
+      final csv = buildGroupCsv(testGroup, weird, [
+        expense(split: {'pa': 1000, 'pb': 1000}, amount: 2000),
+      ]);
       final parsed = parseGroupCsv(csv);
       expect(parsed.participantNames, containsAll(['Alex, Jr.', 'Sam']));
       expect(parsed.rows.single.sharesByName['Alex, Jr.'], 1000);
@@ -93,8 +106,9 @@ void main() {
     });
 
     test('shares only list participants in the split', () {
-      final csv = buildGroupCsv(
-          testGroup, members, [expense(split: {'pa': 2000}, amount: 2000)]);
+      final csv = buildGroupCsv(testGroup, members, [
+        expense(split: {'pa': 2000}, amount: 2000),
+      ]);
       final r = parseGroupCsv(csv).rows.single;
       expect(r.sharesByName, {'Alex': 2000});
       expect(r.sharesByName.containsKey('Sam'), isFalse);

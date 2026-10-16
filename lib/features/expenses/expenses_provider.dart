@@ -46,8 +46,7 @@ AppDatabase appDatabase(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-ExpensesDao expensesDao(Ref ref) =>
-    ExpensesDao(ref.watch(appDatabaseProvider));
+ExpensesDao expensesDao(Ref ref) => ExpensesDao(ref.watch(appDatabaseProvider));
 
 @Riverpod(keepAlive: true)
 GroupsDao groupsDao(Ref ref) => GroupsDao(ref.watch(appDatabaseProvider));
@@ -77,11 +76,11 @@ Stream<List<SettlementModel>> settlementsForRoom(Ref ref, String roomId) {
 /// after an await.
 class _WriteContext {
   _WriteContext(Ref ref)
-      : db = ref.read(appDatabaseProvider),
-        expenses = ref.read(expensesDaoProvider),
-        members = ref.read(membersDaoProvider),
-        health = ref.read(syncHealthProvider.notifier),
-        transport = ref.read(ledgerTransportProvider.future) {
+    : db = ref.read(appDatabaseProvider),
+      expenses = ref.read(expensesDaoProvider),
+      members = ref.read(membersDaoProvider),
+      health = ref.read(syncHealthProvider.notifier),
+      transport = ref.read(ledgerTransportProvider.future) {
     // Only awaited when there are replication targets; don't let an unused
     // transport failure surface as an unhandled async error.
     transport.ignore();
@@ -100,7 +99,10 @@ class _WriteContext {
   /// the user's other devices stay in sync (the SDK skips the current device).
   /// Skipped silently once [db] is closed (signed out / switched account).
   Future<void> replicate(
-      String groupId, String type, Map<String, dynamic> content) async {
+    String groupId,
+    String type,
+    Map<String, dynamic> content,
+  ) async {
     if (db.isClosed) return;
     try {
       // Targets are the claimed participants' Matrix accounts; pure-local
@@ -141,25 +143,24 @@ class ExpenseAdder extends _$ExpenseAdder {
     required String currency,
     required String paidBy,
     required Map<String, int> splits,
-  }) =>
-      _run((w) async {
-        final createdAt = DateTime.now().millisecondsSinceEpoch;
-        final expense = ExpenseModel(
-          id: const Uuid().v7(),
-          roomId: roomId,
-          description: description,
-          amountCents: amountCents,
-          currency: currency,
-          paidBy: paidBy,
-          splitsJson: jsonEncode(splits),
-          createdAt: createdAt,
-          updatedAt: createdAt,
-        );
-        // Local-first: persist to Drift immediately so the expense is saved
-        // and visible even offline. Replication is best-effort afterwards.
-        await w.expenses.upsertExpenseLww(_toCompanion(expense));
-        await w.replicate(roomId, expenseEventType, expensePayload(expense));
-      });
+  }) => _run((w) async {
+    final createdAt = DateTime.now().millisecondsSinceEpoch;
+    final expense = ExpenseModel(
+      id: const Uuid().v7(),
+      roomId: roomId,
+      description: description,
+      amountCents: amountCents,
+      currency: currency,
+      paidBy: paidBy,
+      splitsJson: jsonEncode(splits),
+      createdAt: createdAt,
+      updatedAt: createdAt,
+    );
+    // Local-first: persist to Drift immediately so the expense is saved
+    // and visible even offline. Replication is best-effort afterwards.
+    await w.expenses.upsertExpenseLww(_toCompanion(expense));
+    await w.replicate(roomId, expenseEventType, expensePayload(expense));
+  });
 
   Future<void> addSettlement({
     required String roomId,
@@ -167,25 +168,26 @@ class ExpenseAdder extends _$ExpenseAdder {
     required String currency,
     required String fromUser,
     required String toUser,
-  }) =>
-      _run((w) async {
-        final createdAt = DateTime.now().millisecondsSinceEpoch;
-        final settlement = SettlementModel(
-          id: const Uuid().v7(),
-          roomId: roomId,
-          amountCents: amountCents,
-          currency: currency,
-          fromUser: fromUser,
-          toUser: toUser,
-          createdAt: createdAt,
-          updatedAt: createdAt,
-        );
-        // Local-first: persist before replicating (see addExpense).
-        await w.expenses
-            .upsertSettlementLww(_toSettlementCompanion(settlement));
-        await w.replicate(
-            roomId, settlementEventType, settlementPayload(settlement));
-      });
+  }) => _run((w) async {
+    final createdAt = DateTime.now().millisecondsSinceEpoch;
+    final settlement = SettlementModel(
+      id: const Uuid().v7(),
+      roomId: roomId,
+      amountCents: amountCents,
+      currency: currency,
+      fromUser: fromUser,
+      toUser: toUser,
+      createdAt: createdAt,
+      updatedAt: createdAt,
+    );
+    // Local-first: persist before replicating (see addExpense).
+    await w.expenses.upsertSettlementLww(_toSettlementCompanion(settlement));
+    await w.replicate(
+      roomId,
+      settlementEventType,
+      settlementPayload(settlement),
+    );
+  });
 
   /// Edits an existing expense: the full record is re-written with a fresh
   /// LWW clock and replicated whole — concurrent edits of the same expense
@@ -199,79 +201,80 @@ class ExpenseAdder extends _$ExpenseAdder {
     required String paidBy,
     required Map<String, int> splits,
     required int createdAt,
-  }) =>
-      _run((w) async {
-        final expense = ExpenseModel(
-          id: id,
-          roomId: roomId,
-          description: description,
-          amountCents: amountCents,
-          currency: currency,
-          paidBy: paidBy,
-          splitsJson: jsonEncode(splits),
-          createdAt: createdAt,
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        );
-        await w.expenses.upsertExpenseLww(_toCompanion(expense));
-        await w.replicate(roomId, expenseEventType, expensePayload(expense));
-      });
+  }) => _run((w) async {
+    final expense = ExpenseModel(
+      id: id,
+      roomId: roomId,
+      description: description,
+      amountCents: amountCents,
+      currency: currency,
+      paidBy: paidBy,
+      splitsJson: jsonEncode(splits),
+      createdAt: createdAt,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await w.expenses.upsertExpenseLww(_toCompanion(expense));
+    await w.replicate(roomId, expenseEventType, expensePayload(expense));
+  });
 
   /// Deletes an expense as a tombstone: the row is kept (deleted = true, fresh
   /// LWW clock) and replicated, so anti-entropy propagates the deletion and a
   /// stale peer can never resurrect it.
   Future<void> deleteExpense(String id, String roomId) => _run((w) async {
-        final current = await w.expenses.getExpenseById(id);
-        if (current == null) return;
-        final tombstone = ExpenseModel(
-          id: current.id,
-          roomId: current.roomId,
-          description: current.description,
-          amountCents: current.amountCents,
-          currency: current.currency,
-          paidBy: current.paidBy,
-          splitsJson: current.splitsJson,
-          createdAt: current.createdAt,
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-          deleted: true,
-        );
-        await w.expenses.upsertExpenseLww(_toCompanion(tombstone));
-        await w.replicate(
-            roomId, expenseEventType, expensePayload(tombstone));
-      });
+    final current = await w.expenses.getExpenseById(id);
+    if (current == null) return;
+    final tombstone = ExpenseModel(
+      id: current.id,
+      roomId: current.roomId,
+      description: current.description,
+      amountCents: current.amountCents,
+      currency: current.currency,
+      paidBy: current.paidBy,
+      splitsJson: current.splitsJson,
+      createdAt: current.createdAt,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      deleted: true,
+    );
+    await w.expenses.upsertExpenseLww(_toCompanion(tombstone));
+    await w.replicate(roomId, expenseEventType, expensePayload(tombstone));
+  });
 
   /// Deletes a settlement as a tombstone (see [deleteExpense]). Settlements
   /// have no edit — correcting one is delete + re-create.
   Future<void> deleteSettlement(String id, String roomId) => _run((w) async {
-        final current = await w.expenses.getSettlementById(id);
-        if (current == null) return;
-        final tombstone = SettlementModel(
-          id: current.id,
-          roomId: current.roomId,
-          amountCents: current.amountCents,
-          currency: current.currency,
-          fromUser: current.fromUser,
-          toUser: current.toUser,
-          createdAt: current.createdAt,
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-          deleted: true,
-        );
-        await w.expenses.upsertSettlementLww(_toSettlementCompanion(tombstone));
-        await w.replicate(
-            roomId, settlementEventType, settlementPayload(tombstone));
-      });
+    final current = await w.expenses.getSettlementById(id);
+    if (current == null) return;
+    final tombstone = SettlementModel(
+      id: current.id,
+      roomId: current.roomId,
+      amountCents: current.amountCents,
+      currency: current.currency,
+      fromUser: current.fromUser,
+      toUser: current.toUser,
+      createdAt: current.createdAt,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      deleted: true,
+    );
+    await w.expenses.upsertSettlementLww(_toSettlementCompanion(tombstone));
+    await w.replicate(
+      roomId,
+      settlementEventType,
+      settlementPayload(tombstone),
+    );
+  });
 
   static ExpensesCompanion _toCompanion(ExpenseModel e) => ExpensesCompanion(
-        id: Value(e.id),
-        roomId: Value(e.roomId),
-        description: Value(e.description),
-        amountCents: Value(e.amountCents),
-        currency: Value(e.currency),
-        paidBy: Value(e.paidBy),
-        splitsJson: Value(e.splitsJson),
-        createdAt: Value(e.createdAt),
-        updatedAt: Value(e.updatedAt),
-        deleted: Value(e.deleted),
-      );
+    id: Value(e.id),
+    roomId: Value(e.roomId),
+    description: Value(e.description),
+    amountCents: Value(e.amountCents),
+    currency: Value(e.currency),
+    paidBy: Value(e.paidBy),
+    splitsJson: Value(e.splitsJson),
+    createdAt: Value(e.createdAt),
+    updatedAt: Value(e.updatedAt),
+    deleted: Value(e.deleted),
+  );
 
   static SettlementsCompanion _toSettlementCompanion(SettlementModel s) =>
       SettlementsCompanion(

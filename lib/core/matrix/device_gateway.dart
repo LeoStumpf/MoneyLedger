@@ -30,8 +30,9 @@ class DeviceInfo {
   /// A device the user can act on (verify) — another, not-yet-verified session.
   bool get needsVerification => !isThisDevice && !verified;
 
-  String get label =>
-      (displayName != null && displayName!.isNotEmpty) ? displayName! : deviceId;
+  String get label => (displayName != null && displayName!.isNotEmpty)
+      ? displayName!
+      : deviceId;
 }
 
 /// One short authentication string emoji to compare across the two devices.
@@ -93,8 +94,8 @@ List<DeviceInfo> sortDevices(List<DeviceInfo> devices) {
   int rank(DeviceInfo d) => d.isThisDevice
       ? 0
       : d.needsVerification
-          ? 1
-          : 2;
+      ? 1
+      : 2;
   final sorted = [...devices];
   sorted.sort((a, b) {
     final r = rank(a).compareTo(rank(b));

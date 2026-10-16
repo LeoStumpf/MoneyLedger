@@ -69,16 +69,17 @@ Map<String, int> netBalanceOf(
 }
 
 /// The `{participantId: cents}` split of [e].
-Map<String, int> splitsOf(ExpenseModel e) =>
-    (jsonDecode(e.splitsJson) as Map)
-        .map((k, v) => MapEntry(k as String, (v as num).toInt()));
+Map<String, int> splitsOf(ExpenseModel e) => (jsonDecode(e.splitsJson) as Map)
+    .map((k, v) => MapEntry(k as String, (v as num).toInt()));
 
 /// What one expense means for [participant] (G17, the "you lent / you
 /// borrowed" line): [net] > 0 = lent (others owe them that much from this
 /// expense), < 0 = borrowed (their share of someone else's payment).
 /// [involved] is false when they neither paid nor share in it.
 ({int net, bool involved}) expenseEffectFor(
-    ExpenseModel e, String? participant) {
+  ExpenseModel e,
+  String? participant,
+) {
   if (participant == null) return (net: 0, involved: false);
   final splits = splitsOf(e);
   final paid = e.paidBy == participant;
@@ -92,16 +93,18 @@ Map<String, int> splitsOf(ExpenseModel e) =>
 /// Greedy debt simplification for a single currency: match the biggest creditor
 /// against the biggest debtor until everyone nets to zero.
 List<DebtEntry> _simplify(Map<String, int> balance, String currency) {
-  final creditors = balance.entries
-      .where((e) => e.value > 0)
-      .map((e) => _Bal(e.key, e.value))
-      .toList()
-    ..sort((a, b) => b.amount.compareTo(a.amount));
-  final debtors = balance.entries
-      .where((e) => e.value < 0)
-      .map((e) => _Bal(e.key, e.value.abs()))
-      .toList()
-    ..sort((a, b) => b.amount.compareTo(a.amount));
+  final creditors =
+      balance.entries
+          .where((e) => e.value > 0)
+          .map((e) => _Bal(e.key, e.value))
+          .toList()
+        ..sort((a, b) => b.amount.compareTo(a.amount));
+  final debtors =
+      balance.entries
+          .where((e) => e.value < 0)
+          .map((e) => _Bal(e.key, e.value.abs()))
+          .toList()
+        ..sort((a, b) => b.amount.compareTo(a.amount));
 
   final debts = <DebtEntry>[];
   var ci = 0;
@@ -112,7 +115,8 @@ List<DebtEntry> _simplify(Map<String, int> balance, String currency) {
     final d = debtors[di];
     final amount = c.amount < d.amount ? c.amount : d.amount;
     debts.add(
-        DebtEntry(from: d.name, to: c.name, cents: amount, currency: currency));
+      DebtEntry(from: d.name, to: c.name, cents: amount, currency: currency),
+    );
     c.amount -= amount;
     d.amount -= amount;
     if (c.amount == 0) ci++;

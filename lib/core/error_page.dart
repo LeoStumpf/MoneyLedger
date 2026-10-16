@@ -17,8 +17,11 @@ class ErrorPage extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline,
-                  size: 64, color: Theme.of(context).colorScheme.error),
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Theme.of(context).colorScheme.error,
+              ),
               const SizedBox(height: 16),
               if (error != null)
                 Text(
@@ -28,8 +31,7 @@ class ErrorPage extends ConsumerWidget {
                 ),
               const SizedBox(height: 32),
               FilledButton.icon(
-                onPressed: () =>
-                    ref.read(authProvider.notifier).logout(),
+                onPressed: () => ref.read(authProvider.notifier).logout(),
                 icon: const Icon(Icons.logout),
                 label: Text(context.l10n.signOutAndRestart),
               ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/database/daos/settings_dao.dart';
+import '../../core/timer_factory.dart';
 import '../auth/auth_provider.dart';
 import '../expenses/expenses_provider.dart';
 
@@ -34,8 +35,12 @@ enum OnboardingStatus { unknown, seen, notSeen }
 const kOnboardingFlagTimeout = Duration(seconds: 8);
 
 /// [kOnboardingFlagTimeout], injectable for tests.
-final onboardingFlagTimeoutProvider =
-    Provider<Duration>((_) => kOnboardingFlagTimeout);
+final onboardingFlagTimeoutProvider = Provider<Duration>(
+  (_) => kOnboardingFlagTimeout,
+);
+
+/// Creates the flag-timeout timer; tests fire it explicitly (G15).
+final onboardingTimerFactoryProvider = Provider<TimerFactory>((_) => Timer.new);
 
 /// Router-facing onboarding state. Signed out → [OnboardingStatus.seen] (the
 /// router never forces onboarding then). Signed in → [OnboardingStatus.unknown]
@@ -58,8 +63,10 @@ class OnboardingGate extends _$OnboardingGate {
     final flag = ref.watch(onboardingSeenStreamProvider);
     if (account != null && !flag.isLoading) {
       if (flag.hasError) {
-        debugPrint('[onboarding] flag failed to load for $account: '
-            '${flag.error} — treating as seen');
+        debugPrint(
+          '[onboarding] flag failed to load for $account: '
+          '${flag.error} — treating as seen',
+        );
         _gaveUpFor = account;
         return OnboardingStatus.seen;
       }
@@ -70,11 +77,13 @@ class OnboardingGate extends _$OnboardingGate {
       }
     }
     final timeout = ref.read(onboardingFlagTimeoutProvider);
-    final timer = Timer(timeout, () {
+    final timer = ref.read(onboardingTimerFactoryProvider)(timeout, () {
       if (!ref.mounted) return;
-      debugPrint('[onboarding] flag for ${account ?? '(account loading)'} '
-          'not loaded after ${timeout.inMilliseconds}ms — '
-          'treating as seen');
+      debugPrint(
+        '[onboarding] flag for ${account ?? '(account loading)'} '
+        'not loaded after ${timeout.inMilliseconds}ms — '
+        'treating as seen',
+      );
       _gaveUpFor = account;
       state = OnboardingStatus.seen;
     });

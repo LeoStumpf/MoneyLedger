@@ -63,9 +63,8 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     final nets = netsFromDebts(debts);
     final multiCurrency = nets.length > 1;
 
-    void record({DebtEntry? debt}) => recordPaymentFlow(
-        context, ref, widget.roomId,
-        myId: myId, debt: debt);
+    void record({DebtEntry? debt}) =>
+        recordPaymentFlow(context, ref, widget.roomId, myId: myId, debt: debt);
 
     return Scaffold(
       appBar: AppBar(
@@ -91,7 +90,11 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                 )
               : ListView(
                   padding: const EdgeInsets.fromLTRB(
-                      Insets.page, Insets.s, Insets.page, Insets.xxl),
+                    Insets.page,
+                    Insets.s,
+                    Insets.page,
+                    Insets.xxl,
+                  ),
                   children: [
                     for (final MapEntry(key: currency, value: people)
                         in nets.entries)
@@ -99,9 +102,11 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _SectionHeader(multiCurrency
-                                ? '${l.balancesSection} · $currency'
-                                : l.balancesSection),
+                            _SectionHeader(
+                              multiCurrency
+                                  ? '${l.balancesSection} · $currency'
+                                  : l.balancesSection,
+                            ),
                             Card(
                               child: Column(
                                 children: [
@@ -121,24 +126,29 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                                 ],
                               ),
                             ),
-                            _SectionHeader(multiCurrency
-                                ? '${l.suggestedPayments} · $currency'
-                                : l.suggestedPayments),
+                            _SectionHeader(
+                              multiCurrency
+                                  ? '${l.suggestedPayments} · $currency'
+                                  : l.suggestedPayments,
+                            ),
                             Card(
                               child: Column(
                                 children: [
-                                  for (final (i, d) in debts
-                                      .where((d) => d.currency == currency)
-                                      .indexed) ...[
+                                  for (final (i, d)
+                                      in debts
+                                          .where((d) => d.currency == currency)
+                                          .indexed) ...[
                                     if (i > 0) const Divider(indent: 16),
                                     _DebtRow(
                                       debt: d,
                                       title: d.from == myId
                                           ? l.debtYouPay(nameOf(d.to))
                                           : d.to == myId
-                                              ? l.debtPaysYou(nameOf(d.from))
-                                              : l.debtPays(
-                                                  nameOf(d.from), nameOf(d.to)),
+                                          ? l.debtPaysYou(nameOf(d.from))
+                                          : l.debtPays(
+                                              nameOf(d.from),
+                                              nameOf(d.to),
+                                            ),
                                       fromAvatar: nameOf(d.from),
                                       toAvatar: nameOf(d.to),
                                       isMine: d.from == myId || d.to == myId,
@@ -156,11 +166,17 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                             if (canRecord)
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
-                                    Insets.xs, Insets.s, Insets.xs, 0),
-                                child: Text(l.suggestedPaymentsHint,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme
-                                            .colorScheme.onSurfaceVariant)),
+                                  Insets.xs,
+                                  Insets.s,
+                                  Insets.xs,
+                                  0,
+                                ),
+                                child: Text(
+                                  l.suggestedPaymentsHint,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
                               ),
                           ],
                         ),
@@ -187,11 +203,18 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding:
-          const EdgeInsets.fromLTRB(Insets.xs, Insets.xl, Insets.xs, Insets.s),
-      child: Text(text,
-          style: theme.textTheme.labelLarge
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+      padding: const EdgeInsets.fromLTRB(
+        Insets.xs,
+        Insets.xl,
+        Insets.xs,
+        Insets.s,
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
@@ -223,34 +246,44 @@ class _PersonBalanceRow extends StatelessWidget {
     final label = cents > 0
         ? (isMe ? l.balanceYouGetBack : l.balanceGetsBack)
         : cents < 0
-            ? (isMe ? l.balanceYouOwe : l.balanceOwes)
-            : l.balanceSettled;
+        ? (isMe ? l.balanceYouOwe : l.balanceOwes)
+        : l.balanceSettled;
     return Padding(
       key: Key('personBalance-$id'),
-      padding:
-          const EdgeInsets.symmetric(horizontal: Insets.l, vertical: Insets.m),
+      padding: const EdgeInsets.symmetric(
+        horizontal: Insets.l,
+        vertical: Insets.m,
+      ),
       child: Row(
         children: [
           PersonAvatar(id: id, name: avatarName),
           const SizedBox(width: Insets.m),
           Expanded(
-            child: Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: isMe ? FontWeight.w800 : FontWeight.w600)),
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: isMe ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
           ),
           const SizedBox(width: Insets.s),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(label,
-                  style: theme.textTheme.labelSmall?.copyWith(color: color)),
-              Text(context.money(cents.abs(), currency),
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: kTabularFigures)),
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(color: color),
+              ),
+              Text(
+                context.money(cents.abs(), currency),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: kTabularFigures,
+                ),
+              ),
             ],
           ),
         ],
@@ -281,32 +314,46 @@ class _DebtRow extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return ListTile(
-      contentPadding: const EdgeInsets.fromLTRB(Insets.l, Insets.xs, Insets.s, Insets.xs),
+      contentPadding: const EdgeInsets.fromLTRB(
+        Insets.l,
+        Insets.xs,
+        Insets.s,
+        Insets.xs,
+      ),
       leading: SizedBox(
         width: 76,
         child: Row(
           children: [
             PersonAvatar(id: debt.from, name: fromAvatar, size: 30),
             Expanded(
-              child: Icon(Icons.arrow_forward,
-                  size: 16, color: scheme.onSurfaceVariant),
+              child: Icon(
+                Icons.arrow_forward,
+                size: 16,
+                color: scheme.onSurfaceVariant,
+              ),
             ),
             PersonAvatar(id: debt.to, name: toAvatar, size: 30),
           ],
         ),
       ),
-      title: Text(title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: isMine ? FontWeight.w700 : FontWeight.w500)),
+      title: Text(
+        title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: isMine ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(context.money(debt.cents, debt.currency),
-              style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: kTabularFigures)),
+          Text(
+            context.money(debt.cents, debt.currency),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontFeatures: kTabularFigures,
+            ),
+          ),
           if (onTap != null)
             Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
         ],

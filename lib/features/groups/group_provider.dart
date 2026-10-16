@@ -68,13 +68,13 @@ Map<String, String> participantNames(Ref ref, String groupId) {
 /// mid-flight, e.g. when the page that triggered it is popped).
 class _GroupWriteContext {
   _GroupWriteContext(Ref ref)
-      : db = ref.read(appDatabaseProvider),
-        groups = ref.read(groupsDaoProvider),
-        members = ref.read(membersDaoProvider),
-        expenses = ref.read(expensesDaoProvider),
-        settings = ref.read(settingsDaoProvider),
-        health = ref.read(syncHealthProvider.notifier),
-        transport = ref.read(ledgerTransportProvider.future) {
+    : db = ref.read(appDatabaseProvider),
+      groups = ref.read(groupsDaoProvider),
+      members = ref.read(membersDaoProvider),
+      expenses = ref.read(expensesDaoProvider),
+      settings = ref.read(settingsDaoProvider),
+      health = ref.read(syncHealthProvider.notifier),
+      transport = ref.read(ledgerTransportProvider.future) {
     // Not every mutation awaits the transport (e.g. a solo-group delete);
     // don't let an unused transport failure surface as an unhandled error.
     transport.ignore();
@@ -100,12 +100,19 @@ class _GroupWriteContext {
   /// locally, so a transport failure doesn't fail the user action; it is
   /// reported to [SyncHealth] and anti-entropy repairs it later.
   Future<void> replicate(
-      String groupId, String type, Map<String, dynamic> content) async {
+    String groupId,
+    String type,
+    Map<String, dynamic> content,
+  ) async {
     if (db.isClosed) return;
     try {
       final targets = (await members.activeClaimedMatrixIds(groupId)).toSet();
       if (targets.isEmpty || db.isClosed) return;
-      final result = await (await transport).sendToUsers(targets, type, content);
+      final result = await (await transport).sendToUsers(
+        targets,
+        type,
+        content,
+      );
       if (!db.isClosed) health.reportDelivery(targets, result);
     } catch (e) {
       if (!db.isClosed) health.reportFailure(e);
@@ -152,24 +159,28 @@ class GroupCreator extends _$GroupCreator {
         final me = await w.myMxid();
         final myName = await w.profileNameOrLocalpart(me);
         if (w.db.isClosed) return;
-        await w.groups.upsertGroupLww(GroupsCompanion(
-              roomId: Value(groupId),
-              name: Value(name),
-              currency: Value(currency),
-              updatedAt: Value(now),
-            ));
+        await w.groups.upsertGroupLww(
+          GroupsCompanion(
+            roomId: Value(groupId),
+            name: Value(name),
+            currency: Value(currency),
+            updatedAt: Value(now),
+          ),
+        );
         // The creator is the first participant, claimed by their own account
         // (participant id == their MXID, the invariant for from-scratch users).
-        await w.members.upsertMemberLww(memberCompanion(
-              MemberModel(
-                groupId: groupId,
-                userId: me,
-                displayName: myName,
-                matrixId: me,
-                status: 'active',
-                updatedAt: now,
-              ),
-            ));
+        await w.members.upsertMemberLww(
+          memberCompanion(
+            MemberModel(
+              groupId: groupId,
+              userId: me,
+              displayName: myName,
+              matrixId: me,
+              status: 'active',
+              updatedAt: now,
+            ),
+          ),
+        );
       });
 }
 
@@ -188,8 +199,11 @@ class MemberAdder extends _$MemberAdder {
       _run((w) => _applyAdd(w, groupId, userId, displayName: displayName));
 
   static Future<void> _applyAdd(
-      _GroupWriteContext w, String groupId, String userId,
-      {String? displayName}) async {
+    _GroupWriteContext w,
+    String groupId,
+    String userId, {
+    String? displayName,
+  }) async {
     // G26: if this account already claims a participant here (e.g. it left
     // after claiming a placeholder, or was removed), **reactivate** that
     // participant — same id + name, so history stays attributed — instead of
@@ -203,8 +217,8 @@ class MemberAdder extends _$MemberAdder {
     final name = existing != null
         ? existing.displayName
         : (displayName != null && displayName.isNotEmpty)
-            ? displayName
-            : await w.profileNameOrLocalpart(userId);
+        ? displayName
+        : await w.profileNameOrLocalpart(userId);
     if (w.db.isClosed) return;
     final member = existing != null
         ? MemberModel(
@@ -230,12 +244,15 @@ class MemberAdder extends _$MemberAdder {
 
     // 1) Bootstrap the new member with the full group state + ledger.
     await transport.sendToUsers(
-        {userId}, bootstrapEventType, await w.buildBootstrap(groupId));
+      {userId},
+      bootstrapEventType,
+      await w.buildBootstrap(groupId),
+    );
 
     // 2) Tell the existing active members about the new member.
-    final others = (await w.members.activeClaimedMatrixIds(groupId))
-        .where((m) => m != userId)
-        .toSet();
+    final others = (await w.members.activeClaimedMatrixIds(
+      groupId,
+    )).where((m) => m != userId).toSet();
     await transport.sendToUsers(others, memberEventType, memberPayload(member));
   }
 
@@ -244,27 +261,30 @@ class MemberAdder extends _$MemberAdder {
   /// participant they are (self-claim on join, [selfClaim]). Use this to invite
   /// someone who already has a local placeholder in the ledger.
   Future<void> invite(String groupId, String matrixId) => _run((w) async {
-        final transport = await w.transport;
-        await transport.sendToUsers(
-            {matrixId}, bootstrapEventType, await w.buildBootstrap(groupId));
-      });
+    final transport = await w.transport;
+    await transport.sendToUsers(
+      {matrixId},
+      bootstrapEventType,
+      await w.buildBootstrap(groupId),
+    );
+  });
 
   /// Adds a Tricount-style local participant: a named person with no Matrix
   /// account (a fresh UUID participant id, `matrixId == null`). They are pure
   /// ledger data — relayed to the claimed members so everyone sees them, but
   /// never a sync target until someone claims the slot.
   Future<void> addLocal(String groupId, String name) => _run((w) async {
-        final member = MemberModel(
-          groupId: groupId,
-          userId: const Uuid().v7(),
-          displayName: name,
-          matrixId: null,
-          status: 'active',
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        );
-        await w.members.upsertMemberLww(memberCompanion(member));
-        await _relayToClaimed(w, groupId, member);
-      });
+    final member = MemberModel(
+      groupId: groupId,
+      userId: const Uuid().v7(),
+      displayName: name,
+      matrixId: null,
+      status: 'active',
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await w.members.upsertMemberLww(memberCompanion(member));
+    await _relayToClaimed(w, groupId, member);
+  });
 
   /// Re-adds a removed **local** participant (G7): reactivates the same
   /// participant id + name so their history stays attributed — re-adding via
@@ -272,13 +292,19 @@ class MemberAdder extends _$MemberAdder {
   /// (A claimed former member is re-added through [add], which also
   /// bootstraps their account.)
   Future<void> reactivate(String groupId, String participantId) =>
-      _editParticipant(groupId, participantId,
-          (m) => _copyWith(m, status: 'active'));
+      _editParticipant(
+        groupId,
+        participantId,
+        (m) => _copyWith(m, status: 'active'),
+      );
 
   /// Renames a participant (LWW edit), then replicates.
   Future<void> rename(String groupId, String participantId, String name) =>
-      _editParticipant(groupId, participantId,
-          (m) => _copyWith(m, displayName: name));
+      _editParticipant(
+        groupId,
+        participantId,
+        (m) => _copyWith(m, displayName: name),
+      );
 
   /// Claims a (typically local) participant for the Matrix account [matrixId]:
   /// links the account to the existing ledger identity, keeping all history.
@@ -286,71 +312,90 @@ class MemberAdder extends _$MemberAdder {
   Future<void> claim(String groupId, String participantId, String matrixId) =>
       _run((w) => _applyClaim(w, groupId, participantId, matrixId));
 
-  static Future<void> _applyClaim(_GroupWriteContext w, String groupId,
-      String participantId, String matrixId) async {
+  static Future<void> _applyClaim(
+    _GroupWriteContext w,
+    String groupId,
+    String participantId,
+    String matrixId,
+  ) async {
     final current = _find(await w.members.getMembers(groupId), participantId);
     if (current == null) return;
     final updated = _copyWith(current, matrixId: matrixId);
     await w.members.upsertMemberLww(memberCompanion(updated));
     final transport = await w.transport;
     await transport.sendToUsers(
-        {matrixId}, bootstrapEventType, await w.buildBootstrap(groupId));
+      {matrixId},
+      bootstrapEventType,
+      await w.buildBootstrap(groupId),
+    );
     final targets = (await w.members.activeClaimedMatrixIds(groupId)).toSet();
     await transport.sendToUsers(
-        targets, memberEventType, memberPayload(updated));
+      targets,
+      memberEventType,
+      memberPayload(updated),
+    );
   }
 
   /// Claims an existing participant as **this device's own account** — the
   /// "self-claim on join" of open-points #7. Used when you've been invited to a
   /// group ([invite]) and recognise yourself as one of the existing
   /// participants; links your MXID and replicates so everyone sees the claim.
-  Future<void> selfClaim(String groupId, String participantId) =>
-      _run((w) async =>
-          _applyClaim(w, groupId, participantId, await w.myMxid()));
+  Future<void> selfClaim(String groupId, String participantId) => _run(
+    (w) async => _applyClaim(w, groupId, participantId, await w.myMxid()),
+  );
 
   /// Joins a group you were invited to as a brand-new participant (you are not
   /// any of the existing local people) — creates a self-participant and tells
   /// the others.
-  Future<void> joinAsNew(String groupId, String name) => _run((w) async =>
-      _applyAdd(w, groupId, await w.myMxid(), displayName: name));
+  Future<void> joinAsNew(String groupId, String name) => _run(
+    (w) async => _applyAdd(w, groupId, await w.myMxid(), displayName: name),
+  );
 
   /// Detaches the Matrix account from a participant (the "remove account" of
   /// open-points #7) — the participant and their history stay; only the claim
   /// is cleared. Relays to the remaining members and to the detached account's
   /// own device so it learns it is no longer linked.
-  Future<void> unclaim(String groupId, String participantId) =>
-      _run((w) async {
-        final current =
-            _find(await w.members.getMembers(groupId), participantId);
-        if (current == null || current.matrixId == null) return;
-        final detached = current.matrixId!;
-        final updated = _copyWith(current, matrixId: null);
-        await w.members.upsertMemberLww(memberCompanion(updated));
-        final targets =
-            (await w.members.activeClaimedMatrixIds(groupId)).toSet()
-              ..add(detached);
-        final transport = await w.transport;
-        await transport.sendToUsers(
-            targets, memberEventType, memberPayload(updated));
-      });
+  Future<void> unclaim(String groupId, String participantId) => _run((w) async {
+    final current = _find(await w.members.getMembers(groupId), participantId);
+    if (current == null || current.matrixId == null) return;
+    final detached = current.matrixId!;
+    final updated = _copyWith(current, matrixId: null);
+    await w.members.upsertMemberLww(memberCompanion(updated));
+    final targets = (await w.members.activeClaimedMatrixIds(groupId)).toSet()
+      ..add(detached);
+    final transport = await w.transport;
+    await transport.sendToUsers(
+      targets,
+      memberEventType,
+      memberPayload(updated),
+    );
+  });
 
-  Future<void> _editParticipant(String groupId, String participantId,
-          MemberModel Function(MemberModel) edit) =>
-      _run((w) async {
-        final current =
-            _find(await w.members.getMembers(groupId), participantId);
-        if (current == null) return;
-        final updated = edit(current);
-        await w.members.upsertMemberLww(memberCompanion(updated));
-        await _relayToClaimed(w, groupId, updated);
-      });
+  Future<void> _editParticipant(
+    String groupId,
+    String participantId,
+    MemberModel Function(MemberModel) edit,
+  ) => _run((w) async {
+    final current = _find(await w.members.getMembers(groupId), participantId);
+    if (current == null) return;
+    final updated = edit(current);
+    await w.members.upsertMemberLww(memberCompanion(updated));
+    await _relayToClaimed(w, groupId, updated);
+  });
 
   static Future<void> _relayToClaimed(
-      _GroupWriteContext w, String groupId, MemberModel member) async {
+    _GroupWriteContext w,
+    String groupId,
+    MemberModel member,
+  ) async {
     final transport = await w.transport;
     final targets = (await w.members.activeClaimedMatrixIds(groupId)).toSet();
     if (targets.isEmpty) return;
-    await transport.sendToUsers(targets, memberEventType, memberPayload(member));
+    await transport.sendToUsers(
+      targets,
+      memberEventType,
+      memberPayload(member),
+    );
   }
 
   static MemberModel? _find(List<MemberModel> members, String participantId) {
@@ -360,16 +405,19 @@ class MemberAdder extends _$MemberAdder {
     return null;
   }
 
-  static MemberModel _copyWith(MemberModel m,
-          {String? displayName, Object? matrixId = _unset, String? status}) =>
-      MemberModel(
-        groupId: m.groupId,
-        userId: m.userId,
-        displayName: displayName ?? m.displayName,
-        matrixId: identical(matrixId, _unset) ? m.matrixId : matrixId as String?,
-        status: status ?? m.status,
-        updatedAt: nextLwwClock(m.updatedAt),
-      );
+  static MemberModel _copyWith(
+    MemberModel m, {
+    String? displayName,
+    Object? matrixId = _unset,
+    String? status,
+  }) => MemberModel(
+    groupId: m.groupId,
+    userId: m.userId,
+    displayName: displayName ?? m.displayName,
+    matrixId: identical(matrixId, _unset) ? m.matrixId : matrixId as String?,
+    status: status ?? m.status,
+    updatedAt: nextLwwClock(m.updatedAt),
+  );
 }
 
 /// Sentinel for [_copyWith] so `matrixId: null` (unclaim) is distinguishable
@@ -408,16 +456,24 @@ class MemberRemover extends _$MemberRemover {
       _runGroupWrite(ref, (s) => state = s, (w) async {
         final members = await w.members.getMembers(groupId);
         final updated = _removedCopy(
-            members, userId, DateTime.now().millisecondsSinceEpoch);
+          members,
+          userId,
+          DateTime.now().millisecondsSinceEpoch,
+        );
         if (updated == null) return;
         await w.members.upsertMemberLww(memberCompanion(updated));
         // Relay to every claimed account, including the removed member's own
         // device so it learns of the removal.
-        final targets =
-            members.map((m) => m.matrixId).whereType<String>().toSet();
+        final targets = members
+            .map((m) => m.matrixId)
+            .whereType<String>()
+            .toSet();
         final transport = await w.transport;
         await transport.sendToUsers(
-            targets, memberEventType, memberPayload(updated));
+          targets,
+          memberEventType,
+          memberPayload(updated),
+        );
       });
 }
 
@@ -467,7 +523,11 @@ Future<int> profileNameRefresh(Ref ref) async {
           updatedAt: nextLwwClock(m.updatedAt),
         );
         await w.members.upsertMemberLww(memberCompanion(updated));
-        await w.replicate(group.roomId, memberEventType, memberPayload(updated));
+        await w.replicate(
+          group.roomId,
+          memberEventType,
+          memberPayload(updated),
+        );
         renamed++;
       }
     }
@@ -496,7 +556,8 @@ enum GroupExitKind {
 GroupExitKind groupExitKind(List<MemberModel> members, String myMxid) {
   final meActive = members.any((m) => m.isActive && m.matrixId == myMxid);
   final othersClaimed = members.any(
-      (m) => m.isActive && m.matrixId != null && m.matrixId != myMxid);
+    (m) => m.isActive && m.matrixId != null && m.matrixId != myMxid,
+  );
   return meActive && othersClaimed ? GroupExitKind.leave : GroupExitKind.delete;
 }
 
@@ -521,37 +582,52 @@ class GroupExiter extends _$GroupExiter {
         final members = await w.members.getMembers(groupId);
         final now = DateTime.now().millisecondsSinceEpoch;
         final self = claimedBy(members, me);
-        final removed =
-            self == null ? null : _removedCopy(members, self.userId, now);
+        final removed = self == null
+            ? null
+            : _removedCopy(members, self.userId, now);
         if (removed != null) {
           await w.members.upsertMemberLww(memberCompanion(removed));
-          final targets =
-              members.map((m) => m.matrixId).whereType<String>().toSet();
+          final targets = members
+              .map((m) => m.matrixId)
+              .whereType<String>()
+              .toSet();
           try {
-            final result = await (await w.transport)
-                .sendToUsers(targets, memberEventType, memberPayload(removed));
+            final result = await (await w.transport).sendToUsers(
+              targets,
+              memberEventType,
+              memberPayload(removed),
+            );
             if (!w.db.isClosed) w.health.reportDelivery(targets, result);
           } catch (e) {
             if (!w.db.isClosed) w.health.reportFailure(e);
           }
         }
-        await _purge(w, groupId,
-            LeftGroupTombstone(
-              leftAt: removed?.updatedAt ?? now,
-              removalNotice: removed == null ? null : memberPayload(removed),
-            ));
+        await _purge(
+          w,
+          groupId,
+          LeftGroupTombstone(
+            leftAt: removed?.updatedAt ?? now,
+            removalNotice: removed == null ? null : memberPayload(removed),
+          ),
+        );
       });
 
   /// Deletes [groupId] from this device only — nothing is sent. Meant for
   /// solo / local-only groups (see [groupExitKind]).
   Future<void> delete(String groupId) =>
       _runGroupWrite(ref, (s) => state = s, (w) async {
-        await _purge(w, groupId,
-            LeftGroupTombstone(leftAt: DateTime.now().millisecondsSinceEpoch));
+        await _purge(
+          w,
+          groupId,
+          LeftGroupTombstone(leftAt: DateTime.now().millisecondsSinceEpoch),
+        );
       });
 
   static Future<void> _purge(
-      _GroupWriteContext w, String groupId, LeftGroupTombstone t) async {
+    _GroupWriteContext w,
+    String groupId,
+    LeftGroupTombstone t,
+  ) async {
     if (w.db.isClosed) return; // account switched meanwhile — not ours to touch
     await w.settings.purgeGroupAsLeft(groupId, t);
   }
@@ -567,35 +643,39 @@ class GroupEditor extends _$GroupEditor {
   @override
   AsyncValue<void> build() => const AsyncData(null);
 
-  Future<void> edit(String groupId,
-          {required String name, required String currency}) =>
-      _runGroupWrite(ref, (s) => state = s, (w) async {
-        final current = await w.groups.getGroup(groupId);
-        if (current == null) return;
-        if (current.name == name && current.currency == currency) return;
-        final updated = GroupModel(
-          roomId: groupId,
-          name: name,
-          currency: currency,
-          updatedAt: nextLwwClock(current.updatedAt),
-        );
-        await w.groups.upsertGroupLww(GroupsCompanion(
-          roomId: Value(groupId),
-          name: Value(name),
-          currency: Value(currency),
-          updatedAt: Value(updated.updatedAt),
-        ));
-        await w.replicate(groupId, groupMetaEventType, groupMetaPayload(updated));
-      });
+  Future<void> edit(
+    String groupId, {
+    required String name,
+    required String currency,
+  }) => _runGroupWrite(ref, (s) => state = s, (w) async {
+    final current = await w.groups.getGroup(groupId);
+    if (current == null) return;
+    if (current.name == name && current.currency == currency) return;
+    final updated = GroupModel(
+      roomId: groupId,
+      name: name,
+      currency: currency,
+      updatedAt: nextLwwClock(current.updatedAt),
+    );
+    await w.groups.upsertGroupLww(
+      GroupsCompanion(
+        roomId: Value(groupId),
+        name: Value(name),
+        currency: Value(currency),
+        updatedAt: Value(updated.updatedAt),
+      ),
+    );
+    await w.replicate(groupId, groupMetaEventType, groupMetaPayload(updated));
+  });
 }
 
 /// Maps a [MemberModel] to a fully-populated companion (all columns set) for an
 /// LWW upsert.
 MembersCompanion memberCompanion(MemberModel m) => MembersCompanion(
-      groupId: Value(m.groupId),
-      userId: Value(m.userId),
-      displayName: Value(m.displayName),
-      matrixId: Value(m.matrixId),
-      status: Value(m.status),
-      updatedAt: Value(m.updatedAt),
-    );
+  groupId: Value(m.groupId),
+  userId: Value(m.userId),
+  displayName: Value(m.displayName),
+  matrixId: Value(m.matrixId),
+  status: Value(m.status),
+  updatedAt: Value(m.updatedAt),
+);

@@ -16,8 +16,10 @@ Future<Client> matrixClient(Ref ref) async {
   try {
     client = await buildMatrixClient();
   } catch (e, st) {
-    debugPrint('[client] buildMatrixClient FAILED after '
-        '${sw.elapsedMilliseconds}ms: $e\n$st');
+    debugPrint(
+      '[client] buildMatrixClient FAILED after '
+      '${sw.elapsedMilliseconds}ms: $e\n$st',
+    );
     rethrow;
   }
   debugPrint('[client] buildMatrixClient ${sw.elapsedMilliseconds}ms');
@@ -36,11 +38,15 @@ Future<Client> matrixClient(Ref ref) async {
   try {
     await client.init(waitForFirstSync: false);
   } catch (e, st) {
-    debugPrint('[client] init FAILED after ${sw.elapsedMilliseconds}ms: $e\n$st');
+    debugPrint(
+      '[client] init FAILED after ${sw.elapsedMilliseconds}ms: $e\n$st',
+    );
     rethrow;
   }
-  debugPrint('[client] init done (logged in: ${client.isLogged()}) '
-      '${sw.elapsedMilliseconds}ms');
+  debugPrint(
+    '[client] init done (logged in: ${client.isLogged()}) '
+    '${sw.elapsedMilliseconds}ms',
+  );
   return client;
 }
 

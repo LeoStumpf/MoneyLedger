@@ -18,17 +18,22 @@ import '../helpers/fake_ledger_network.dart';
 import '../helpers/in_memory_database.dart';
 
 void main() {
-  ProviderContainer makeUser(FakeMatrixNetwork net, String userId,
-      {required bool viaHostOnly}) {
+  ProviderContainer makeUser(
+    FakeMatrixNetwork net,
+    String userId, {
+    required bool viaHostOnly,
+  }) {
     final db = openTestDatabase();
     net.clientFor(userId);
-    final container = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      accountUserIdProvider.overrideWithValue(userId),
-      ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
-      pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
-      syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
-    ]);
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        accountUserIdProvider.overrideWithValue(userId),
+        ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
+        pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
+        syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
+      ],
+    );
     addTearDown(() {
       container.dispose();
       db.close();
@@ -53,10 +58,9 @@ void main() {
     expect(bob.read(ledgerSyncActiveProvider), isTrue);
 
     await alice.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
-    final groupId =
-        (await alice.read(groupsDaoProvider).watchAllGroups().first)
-            .first
-            .roomId;
+    final groupId = (await alice.read(groupsDaoProvider).watchAllGroups().first)
+        .first
+        .roomId;
     await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
     await net.settle();
 
@@ -66,10 +70,12 @@ void main() {
 
   test('the sync host is inactive while signed out', () async {
     final db = openTestDatabase();
-    final container = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      accountUserIdProvider.overrideWithValue(null),
-    ]);
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        accountUserIdProvider.overrideWithValue(null),
+      ],
+    );
     addTearDown(() {
       container.dispose();
       db.close();

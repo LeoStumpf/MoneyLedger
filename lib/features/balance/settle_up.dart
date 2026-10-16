@@ -56,7 +56,9 @@ Future<void> recordPaymentFlow(
   );
   if (draft == null || !context.mounted) return;
 
-  await ref.read(expenseAdderProvider.notifier).addSettlement(
+  await ref
+      .read(expenseAdderProvider.notifier)
+      .addSettlement(
         roomId: roomId,
         amountCents: draft.cents,
         currency: draft.currency,
@@ -66,10 +68,13 @@ Future<void> recordPaymentFlow(
 
   if (!context.mounted) return;
   final error = ref.read(expenseAdderProvider).error;
-  messenger.showSnackBar(SnackBar(
-      content: Text(error != null
-          ? l.failedWithError(error.toString())
-          : l.paymentRecorded)));
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        error != null ? l.failedWithError(error.toString()) : l.paymentRecorded,
+      ),
+    ),
+  );
 }
 
 /// The debt *Settle up* proposes for [myId] (G17): the first suggested

@@ -19,25 +19,35 @@ void main() {
   tearDown(() => db.close());
 
   test('exports a group to CSV that parses back to its expenses', () async {
-    await GroupsDao(db).upsertGroupLww(const GroupsCompanion(
+    await GroupsDao(db).upsertGroupLww(
+      const GroupsCompanion(
         roomId: Value('g1'),
         name: Value('Trip'),
         currency: Value('EUR'),
-        updatedAt: Value(1000)));
-    await MembersDao(db).upsertMemberLww(const MembersCompanion(
+        updatedAt: Value(1000),
+      ),
+    );
+    await MembersDao(db).upsertMemberLww(
+      const MembersCompanion(
         groupId: Value('g1'),
         userId: Value('pa'),
         displayName: Value('Alex'),
         matrixId: Value('@alex:x.org'),
         status: Value('active'),
-        updatedAt: Value(1)));
-    await MembersDao(db).upsertMemberLww(const MembersCompanion(
+        updatedAt: Value(1),
+      ),
+    );
+    await MembersDao(db).upsertMemberLww(
+      const MembersCompanion(
         groupId: Value('g1'),
         userId: Value('pb'),
         displayName: Value('Sam'),
         status: Value('active'),
-        updatedAt: Value(1)));
-    await ExpensesDao(db).upsertExpenseLww(const ExpensesCompanion(
+        updatedAt: Value(1),
+      ),
+    );
+    await ExpensesDao(db).upsertExpenseLww(
+      const ExpensesCompanion(
         id: Value('e1'),
         roomId: Value('g1'),
         description: Value('Dinner'),
@@ -46,10 +56,16 @@ void main() {
         paidBy: Value('pa'),
         splitsJson: Value('{"pa":2100,"pb":2100}'),
         createdAt: Value(1760000000000),
-        updatedAt: Value(1760000050000)));
+        updatedAt: Value(1760000050000),
+      ),
+    );
 
     final csv = await buildGroupCsvForExport(
-        GroupsDao(db), MembersDao(db), ExpensesDao(db), 'g1');
+      GroupsDao(db),
+      MembersDao(db),
+      ExpensesDao(db),
+      'g1',
+    );
 
     final parsed = parseGroupCsv(csv);
     expect(parsed.groupId, 'g1');
@@ -63,7 +79,11 @@ void main() {
 
   test('a missing group exports as empty', () async {
     final csv = await buildGroupCsvForExport(
-        GroupsDao(db), MembersDao(db), ExpensesDao(db), 'nope');
+      GroupsDao(db),
+      MembersDao(db),
+      ExpensesDao(db),
+      'nope',
+    );
     expect(csv, isEmpty);
   });
 

@@ -12,15 +12,27 @@ import 'package:money_ledger/models/member_model.dart';
 void main() {
   group('buildDigestContent', () {
     test('maps records to id→updatedAt, tombstones included', () {
-      const group =
-          GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR', updatedAt: 7);
+      const group = GroupModel(
+        roomId: 'g1',
+        name: 'Trip',
+        currency: 'EUR',
+        updatedAt: 7,
+      );
       final content = buildDigestContent(
         group,
         [
           const MemberModel(
-              groupId: 'g1', userId: '@a:x.org', status: 'active', updatedAt: 1),
+            groupId: 'g1',
+            userId: '@a:x.org',
+            status: 'active',
+            updatedAt: 1,
+          ),
           const MemberModel(
-              groupId: 'g1', userId: '@b:y.org', status: 'removed', updatedAt: 2),
+            groupId: 'g1',
+            userId: '@b:y.org',
+            status: 'removed',
+            updatedAt: 2,
+          ),
         ],
         [
           const ExpenseModel(
@@ -86,9 +98,7 @@ void main() {
   });
 
   group('compareDigest', () {
-    const localMembers = {
-      '@a:x.org': (status: 'active', updatedAt: 1),
-    };
+    const localMembers = {'@a:x.org': (status: 'active', updatedAt: 1)};
     const remoteMembers = {
       '@a:x.org': {'status': 'active', 'updated_at': 1},
     };
@@ -98,16 +108,15 @@ void main() {
       Map<String, dynamic> expenses = const {},
       Map<String, dynamic> settlements = const {},
       Map<String, dynamic> members = remoteMembers,
-    }) =>
-        {
-          'v': 1,
-          'group': 'g1',
-          'reply': false,
-          'meta_updated_at': meta,
-          'members': members,
-          'expenses': expenses,
-          'settlements': settlements,
-        };
+    }) => {
+      'v': 1,
+      'group': 'g1',
+      'reply': false,
+      'meta_updated_at': meta,
+      'members': members,
+      'expenses': expenses,
+      'settlements': settlements,
+    };
 
     test('identical digests', () {
       final diff = compareDigest(
@@ -137,8 +146,7 @@ void main() {
       expect(diff.identical, false);
     });
 
-    test('sender has a stale revision — we re-send it (covers tombstones)',
-        () {
+    test('sender has a stale revision — we re-send it (covers tombstones)', () {
       // e1 was deleted locally (tombstone at 20), the sender still has the
       // live revision (10): the tombstone must be re-sent, never the reverse.
       final diff = compareDigest(
@@ -152,43 +160,49 @@ void main() {
       expect(diff.senderHasNewer, false);
     });
 
-    test('sender has newer/unknown records — flagged so our reply repairs us',
-        () {
-      final diff = compareDigest(
-        localMetaUpdatedAt: 5,
-        localMembers: localMembers,
-        localExpenses: {'e1': 10},
-        localSettlements: {'s1': 30},
-        remote: remote(
-            expenses: {'e1': 15, 'e9': 1}, settlements: {'s1': 30}),
-      );
-      expect(diff.senderHasNewer, true);
-      expect(diff.expenseIdsToSend, isEmpty);
-      expect(diff.identical, false);
-    });
+    test(
+      'sender has newer/unknown records — flagged so our reply repairs us',
+      () {
+        final diff = compareDigest(
+          localMetaUpdatedAt: 5,
+          localMembers: localMembers,
+          localExpenses: {'e1': 10},
+          localSettlements: {'s1': 30},
+          remote: remote(
+            expenses: {'e1': 15, 'e9': 1},
+            settlements: {'s1': 30},
+          ),
+        );
+        expect(diff.senderHasNewer, true);
+        expect(diff.expenseIdsToSend, isEmpty);
+        expect(diff.identical, false);
+      },
+    );
 
-    test('newer local group meta is re-sent; newer remote meta flags sender',
-        () {
-      final newerLocal = compareDigest(
-        localMetaUpdatedAt: 9,
-        localMembers: localMembers,
-        localExpenses: {},
-        localSettlements: {},
-        remote: remote(meta: 5),
-      );
-      expect(newerLocal.sendGroupMeta, true);
-      expect(newerLocal.identical, false);
+    test(
+      'newer local group meta is re-sent; newer remote meta flags sender',
+      () {
+        final newerLocal = compareDigest(
+          localMetaUpdatedAt: 9,
+          localMembers: localMembers,
+          localExpenses: {},
+          localSettlements: {},
+          remote: remote(meta: 5),
+        );
+        expect(newerLocal.sendGroupMeta, true);
+        expect(newerLocal.identical, false);
 
-      final newerRemote = compareDigest(
-        localMetaUpdatedAt: 3,
-        localMembers: localMembers,
-        localExpenses: {},
-        localSettlements: {},
-        remote: remote(meta: 5),
-      );
-      expect(newerRemote.sendGroupMeta, false);
-      expect(newerRemote.senderHasNewer, true);
-    });
+        final newerRemote = compareDigest(
+          localMetaUpdatedAt: 3,
+          localMembers: localMembers,
+          localExpenses: {},
+          localSettlements: {},
+          remote: remote(meta: 5),
+        );
+        expect(newerRemote.sendGroupMeta, false);
+        expect(newerRemote.senderHasNewer, true);
+      },
+    );
 
     test('differing members break exactness but trigger no record sends', () {
       final diff = compareDigest(

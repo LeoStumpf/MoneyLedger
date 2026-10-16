@@ -79,8 +79,10 @@ class BufferedInbox {
     if (_backlog.length > capacity) {
       _backlog.removeFirst();
       if (_dropped++ == 0) {
-        debugPrint('[transport] inbound backlog full ($capacity) — dropping '
-            'oldest; anti-entropy will repair');
+        debugPrint(
+          '[transport] inbound backlog full ($capacity) — dropping '
+          'oldest; anti-entropy will repair',
+        );
       }
     }
     if (_controller.hasListener) _scheduleReplay();

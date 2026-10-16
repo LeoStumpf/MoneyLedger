@@ -48,14 +48,17 @@ class CsvImporter extends _$CsvImporter {
     final groupId = parsed.groupId ?? const Uuid().v7();
     final existing = await groupsDao.getGroup(groupId);
     if (existing == null) {
-      final currency =
-          parsed.rows.isNotEmpty ? parsed.rows.first.currency : 'EUR';
-      await groupsDao.upsertGroupLww(GroupsCompanion(
-        roomId: Value(groupId),
-        name: Value(parsed.groupName ?? 'Imported group'),
-        currency: Value(currency),
-        updatedAt: Value(now),
-      ));
+      final currency = parsed.rows.isNotEmpty
+          ? parsed.rows.first.currency
+          : 'EUR';
+      await groupsDao.upsertGroupLww(
+        GroupsCompanion(
+          roomId: Value(groupId),
+          name: Value(parsed.groupName ?? 'Imported group'),
+          currency: Value(currency),
+          updatedAt: Value(now),
+        ),
+      );
     }
 
     // 2) Resolve every referenced name to a participant id, creating local
@@ -72,13 +75,15 @@ class CsvImporter extends _$CsvImporter {
     for (final name in names) {
       if (pidByName.containsKey(name)) continue;
       final pid = const Uuid().v7();
-      await membersDao.upsertMemberLww(MembersCompanion(
-        groupId: Value(groupId),
-        userId: Value(pid),
-        displayName: Value(name),
-        status: const Value('active'),
-        updatedAt: Value(now),
-      ));
+      await membersDao.upsertMemberLww(
+        MembersCompanion(
+          groupId: Value(groupId),
+          userId: Value(pid),
+          displayName: Value(name),
+          status: const Value('active'),
+          updatedAt: Value(now),
+        ),
+      );
       pidByName[name] = pid;
     }
 
@@ -90,18 +95,20 @@ class CsvImporter extends _$CsvImporter {
         for (final e in row.sharesByName.entries)
           if (pidByName[e.key] != null) pidByName[e.key]!: e.value,
       };
-      await expensesDao.upsertExpenseLww(ExpensesCompanion(
-        id: Value(id),
-        roomId: Value(groupId),
-        description: Value(row.description),
-        amountCents: Value(row.amountCents),
-        currency: Value(row.currency),
-        paidBy: Value(pidByName[row.paidByName] ?? row.paidByName),
-        splitsJson: Value(jsonEncode(splits)),
-        createdAt: Value(row.createdAt),
-        updatedAt: Value(row.updatedAt),
-        deleted: const Value(false),
-      ));
+      await expensesDao.upsertExpenseLww(
+        ExpensesCompanion(
+          id: Value(id),
+          roomId: Value(groupId),
+          description: Value(row.description),
+          amountCents: Value(row.amountCents),
+          currency: Value(row.currency),
+          paidBy: Value(pidByName[row.paidByName] ?? row.paidByName),
+          splitsJson: Value(jsonEncode(splits)),
+          createdAt: Value(row.createdAt),
+          updatedAt: Value(row.updatedAt),
+          deleted: const Value(false),
+        ),
+      );
       count++;
     }
     return count;

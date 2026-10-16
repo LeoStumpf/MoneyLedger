@@ -21,7 +21,8 @@ Future<void> testExecutable(Future<void> Function() testMain) async {
 
 String? _findSqlite3() {
   // Prefer the library bundled by the build hooks (populated by `flutter pub get`)
-  final bundled = '.dart_tool/hooks_runner/shared/sqlite3/build/download-1630fa31/libsqlite3.so';
+  final bundled =
+      '.dart_tool/hooks_runner/shared/sqlite3/build/download-1630fa31/libsqlite3.so';
   if (File(bundled).existsSync()) return bundled;
   // Fall back to system sqlite3 (present on most Linux distros)
   return null;

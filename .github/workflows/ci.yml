@@ -1,0 +1,62 @@
+# CI (G15): codegen freshness, formatting, analysis, the full offline test
+# suite and the web release build — the same gates as ./build.sh.
+#
+# The Android build is deliberately skipped: flutter_vodozemac compiles the
+# vodozemac Rust crate via cargokit (needs rustup + 4 Android targets + the
+# NDK) and takes many minutes. Web uses the prebuilt wasm in web/pkg/.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System SQLite for the Drift tests
+        # test/flutter_test_config.dart falls back to the system libsqlite3
+        # when the build-hook copy isn't where it expects it.
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Keep in sync with the local toolchain (`flutter --version`).
+          flutter-version: 3.44.0
+          # Caches the Flutter SDK and the pub cache between runs.
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Code generation (Drift + Riverpod)
+        run: dart run build_runner build
+
+      - name: Generated code is up to date
+        # pub get also regenerates lib/l10n/app_localizations*.dart.
+        run: git diff --exit-code
+
+      - name: Formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Tests
+        run: flutter test --reporter compact
+
+      - name: Web release build
+        run: flutter build web --release

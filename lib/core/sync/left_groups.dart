@@ -25,9 +25,9 @@ class LeftGroupTombstone {
   const LeftGroupTombstone({required this.leftAt, this.removalNotice});
 
   String encode() => jsonEncode({
-        'left_at': leftAt,
-        if (removalNotice != null) 'member': removalNotice,
-      });
+    'left_at': leftAt,
+    if (removalNotice != null) 'member': removalNotice,
+  });
 
   static LeftGroupTombstone? decode(String? raw) {
     if (raw == null) return null;
@@ -36,8 +36,7 @@ class LeftGroupTombstone {
       final member = m['member'];
       return LeftGroupTombstone(
         leftAt: m['left_at'] as int? ?? 0,
-        removalNotice:
-            member is Map ? Map<String, dynamic>.from(member) : null,
+        removalNotice: member is Map ? Map<String, dynamic>.from(member) : null,
       );
     } catch (_) {
       // A corrupt value still means "left" — never resurrect on parse errors.

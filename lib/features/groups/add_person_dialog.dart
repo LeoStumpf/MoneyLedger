@@ -12,7 +12,10 @@ import 'group_provider.dart';
 ///    name is optional — left blank, the account's Matrix profile display
 ///    name is used (else its localpart).
 Future<void> showAddPersonDialog(
-    BuildContext context, WidgetRef ref, String roomId) async {
+  BuildContext context,
+  WidgetRef ref,
+  String roomId,
+) async {
   final messenger = ScaffoldMessenger.of(context);
   final l = context.l10n;
   final result = await showDialog<({String name, String matrixId})>(
@@ -26,14 +29,22 @@ Future<void> showAddPersonDialog(
   if (mxid.isEmpty) {
     await notifier.addLocal(roomId, result.name);
   } else {
-    await notifier.add(roomId, mxid,
-        displayName: result.name.isEmpty ? null : result.name);
+    await notifier.add(
+      roomId,
+      mxid,
+      displayName: result.name.isEmpty ? null : result.name,
+    );
   }
   final error = ref.read(memberAdderProvider).error;
-  messenger.showSnackBar(SnackBar(
-      content: Text(error != null
-          ? l.failedWithError(error.toString())
-          : l.addedMember(result.name.isNotEmpty ? result.name : mxid))));
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        error != null
+            ? l.failedWithError(error.toString())
+            : l.addedMember(result.name.isNotEmpty ? result.name : mxid),
+      ),
+    ),
+  );
 }
 
 bool _isMatrixId(String s) => s.startsWith('@') && s.contains(':');

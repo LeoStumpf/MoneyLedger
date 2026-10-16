@@ -398,6 +398,12 @@ abstract class AppLocalizations {
   /// **'Deleted \"{group}\"'**
   String deletedGroup(Object group);
 
+  /// Snackbar when writing the CSV export failed (G15).
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed: {error}'**
+  String exportFailed(Object error);
+
   /// No description provided for @exportedFile.
   ///
   /// In en, this message translates to:

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/expenses/expenses_provider.dart';
+import '../timer_factory.dart';
 
 part 'self_recovery.g.dart';
 
@@ -18,16 +19,27 @@ part 'self_recovery.g.dart';
 /// normally answered as soon as the other device opens the app — the retries
 /// cover a request that was lost or couldn't be sent yet (encryption not ready
 /// right after login, a transient send failure).
-final selfResyncRetryDelaysProvider = Provider<List<Duration>>((ref) => const [
-      Duration(seconds: 5),
-      Duration(seconds: 30),
-      Duration(minutes: 2),
-    ]);
+final selfResyncRetryDelaysProvider = Provider<List<Duration>>(
+  (ref) => const [
+    Duration(seconds: 5),
+    Duration(seconds: 30),
+    Duration(minutes: 2),
+  ],
+);
 
 /// How long the groups page shows "Restoring your groups…" before falling back
 /// to the normal empty state.
-final selfRecoveryTimeoutProvider =
-    Provider<Duration>((ref) => const Duration(minutes: 3));
+final selfRecoveryTimeoutProvider = Provider<Duration>(
+  (ref) => const Duration(minutes: 3),
+);
+
+/// Creates the one-shot timers of the new-device recovery (the retry backoff
+/// in `SyncEngine` and the "Restoring…" UI timeout). Production uses real
+/// [Timer]s; tests inject manually fired timers so the backoff/timeout logic
+/// is checked without depending on wall-clock timing (G15).
+final selfRecoveryTimerFactoryProvider = Provider<TimerFactory>(
+  (ref) => Timer.new,
+);
 
 /// Whether this device's first-login recovery is outstanding: the account DB
 /// was empty at start-up, a self `resync_request` is out, and nothing has been
@@ -53,7 +65,7 @@ class SelfRecovery extends _$SelfRecovery {
   void begin(Duration timeout) {
     if (!ref.mounted) return;
     _timeout?.cancel();
-    _timeout = Timer(timeout, finish);
+    _timeout = ref.read(selfRecoveryTimerFactoryProvider)(timeout, finish);
     state = true;
   }
 

@@ -54,8 +54,11 @@ class EmptyState extends StatelessWidget {
                           ],
                         ),
                       ),
-                      child: Icon(icon,
-                          size: 48, color: scheme.onPrimaryContainer),
+                      child: Icon(
+                        icon,
+                        size: 48,
+                        color: scheme.onPrimaryContainer,
+                      ),
                     ),
                     if (busy)
                       const SizedBox(
@@ -67,15 +70,20 @@ class EmptyState extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: Insets.xl),
-              Text(title,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge,
+              ),
               if (body != null) ...[
                 const SizedBox(height: Insets.s),
-                Text(body!,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: scheme.onSurfaceVariant)),
+                Text(
+                  body!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
               if (actions.isNotEmpty) ...[
                 const SizedBox(height: Insets.xl),

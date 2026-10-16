@@ -17,10 +17,12 @@ void main() {
   ProviderContainer makeUser(FakeMatrixNetwork net, String userId) {
     final db = openTestDatabase();
     net.clientFor(userId);
-    final container = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
-    ]);
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
+      ],
+    );
     addTearDown(() {
       container.dispose();
       db.close();
@@ -30,18 +32,18 @@ void main() {
   }
 
   Map<String, dynamic> forgedExpense(String groupId) => {
-        'v': 1,
-        'id': 'forged-1',
-        'group': groupId,
-        'description': 'Fake',
-        'amount': 9999,
-        'currency': 'EUR',
-        'paid_by': '@alice:x.org',
-        'split': {'@alice:x.org': 9999},
-        'created_at': 1000,
-        'updated_at': 2000,
-        'deleted': false,
-      };
+    'v': 1,
+    'id': 'forged-1',
+    'group': groupId,
+    'description': 'Fake',
+    'amount': 9999,
+    'currency': 'EUR',
+    'paid_by': '@alice:x.org',
+    'split': {'@alice:x.org': 9999},
+    'created_at': 1000,
+    'updated_at': 2000,
+    'deleted': false,
+  };
 
   test('a forged expense from a non-member is dropped', () async {
     final net = FakeMatrixNetwork();
@@ -50,18 +52,24 @@ void main() {
     await net.settle();
 
     await alice.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
-    final groupId =
-        (await alice.read(groupsDaoProvider).watchAllGroups().first).first.roomId;
+    final groupId = (await alice.read(groupsDaoProvider).watchAllGroups().first)
+        .first
+        .roomId;
     await net.settle();
 
     // Mallory, who is not a member, pushes a forged expense straight at Alice.
     await net
         .clientFor('@mallory:evil.org')
-        .sendToUsers({'@alice:x.org'}, expenseEventType, forgedExpense(groupId));
+        .sendToUsers(
+          {'@alice:x.org'},
+          expenseEventType,
+          forgedExpense(groupId),
+        );
     await net.settle();
 
-    final expenses =
-        await alice.read(expensesDaoProvider).getExpensesForRoom(groupId);
+    final expenses = await alice
+        .read(expensesDaoProvider)
+        .getExpensesForRoom(groupId);
     expect(expenses, isEmpty); // gate dropped it
   });
 
@@ -72,30 +80,37 @@ void main() {
     await net.settle();
 
     await alice.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
-    final groupId =
-        (await alice.read(groupsDaoProvider).watchAllGroups().first).first.roomId;
+    final groupId = (await alice.read(groupsDaoProvider).watchAllGroups().first)
+        .first
+        .roomId;
     // Bob is a real, claimed member (invited + self-joins).
-    await alice.read(memberAdderProvider.notifier).invite(groupId, '@bob:y.org');
+    await alice
+        .read(memberAdderProvider.notifier)
+        .invite(groupId, '@bob:y.org');
     await net.settle();
     await bob.read(memberAdderProvider.notifier).joinAsNew(groupId, 'Bob');
     await net.settle();
 
     // Now a record from Bob (a member) is accepted by Alice.
-    await bob.read(expenseAdderProvider.notifier).addExpense(
+    await bob
+        .read(expenseAdderProvider.notifier)
+        .addExpense(
           roomId: groupId,
           description: 'Lunch',
           amountCents: 2000,
           currency: 'EUR',
-          paidBy: (await bob
-                  .read(membersDaoProvider)
-                  .memberByMatrixId(groupId, '@bob:y.org'))!
-              .userId,
+          paidBy:
+              (await bob
+                      .read(membersDaoProvider)
+                      .memberByMatrixId(groupId, '@bob:y.org'))!
+                  .userId,
           splits: const {},
         );
     await net.settle();
 
-    final expenses =
-        await alice.read(expensesDaoProvider).getExpensesForRoom(groupId);
+    final expenses = await alice
+        .read(expensesDaoProvider)
+        .getExpensesForRoom(groupId);
     expect(expenses.map((e) => e.description), contains('Lunch'));
   });
 }

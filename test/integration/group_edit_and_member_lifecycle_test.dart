@@ -28,17 +28,23 @@ const bob = '@bob:y.org';
 void main() {
   final dbs = <ProviderContainer, AppDatabase>{};
 
-  ProviderContainer makeUser(FakeMatrixNetwork net, String userId,
-      {String device = 'D1'}) {
+  ProviderContainer makeUser(
+    FakeMatrixNetwork net,
+    String userId, {
+    String device = 'D1',
+  }) {
     final db = openTestDatabase();
     net.clientFor(userId, device: device);
-    final container = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      ledgerTransportProvider
-          .overrideWith((ref) => net.clientFor(userId, device: device)),
-      pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
-      syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
-    ]);
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith(
+          (ref) => net.clientFor(userId, device: device),
+        ),
+        pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
+        syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
+      ],
+    );
     dbs[container] = db;
     addTearDown(() {
       container.dispose();
@@ -56,8 +62,13 @@ void main() {
   }
 
   Future<void> addDinner(
-      ProviderContainer c, String groupId, Map<String, int> split) async {
-    await c.read(expenseAdderProvider.notifier).addExpense(
+    ProviderContainer c,
+    String groupId,
+    Map<String, int> split,
+  ) async {
+    await c
+        .read(expenseAdderProvider.notifier)
+        .addExpense(
           roomId: groupId,
           description: 'Dinner',
           amountCents: split.values.fold(0, (a, b) => a + b),
@@ -88,8 +99,13 @@ void main() {
       expect((await b.read(groupsDaoProvider).getGroup(g))!.name, 'Trip');
 
       await tick();
-      await b.read(groupEditorProvider.notifier).edit(g,
-          name: 'Ski trip', currency: 'CHF'); // any active member may edit
+      await b
+          .read(groupEditorProvider.notifier)
+          .edit(
+            g,
+            name: 'Ski trip',
+            currency: 'CHF',
+          ); // any active member may edit
       await n.settle();
 
       expect(b.read(groupEditorProvider).hasError, isFalse);
@@ -100,37 +116,44 @@ void main() {
       }
     });
 
-    test('concurrent renames converge to the latest clock (via anti-entropy)',
-        () async {
-      final n = FakeMatrixNetwork();
-      final a = makeUser(n, alice);
-      final b = makeUser(n, bob);
-      final g = await createGroup(a, n);
-      await a.read(memberAdderProvider.notifier).add(g, bob);
-      await n.settle();
+    test(
+      'concurrent renames converge to the latest clock (via anti-entropy)',
+      () async {
+        final n = FakeMatrixNetwork();
+        final a = makeUser(n, alice);
+        final b = makeUser(n, bob);
+        final g = await createGroup(a, n);
+        await a.read(memberAdderProvider.notifier).add(g, bob);
+        await n.settle();
 
-      // Both rename while partitioned: neither meta relay arrives.
-      n.dropWhere = (_, _, _) => true;
-      await tick();
-      await a.read(groupEditorProvider.notifier)
-          .edit(g, name: 'Alice name', currency: 'EUR');
-      await tick();
-      await b.read(groupEditorProvider.notifier)
-          .edit(g, name: 'Bob name', currency: 'USD');
-      await n.settle();
-      n.dropWhere = null;
-      expect((await a.read(groupsDaoProvider).getGroup(g))!.name, 'Alice name');
+        // Both rename while partitioned: neither meta relay arrives.
+        n.dropWhere = (_, _, _) => true;
+        await tick();
+        await a
+            .read(groupEditorProvider.notifier)
+            .edit(g, name: 'Alice name', currency: 'EUR');
+        await tick();
+        await b
+            .read(groupEditorProvider.notifier)
+            .edit(g, name: 'Bob name', currency: 'USD');
+        await n.settle();
+        n.dropWhere = null;
+        expect(
+          (await a.read(groupsDaoProvider).getGroup(g))!.name,
+          'Alice name',
+        );
 
-      // The next digest exchange repairs the meta (meta_updated_at): the
-      // later edit (Bob's) wins on both sides.
-      await a.read(syncEngineProvider).broadcastDigests();
-      await n.settle();
-      for (final c in [a, b]) {
-        final group = (await c.read(groupsDaoProvider).getGroup(g))!;
-        expect(group.name, 'Bob name');
-        expect(group.currency, 'USD');
-      }
-    });
+        // The next digest exchange repairs the meta (meta_updated_at): the
+        // later edit (Bob's) wins on both sides.
+        await a.read(syncEngineProvider).broadcastDigests();
+        await n.settle();
+        for (final c in [a, b]) {
+          final group = (await c.read(groupsDaoProvider).getGroup(g))!;
+          expect(group.name, 'Bob name');
+          expect(group.currency, 'USD');
+        }
+      },
+    );
 
     test('a removed member cannot rename (peers drop the meta)', () async {
       final n = FakeMatrixNetwork();
@@ -144,7 +167,8 @@ void main() {
       await n.settle();
 
       await tick();
-      await b.read(groupEditorProvider.notifier)
+      await b
+          .read(groupEditorProvider.notifier)
           .edit(g, name: 'Hijack', currency: 'EUR');
       await n.settle();
       expect((await a.read(groupsDaoProvider).getGroup(g))!.name, 'Trip');
@@ -160,14 +184,17 @@ void main() {
       final g = await createGroup(a, n);
       // A local placeholder "Bobby" with history, then Bob claims it.
       await a.read(memberAdderProvider.notifier).addLocal(g, 'Bobby');
-      final placeholder = (await membersOf(a, g))
-          .firstWhere((m) => m.displayName == 'Bobby')
-          .userId;
+      final placeholder = (await membersOf(
+        a,
+        g,
+      )).firstWhere((m) => m.displayName == 'Bobby').userId;
       await addDinner(a, g, {alice: 1500, placeholder: 1500});
       await a.read(memberAdderProvider.notifier).claim(g, placeholder, bob);
       await n.settle();
-      expect((await b.read(membersDaoProvider).memberByMatrixId(g, bob))!
-          .userId, placeholder);
+      expect(
+        (await b.read(membersDaoProvider).memberByMatrixId(g, bob))!.userId,
+        placeholder,
+      );
 
       await tick();
       await b.read(groupExiterProvider.notifier).leave(g);
@@ -180,74 +207,106 @@ void main() {
       expect(a.read(memberAdderProvider).hasError, isFalse);
 
       for (final c in [a, b]) {
-        final claims =
-            (await membersOf(c, g)).where((m) => m.matrixId == bob).toList();
+        final claims = (await membersOf(
+          c,
+          g,
+        )).where((m) => m.matrixId == bob).toList();
         expect(claims, hasLength(1), reason: 'exactly one participant for Bob');
         expect(claims.single.userId, placeholder);
         expect(claims.single.displayName, 'Bobby');
         expect(claims.single.isActive, isTrue);
         // The lookup that used to throw on duplicates.
-        expect((await c.read(membersDaoProvider).memberByMatrixId(g, bob))!
-            .userId, placeholder);
+        expect(
+          (await c.read(membersDaoProvider).memberByMatrixId(g, bob))!.userId,
+          placeholder,
+        );
       }
       expect(await hasGroup(b, g), isTrue);
-      expect(await b.read(expensesDaoProvider).getExpensesForRoom(g),
-          hasLength(1));
+      expect(
+        await b.read(expensesDaoProvider).getExpensesForRoom(g),
+        hasLength(1),
+      );
     });
 
-    test('re-adding wins over a removed record stamped by a faster clock',
-        () async {
-      final n = FakeMatrixNetwork();
-      final a = makeUser(n, alice);
-      final b = makeUser(n, bob);
-      final g = await createGroup(a, n);
-      await a.read(memberAdderProvider.notifier).add(g, bob);
-      await n.settle();
+    test(
+      're-adding wins over a removed record stamped by a faster clock',
+      () async {
+        final n = FakeMatrixNetwork();
+        final a = makeUser(n, alice);
+        final b = makeUser(n, bob);
+        final g = await createGroup(a, n);
+        await a.read(memberAdderProvider.notifier).add(g, bob);
+        await n.settle();
 
-      // Bob's device clock runs 2 minutes ahead: his leave notice (and his
-      // tombstone's left_at) are stamped in Alice's future.
-      final future = DateTime.now().millisecondsSinceEpoch + 120000;
-      final removed = MemberModel(
+        // Bob's device clock runs 2 minutes ahead: his leave notice (and his
+        // tombstone's left_at) are stamped in Alice's future.
+        final future = DateTime.now().millisecondsSinceEpoch + 120000;
+        final removed = MemberModel(
           groupId: g,
           userId: bob,
           displayName: 'bob',
           matrixId: bob,
           status: 'removed',
-          updatedAt: future);
-      await a.read(membersDaoProvider).upsertMemberLww(memberCompanion(removed));
-      await dbs[b]!.purgeGroup(g);
-      await SettingsDao(dbs[b]!).markGroupLeft(
-          g, LeftGroupTombstone(
-              leftAt: removed.updatedAt, removalNotice: memberPayload(removed)));
+          updatedAt: future,
+        );
+        await a
+            .read(membersDaoProvider)
+            .upsertMemberLww(memberCompanion(removed));
+        await dbs[b]!.purgeGroup(g);
+        await SettingsDao(dbs[b]!).markGroupLeft(
+          g,
+          LeftGroupTombstone(
+            leftAt: removed.updatedAt,
+            removalNotice: memberPayload(removed),
+          ),
+        );
 
-      await a.read(memberAdderProvider.notifier).add(g, bob);
-      await n.settle();
+        await a.read(memberAdderProvider.notifier).add(g, bob);
+        await n.settle();
 
-      final readded = (await a.read(membersDaoProvider).memberByMatrixId(g, bob))!;
-      expect(readded.isActive, isTrue, reason: 'local LWW accepted the re-add');
-      expect(readded.updatedAt, greaterThan(future));
-      expect(await hasGroup(b, g), isTrue,
-          reason: "Bob's tombstone check (updated_at > left_at) passes");
-    });
+        final readded = (await a
+            .read(membersDaoProvider)
+            .memberByMatrixId(g, bob))!;
+        expect(
+          readded.isActive,
+          isTrue,
+          reason: 'local LWW accepted the re-add',
+        );
+        expect(readded.updatedAt, greaterThan(future));
+        expect(
+          await hasGroup(b, g),
+          isTrue,
+          reason: "Bob's tombstone check (updated_at > left_at) passes",
+        );
+      },
+    );
 
     test('memberByMatrixId tolerates pre-existing duplicate claims', () async {
       final db = openTestDatabase();
       addTearDown(db.close);
       final dao = MembersDao(db);
-      MembersCompanion row(String id, String status, int at) => MembersCompanion(
-          groupId: const Value('g'),
-          userId: Value(id),
-          displayName: Value(id),
-          matrixId: const Value(bob),
-          status: Value(status),
-          updatedAt: Value(at));
+      MembersCompanion row(String id, String status, int at) =>
+          MembersCompanion(
+            groupId: const Value('g'),
+            userId: Value(id),
+            displayName: Value(id),
+            matrixId: const Value(bob),
+            status: Value(status),
+            updatedAt: Value(at),
+          );
       await dao.upsertMemberLww(row('p-old', 'removed', 5));
       await dao.upsertMemberLww(row(bob, 'active', 3));
-      expect((await dao.memberByMatrixId('g', bob))!.userId, bob,
-          reason: 'active preferred');
+      expect(
+        (await dao.memberByMatrixId('g', bob))!.userId,
+        bob,
+        reason: 'active preferred',
+      );
       await dao.upsertMemberLww(row(bob, 'removed', 4));
-      expect((await dao.memberByMatrixId('g', bob))!.userId, 'p-old',
-          reason: 'then newest');
+      expect(
+        (await dao.memberByMatrixId('g', bob))!.userId,
+        'p-old',
+        reason: 'then newest',
+      );
     });
   });
 
@@ -274,8 +333,10 @@ void main() {
       final t = await SettingsDao(dbs[b2]!).leftGroup(g);
       expect(t, isNotNull);
       expect(t!.removalNotice?['status'], 'removed');
-      expect((await a.read(membersDaoProvider).memberByMatrixId(g, bob))!
-          .status, 'removed');
+      expect(
+        (await a.read(membersDaoProvider).memberByMatrixId(g, bob))!.status,
+        'removed',
+      );
 
       // Alice's digests (and D2's) don't resurrect it.
       await a.read(syncEngineProvider).broadcastDigests();
@@ -287,8 +348,10 @@ void main() {
       await n.settle();
       for (final c in [b1, b2]) {
         expect(await hasGroup(c, g), isTrue);
-        expect(await c.read(expensesDaoProvider).getExpensesForRoom(g),
-            hasLength(1));
+        expect(
+          await c.read(expensesDaoProvider).getExpensesForRoom(g),
+          hasLength(1),
+        );
         expect(await SettingsDao(dbs[c]!).leftGroup(g), isNull);
       }
     });
@@ -310,8 +373,10 @@ void main() {
 
       for (final c in [b1, b2]) {
         expect(await hasGroup(c, g), isTrue);
-        expect(await c.read(expensesDaoProvider).getExpensesForRoom(g),
-            hasLength(1));
+        expect(
+          await c.read(expensesDaoProvider).getExpensesForRoom(g),
+          hasLength(1),
+        );
         expect(await SettingsDao(dbs[c]!).leftGroup(g), isNull);
         final me = await c.read(currentParticipantProvider(g).future);
         expect(me!.isActive, isFalse);
@@ -321,13 +386,23 @@ void main() {
     });
 
     test('isOwnLeaveFromOtherDevice', () {
-      Map<String, dynamic> rec(String mxid, String status) =>
-          {'matrix_id': mxid, 'status': status, 'participant_id': 'p'};
+      Map<String, dynamic> rec(String mxid, String status) => {
+        'matrix_id': mxid,
+        'status': status,
+        'participant_id': 'p',
+      };
       bool check(String sender, Map<String, dynamic> c) =>
           LedgerSyncer.isOwnLeaveFromOtherDevice(
-              senderId: sender, content: c, myMxid: bob);
+            senderId: sender,
+            content: c,
+            myMxid: bob,
+          );
       expect(check(bob, rec(bob, 'removed')), isTrue);
-      expect(check(alice, rec(bob, 'removed')), isFalse, reason: 'removed by peer');
+      expect(
+        check(alice, rec(bob, 'removed')),
+        isFalse,
+        reason: 'removed by peer',
+      );
       expect(check(bob, rec(bob, 'active')), isFalse);
       expect(check(bob, rec(alice, 'removed')), isFalse);
     });

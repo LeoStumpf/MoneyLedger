@@ -18,8 +18,9 @@ Widget _app({Locale locale = const Locale('en')}) {
     routes: [
       GoRoute(path: '/about', builder: (_, _) => const AboutPage()),
       GoRoute(
-          path: '/about/privacy',
-          builder: (_, _) => const PrivacyPolicyPage()),
+        path: '/about/privacy',
+        builder: (_, _) => const PrivacyPolicyPage(),
+      ),
     ],
   );
   return ProviderScope(
@@ -46,8 +47,9 @@ void main() {
     expect(kSourceCodeUrl, 'https://github.com/LeoStumpf/MoneyLedger');
   });
 
-  testWidgets('"Open-source licenses" opens the Flutter licenses page',
-      (tester) async {
+  testWidgets('"Open-source licenses" opens the Flutter licenses page', (
+    tester,
+  ) async {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('openSourceLicensesTile')));
@@ -90,8 +92,11 @@ void main() {
     for (final k in keys(enArb)) {
       Set<String> names(String v) =>
           placeholder.allMatches(v).map((m) => m[1]!).toSet();
-      expect(names(deArb[k] as String), names(enArb[k] as String),
-          reason: 'placeholders of "$k"');
+      expect(
+        names(deArb[k] as String),
+        names(enArb[k] as String),
+        reason: 'placeholders of "$k"',
+      );
     }
   });
 }

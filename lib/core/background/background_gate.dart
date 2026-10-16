@@ -96,9 +96,11 @@ class AppIsolateGate {
         break;
       }
     }
-    debugPrint('[bg-gate] background round '
-        '${stopped ? 'stopped' : 'did not stop in time'} '
-        'after ${sw.elapsedMilliseconds} ms');
+    debugPrint(
+      '[bg-gate] background round '
+      '${stopped ? 'stopped' : 'did not stop in time'} '
+      'after ${sw.elapsedMilliseconds} ms',
+    );
   }
 
   Future<void> _onMessage(dynamic msg) async {
@@ -137,7 +139,9 @@ class BackgroundIsolateGate {
     final port = ReceivePort();
     port.listen(_onMessage);
     if (!IsolateNameServer.registerPortWithName(
-        port.sendPort, _backgroundPortName)) {
+      port.sendPort,
+      _backgroundPortName,
+    )) {
       port.close();
       return false;
     }

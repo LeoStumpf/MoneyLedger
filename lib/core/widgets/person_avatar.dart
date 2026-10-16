@@ -17,8 +17,7 @@ String initialsOf(String name) {
   final plain = words.where((w) => !w.contains(RegExp(r'\d'))).toList();
   if (plain.isNotEmpty) words = plain;
   if (words.isEmpty) return '?';
-  String first(String w) =>
-      String.fromCharCodes(w.runes.take(1)).toUpperCase();
+  String first(String w) => String.fromCharCodes(w.runes.take(1)).toUpperCase();
   return words.length == 1
       ? first(words.first)
       : first(words.first) + first(words.last);
@@ -59,8 +58,9 @@ class PersonAvatar extends StatelessWidget {
     final colors = context.ledgerColors;
     final scheme = Theme.of(context).colorScheme;
     final i = avatarIndexFor(id, colors.avatarBackgrounds.length);
-    final bg =
-        dimmed ? scheme.surfaceContainerHighest : colors.avatarBackgrounds[i];
+    final bg = dimmed
+        ? scheme.surfaceContainerHighest
+        : colors.avatarBackgrounds[i];
     final fg = dimmed ? scheme.onSurfaceVariant : colors.avatarForegrounds[i];
     return Semantics(
       excludeSemantics: true,
@@ -109,13 +109,13 @@ class AvatarStack extends StatelessWidget {
     final count = shown.length + (extra > 0 ? 1 : 0);
     if (count == 0) return const SizedBox.shrink();
     Widget ring(Widget child) => Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardTheme.color ?? scheme.surface,
-            shape: BoxShape.circle,
-          ),
-          child: child,
-        );
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color ?? scheme.surface,
+        shape: BoxShape.circle,
+      ),
+      child: child,
+    );
     final outer = size + 4;
     return SizedBox(
       height: outer,
@@ -125,30 +125,33 @@ class AvatarStack extends StatelessWidget {
           for (var i = 0; i < shown.length; i++)
             Positioned(
               left: i * (outer - overlap),
-              child: ring(PersonAvatar(
-                  id: shown[i].id, name: shown[i].name, size: size)),
+              child: ring(
+                PersonAvatar(id: shown[i].id, name: shown[i].name, size: size),
+              ),
             ),
           if (extra > 0)
             Positioned(
               left: shown.length * (outer - overlap),
-              child: ring(Container(
-                width: size,
-                height: size,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '+$extra',
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    fontSize: size * 0.36,
-                    height: 1,
+              child: ring(
+                Container(
+                  width: size,
+                  height: size,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '+$extra',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      fontSize: size * 0.36,
+                      height: 1,
+                    ),
                   ),
                 ),
-              )),
+              ),
             ),
         ],
       ),

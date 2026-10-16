@@ -186,6 +186,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String exportFailed(Object error) {
+    return 'Export fehlgeschlagen: $error';
+  }
+
+  @override
   String exportedFile(Object fileName) {
     return '$fileName exportiert';
   }

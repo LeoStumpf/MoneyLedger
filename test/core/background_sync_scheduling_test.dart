@@ -31,14 +31,18 @@ void main() {
       'signed out', () async {
     final gateway = FakeAuthGateway();
     final scheduler = RecordingScheduler();
-    final c = ProviderContainer(overrides: [
-      authGatewayProvider.overrideWith((ref) => gateway),
-      ledgerTransportProvider
-          .overrideWith((ref) => Completer<LedgerTransport>().future),
-      accountDatabaseOpenerProvider.overrideWithValue(
-          (_) => AppDatabase.forTesting(NativeDatabase.memory())),
-      backgroundSchedulerProvider.overrideWithValue(scheduler),
-    ]);
+    final c = ProviderContainer(
+      overrides: [
+        authGatewayProvider.overrideWith((ref) => gateway),
+        ledgerTransportProvider.overrideWith(
+          (ref) => Completer<LedgerTransport>().future,
+        ),
+        accountDatabaseOpenerProvider.overrideWithValue(
+          (_) => AppDatabase.forTesting(NativeDatabase.memory()),
+        ),
+        backgroundSchedulerProvider.overrideWithValue(scheduler),
+      ],
+    );
     addTearDown(() {
       c.dispose();
       gateway.dispose();
@@ -59,8 +63,13 @@ void main() {
     await lastCallIs('cancel'); // signed out
     expect(scheduler.calls.toSet(), {'cancel'});
 
-    await c.read(authProvider.notifier).login(
-        resolvedHomeserver: 'https://x.test', username: 'bob', password: 'pw');
+    await c
+        .read(authProvider.notifier)
+        .login(
+          resolvedHomeserver: 'https://x.test',
+          username: 'bob',
+          password: 'pw',
+        );
     await lastCallIs('schedule'); // default on
     expect(c.read(backgroundSyncEnabledProvider).value, isTrue);
 

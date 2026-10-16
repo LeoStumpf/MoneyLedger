@@ -34,10 +34,12 @@ keep both in sync.
 ## Building
 
 ```bash
-./build.sh          # codegen → tests → web release build (one-liner)
+./build.sh          # codegen → format check → tests → web release build (one-liner)
 ```
 
-The script runs in order: `flutter pub get` → `dart run build_runner build` → `flutter test` → `flutter build web --release`. It exits non-zero on the first failure, so a green run means codegen, all tests, and the release build all passed.
+The script runs in order: `flutter pub get` → `dart run build_runner build` → `dart format --output=none --set-exit-if-changed lib test` → `flutter test` → `flutter build web --release`. It exits non-zero on the first failure, so a green run means codegen, formatting, all tests, and the release build all passed.
+
+**Formatting:** the repo is `dart format`ted (lib/ + test/, generated files included — the generators emit formatted code). Run `dart format lib test` before committing; build.sh and CI fail on unformatted code.
 
 To override the Flutter binary: `FLUTTER=/path/to/flutter ./build.sh`
 
@@ -48,6 +50,22 @@ Android E2EE: `flutter_vodozemac` (**≥ 0.6.0** — older versions break on Gra
 **iOS is not supported for v1**: development is on Linux (no macOS to build/sign),
 and `flutter_vodozemac` needs an iOS Rust/XCFramework build that has never been
 done; `ios/Runner` is template level. Don't spend effort on iOS unless asked.
+
+**CI:** `.github/workflows/ci.yml` (GitHub Actions, push/PR to `main`) runs
+pub get → build_runner → `git diff --exit-code` (codegen/l10n must be
+committed) → format check → `flutter analyze` → tests → web release build.
+Flutter is pinned there (`flutter-version`) — bump it together with the local
+toolchain. No Android build in CI (Rust + NDK).
+
+**Offline demo mode (G15):** `--dart-define=OFFLINE_DEMO=true` (`kOfflineDemo`,
+`lib/core/demo/`) — `main()` runs the app with `demoOverrides()`: signed in as
+`@anna:example.org` (`DemoAuthGateway`), `DemoTransport` (sends succeed,
+nothing arrives), `DemoDeviceGateway`, no background sync, and the ledger in
+its own `money_ledger_offline_demo` DB, wiped + reseeded on every open by
+`seedDemoLedger` (3 groups, EUR/CHF, custom splits, payments, dates relative
+to now, all peers in sync). No Matrix client is ever built. Normal builds
+tree-shake it (`const bool.fromEnvironment`). Never import `test/` from `lib/`.
+Smoke test: `test/core/demo_mode_test.dart`. Used for README/store screenshots.
 
 Manual smoke checklist (real devices, real homeserver): `docs/smoke-test.md` —
 update its "Last run" table after a device pass.
@@ -89,6 +107,9 @@ lib/
   app.dart           # MaterialApp.router
   core/
     background/      # G31 Android periodic background sync (round, gate, WorkManager glue)
+    demo/            # G15 offline demo mode: kOfflineDemo, demo fakes, seedDemoLedger, demoOverrides
+    timer_factory.dart # TimerFactory typedef (injectable timers, G15)
+    widgets/         # shared widgets (incl. text_prompt_dialog.dart: one-field prompt owning its controller)
     theme/           # G17 design tokens: app_theme.dart, app_colors.dart (LedgerColors)
     widgets/         # G17 PersonAvatar/AvatarStack, ContentWidth, EmptyState, BrandLogo
     router.dart      # go_router + routerRedirect() pure function (generated: router.g.dart)
@@ -579,9 +600,30 @@ provider's `.future` in a `ProviderContainer` test.
 
 **Router pattern:** `routerProvider` is `keepAlive: true` and uses `refreshListenable` (a `ValueNotifier`, toggled) to rerun the redirect when `isLoggedInProvider` **or** `onboardingGateProvider` changes. Do **not** make it non-keepAlive — that recreates the `GoRouter` on every auth state change, which crashes at the default initial location `/`. `routerRedirect(isLoggedIn, OnboardingStatus, location)` is the pure, unit-tested seam: signed-out users reach only `/login` + `/register`; signed in, the one-time **onboarding** flag (`onboarding_seen` in the per-account `AppSettings`) is tri-state (G25, `OnboardingGate` in `onboarding_provider.dart`): **unknown** (DB/flag still loading, incl. reloading after an account switch) → neutral `/splash`; **notSeen** → forced `/onboarding`; **seen** → off auth pages / `/` / `/splash` / `/onboarding` to `/groups`. If the flag hasn't loaded after `kOnboardingFlagTimeout` (8 s) or the stream errors, the gate logs and latches *seen* for that account (never strands the user on the splash; a late "not seen" doesn't yank them to onboarding). The wiring is tested end-to-end in `test/core/router_provider_test.dart` (listen to `routerProvider` in a container test — unlistened providers are paused; don't `pumpAndSettle` on the splash, its spinner never settles).
 
+**Errors in user actions (G15):** a user-initiated action that fails must
+show it (snackbar `l.failedWithError` / `exportFailed` / `importFailed`, or
+an error state) — never only `debugPrint`. Mutator notifiers expose the result
+via `AsyncValue.guard` → read `.error` after awaiting, and only for the action
+that actually ran. Background send failures go to `SyncHealth` (the
+SyncEngine's repair / bootstrap answers use `_sendTracked`); malformed inbound
+data is only logged (a peer must not flip our health). Never log SSO login
+tokens (`redactSsoUri`). Text-prompt dialogs must own their
+`TextEditingController` (`showTextPrompt`) — disposing it when `showDialog`
+returns crashes the closing animation.
+
 **Auth errors (G20):** login / SSO callback / register pages never show raw exception text. `MatrixAuthGateway` translates failures into plain port types (`auth_gateway.dart`): `AuthServerException(errcode, retryAfterMs)`, `AuthNetworkException(host, deviceOffline)` (on a transport error it probes matrix.org to tell "offline" from "server unreachable"), `NotAHomeserverException` (`checkHomeserver` failed with a non-network error). The pure `describeAuthError(error, action:)` (`features/auth/auth_errors.dart`; falls back to matching the error text) maps them to `AuthErrorMessage{title, hint, detail}`, rendered by `AuthErrorCard` with the raw text behind a collapsed **Details**. All English strings live in `AuthErrorStrings` (one place, for G12). **Timeouts (G30):** `checkHomeserver` is capped at `kHomeserverCheckTimeout` (10 s), login/register requests at `kAuthRequestTimeout` (20 s) via the pure `withAuthTimeout` → `AuthTimeoutException` (a `TimeoutException`, wrapped as `AuthNetworkException(deviceOffline: false)` without the offline probe) → "The server took too long to respond". The SDK call isn't cancelled — a late success still signs in. Web sign-up fallback: `RegistrationRequiresWebException.signUpUrl` comes from the pure `resolveSignUpUrl` (`sign_up_url.dart`): OIDC auth metadata (MAS with `prompt=create` → `<issuer>register`, else `account_management_uri`) → `.well-known` `org.matrix.msc2965.authentication.account` → matrix.org: `app.element.io/#/register` → homeserver URL.
 
 **Async work vs. account switch / dispose (G19):** on an account switch Riverpod 3 closes the old ledger DB **eagerly** (when `appDatabaseProvider` rebuilds), but dependents like `SyncEngine`/`LedgerSyncer` are only disposed on the next scheduler flush — so in-flight async work can outlive both its DB and its `Ref`. Rules: (1) capture the DB + DAOs (and transport/health notifier) **before the first await** — `SyncEngine`/`LedgerSyncer` read them in their constructor, `ExpenseAdder` via `_WriteContext`, the group mutators (`GroupCreator`/`MemberAdder`/`MemberRemover`/`GroupExiter`) via `_GroupWriteContext` (G23) — never re-read DAO providers after an await; (2) after **every** await check `_alive` (`!_disposed && !_db.isClosed`; `AppDatabase.isClosed` is set by `close()`) and bail silently; (3) in notifiers, only set `state` / use `ref` after an await when `ref.mounted`; (4) errors caught after the DB closed are expected — don't log them or report them to `SyncHealth` (its `report*` also no-op when unmounted). Regression tests: `test/integration/account_switch_sync_test.dart`, `test/features/group_mutators_lifecycle_test.dart`.
+
+**Timeouts/backoff in tests (G15):** production timers that a test must
+observe come from an injectable `TimerFactory` provider
+(`lib/core/timer_factory.dart`; `selfRecoveryTimerFactoryProvider`,
+`onboardingTimerFactoryProvider`) — tests fire them with `ManualTimers`
+(`test/helpers/manual_timers.dart`) instead of short real timeouts. Pure
+timer/stream code can use `fakeAsync` (dev dep `fake_async`). In widget tests,
+wait for a Drift write with `eventually(condition, tester: tester)`
+(`test/helpers/eventually.dart`, inside `tester.runAsync`) — never a fixed
+`Future.delayed(50 ms)`.
 
 **Deterministic sync tests:** never wait with a fixed sleep. `FakeMatrixNetwork.settle()` waits until the relay is quiescent (N consecutive 2 ms ticks with no send/delivery — load-independent because pending microtasks and earlier-due timers like the 1 ms poke debounce always run first). Teardown: dispose the `ProviderContainer` **before** closing its DB.
 

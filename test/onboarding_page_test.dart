@@ -10,9 +10,11 @@ import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/settings_dao.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/onboarding/onboarding_page.dart';
+import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
 
 import 'helpers/in_memory_database.dart';
 import 'helpers/l10n.dart';
+import 'helpers/eventually.dart';
 
 void main() {
   testWidgets('renders the decentralized-model intro', (tester) async {
@@ -26,8 +28,9 @@ void main() {
     expect(find.byKey(const Key('getStartedBtn')), findsOneWidget);
   });
 
-  testWidgets('"Get started" marks onboarding seen and navigates to groups',
-      (tester) async {
+  testWidgets('"Get started" marks onboarding seen and navigates to groups', (
+    tester,
+  ) async {
     final db = openTestDatabase();
     addTearDown(db.close);
     await tester.pumpWidget(_app(db));
@@ -37,34 +40,64 @@ void main() {
     // Drift writes resolve on the real event loop, not the fake test clock.
     await tester.runAsync(() async {
       await tester.tap(find.byKey(const Key('getStartedBtn')));
-      await tester.pump();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      await tester.pump();
+      await eventually(
+        () => SettingsDao(db).watchOnboardingSeen().first,
+        tester: tester,
+      );
 
       expect(await SettingsDao(db).watchOnboardingSeen().first, isTrue);
     });
     await tester.pumpAndSettle();
     expect(find.text('groups-home'), findsOneWidget);
   });
+
+  testWidgets('a failed flag write shows an error and stays (G15)', (
+    tester,
+  ) async {
+    final db = openTestDatabase();
+    addTearDown(db.close);
+    await tester.pumpWidget(
+      _app(
+        db,
+        overrides: [
+          onboardingControllerProvider.overrideWith(_FailingController.new),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('getStartedBtn')));
+    await tester.tap(find.byKey(const Key('getStartedBtn')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Failed: Bad state: disk full'), findsOneWidget);
+    expect(find.text('groups-home'), findsNothing);
+  });
 }
 
-Widget _app(AppDatabase db) {
+class _FailingController extends OnboardingController {
+  @override
+  Future<void> markSeen() async => throw StateError('disk full');
+}
+
+Widget _app(AppDatabase db, {List<Object> overrides = const []}) {
   final router = GoRouter(
     initialLocation: '/onboarding',
     routes: [
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingPage()),
       GoRoute(
-          path: '/onboarding', builder: (_, _) => const OnboardingPage()),
-      GoRoute(
-          path: '/groups',
-          builder: (_, _) =>
-              const Scaffold(body: Center(child: Text('groups-home')))),
+        path: '/groups',
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('groups-home'))),
+      ),
     ],
   );
   return ProviderScope(
-    overrides: [appDatabaseProvider.overrideWithValue(db)],
+    overrides: [appDatabaseProvider.overrideWithValue(db), ...overrides.cast()],
     child: MaterialApp.router(
-        localizationsDelegates: testLocalizationsDelegates,
-        supportedLocales: testSupportedLocales,
-        routerConfig: router),
+      localizationsDelegates: testLocalizationsDelegates,
+      supportedLocales: testSupportedLocales,
+      routerConfig: router,
+    ),
   );
 }

@@ -38,46 +38,49 @@ class AuthErrorMessage {
   final bool ambiguousNetwork;
   final String? detail;
 
-  const AuthErrorMessage(this.kind,
-      {this.host,
-      this.retryAfterSeconds,
-      this.ambiguousNetwork = false,
-      this.detail});
+  const AuthErrorMessage(
+    this.kind, {
+    this.host,
+    this.retryAfterSeconds,
+    this.ambiguousNetwork = false,
+    this.detail,
+  });
 
   String title(AppLocalizations l) => switch (kind) {
-        AuthErrorKind.offline => l.authOfflineTitle,
-        AuthErrorKind.serverUnreachable => l.authUnreachableTitle(host ?? ''),
-        AuthErrorKind.timeout => l.authTimeoutTitle,
-        AuthErrorKind.notAHomeserver => l.authNotAHomeserverTitle(host ?? ''),
-        AuthErrorKind.wrongCredentials => l.authWrongCredentialsTitle,
-        AuthErrorKind.userDeactivated => l.authDeactivatedTitle,
-        AuthErrorKind.rateLimited => l.authRateLimitedTitle,
-        AuthErrorKind.ssoTokenInvalid => l.authSsoTokenTitle,
-        AuthErrorKind.usernameTaken => l.authUsernameTakenTitle,
-        AuthErrorKind.invalidUsername => l.authInvalidUsernameTitle,
-        AuthErrorKind.weakPassword => l.authWeakPasswordTitle,
-        AuthErrorKind.registrationDisabled => l.authRegistrationDisabledTitle,
-        AuthErrorKind.unknown => l.authUnknownTitle,
-      };
+    AuthErrorKind.offline => l.authOfflineTitle,
+    AuthErrorKind.serverUnreachable => l.authUnreachableTitle(host ?? ''),
+    AuthErrorKind.timeout => l.authTimeoutTitle,
+    AuthErrorKind.notAHomeserver => l.authNotAHomeserverTitle(host ?? ''),
+    AuthErrorKind.wrongCredentials => l.authWrongCredentialsTitle,
+    AuthErrorKind.userDeactivated => l.authDeactivatedTitle,
+    AuthErrorKind.rateLimited => l.authRateLimitedTitle,
+    AuthErrorKind.ssoTokenInvalid => l.authSsoTokenTitle,
+    AuthErrorKind.usernameTaken => l.authUsernameTakenTitle,
+    AuthErrorKind.invalidUsername => l.authInvalidUsernameTitle,
+    AuthErrorKind.weakPassword => l.authWeakPasswordTitle,
+    AuthErrorKind.registrationDisabled => l.authRegistrationDisabledTitle,
+    AuthErrorKind.unknown => l.authUnknownTitle,
+  };
 
   String? hint(AppLocalizations l) => switch (kind) {
-        AuthErrorKind.offline =>
-          ambiguousNetwork ? l.authUnreachableHint : l.authOfflineHint,
-        AuthErrorKind.serverUnreachable => l.authUnreachableHint,
-        AuthErrorKind.timeout => l.authTimeoutHint,
-        AuthErrorKind.notAHomeserver => l.authNotAHomeserverHint,
-        AuthErrorKind.wrongCredentials => l.authWrongCredentialsHint,
-        AuthErrorKind.userDeactivated => l.authDeactivatedHint,
-        AuthErrorKind.rateLimited => retryAfterSeconds == null
-            ? l.authRateLimitedHint
-            : l.authRateLimitedRetry(retryAfterSeconds!),
-        AuthErrorKind.ssoTokenInvalid => l.authSsoTokenHint,
-        AuthErrorKind.usernameTaken => l.authUsernameTakenHint,
-        AuthErrorKind.invalidUsername => l.authInvalidUsernameHint,
-        AuthErrorKind.weakPassword => l.authWeakPasswordHint,
-        AuthErrorKind.registrationDisabled => l.authRegistrationDisabledHint,
-        AuthErrorKind.unknown => l.authUnknownHint,
-      };
+    AuthErrorKind.offline =>
+      ambiguousNetwork ? l.authUnreachableHint : l.authOfflineHint,
+    AuthErrorKind.serverUnreachable => l.authUnreachableHint,
+    AuthErrorKind.timeout => l.authTimeoutHint,
+    AuthErrorKind.notAHomeserver => l.authNotAHomeserverHint,
+    AuthErrorKind.wrongCredentials => l.authWrongCredentialsHint,
+    AuthErrorKind.userDeactivated => l.authDeactivatedHint,
+    AuthErrorKind.rateLimited =>
+      retryAfterSeconds == null
+          ? l.authRateLimitedHint
+          : l.authRateLimitedRetry(retryAfterSeconds!),
+    AuthErrorKind.ssoTokenInvalid => l.authSsoTokenHint,
+    AuthErrorKind.usernameTaken => l.authUsernameTakenHint,
+    AuthErrorKind.invalidUsername => l.authInvalidUsernameHint,
+    AuthErrorKind.weakPassword => l.authWeakPasswordHint,
+    AuthErrorKind.registrationDisabled => l.authRegistrationDisabledHint,
+    AuthErrorKind.unknown => l.authUnknownHint,
+  };
 
   @override
   String toString() => 'AuthErrorMessage($kind)';
@@ -114,7 +117,7 @@ class AuthTimeoutException extends TimeoutException {
   /// What timed out, e.g. `checkHomeserver` / `login` (for the details text).
   final String step;
   AuthTimeoutException(this.step, Duration limit)
-      : super('$step timed out after ${limit.inSeconds}s', limit);
+    : super('$step timed out after ${limit.inSeconds}s', limit);
 
   @override
   String toString() => 'TimeoutException: $message';
@@ -124,27 +127,37 @@ class AuthTimeoutException extends TimeoutException {
 /// underlying request isn't cancelled (the SDK has no cancellation) — a late
 /// success still completes in the background.
 Future<T> withAuthTimeout<T>(Future<T> request, Duration limit, String step) =>
-    request.timeout(limit,
-        onTimeout: () => throw AuthTimeoutException(step, limit));
+    request.timeout(
+      limit,
+      onTimeout: () => throw AuthTimeoutException(step, limit),
+    );
 
 /// Errcodes we recognize when they only appear inside an error's text.
 final _errcodePattern = RegExp(r'\bM_[A-Z_]+\b');
 
 /// Classifies [error] into a friendly message for [action].
-AuthErrorMessage describeAuthError(Object error,
-    {AuthAction action = AuthAction.login}) {
+AuthErrorMessage describeAuthError(
+  Object error, {
+  AuthAction action = AuthAction.login,
+}) {
   final detail = error.toString();
-  AuthErrorMessage msg(AuthErrorKind k,
-          {String? host, bool ambiguousNetwork = false}) =>
-      AuthErrorMessage(k,
-          host: host, ambiguousNetwork: ambiguousNetwork, detail: detail);
+  AuthErrorMessage msg(
+    AuthErrorKind k, {
+    String? host,
+    bool ambiguousNetwork = false,
+  }) => AuthErrorMessage(
+    k,
+    host: host,
+    ambiguousNetwork: ambiguousNetwork,
+    detail: detail,
+  );
 
   if (error is AuthNetworkException) {
     return error.deviceOffline
         ? msg(AuthErrorKind.offline)
         : _isTimeout(error.cause)
-            ? msg(AuthErrorKind.timeout)
-            : msg(AuthErrorKind.serverUnreachable, host: error.host);
+        ? msg(AuthErrorKind.timeout)
+        : msg(AuthErrorKind.serverUnreachable, host: error.host);
   }
   if (error is NotAHomeserverException) {
     return msg(AuthErrorKind.notAHomeserver, host: error.host);
@@ -176,7 +189,11 @@ AuthErrorMessage describeAuthError(Object error,
 }
 
 AuthErrorMessage? _describeErrcode(
-    String errcode, AuthAction action, int? retryAfterMs, String detail) {
+  String errcode,
+  AuthAction action,
+  int? retryAfterMs,
+  String detail,
+) {
   AuthErrorMessage msg(AuthErrorKind k, {int? retryAfterSeconds}) =>
       AuthErrorMessage(k, retryAfterSeconds: retryAfterSeconds, detail: detail);
   switch (errcode) {

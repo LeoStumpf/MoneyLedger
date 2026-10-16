@@ -114,6 +114,25 @@ flutter devices                  # list available run targets
 On first launch, enter your homeserver (e.g. `matrix.org`) and sign in with
 password or SSO.
 
+### Offline demo mode
+
+```bash
+flutter run -d web-server --web-port 8080 --dart-define=OFFLINE_DEMO=true
+flutter build apk --release --dart-define=OFFLINE_DEMO=true
+```
+
+Starts signed in as "Anna" with a seeded example ledger (*Lisbon trip*,
+*Flat share*, *Ski weekend* — EUR + CHF, custom splits, payments) and no
+network at all: fake auth, a fake relay, no Matrix client, no background sync.
+The ledger lives in its own `money_ledger_offline_demo` database, reseeded on
+every start; real account data is never opened. Meant for screenshots and
+quick UI checks. Without the define the code is tree-shaken out.
+
+> Installing a demo APK over the real app replaces the app binary (same
+> package id) — the real data stays untouched, but reinstall a normal build
+> afterwards. A debug build can't be installed over a release-signed one
+> without uninstalling (which deletes the app's data).
+
 ## Test
 
 ```bash
@@ -126,15 +145,28 @@ federated, and login flows are exercised against in-memory fakes
 (`test/helpers/fake_ledger_network.dart`, `test/helpers/fake_auth_gateway.dart`).
 Run the suite before committing; write tests alongside every change.
 
+Tests never wait on the wall clock: timeouts / backoffs take their timers from
+an injectable `TimerFactory` (tests fire them via `test/helpers/manual_timers.dart`),
+and "wait until the DB write landed" polls with `test/helpers/eventually.dart`
+instead of a fixed sleep — so the suite doesn't flake on a loaded machine.
+
+CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push / PR to
+`main`: codegen + "no generated diff", format check, `flutter analyze`, the
+test suite and the web release build. The Android build isn't part of CI (it
+needs the Rust toolchain + NDK).
+
 ## Build (release)
 
 ```bash
-./build.sh        # one-liner: pub get → codegen → tests → web release build
+./build.sh        # one-liner: pub get → codegen → format check → tests → web release build
 ```
 
 `build.sh` runs `flutter pub get` → `dart run build_runner build` →
-`flutter test` → `flutter build web --release`, stopping on the first failure —
-so a green run means codegen, all tests, and the release build passed. Output
+`dart format --output=none --set-exit-if-changed lib test` → `flutter test` →
+`flutter build web --release`, stopping on the first failure — so a green run
+means codegen, formatting, all tests, and the release build passed. The code is
+kept `dart format`ted (generated files included — the generators emit
+formatted code); fix a failing check with `dart format lib test`. Output
 lands in `build/web/`. Override the Flutter binary with
 `FLUTTER=/path/to/flutter ./build.sh`.
 

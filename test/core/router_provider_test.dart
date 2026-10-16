@@ -25,13 +25,16 @@ import 'package:money_ledger/models/login_flows_result.dart';
 
 import '../helpers/fake_auth_gateway.dart';
 import '../helpers/l10n.dart';
+import '../helpers/manual_timers.dart';
 
 /// Per-account controllable onboarding flag: the test decides when (and
 /// whether) each account's flag "loads".
 class _Flags {
   final _controllers = <String?, StreamController<bool>>{};
   StreamController<bool> of(String? account) => _controllers.putIfAbsent(
-      account, () => StreamController<bool>.broadcast());
+    account,
+    () => StreamController<bool>.broadcast(),
+  );
   Future<void> close() async {
     for (final c in _controllers.values) {
       await c.close();
@@ -44,24 +47,32 @@ void main() {
   late _Flags flags;
   late ProviderContainer c;
 
-  ProviderContainer makeContainer({Duration? timeout}) {
-    final container = ProviderContainer(overrides: [
-      authGatewayProvider.overrideWith((ref) => gateway),
-      loginFlowsProvider.overrideWith((ref, input) =>
-          Future.value(LoginFlowsResult.empty)),
-      ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
-      // Transport never resolves: the sync engines construct but stay idle.
-      ledgerTransportProvider
-          .overrideWith((ref) => Completer<LedgerTransport>().future),
-      accountDatabaseOpenerProvider.overrideWithValue(
-          (_) => AppDatabase.forTesting(NativeDatabase.memory())),
-      onboardingSeenStreamProvider.overrideWith((ref) {
-        final account = ref.watch(accountUserIdProvider);
-        if (account == null) return Stream.value(true);
-        return flags.of(account).stream;
-      }),
-      if (timeout != null) onboardingFlagTimeoutProvider.overrideWithValue(timeout),
-    ]);
+  ProviderContainer makeContainer({Duration? timeout, ManualTimers? timers}) {
+    final container = ProviderContainer(
+      overrides: [
+        authGatewayProvider.overrideWith((ref) => gateway),
+        loginFlowsProvider.overrideWith(
+          (ref, input) => Future.value(LoginFlowsResult.empty),
+        ),
+        ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
+        // Transport never resolves: the sync engines construct but stay idle.
+        ledgerTransportProvider.overrideWith(
+          (ref) => Completer<LedgerTransport>().future,
+        ),
+        accountDatabaseOpenerProvider.overrideWithValue(
+          (_) => AppDatabase.forTesting(NativeDatabase.memory()),
+        ),
+        onboardingSeenStreamProvider.overrideWith((ref) {
+          final account = ref.watch(accountUserIdProvider);
+          if (account == null) return Stream.value(true);
+          return flags.of(account).stream;
+        }),
+        if (timeout != null)
+          onboardingFlagTimeoutProvider.overrideWithValue(timeout),
+        if (timers != null)
+          onboardingTimerFactoryProvider.overrideWithValue(timers.call),
+      ],
+    );
     // The app keeps these alive (appDatabaseProvider / the router listen).
     container.listen(accountUserIdProvider, (_, _) {});
     return container;
@@ -78,8 +89,13 @@ void main() {
     await flags.close();
   });
 
-  Future<void> login(String user) => c.read(authProvider.notifier).login(
-      resolvedHomeserver: 'https://x.test', username: user, password: 'pw');
+  Future<void> login(String user) => c
+      .read(authProvider.notifier)
+      .login(
+        resolvedHomeserver: 'https://x.test',
+        username: user,
+        password: 'pw',
+      );
 
   group('OnboardingGate', () {
     setUp(() => c = makeContainer(timeout: const Duration(seconds: 30)));
@@ -97,24 +113,25 @@ void main() {
       expect(gate(), OnboardingStatus.seen);
     });
 
-    test('signed in: unknown until the flag loads, then seen / not seen',
-        () async {
-      c.listen(onboardingGateProvider, (_, _) {});
-      await login('alice');
-      await settle();
-      expect(gate(), OnboardingStatus.unknown);
+    test(
+      'signed in: unknown until the flag loads, then seen / not seen',
+      () async {
+        c.listen(onboardingGateProvider, (_, _) {});
+        await login('alice');
+        await settle();
+        expect(gate(), OnboardingStatus.unknown);
 
-      flags.of('@alice:x.test').add(false);
-      await settle();
-      expect(gate(), OnboardingStatus.notSeen);
+        flags.of('@alice:x.test').add(false);
+        await settle();
+        expect(gate(), OnboardingStatus.notSeen);
 
-      flags.of('@alice:x.test').add(true);
-      await settle();
-      expect(gate(), OnboardingStatus.seen);
-    });
+        flags.of('@alice:x.test').add(true);
+        await settle();
+        expect(gate(), OnboardingStatus.seen);
+      },
+    );
 
-    test("an account switch never reuses the previous account's flag",
-        () async {
+    test("an account switch never reuses the previous account's flag", () async {
       c.listen(onboardingGateProvider, (_, _) {});
       await login('alice');
       await settle();
@@ -143,22 +160,27 @@ void main() {
     });
   });
 
-  test('OnboardingGate: a flag that never loads times out to seen and latches',
-      () async {
-    c = makeContainer(timeout: const Duration(milliseconds: 50));
-    c.listen(onboardingGateProvider, (_, _) {});
-    await login('alice');
-    await Future<void>.delayed(Duration.zero);
-    expect(c.read(onboardingGateProvider), OnboardingStatus.unknown);
+  test(
+    'OnboardingGate: a flag that never loads times out to seen and latches',
+    () async {
+      // The timeout timer is fired explicitly (no wall-clock race, G15).
+      const timeout = Duration(seconds: 8);
+      final timers = ManualTimers();
+      c = makeContainer(timeout: timeout, timers: timers);
+      c.listen(onboardingGateProvider, (_, _) {});
+      await login('alice');
+      await Future<void>.delayed(Duration.zero);
+      expect(c.read(onboardingGateProvider), OnboardingStatus.unknown);
 
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    expect(c.read(onboardingGateProvider), OnboardingStatus.seen);
+      expect(timers.fireWhere(timeout), greaterThanOrEqualTo(1));
+      expect(c.read(onboardingGateProvider), OnboardingStatus.seen);
 
-    // A late "not seen" no longer yanks the user to onboarding mid-use.
-    flags.of('@alice:x.test').add(false);
-    await Future<void>.delayed(Duration.zero);
-    expect(c.read(onboardingGateProvider), OnboardingStatus.seen);
-  });
+      // A late "not seen" no longer yanks the user to onboarding mid-use.
+      flags.of('@alice:x.test').add(false);
+      await Future<void>.delayed(Duration.zero);
+      expect(c.read(onboardingGateProvider), OnboardingStatus.seen);
+    },
+  );
 
   group('routerProvider refreshListenable', () {
     Future<GoRouter> pumpApp(WidgetTester tester) async {
@@ -166,13 +188,16 @@ void main() {
       // unlistened provider (and with it its refresh listeners).
       c.listen(routerProvider, (_, _) {});
       final router = c.read(routerProvider);
-      await tester.pumpWidget(UncontrolledProviderScope(
-        container: c,
-        child: MaterialApp.router(
-        localizationsDelegates: testLocalizationsDelegates,
-        supportedLocales: testSupportedLocales,
-        routerConfig: router),
-      ));
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: c,
+          child: MaterialApp.router(
+            localizationsDelegates: testLocalizationsDelegates,
+            supportedLocales: testSupportedLocales,
+            routerConfig: router,
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       return router;
     }
@@ -186,13 +211,13 @@ void main() {
       // would advance the fake clock far enough to fire the flag timeout.
       for (var i = 0; i < 3; i++) {
         await tester.runAsync(
-            () => Future<void>.delayed(const Duration(milliseconds: 10)));
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
         await tester.pump(const Duration(milliseconds: 10));
       }
     }
 
-    testWidgets(
-        'login → splash while the flag loads → onboarding → groups; '
+    testWidgets('login → splash while the flag loads → onboarding → groups; '
         'logout → login', (tester) async {
       c = makeContainer(timeout: const Duration(minutes: 5));
       final router = await pumpApp(tester);
@@ -217,8 +242,9 @@ void main() {
       expect(location(router), '/login');
     });
 
-    testWidgets('a returning user goes splash → groups (never onboarding)',
-        (tester) async {
+    testWidgets('a returning user goes splash → groups (never onboarding)', (
+      tester,
+    ) async {
       c = makeContainer(timeout: const Duration(minutes: 5));
       final router = await pumpApp(tester);
 
@@ -231,8 +257,9 @@ void main() {
       expect(location(router), '/groups');
     });
 
-    testWidgets('a flag that never loads leaves the splash after the timeout',
-        (tester) async {
+    testWidgets('a flag that never loads leaves the splash after the timeout', (
+      tester,
+    ) async {
       c = makeContainer(timeout: const Duration(seconds: 1));
       final router = await pumpApp(tester);
 

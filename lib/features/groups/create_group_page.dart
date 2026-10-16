@@ -34,9 +34,9 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
         .create(_nameCtrl.text.trim(), _currency);
     final error = ref.read(groupCreatorProvider).error;
     if (error != null && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.failedWithError(error.toString()))),
+      );
     } else if (mounted) {
       context.pop();
     }

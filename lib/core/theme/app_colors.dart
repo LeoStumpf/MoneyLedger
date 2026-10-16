@@ -129,24 +129,24 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     Color? onNegativeContainer,
     List<Color>? avatarBackgrounds,
     List<Color>? avatarForegrounds,
-  }) =>
-      LedgerColors(
-        positive: positive ?? this.positive,
-        negative: negative ?? this.negative,
-        positiveContainer: positiveContainer ?? this.positiveContainer,
-        onPositiveContainer: onPositiveContainer ?? this.onPositiveContainer,
-        negativeContainer: negativeContainer ?? this.negativeContainer,
-        onNegativeContainer: onNegativeContainer ?? this.onNegativeContainer,
-        avatarBackgrounds: avatarBackgrounds ?? this.avatarBackgrounds,
-        avatarForegrounds: avatarForegrounds ?? this.avatarForegrounds,
-      );
+  }) => LedgerColors(
+    positive: positive ?? this.positive,
+    negative: negative ?? this.negative,
+    positiveContainer: positiveContainer ?? this.positiveContainer,
+    onPositiveContainer: onPositiveContainer ?? this.onPositiveContainer,
+    negativeContainer: negativeContainer ?? this.negativeContainer,
+    onNegativeContainer: onNegativeContainer ?? this.onNegativeContainer,
+    avatarBackgrounds: avatarBackgrounds ?? this.avatarBackgrounds,
+    avatarForegrounds: avatarForegrounds ?? this.avatarForegrounds,
+  );
 
   @override
   LedgerColors lerp(LedgerColors? other, double t) {
     if (other == null) return this;
     Color c(Color a, Color b) => Color.lerp(a, b, t)!;
-    List<Color> l(List<Color> a, List<Color> b) =>
-        [for (var i = 0; i < a.length; i++) c(a[i], b[i % b.length])];
+    List<Color> l(List<Color> a, List<Color> b) => [
+      for (var i = 0; i < a.length; i++) c(a[i], b[i % b.length]),
+    ];
     return LedgerColors(
       positive: c(positive, other.positive),
       negative: c(negative, other.negative),

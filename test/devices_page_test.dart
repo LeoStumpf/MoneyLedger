@@ -13,23 +13,34 @@ import 'helpers/fake_device_gateway.dart';
 import 'helpers/l10n.dart';
 
 Widget _app(FakeDeviceGateway gateway) => ProviderScope(
-      overrides: [
-        deviceGatewayProvider.overrideWith((ref) async => gateway),
-      ],
-      child: MaterialApp(
-          localizationsDelegates: testLocalizationsDelegates,
-          supportedLocales: testSupportedLocales,
-          home: const DevicesPage()),
-    );
+  overrides: [deviceGatewayProvider.overrideWith((ref) async => gateway)],
+  child: MaterialApp(
+    localizationsDelegates: testLocalizationsDelegates,
+    supportedLocales: testSupportedLocales,
+    home: const DevicesPage(),
+  ),
+);
 
 void main() {
   testWidgets('lists devices with status and a trust summary', (tester) async {
-    await tester.pumpWidget(_app(FakeDeviceGateway([
-      const DeviceInfo(
-          deviceId: 'ME', displayName: 'This phone', isThisDevice: true, verified: true),
-      const DeviceInfo(
-          deviceId: 'OLD', displayName: 'Old laptop', isThisDevice: false, verified: false),
-    ])));
+    await tester.pumpWidget(
+      _app(
+        FakeDeviceGateway([
+          const DeviceInfo(
+            deviceId: 'ME',
+            displayName: 'This phone',
+            isThisDevice: true,
+            verified: true,
+          ),
+          const DeviceInfo(
+            deviceId: 'OLD',
+            displayName: 'Old laptop',
+            isThisDevice: false,
+            verified: false,
+          ),
+        ]),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('1 device needs verification.'), findsOneWidget);
@@ -40,13 +51,17 @@ void main() {
     expect(find.widgetWithText(TextButton, 'Verify'), findsOneWidget);
   });
 
-  testWidgets('verifying shows the emoji SAS and marks the device verified',
-      (tester) async {
+  testWidgets('verifying shows the emoji SAS and marks the device verified', (
+    tester,
+  ) async {
     final gateway = FakeDeviceGateway([
+      const DeviceInfo(deviceId: 'ME', isThisDevice: true, verified: true),
       const DeviceInfo(
-          deviceId: 'ME', isThisDevice: true, verified: true),
-      const DeviceInfo(
-          deviceId: 'OLD', displayName: 'Old laptop', isThisDevice: false, verified: false),
+        deviceId: 'OLD',
+        displayName: 'Old laptop',
+        isThisDevice: false,
+        verified: false,
+      ),
     ]);
     await tester.pumpWidget(_app(gateway));
     await tester.pumpAndSettle();

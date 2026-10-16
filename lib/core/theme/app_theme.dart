@@ -47,8 +47,8 @@ abstract final class AppTheme {
   /// step *lighter* than the background in dark mode (elevation = light).
   static Color cardColor(ColorScheme scheme) =>
       scheme.brightness == Brightness.dark
-          ? const Color(0xFF18211F)
-          : Colors.white;
+      ? const Color(0xFF18211F)
+      : Colors.white;
 
   static ThemeData _build(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
@@ -62,40 +62,62 @@ abstract final class AppTheme {
       primary: isDark ? null : const Color(0xFF0B6E5F),
       surface: isDark ? BrandColors.darkSurface : BrandColors.lightSurface,
       surfaceContainerLowest: isDark ? const Color(0xFF0A100F) : Colors.white,
-      surfaceContainerLow:
-          isDark ? const Color(0xFF161F1D) : const Color(0xFFFAFDFC),
+      surfaceContainerLow: isDark
+          ? const Color(0xFF161F1D)
+          : const Color(0xFFFAFDFC),
     );
     final ledger = isDark ? LedgerColors.dark : LedgerColors.light;
 
-    final typography = Typography.material2021(platform: TargetPlatform.android);
-    final baseText = (isDark ? typography.white : typography.black)
-        .apply(fontFamily: kAppFontFamily);
-    final text = baseText.copyWith(
-      displaySmall: baseText.displaySmall
-          ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.5),
-      headlineLarge: baseText.headlineLarge
-          ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.5),
-      headlineMedium: baseText.headlineMedium
-          ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.4),
-      headlineSmall: baseText.headlineSmall
-          ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.2),
-      titleLarge: baseText.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-      titleMedium:
-          baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-      titleSmall: baseText.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-      labelLarge: baseText.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-      labelMedium:
-          baseText.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-      bodyLarge: baseText.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-    ).apply(
-      bodyColor: scheme.onSurface,
-      displayColor: scheme.onSurface,
+    final typography = Typography.material2021(
+      platform: TargetPlatform.android,
     );
+    final baseText = (isDark ? typography.white : typography.black).apply(
+      fontFamily: kAppFontFamily,
+    );
+    final text = baseText
+        .copyWith(
+          displaySmall: baseText.displaySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+          headlineLarge: baseText.headlineLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+          headlineMedium: baseText.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+          ),
+          headlineSmall: baseText.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
+          titleLarge: baseText.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+          titleMedium: baseText.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+          titleSmall: baseText.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+          labelLarge: baseText.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+          labelMedium: baseText.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+          bodyLarge: baseText.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+        )
+        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
-    final rounded =
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.m));
-    const buttonPadding =
-        EdgeInsets.symmetric(horizontal: Insets.xl, vertical: Insets.m);
+    final rounded = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(Radii.m),
+    );
+    const buttonPadding = EdgeInsets.symmetric(
+      horizontal: Insets.xl,
+      vertical: Insets.m,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -124,15 +146,17 @@ abstract final class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Radii.l),
           side: BorderSide(
-              color: scheme.outlineVariant.withValues(alpha: isDark ? 0.5 : 0.7)),
+            color: scheme.outlineVariant.withValues(alpha: isDark ? 0.5 : 0.7),
+          ),
         ),
       ),
       listTileTheme: ListTileThemeData(
         contentPadding: const EdgeInsets.symmetric(horizontal: Insets.l),
         iconColor: scheme.onSurfaceVariant,
         titleTextStyle: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-        subtitleTextStyle:
-            text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        subtitleTextStyle: text.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
         shape: rounded,
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -141,14 +165,17 @@ abstract final class AppTheme {
         elevation: 3,
         highlightElevation: 6,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.l)),
+          borderRadius: BorderRadius.circular(Radii.l),
+        ),
         extendedTextStyle: text.labelLarge?.copyWith(fontSize: 15),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppTheme.cardColor(scheme),
         contentPadding: const EdgeInsets.symmetric(
-            horizontal: Insets.l, vertical: Insets.l),
+          horizontal: Insets.l,
+          vertical: Insets.l,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(Radii.m),
           borderSide: BorderSide(color: scheme.outlineVariant),
@@ -188,10 +215,7 @@ abstract final class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          shape: rounded,
-          textStyle: text.labelLarge,
-        ),
+        style: TextButton.styleFrom(shape: rounded, textStyle: text.labelLarge),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
@@ -206,7 +230,8 @@ abstract final class AppTheme {
         backgroundColor: scheme.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.xl)),
+          borderRadius: BorderRadius.circular(Radii.xl),
+        ),
         titleTextStyle: text.headlineSmall?.copyWith(fontSize: 22),
       ),
       bottomSheetTheme: BottomSheetThemeData(
@@ -214,15 +239,16 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         showDragHandle: true,
         shape: const RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.vertical(top: Radius.circular(Radii.xl))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: rounded,
         backgroundColor: scheme.inverseSurface,
-        contentTextStyle:
-            text.bodyMedium?.copyWith(color: scheme.onInverseSurface),
+        contentTextStyle: text.bodyMedium?.copyWith(
+          color: scheme.onInverseSurface,
+        ),
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: scheme.surfaceContainerLow,
@@ -232,7 +258,8 @@ abstract final class AppTheme {
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.s)),
+          borderRadius: BorderRadius.circular(Radii.s),
+        ),
         side: BorderSide(color: scheme.outlineVariant),
         labelStyle: text.labelMedium,
       ),
@@ -243,11 +270,11 @@ abstract final class AppTheme {
       ),
       bannerTheme: MaterialBannerThemeData(
         backgroundColor: scheme.secondaryContainer,
-        contentTextStyle:
-            text.bodyMedium?.copyWith(color: scheme.onSecondaryContainer),
+        contentTextStyle: text.bodyMedium?.copyWith(
+          color: scheme.onSecondaryContainer,
+        ),
       ),
-      progressIndicatorTheme:
-          ProgressIndicatorThemeData(color: scheme.primary),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary),
       switchTheme: const SwitchThemeData(),
       checkboxTheme: CheckboxThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),

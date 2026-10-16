@@ -43,19 +43,25 @@ class AboutPage extends ConsumerWidget {
         children: [
           const Center(child: BrandLogo(size: 80)),
           const SizedBox(height: 12),
-          Text(l.appTitle,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall),
+          Text(
+            l.appTitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall,
+          ),
           if (version != null)
-            Text(l.aboutVersion(version),
-                key: const Key('aboutVersion'),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall),
+            Text(
+              l.aboutVersion(version),
+              key: const Key('aboutVersion'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-            child: Text(l.aboutDescription,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium),
+            child: Text(
+              l.aboutDescription,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
           ),
           const Divider(),
           ListTile(
@@ -64,8 +70,10 @@ class AboutPage extends ConsumerWidget {
             subtitle: const Text(kSourceCodeUrl),
             trailing: const Icon(Icons.open_in_new),
             // External browser (a new tab on web — not the SSO same-tab redirect).
-            onTap: () => launchUrl(Uri.parse(kSourceCodeUrl),
-                mode: LaunchMode.externalApplication),
+            onTap: () => launchUrl(
+              Uri.parse(kSourceCodeUrl),
+              mode: LaunchMode.externalApplication,
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.gavel_outlined),
@@ -129,9 +137,12 @@ class PrivacyPolicyPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
-            Text(l.privacyLastUpdated(
-                context.date(lastUpdated.millisecondsSinceEpoch)),
-                style: theme.textTheme.bodySmall),
+            Text(
+              l.privacyLastUpdated(
+                context.date(lastUpdated.millisecondsSinceEpoch),
+              ),
+              style: theme.textTheme.bodySmall,
+            ),
             const SizedBox(height: 12),
             Text(l.privacyIntro, style: theme.textTheme.bodyMedium),
             for (final (title, body) in sections) ...[

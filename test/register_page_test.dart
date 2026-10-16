@@ -19,28 +19,30 @@ Widget _app(FakeAuthGateway gateway) {
     routes: [
       GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
       GoRoute(
-          path: '/groups',
-          builder: (_, _) =>
-              const Scaffold(body: Center(child: Text('groups-home')))),
+        path: '/groups',
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('groups-home'))),
+      ),
       GoRoute(
-          path: '/login',
-          builder: (_, _) =>
-              const Scaffold(body: Center(child: Text('login-home')))),
+        path: '/login',
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('login-home'))),
+      ),
     ],
   );
   return ProviderScope(
     overrides: [authGatewayProvider.overrideWith((ref) => gateway)],
     child: MaterialApp.router(
-        localizationsDelegates: testLocalizationsDelegates,
-        supportedLocales: testSupportedLocales,
-        routerConfig: router),
+      localizationsDelegates: testLocalizationsDelegates,
+      supportedLocales: testSupportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
 Future<void> _fillForm(WidgetTester tester) async {
   await tester.enterText(find.byKey(const Key('usernameField')), 'alice');
-  await tester.enterText(
-      find.byKey(const Key('passwordField')), 'password123');
+  await tester.enterText(find.byKey(const Key('passwordField')), 'password123');
 }
 
 void main() {
@@ -76,17 +78,22 @@ void main() {
 
     expect(find.text('Register on the web'), findsOneWidget);
     expect(
-        find.textContaining(
-            'requires a CAPTCHA and accepting the terms of service,'),
-        findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Open homeserver website'),
-        findsOneWidget);
+      find.textContaining(
+        'requires a CAPTCHA and accepting the terms of service,',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(FilledButton, 'Open homeserver website'),
+      findsOneWidget,
+    );
     // Stayed on the register page.
     expect(find.text('groups-home'), findsNothing);
   });
 
-  testWidgets('a short password is rejected before any network call',
-      (tester) async {
+  testWidgets('a short password is rejected before any network call', (
+    tester,
+  ) async {
     final gateway = FakeAuthGateway();
     await tester.pumpWidget(_app(gateway));
     await tester.pumpAndSettle();

@@ -7,7 +7,8 @@ part 'settings_dao.g.dart';
 /// Device-local key/value flags. Not replicated — purely for per-device UI state
 /// like whether the one-time onboarding has been shown.
 @DriftAccessor(tables: [AppSettings])
-class SettingsDao extends DatabaseAccessor<AppDatabase> with _$SettingsDaoMixin {
+class SettingsDao extends DatabaseAccessor<AppDatabase>
+    with _$SettingsDaoMixin {
   SettingsDao(super.db);
 
   static const _onboardingSeenKey = 'onboarding_seen';
@@ -19,9 +20,11 @@ class SettingsDao extends DatabaseAccessor<AppDatabase> with _$SettingsDaoMixin 
           .map((row) => row?.value == 'true');
 
   Future<void> markOnboardingSeen() => into(appSettings).insertOnConflictUpdate(
-        const AppSettingsCompanion(
-            key: Value(_onboardingSeenKey), value: Value('true')),
-      );
+    const AppSettingsCompanion(
+      key: Value(_onboardingSeenKey),
+      value: Value('true'),
+    ),
+  );
 
   // ── background sync (G31) ───────────────────────────────────────────────────
 
@@ -40,9 +43,12 @@ class SettingsDao extends DatabaseAccessor<AppDatabase> with _$SettingsDaoMixin 
           .then((row) => row?.value != 'false');
 
   Future<void> setBackgroundSyncEnabled(bool enabled) =>
-      into(appSettings).insertOnConflictUpdate(AppSettingsCompanion(
+      into(appSettings).insertOnConflictUpdate(
+        AppSettingsCompanion(
           key: const Value(_backgroundSyncKey),
-          value: Value(enabled ? 'true' : 'false')));
+          value: Value(enabled ? 'true' : 'false'),
+        ),
+      );
 
   // ── left-group tombstones (G9) ─────────────────────────────────────────────
 
@@ -51,15 +57,20 @@ class SettingsDao extends DatabaseAccessor<AppDatabase> with _$SettingsDaoMixin 
   /// Records that this account left / deleted [groupId] (see
   /// [LeftGroupTombstone]). Overwrites an older tombstone.
   Future<void> markGroupLeft(String groupId, LeftGroupTombstone t) =>
-      into(appSettings).insertOnConflictUpdate(AppSettingsCompanion(
-          key: Value('$_leftGroupPrefix$groupId'), value: Value(t.encode())));
+      into(appSettings).insertOnConflictUpdate(
+        AppSettingsCompanion(
+          key: Value('$_leftGroupPrefix$groupId'),
+          value: Value(t.encode()),
+        ),
+      );
 
   /// The tombstone for [groupId], or null if we never left it (or were
   /// re-added since).
-  Future<LeftGroupTombstone?> leftGroup(String groupId) => (select(appSettings)
-        ..where((t) => t.key.equals('$_leftGroupPrefix$groupId')))
-      .getSingleOrNull()
-      .then((row) => LeftGroupTombstone.decode(row?.value));
+  Future<LeftGroupTombstone?> leftGroup(String groupId) =>
+      (select(appSettings)
+            ..where((t) => t.key.equals('$_leftGroupPrefix$groupId')))
+          .getSingleOrNull()
+          .then((row) => LeftGroupTombstone.decode(row?.value));
 
   /// Purges [groupId] from this device ([AppDatabase.purgeGroup]) and writes
   /// its tombstone, atomically — the common tail of every way a group is
@@ -72,7 +83,7 @@ class SettingsDao extends DatabaseAccessor<AppDatabase> with _$SettingsDaoMixin 
       });
 
   /// Forgets the tombstone — we were re-added to [groupId].
-  Future<void> clearGroupLeft(String groupId) => (delete(appSettings)
-        ..where((t) => t.key.equals('$_leftGroupPrefix$groupId')))
-      .go();
+  Future<void> clearGroupLeft(String groupId) => (delete(
+    appSettings,
+  )..where((t) => t.key.equals('$_leftGroupPrefix$groupId'))).go();
 }

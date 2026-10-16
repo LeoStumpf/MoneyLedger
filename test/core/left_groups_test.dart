@@ -9,13 +9,16 @@ import 'package:money_ledger/features/expenses/ledger_syncer.dart';
 
 const me = '@bob:y.org';
 
-Map<String, dynamic> rec(String? mxid, String status, int at) =>
-    {'matrix_id': mxid, 'status': status, 'updated_at': at};
+Map<String, dynamic> rec(String? mxid, String status, int at) => {
+  'matrix_id': mxid,
+  'status': status,
+  'updated_at': at,
+};
 
 void main() {
   group('classifyPeerViewOfMe', () {
-    PeerViewOfMe classify(List<Object?> records) => classifyPeerViewOfMe(
-        memberRecords: records, myMxid: me, leftAt: 100);
+    PeerViewOfMe classify(List<Object?> records) =>
+        classifyPeerViewOfMe(memberRecords: records, myMxid: me, leftAt: 100);
 
     test('unaware when we are absent or removed', () {
       expect(classify([rec('@a:x', 'active', 500)]), PeerViewOfMe.unaware);
@@ -25,18 +28,27 @@ void main() {
       expect(classify([rec(me, 'active', 100)]), PeerViewOfMe.staleActive);
     });
     test('re-added when we are active with a newer clock', () {
-      expect(classify([rec(me, 'active', 50), rec(me, 'active', 101)]),
-          PeerViewOfMe.readded);
+      expect(
+        classify([rec(me, 'active', 50), rec(me, 'active', 101)]),
+        PeerViewOfMe.readded,
+      );
     });
   });
 
   test('tombstone round-trips; corrupt values still mean "left"', () {
-    const t = LeftGroupTombstone(leftAt: 7, removalNotice: {'status': 'removed'});
+    const t = LeftGroupTombstone(
+      leftAt: 7,
+      removalNotice: {'status': 'removed'},
+    );
     final back = LeftGroupTombstone.decode(t.encode())!;
     expect(back.leftAt, 7);
     expect(back.removalNotice, {'status': 'removed'});
-    expect(LeftGroupTombstone.decode(const LeftGroupTombstone(leftAt: 3).encode())!
-        .removalNotice, isNull);
+    expect(
+      LeftGroupTombstone.decode(
+        const LeftGroupTombstone(leftAt: 3).encode(),
+      )!.removalNotice,
+      isNull,
+    );
     expect(LeftGroupTombstone.decode('not json'), isNotNull);
     expect(LeftGroupTombstone.decode(null), isNull);
   });
@@ -70,8 +82,10 @@ void main() {
       }
     });
     test('unknown own MXID → dropped', () {
-      expect(accepts(bootstrapEventType, [rec(me, 'active', 200)], myMxid: null),
-          isFalse);
+      expect(
+        accepts(bootstrapEventType, [rec(me, 'active', 200)], myMxid: null),
+        isFalse,
+      );
     });
   });
 }

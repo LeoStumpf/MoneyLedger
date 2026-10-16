@@ -53,9 +53,9 @@ class FakeMatrixNetwork {
   /// Returns (creating on first use) the transport view for one device of
   /// [userId], e.g. `@alice:x.org`. Create a user's transport before they
   /// need to receive payloads so delivery has somewhere to go.
-  FakeTransport clientFor(String userId, {String device = 'D1'}) =>
-      _clients.putIfAbsent(userId, () => {}).putIfAbsent(
-          device, () => FakeTransport(this, userId, device));
+  FakeTransport clientFor(String userId, {String device = 'D1'}) => _clients
+      .putIfAbsent(userId, () => {})
+      .putIfAbsent(device, () => FakeTransport(this, userId, device));
 
   /// Simulates a device signing out: it no longer receives anything, and a
   /// user left with no devices becomes unreachable for senders.
@@ -82,30 +82,34 @@ class FakeMatrixNetwork {
         for (final t in targets)
           t: [
             for (final id in (_clients[t] ?? const {}).keys)
-              (deviceId: id, blocked: false)
-          ]
+              (deviceId: id, blocked: false),
+          ],
       },
     );
     for (final MapEntry(key: target, value: ids) in plan.devices.entries) {
       if (dropWhere?.call(sender, target, type) ?? false) continue;
       for (final id in ids) {
         _clients[target]?[id]?._emit(
-            TransportMessage(senderId: sender, type: type, content: content));
+          TransportMessage(senderId: sender, type: type, content: content),
+        );
       }
     }
     return SendResult(
-        unreachableUsers: plan.unreachableUsers, deviceCount: plan.deviceCount);
+      unreachableUsers: plan.unreachableUsers,
+      deviceCount: plan.deviceCount,
+    );
   }
 
   /// Every send attempted on this network (a log for count assertions).
   final List<
-          ({
-            String sender,
-            Set<String> targets,
-            String type,
-            Map<String, dynamic> content
-          })>
-      sent = [];
+    ({
+      String sender,
+      Set<String> targets,
+      String type,
+      Map<String, dynamic> content,
+    })
+  >
+  sent = [];
 
   /// Waits until the relay is **quiescent**: [quietTicks] consecutive short
   /// timer ticks during which nothing was sent or delivered. Call after each
@@ -148,7 +152,9 @@ class FakeTransport implements LedgerTransport {
       StreamController.broadcast();
   late final BufferedInbox? _inbox = _net.bufferInbound
       ? BufferedInbox(
-          replayDelay: Duration.zero, onReplay: () => _net._activity++)
+          replayDelay: Duration.zero,
+          onReplay: () => _net._activity++,
+        )
       : null;
 
   /// When set, every send throws [TransportUnavailableException] — simulates

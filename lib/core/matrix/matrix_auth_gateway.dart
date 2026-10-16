@@ -43,12 +43,16 @@ class MatrixAuthGateway implements AuthGateway {
       final wk = await probe.getWellknown().timeout(_lookupTimeout);
       probe.httpClient.close();
       resolved = wk.mHomeserver.baseUrl;
-      debugPrint('[flows] well-known $normalised -> $resolved '
-          '(${sw.elapsedMilliseconds}ms)');
+      debugPrint(
+        '[flows] well-known $normalised -> $resolved '
+        '(${sw.elapsedMilliseconds}ms)',
+      );
     } catch (e) {
       // No .well-known or server doesn't support it — use the URL as-is.
-      debugPrint('[flows] well-known failed for $normalised after '
-          '${sw.elapsedMilliseconds}ms: $e');
+      debugPrint(
+        '[flows] well-known failed for $normalised after '
+        '${sw.elapsedMilliseconds}ms: $e',
+      );
     }
 
     // Step 2: fetch login flows from the resolved URL.
@@ -56,12 +60,16 @@ class MatrixAuthGateway implements AuthGateway {
       final api = MatrixApi(homeserver: resolved);
       final rawFlows = await api.getLoginFlows().timeout(_lookupTimeout) ?? [];
       api.httpClient.close();
-      debugPrint('[flows] getLoginFlows $resolved ok '
-          '(total ${sw.elapsedMilliseconds}ms)');
+      debugPrint(
+        '[flows] getLoginFlows $resolved ok '
+        '(total ${sw.elapsedMilliseconds}ms)',
+      );
       return _toResult(resolved.toString(), rawFlows);
     } catch (e) {
-      debugPrint('[flows] getLoginFlows $resolved failed after '
-          '${sw.elapsedMilliseconds}ms: $e');
+      debugPrint(
+        '[flows] getLoginFlows $resolved failed after '
+        '${sw.elapsedMilliseconds}ms: $e',
+      );
       // Flow check failed (e.g. CORS on a non-public server). Show both SSO and
       // password — we don't know which is supported, but SSO is worth offering
       // since we at least have the resolved homeserver URL to redirect to.
@@ -79,36 +87,36 @@ class MatrixAuthGateway implements AuthGateway {
     required String homeserver,
     required String username,
     required String password,
-  }) =>
-      _translated(homeserver, () async {
-        await _checkHomeserver(homeserver);
-        await withAuthTimeout(
-            _client.login(
-              AuthenticationTypes.password,
-              identifier: AuthenticationUserIdentifier(user: username),
-              password: password,
-              initialDeviceDisplayName: 'MoneyLedger',
-            ),
-            kAuthRequestTimeout,
-            'login');
-      });
+  }) => _translated(homeserver, () async {
+    await _checkHomeserver(homeserver);
+    await withAuthTimeout(
+      _client.login(
+        AuthenticationTypes.password,
+        identifier: AuthenticationUserIdentifier(user: username),
+        password: password,
+        initialDeviceDisplayName: 'MoneyLedger',
+      ),
+      kAuthRequestTimeout,
+      'login',
+    );
+  });
 
   @override
   Future<void> loginWithToken({
     required String homeserver,
     required String token,
-  }) =>
-      _translated(homeserver, () async {
-        await _checkHomeserver(homeserver);
-        await withAuthTimeout(
-            _client.login(
-              AuthenticationTypes.token,
-              token: token,
-              initialDeviceDisplayName: 'MoneyLedger',
-            ),
-            kAuthRequestTimeout,
-            'login');
-      });
+  }) => _translated(homeserver, () async {
+    await _checkHomeserver(homeserver);
+    await withAuthTimeout(
+      _client.login(
+        AuthenticationTypes.token,
+        token: token,
+        initialDeviceDisplayName: 'MoneyLedger',
+      ),
+      kAuthRequestTimeout,
+      'login',
+    );
+  });
 
   @override
   Future<void> register({
@@ -119,47 +127,55 @@ class MatrixAuthGateway implements AuthGateway {
       _translated(homeserver, () => _register(homeserver, username, password));
 
   Future<void> _register(
-      String homeserver, String username, String password) async {
+    String homeserver,
+    String username,
+    String password,
+  ) async {
     await _checkHomeserver(homeserver);
     try {
       // First attempt with no auth: an open server completes immediately;
       // otherwise it answers with a UIA challenge (flows + session).
       await withAuthTimeout(
-          _client.register(
-            username: username,
-            password: password,
-            initialDeviceDisplayName: 'MoneyLedger',
-          ),
-          kAuthRequestTimeout,
-          'register');
+        _client.register(
+          username: username,
+          password: password,
+          initialDeviceDisplayName: 'MoneyLedger',
+        ),
+        kAuthRequestTimeout,
+        'register',
+      );
     } on MatrixException catch (e) {
       final flows = e.authenticationFlows;
       if (isClientRegistrationDisabled(e.errcode, hasFlows: flows != null)) {
         // e.g. matrix.org (MAS/OIDC): sign-up only on the website.
-        throw RegistrationRequiresWebException(
-            homeserver, const [kWebSignupStage],
-            signUpUrl: await _signUpUrl(homeserver));
+        throw RegistrationRequiresWebException(homeserver, const [
+          kWebSignupStage,
+        ], signUpUrl: await _signUpUrl(homeserver));
       }
       if (flows == null) rethrow; // not a UIA challenge (e.g. username taken)
-      final plan =
-          classifyRegistrationFlows([for (final f in flows) f.stages]);
+      final plan = classifyRegistrationFlows([for (final f in flows) f.stages]);
       final session = e.session;
       if (!plan.canRegisterInApp || session == null) {
         throw RegistrationRequiresWebException(
-            homeserver, plan.blockingStages,
-            signUpUrl: await _signUpUrl(homeserver));
+          homeserver,
+          plan.blockingStages,
+          signUpUrl: await _signUpUrl(homeserver),
+        );
       }
       // Complete the no-op dummy stage to finish sign-up.
       await withAuthTimeout(
-          _client.register(
-            username: username,
-            password: password,
-            initialDeviceDisplayName: 'MoneyLedger',
-            auth: AuthenticationData(
-                type: AuthenticationTypes.dummy, session: session),
+        _client.register(
+          username: username,
+          password: password,
+          initialDeviceDisplayName: 'MoneyLedger',
+          auth: AuthenticationData(
+            type: AuthenticationTypes.dummy,
+            session: session,
           ),
-          kAuthRequestTimeout,
-          'register');
+        ),
+        kAuthRequestTimeout,
+        'register',
+      );
     }
   }
 
@@ -177,8 +193,11 @@ class MatrixAuthGateway implements AuthGateway {
   /// instead of JSON, …) reported as [NotAHomeserverException].
   Future<void> _checkHomeserver(String homeserver) async {
     try {
-      await withAuthTimeout(_client.checkHomeserver(Uri.parse(homeserver)),
-          kHomeserverCheckTimeout, 'checkHomeserver');
+      await withAuthTimeout(
+        _client.checkHomeserver(Uri.parse(homeserver)),
+        kHomeserverCheckTimeout,
+        'checkHomeserver',
+      );
     } catch (e) {
       if (isNetworkError(e) || e is BadServerLoginTypesException) rethrow;
       if (e is MatrixException && e.errcode != 'M_UNRECOGNIZED') rethrow;
@@ -190,12 +209,17 @@ class MatrixAuthGateway implements AuthGateway {
   /// failures of the auth port so the UI's pure `describeAuthError` can
   /// classify them without `package:matrix`.
   Future<void> _translated(
-      String homeserver, Future<void> Function() body) async {
+    String homeserver,
+    Future<void> Function() body,
+  ) async {
     try {
       await body();
     } on MatrixException catch (e) {
-      throw AuthServerException(e.errcode,
-          serverMessage: e.errorMessage, retryAfterMs: e.retryAfterMs);
+      throw AuthServerException(
+        e.errcode,
+        serverMessage: e.errorMessage,
+        retryAfterMs: e.retryAfterMs,
+      );
     } catch (e) {
       if (e is AuthServerException ||
           e is NotAHomeserverException ||
@@ -206,11 +230,17 @@ class MatrixAuthGateway implements AuthGateway {
       // A timeout means the server didn't answer in time — no need to spend
       // another few seconds probing whether the device is offline.
       if (e is TimeoutException) {
-        throw AuthNetworkException(_host(homeserver),
-            deviceOffline: false, cause: e);
+        throw AuthNetworkException(
+          _host(homeserver),
+          deviceOffline: false,
+          cause: e,
+        );
       }
-      throw AuthNetworkException(_host(homeserver),
-          deviceOffline: !await _referenceServerReachable(), cause: e);
+      throw AuthNetworkException(
+        _host(homeserver),
+        deviceOffline: !await _referenceServerReachable(),
+        cause: e,
+      );
     }
   }
 
@@ -278,25 +308,29 @@ class MatrixAuthGateway implements AuthGateway {
 
   static LoginFlowsResult _toResult(String resolvedUrl, List<LoginFlow> flows) {
     final hasSso = flows.any((f) => f.type == AuthenticationTypes.sso);
-    final hasPassword =
-        flows.any((f) => f.type == AuthenticationTypes.password);
+    final hasPassword = flows.any(
+      (f) => f.type == AuthenticationTypes.password,
+    );
     // Servers running native OIDC or token-only configs report no m.login.sso
     // and no m.login.password (e.g. mozilla.modular.im returns [m.login.token]).
     // In that case, offer SSO — the generic SSO redirect endpoint still works.
     final ssoAvailable = hasSso || !hasPassword;
     final ssoFlow = flows.cast<LoginFlow?>().firstWhere(
-        (f) => f?.type == AuthenticationTypes.sso,
-        orElse: () => null);
+      (f) => f?.type == AuthenticationTypes.sso,
+      orElse: () => null,
+    );
     final providers =
         (ssoFlow?.additionalProperties['identity_providers'] as List?)
-                ?.cast<Map>()
-                .map((p) => SsoProvider(
-                      id: p['id'] as String? ?? '',
-                      name: p['name'] as String? ?? 'SSO',
-                      brand: p['brand'] as String?,
-                    ))
-                .toList() ??
-            [];
+            ?.cast<Map>()
+            .map(
+              (p) => SsoProvider(
+                id: p['id'] as String? ?? '',
+                name: p['name'] as String? ?? 'SSO',
+                brand: p['brand'] as String?,
+              ),
+            )
+            .toList() ??
+        [];
     return LoginFlowsResult(
       resolvedUrl: resolvedUrl,
       hasPassword: hasPassword,

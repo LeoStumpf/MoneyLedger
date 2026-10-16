@@ -59,14 +59,10 @@ class SyncHealthState {
     int now, {
     Set<String> reached = const {},
     Set<String> unreachable = const {},
-  }) =>
-      SyncHealthState(
-        lastSuccessAt: now,
-        unreachablePeers: {
-          ...unreachablePeers.difference(reached),
-          ...unreachable,
-        },
-      );
+  }) => SyncHealthState(
+    lastSuccessAt: now,
+    unreachablePeers: {...unreachablePeers.difference(reached), ...unreachable},
+  );
 }
 
 /// Holds [SyncHealthState] for the whole session. `keepAlive` so it survives

@@ -54,8 +54,12 @@ class _MatrixVerificationSession implements VerificationSession {
   Future<void> _start() async {
     final device = _device;
     if (device == null) {
-      _emit(const VerificationState(VerificationPhase.failed,
-          error: 'Unknown device'));
+      _emit(
+        const VerificationState(
+          VerificationPhase.failed,
+          error: 'Unknown device',
+        ),
+      );
       return;
     }
     _controller.add(const VerificationState(VerificationPhase.starting));
@@ -72,15 +76,18 @@ class _MatrixVerificationSession implements VerificationSession {
   void _onUpdate(KeyVerification kv) {
     switch (kv.state) {
       case KeyVerificationState.askSas:
-        _emit(VerificationState(
-          VerificationPhase.compareEmojis,
-          emojis: [for (final e in kv.sasEmojis) SasEmoji(e.emoji, e.name)],
-        ));
+        _emit(
+          VerificationState(
+            VerificationPhase.compareEmojis,
+            emojis: [for (final e in kv.sasEmojis) SasEmoji(e.emoji, e.name)],
+          ),
+        );
       case KeyVerificationState.done:
         _emit(const VerificationState(VerificationPhase.success));
       case KeyVerificationState.error:
-        _emit(VerificationState(VerificationPhase.failed,
-            error: kv.canceledReason));
+        _emit(
+          VerificationState(VerificationPhase.failed, error: kv.canceledReason),
+        );
       default:
         _emit(const VerificationState(VerificationPhase.starting));
     }

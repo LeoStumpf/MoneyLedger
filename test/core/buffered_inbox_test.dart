@@ -2,16 +2,20 @@
 /// (app start, account-DB switch) are buffered and replayed — never dropped.
 library;
 
-
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/matrix/buffered_inbox.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 
 TransportMessage msg(String id) => TransportMessage(
-    senderId: '@bob:y.org', type: expenseEventType, content: {'id': id});
+  senderId: '@bob:y.org',
+  type: expenseEventType,
+  content: {'id': id},
+);
 
-List<String> ids(List<TransportMessage> l) =>
-    [for (final m in l) m.content['id'] as String];
+List<String> ids(List<TransportMessage> l) => [
+  for (final m in l) m.content['id'] as String,
+];
 
 Future<void> drain() => Future<void>.delayed(const Duration(milliseconds: 5));
 
@@ -77,33 +81,41 @@ void main() {
     expect(ids(got), ['c', 'd', 'e']);
   });
 
-  test('a backlog received for another account is discarded on replay',
-      () async {
-    var account = '@alice:x.org';
-    final inbox = BufferedInbox(
-        replayDelay: Duration.zero, currentRecipient: () => account);
-    inbox.add(msg('for-alice'));
-    account = '@carol:x.org'; // account switch while nobody listened
-    inbox.add(msg('for-carol'));
+  test(
+    'a backlog received for another account is discarded on replay',
+    () async {
+      var account = '@alice:x.org';
+      final inbox = BufferedInbox(
+        replayDelay: Duration.zero,
+        currentRecipient: () => account,
+      );
+      inbox.add(msg('for-alice'));
+      account = '@carol:x.org'; // account switch while nobody listened
+      inbox.add(msg('for-carol'));
 
-    final got = <TransportMessage>[];
-    inbox.stream.listen(got.add);
-    await drain();
-    expect(ids(got), ['for-carol']);
-  });
+      final got = <TransportMessage>[];
+      inbox.stream.listen(got.add);
+      await drain();
+      expect(ids(got), ['for-carol']);
+    },
+  );
 
-  test('replay waits for the delay so late-attaching listeners get it too',
-      () async {
-    final inbox =
-        BufferedInbox(replayDelay: const Duration(milliseconds: 20));
-    inbox.add(msg('a'));
-    final first = <TransportMessage>[];
-    inbox.stream.listen(first.add);
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-    final second = <TransportMessage>[];
-    inbox.stream.listen(second.add);
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-    expect(ids(first), ['a']);
-    expect(ids(second), ['a']);
+  test('replay waits for the delay so late-attaching listeners get it too', () {
+    // Fake clock: the 5 ms / 20 ms ordering can't be stretched by CPU load.
+    fakeAsync((clock) {
+      final inbox = BufferedInbox(
+        replayDelay: const Duration(milliseconds: 20),
+      );
+      inbox.add(msg('a'));
+      final first = <TransportMessage>[];
+      inbox.stream.listen(first.add);
+      clock.elapse(const Duration(milliseconds: 5));
+      expect(first, isEmpty, reason: 'still within the replay delay');
+      final second = <TransportMessage>[];
+      inbox.stream.listen(second.add);
+      clock.elapse(const Duration(milliseconds: 20));
+      expect(ids(first), ['a']);
+      expect(ids(second), ['a']);
+    });
   });
 }

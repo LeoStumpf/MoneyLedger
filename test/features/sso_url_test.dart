@@ -10,7 +10,10 @@ void main() {
       );
       final uri = Uri.parse(url);
       expect(uri.path, '/_matrix/client/v3/login/sso/redirect');
-      expect(uri.queryParameters['redirectUrl'], 'moneyledger://sso-callback/?hs=x');
+      expect(
+        uri.queryParameters['redirectUrl'],
+        'moneyledger://sso-callback/?hs=x',
+      );
     });
 
     test('targets a specific provider when given', () {
@@ -19,8 +22,10 @@ void main() {
         callbackUrl: 'https://app/',
         providerId: 'oidc-google',
       );
-      expect(Uri.parse(url).path,
-          '/_matrix/client/v3/login/sso/redirect/oidc-google');
+      expect(
+        Uri.parse(url).path,
+        '/_matrix/client/v3/login/sso/redirect/oidc-google',
+      );
     });
 
     test('preserves the homeserver host and scheme', () {

@@ -71,45 +71,58 @@ void main() {
           expect(contrast(ledger.positive, bg), greaterThanOrEqualTo(4.5));
           expect(contrast(ledger.negative, bg), greaterThanOrEqualTo(4.5));
         }
-        expect(contrast(ledger.onPositiveContainer, ledger.positiveContainer),
-            greaterThanOrEqualTo(4.5));
-        expect(contrast(ledger.onNegativeContainer, ledger.negativeContainer),
-            greaterThanOrEqualTo(4.5));
+        expect(
+          contrast(ledger.onPositiveContainer, ledger.positiveContainer),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          contrast(ledger.onNegativeContainer, ledger.negativeContainer),
+          greaterThanOrEqualTo(4.5),
+        );
       });
 
       test('avatar letters are readable on every avatar colour', () {
         for (var i = 0; i < ledger.avatarBackgrounds.length; i++) {
           expect(
-              contrast(ledger.avatarForegrounds[i], ledger.avatarBackgrounds[i]),
-              greaterThanOrEqualTo(4.5),
-              reason: 'avatar colour $i');
+            contrast(ledger.avatarForegrounds[i], ledger.avatarBackgrounds[i]),
+            greaterThanOrEqualTo(4.5),
+            reason: 'avatar colour $i',
+          );
         }
       });
 
       testWidgets('builds a page with avatars + money colours', (tester) async {
-        await tester.pumpWidget(MaterialApp(
-          theme: theme,
-          home: Builder(
-            builder: (context) => Scaffold(
-              appBar: AppBar(title: const Text('Trip')),
-              body: Column(children: [
-                const PersonAvatar(id: '@bea:x.org', name: 'Bea Müller'),
-                const AvatarStack(people: [
-                  (id: '1', name: 'Ann'),
-                  (id: '2', name: 'Ben'),
-                  (id: '3', name: 'Cy'),
-                  (id: '4', name: 'Dee'),
-                  (id: '5', name: 'Eve'),
-                  (id: '6', name: 'Fay'),
-                ]),
-                Text('owed',
-                    style: TextStyle(color: context.ledgerColors.positive)),
-                const Card(child: ListTile(title: Text('row'))),
-                FilledButton(onPressed: () {}, child: const Text('Go')),
-              ]),
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: Builder(
+              builder: (context) => Scaffold(
+                appBar: AppBar(title: const Text('Trip')),
+                body: Column(
+                  children: [
+                    const PersonAvatar(id: '@bea:x.org', name: 'Bea Müller'),
+                    const AvatarStack(
+                      people: [
+                        (id: '1', name: 'Ann'),
+                        (id: '2', name: 'Ben'),
+                        (id: '3', name: 'Cy'),
+                        (id: '4', name: 'Dee'),
+                        (id: '5', name: 'Eve'),
+                        (id: '6', name: 'Fay'),
+                      ],
+                    ),
+                    Text(
+                      'owed',
+                      style: TextStyle(color: context.ledgerColors.positive),
+                    ),
+                    const Card(child: ListTile(title: Text('row'))),
+                    FilledButton(onPressed: () {}, child: const Text('Go')),
+                  ],
+                ),
+              ),
             ),
           ),
-        ));
+        );
         expect(tester.takeException(), isNull);
         expect(find.text('BM'), findsOneWidget);
         expect(find.text('+2'), findsOneWidget); // 4 shown + "+2"
@@ -136,31 +149,40 @@ void main() {
 
     test('formatDayHeader omits the year only within the current year', () {
       expect(formatDayHeader(at(2026, 6, 13), 'en', now: now), 'Sat, Jun 13');
-      expect(formatDayHeader(at(2025, 6, 13), 'en', now: now),
-          'Fri, Jun 13, 2025');
+      expect(
+        formatDayHeader(at(2025, 6, 13), 'en', now: now),
+        'Fri, Jun 13, 2025',
+      );
     });
 
     for (final (locale, today, yesterday) in [
       ('en', 'Today', 'Yesterday'),
       ('de', 'Heute', 'Gestern'),
     ]) {
-      testWidgets('dayHeader: Today / Yesterday / date ($locale)',
-          (tester) async {
+      testWidgets('dayHeader: Today / Yesterday / date ($locale)', (
+        tester,
+      ) async {
         late BuildContext ctx;
-        await tester.pumpWidget(MaterialApp(
-          locale: Locale(locale),
-          localizationsDelegates: testLocalizationsDelegates,
-          supportedLocales: testSupportedLocales,
-          home: Builder(builder: (c) {
-            ctx = c;
-            return const SizedBox();
-          }),
-        ));
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: Locale(locale),
+            localizationsDelegates: testLocalizationsDelegates,
+            supportedLocales: testSupportedLocales,
+            home: Builder(
+              builder: (c) {
+                ctx = c;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
         await tester.pump();
         expect(ctx.dayHeader(at(2026, 10, 16), now: now), today);
         expect(ctx.dayHeader(at(2026, 10, 15), now: now), yesterday);
-        expect(ctx.dayHeader(at(2026, 6, 13), now: now),
-            formatDayHeader(at(2026, 6, 13), locale, now: now));
+        expect(
+          ctx.dayHeader(at(2026, 6, 13), now: now),
+          formatDayHeader(at(2026, 6, 13), locale, now: now),
+        );
       });
     }
   });

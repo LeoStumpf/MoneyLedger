@@ -90,7 +90,8 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
     ];
     final cents = _cents;
     final debt = widget.debtCents;
-    final exceeds = debt != null &&
+    final exceeds =
+        debt != null &&
         cents != null &&
         _currency == widget.currency &&
         cents > debt;
@@ -98,10 +99,12 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
     final l = context.l10n;
 
     DropdownMenuItem<String> item(String id) => DropdownMenuItem(
-          value: id,
-          child: Text(widget.participants[id] ?? id,
-              overflow: TextOverflow.ellipsis),
-        );
+      value: id,
+      child: Text(
+        widget.participants[id] ?? id,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
 
     return AlertDialog(
       title: Text(l.recordPayment),
@@ -136,8 +139,9 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                     key: const Key('paymentAmount'),
                     controller: _amount,
                     decoration: InputDecoration(labelText: l.amountLabel),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
@@ -177,12 +181,14 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
         FilledButton(
           onPressed: problem
               ? null
-              : () => Navigator.of(context).pop(PaymentDraft(
+              : () => Navigator.of(context).pop(
+                  PaymentDraft(
                     from: _from!,
                     to: _to!,
                     cents: cents!,
                     currency: _currency,
-                  )),
+                  ),
+                ),
           child: Text(l.record),
         ),
       ],

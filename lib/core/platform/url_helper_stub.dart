@@ -3,6 +3,8 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../features/auth/sso_callback.dart';
+
 void navigateTo(String url) {}
 
 Map<String, String> get currentUrlParams => {};
@@ -30,14 +32,14 @@ Stream<Uri> incomingSsoLinks() async* {
   final appLinks = AppLinks();
   final initial = await appLinks.getInitialLink();
   if (initial != null) {
-    debugPrint('[sso] initial link: $initial');
+    debugPrint('[sso] initial link: ${redactSsoUri(initial)}');
     yield initial;
   }
   await for (final uri in appLinks.uriLinkStream) {
     // uriLinkStream may also replay the launch link; don't process it twice
     // (SSO login tokens are single-use, so a re-exchange would error).
     if (uri == initial) continue;
-    debugPrint('[sso] stream link: $uri');
+    debugPrint('[sso] stream link: ${redactSsoUri(uri)}');
     yield uri;
   }
 }

@@ -11,11 +11,10 @@ Future<({String name, String currency})?> showEditGroupDialog(
   BuildContext context, {
   required String name,
   required String currency,
-}) =>
-    showDialog<({String name, String currency})>(
-      context: context,
-      builder: (_) => _EditGroupDialog(name: name, currency: currency),
-    );
+}) => showDialog<({String name, String currency})>(
+  context: context,
+  builder: (_) => _EditGroupDialog(name: name, currency: currency),
+);
 
 class _EditGroupDialog extends StatefulWidget {
   final String name;
@@ -39,7 +38,9 @@ class _EditGroupDialogState extends State<_EditGroupDialog> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.of(context).pop((name: _nameCtrl.text.trim(), currency: _currency));
+    Navigator.of(
+      context,
+    ).pop((name: _nameCtrl.text.trim(), currency: _currency));
   }
 
   @override

@@ -37,7 +37,10 @@ const kSplashLocation = '/splash';
 /// not seen → forced onboarding; seen → bounce off the auth pages, bare root,
 /// splash and stale onboarding screen to the groups list.
 String? routerRedirect(
-    bool isLoggedIn, OnboardingStatus onboarding, String location) {
+  bool isLoggedIn,
+  OnboardingStatus onboarding,
+  String location,
+) {
   if (!isLoggedIn) {
     return _authPages.contains(location) || _publicPages.contains(location)
         ? null
@@ -82,28 +85,26 @@ GoRouter router(Ref ref) {
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
-      GoRoute(
-          path: kSplashLocation, builder: (_, _) => const SplashPage()),
-      GoRoute(
-          path: '/onboarding', builder: (_, _) => const OnboardingPage()),
+      GoRoute(path: kSplashLocation, builder: (_, _) => const SplashPage()),
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
       GoRoute(path: '/devices', builder: (_, _) => const DevicesPage()),
       GoRoute(path: '/about', builder: (_, _) => const AboutPage()),
       GoRoute(
-          path: '/about/privacy',
-          builder: (_, _) => const PrivacyPolicyPage()),
+        path: '/about/privacy',
+        builder: (_, _) => const PrivacyPolicyPage(),
+      ),
       GoRoute(
-          path: '/groups/create',
-          builder: (_, _) => const CreateGroupPage()),
+        path: '/groups/create',
+        builder: (_, _) => const CreateGroupPage(),
+      ),
       GoRoute(
         path: '/groups/:roomId/expenses',
-        builder: (_, s) =>
-            ExpensesPage(roomId: s.pathParameters['roomId']!),
+        builder: (_, s) => ExpensesPage(roomId: s.pathParameters['roomId']!),
       ),
       GoRoute(
         path: '/groups/:roomId/expenses/add',
-        builder: (_, s) =>
-            AddExpensePage(roomId: s.pathParameters['roomId']!),
+        builder: (_, s) => AddExpensePage(roomId: s.pathParameters['roomId']!),
       ),
       GoRoute(
         path: '/groups/:roomId/expenses/edit',
@@ -114,8 +115,7 @@ GoRouter router(Ref ref) {
       ),
       GoRoute(
         path: '/groups/:roomId/balance',
-        builder: (_, s) =>
-            BalancePage(roomId: s.pathParameters['roomId']!),
+        builder: (_, s) => BalancePage(roomId: s.pathParameters['roomId']!),
       ),
       GoRoute(
         path: '/groups/:roomId/members',

@@ -27,8 +27,10 @@ class DevicesPage extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(deviceTrustSummary(devices, l),
-                  style: Theme.of(context).textTheme.bodyMedium),
+              child: Text(
+                deviceTrustSummary(devices, l),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ),
             for (final d in devices) _DeviceTile(device: d),
           ],
@@ -48,15 +50,15 @@ class _DeviceTile extends ConsumerWidget {
     final (icon, color) = device.isThisDevice
         ? (Icons.smartphone, scheme.primary)
         : device.verified
-            ? (Icons.verified_user, scheme.primary)
-            : (Icons.gpp_maybe, scheme.error);
+        ? (Icons.verified_user, scheme.primary)
+        : (Icons.gpp_maybe, scheme.error);
 
     final l = context.l10n;
     final status = device.isThisDevice
         ? l.thisDevice
         : device.verified
-            ? l.verified
-            : l.notVerified;
+        ? l.verified
+        : l.notVerified;
 
     return ListTile(
       leading: Icon(icon, color: color),
@@ -96,7 +98,8 @@ class _VerificationDialog extends StatelessWidget {
     return StreamBuilder<VerificationState>(
       stream: session.updates,
       builder: (context, snapshot) {
-        final state = snapshot.data ??
+        final state =
+            snapshot.data ??
             const VerificationState(VerificationPhase.starting);
         return AlertDialog(
           title: Text(context.l10n.verifyDeviceTitle(device.label)),
@@ -131,8 +134,10 @@ class _VerificationDialog extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(e.emoji, style: const TextStyle(fontSize: 30)),
-                      Text(e.name,
-                          style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        e.name,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
               ],
@@ -142,9 +147,11 @@ class _VerificationDialog extends StatelessWidget {
       case VerificationPhase.success:
         return Text(l.deviceVerified);
       case VerificationPhase.failed:
-        return Text(state.error != null
-            ? l.verificationFailedWithError(state.error.toString())
-            : l.verificationFailed);
+        return Text(
+          state.error != null
+              ? l.verificationFailedWithError(state.error.toString())
+              : l.verificationFailed,
+        );
     }
   }
 

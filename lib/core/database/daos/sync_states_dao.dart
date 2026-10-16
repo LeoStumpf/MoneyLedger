@@ -27,39 +27,45 @@ class SyncStatesDao extends DatabaseAccessor<AppDatabase>
   /// never moves an existing `lastInSyncAt` backwards.
   Future<void> markInSync(String groupId, String userId, int at) =>
       transaction(() async {
-        final existing = await (select(peerSyncStates)
-              ..where((t) =>
-                  t.groupId.equals(groupId) & t.userId.equals(userId)))
-            .getSingleOrNull();
+        final existing =
+            await (select(peerSyncStates)..where(
+                  (t) => t.groupId.equals(groupId) & t.userId.equals(userId),
+                ))
+                .getSingleOrNull();
         if (existing != null && existing.lastInSyncAt >= at) return;
-        await upsertSyncState(PeerSyncStatesCompanion(
-          groupId: Value(groupId),
-          userId: Value(userId),
-          lastInSyncAt: Value(at),
-        ));
+        await upsertSyncState(
+          PeerSyncStatesCompanion(
+            groupId: Value(groupId),
+            userId: Value(userId),
+            lastInSyncAt: Value(at),
+          ),
+        );
       });
 
   Future<void> markDigestSent(String groupId, String userId, int at) =>
-      upsertSyncState(PeerSyncStatesCompanion(
-        groupId: Value(groupId),
-        userId: Value(userId),
-        lastDigestSentAt: Value(at),
-      ));
+      upsertSyncState(
+        PeerSyncStatesCompanion(
+          groupId: Value(groupId),
+          userId: Value(userId),
+          lastDigestSentAt: Value(at),
+        ),
+      );
 
   /// When this device last sent a digest to anyone, for any group (ms epoch;
   /// 0 if never). The background round (G31) only broadcasts its own digests
   /// when this is older than the background period.
   Future<int> latestDigestSentAt() async {
     final latest = peerSyncStates.lastDigestSentAt.max();
-    final row =
-        await (selectOnly(peerSyncStates)..addColumns([latest])).getSingle();
+    final row = await (selectOnly(
+      peerSyncStates,
+    )..addColumns([latest])).getSingle();
     return row.read(latest) ?? 0;
   }
 
   static PeerSyncStateModel _toModel(PeerSyncState s) => PeerSyncStateModel(
-        groupId: s.groupId,
-        userId: s.userId,
-        lastInSyncAt: s.lastInSyncAt,
-        lastDigestSentAt: s.lastDigestSentAt,
-      );
+    groupId: s.groupId,
+    userId: s.userId,
+    lastInSyncAt: s.lastInSyncAt,
+    lastDigestSentAt: s.lastDigestSentAt,
+  );
 }

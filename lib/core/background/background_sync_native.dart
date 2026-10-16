@@ -67,8 +67,8 @@ void attachForegroundSync(ProviderContainer container) {
 
 BackgroundScheduler createPlatformBackgroundScheduler() =>
     backgroundSyncSupported
-        ? const _WorkManagerScheduler()
-        : const NoopBackgroundScheduler();
+    ? const _WorkManagerScheduler()
+    : const NoopBackgroundScheduler();
 
 class _WorkManagerScheduler implements BackgroundScheduler {
   const _WorkManagerScheduler();
@@ -126,8 +126,10 @@ Future<BackgroundRoundResult?> runBackgroundTask() async {
   final gate = BackgroundIsolateGate();
   if (await gate.appAlive()) {
     final ok = await gate.delegateToApp(_delegateTimeout);
-    debugPrint('[bg] app is running — delegated to it '
-        '(${ok ? 'done' : 'no answer'})');
+    debugPrint(
+      '[bg] app is running — delegated to it '
+      '(${ok ? 'done' : 'no answer'})',
+    );
     return null;
   }
   final osStop = _osStop = Completer<void>();

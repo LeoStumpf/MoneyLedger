@@ -13,12 +13,17 @@ import 'package:intl/intl.dart';
 /// digits with a no-break space (`CHF 3.00`, not `CHF3.00`).
 String formatMoney(int cents, String currency, String locale) {
   final f = NumberFormat.simpleCurrency(
-      locale: locale, name: currency, decimalDigits: 2);
+    locale: locale,
+    name: currency,
+    decimalDigits: 2,
+  );
   final text = f.format(cents / 100);
   final symbol = f.currencySymbol;
   if (!RegExp(r'^[A-Za-z]+$').hasMatch(symbol)) return text;
-  return text.replaceFirstMapped(RegExp('${RegExp.escape(symbol)}(?=\\d)'),
-      (m) => '${m[0]}\u00a0');
+  return text.replaceFirstMapped(
+    RegExp('${RegExp.escape(symbol)}(?=\\d)'),
+    (m) => '${m[0]}\u00a0',
+  );
 }
 
 /// [cents] as a plain decimal for an editable amount field — no grouping, no
@@ -33,8 +38,9 @@ String formatDecimal(num value, String locale) =>
 /// A short localized date: `Jun 13, 2026` (en) / `13. Juni 2026` (de).
 /// Needs the locale's date symbols — loaded by the Flutter localization
 /// delegates in the app (and in widget tests that use them).
-String formatDate(int msEpoch, String locale) =>
-    DateFormat.yMMMd(locale).format(DateTime.fromMillisecondsSinceEpoch(msEpoch));
+String formatDate(int msEpoch, String locale) => DateFormat.yMMMd(
+  locale,
+).format(DateTime.fromMillisecondsSinceEpoch(msEpoch));
 
 /// A day header for a dated list (G17): `Wed, Oct 15` (en) / `Mi., 15. Okt.`
 /// (de) within [now]'s year, with the year otherwise. "Today" / "Yesterday"
@@ -42,7 +48,9 @@ String formatDate(int msEpoch, String locale) =>
 String formatDayHeader(int msEpoch, String locale, {DateTime? now}) {
   final d = DateTime.fromMillisecondsSinceEpoch(msEpoch);
   final n = now ?? DateTime.now();
-  return (d.year == n.year ? DateFormat.MMMEd(locale) : DateFormat.yMMMEd(locale))
+  return (d.year == n.year
+          ? DateFormat.MMMEd(locale)
+          : DateFormat.yMMMEd(locale))
       .format(d);
 }
 
@@ -51,9 +59,11 @@ String formatDayHeader(int msEpoch, String locale, {DateTime? now}) {
 int calendarDaysAgo(int msEpoch, {DateTime? now}) {
   final d = DateTime.fromMillisecondsSinceEpoch(msEpoch);
   final n = now ?? DateTime.now();
-  return DateTime.utc(n.year, n.month, n.day)
-      .difference(DateTime.utc(d.year, d.month, d.day))
-      .inDays;
+  return DateTime.utc(
+    n.year,
+    n.month,
+    n.day,
+  ).difference(DateTime.utc(d.year, d.month, d.day)).inDays;
 }
 
 /// Parses a user-typed decimal number, accepting both `,` and `.` as the

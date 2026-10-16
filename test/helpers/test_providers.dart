@@ -24,23 +24,26 @@ import 'l10n.dart';
 
 /// Wraps [child] in a ProviderScope + MaterialApp with the given overrides.
 /// Localized (G12) — English unless [locale] is given (e.g. `Locale('de')`).
-Widget testApp(Widget child, {List overrides = const [], Locale? locale}) =>
-    ProviderScope(
-      // Spread into a list literal — Dart infers List<Override> from the
-      // ProviderScope parameter type, and each element IS an Override at runtime.
-      overrides: [...overrides],
-      child: MaterialApp(
-          locale: locale ?? const Locale('en'),
-          localizationsDelegates: testLocalizationsDelegates,
-          supportedLocales: testSupportedLocales,
-          home: child),
-    );
+Widget testApp(
+  Widget child, {
+  List overrides = const [],
+  Locale? locale,
+}) => ProviderScope(
+  // Spread into a list literal — Dart infers List<Override> from the
+  // ProviderScope parameter type, and each element IS an Override at runtime.
+  overrides: [...overrides],
+  child: MaterialApp(
+    locale: locale ?? const Locale('en'),
+    localizationsDelegates: testLocalizationsDelegates,
+    supportedLocales: testSupportedLocales,
+    home: child,
+  ),
+);
 
 /// Like [testApp] but mounts [page] under a GoRouter (pushed onto a host route)
 /// so pages that call `context.pop()` on success have somewhere to pop back to.
 /// After a pop, the "host" text is visible — assert on it to confirm navigation.
-Widget testRouterApp(Widget page,
-    {List overrides = const [], Locale? locale}) {
+Widget testRouterApp(Widget page, {List overrides = const [], Locale? locale}) {
   final router = GoRouter(
     initialLocation: '/host',
     routes: [
@@ -55,10 +58,11 @@ Widget testRouterApp(Widget page,
   return ProviderScope(
     overrides: [...overrides],
     child: MaterialApp.router(
-        locale: locale ?? const Locale('en'),
-        localizationsDelegates: testLocalizationsDelegates,
-        supportedLocales: testSupportedLocales,
-        routerConfig: router),
+      locale: locale ?? const Locale('en'),
+      localizationsDelegates: testLocalizationsDelegates,
+      supportedLocales: testSupportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
@@ -76,31 +80,33 @@ List<dynamic> testOverrides({
   Stream<List<SettlementModel>>? settlementsStream,
   List<DebtEntry> debts = const [],
   List<MemberModel> members = const [],
-}) =>
-    [
-      isLoggedInProvider.overrideWith((ref) => isLoggedIn),
-      // loginFlowsLoading: future never completes, simulating homeserver
-      // discovery still in flight (the just-launched state).
-      loginFlowsProvider.overrideWith((ref, input) => loginFlowsLoading
-          ? Completer<LoginFlowsResult>().future
-          : Future.value(loginFlows ?? LoginFlowsResult.empty)),
-      expensesForRoomProvider
-          .overrideWith((ref, roomId) => Stream.value(expenses)),
-      settlementsForRoomProvider
-          .overrideWith((ref, roomId) =>
-              settlementsStream ?? Stream.value(settlements)),
-      balanceForRoomProvider.overrideWith((ref, roomId) => debts),
-      ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
-      // The participant-name resolver and members page read the members stream
-      // off the DB; default it to empty so unrelated widget tests stay offline.
-      groupMembersProvider.overrideWith((ref, groupId) => Stream.value(members)),
-      // Sync-status reads several DB-backed streams; widget tests that don't
-      // exercise it default to "synced" so they never open a real database.
-      groupSyncStatusProvider.overrideWith((ref, groupId) =>
-          const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null)),
-      // Never touch the app_links plugin in widget tests.
-      ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
-    ];
+}) => [
+  isLoggedInProvider.overrideWith((ref) => isLoggedIn),
+  // loginFlowsLoading: future never completes, simulating homeserver
+  // discovery still in flight (the just-launched state).
+  loginFlowsProvider.overrideWith(
+    (ref, input) => loginFlowsLoading
+        ? Completer<LoginFlowsResult>().future
+        : Future.value(loginFlows ?? LoginFlowsResult.empty),
+  ),
+  expensesForRoomProvider.overrideWith((ref, roomId) => Stream.value(expenses)),
+  settlementsForRoomProvider.overrideWith(
+    (ref, roomId) => settlementsStream ?? Stream.value(settlements),
+  ),
+  balanceForRoomProvider.overrideWith((ref, roomId) => debts),
+  ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
+  // The participant-name resolver and members page read the members stream
+  // off the DB; default it to empty so unrelated widget tests stay offline.
+  groupMembersProvider.overrideWith((ref, groupId) => Stream.value(members)),
+  // Sync-status reads several DB-backed streams; widget tests that don't
+  // exercise it default to "synced" so they never open a real database.
+  groupSyncStatusProvider.overrideWith(
+    (ref, groupId) =>
+        const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null),
+  ),
+  // Never touch the app_links plugin in widget tests.
+  ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
+];
 
 /// Additional override for groups tests where you want to control the group list.
 /// Pass a list of fake display names — the groups page uses room.name so we can't
@@ -109,5 +115,6 @@ dynamic emptyGroupsOverride() =>
     ledgerGroupsProvider.overrideWith((_) => Stream.value([]));
 
 /// Override that simulates the stream still loading (never emits, never closes).
-dynamic loadingGroupsOverride() =>
-    ledgerGroupsProvider.overrideWith((_) => StreamController<List<GroupModel>>().stream);
+dynamic loadingGroupsOverride() => ledgerGroupsProvider.overrideWith(
+  (_) => StreamController<List<GroupModel>>().stream,
+);

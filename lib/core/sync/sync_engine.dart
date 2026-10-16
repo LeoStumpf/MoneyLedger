@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show debugPrint, kDebugMode, visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/expenses/expenses_provider.dart';
@@ -23,12 +24,14 @@ import 'sync_health.dart';
 
 /// How often each group's digest is broadcast to its members. Injectable so
 /// tests can disable/shorten it.
-final syncIntervalProvider =
-    Provider<Duration>((ref) => const Duration(minutes: 10));
+final syncIntervalProvider = Provider<Duration>(
+  (ref) => const Duration(minutes: 10),
+);
 
 /// Debounce between receiving a ledger payload and sending the "ack" digest.
-final pokeDebounceProvider =
-    Provider<Duration>((ref) => const Duration(seconds: 5));
+final pokeDebounceProvider = Provider<Duration>(
+  (ref) => const Duration(seconds: 5),
+);
 
 /// Whether [SyncEngine.start] broadcasts every group's digest right away. The
 /// app does (a fresh start announces its state); the Android background round
@@ -106,13 +109,13 @@ class SyncEngine {
   bool _disposed = false;
 
   SyncEngine(Ref ref)
-      : _ref = ref,
-        _db = ref.read(appDatabaseProvider),
-        _groups = ref.read(groupsDaoProvider),
-        _members = ref.read(membersDaoProvider),
-        _expenses = ref.read(expensesDaoProvider),
-        _syncStates = ref.read(syncStatesDaoProvider),
-        _settings = SettingsDao(ref.read(appDatabaseProvider));
+    : _ref = ref,
+      _db = ref.read(appDatabaseProvider),
+      _groups = ref.read(groupsDaoProvider),
+      _members = ref.read(membersDaoProvider),
+      _expenses = ref.read(expensesDaoProvider),
+      _syncStates = ref.read(syncStatesDaoProvider),
+      _settings = SettingsDao(ref.read(appDatabaseProvider));
 
   /// Whether async work may continue. Checked after **every** await: the
   /// engine may have been disposed (logout / account switch / container
@@ -153,7 +156,9 @@ class SyncEngine {
     _sub = transport.onMessage.listen(_onMessage);
     _ready.complete();
     _periodic = Timer.periodic(
-        _ref.read(syncIntervalProvider), (_) => broadcastDigests());
+      _ref.read(syncIntervalProvider),
+      (_) => broadcastDigests(),
+    );
     try {
       // New or reinstalled device (empty local DB): ask our own other devices
       // for everything. Groups shared by peers are additionally recovered
@@ -201,12 +206,17 @@ class SyncEngine {
           return;
         }
       }
-      final result = await transport.sendToUsers({transport.userId},
-          resyncRequestEventType, {'v': protocolVersion, 'scope': 'all'});
+      final result = await transport.sendToUsers(
+        {transport.userId},
+        resyncRequestEventType,
+        {'v': protocolVersion, 'scope': 'all'},
+      );
       if (!_alive || !_selfRecoveryActive) return;
       if (kDebugMode) {
-        debugPrint('[sync] self resync_request #${attempt + 1} → '
-            '${result.deviceCount} own device(s)');
+        debugPrint(
+          '[sync] self resync_request #${attempt + 1} → '
+          '${result.deviceCount} own device(s)',
+        );
       }
       if (result.deviceCount == 0) {
         // No other device of ours exists: there is nobody to restore from.
@@ -225,8 +235,10 @@ class SyncEngine {
       _selfRecoveryActive = false;
       return;
     }
-    _selfResyncRetry =
-        Timer(delays[attempt], () => _selfResyncAttempt(attempt + 1));
+    _selfResyncRetry = _ref.read(selfRecoveryTimerFactoryProvider)(
+      delays[attempt],
+      () => _selfResyncAttempt(attempt + 1),
+    );
   }
 
   void _endSelfRecovery() {
@@ -290,10 +302,10 @@ class SyncEngine {
       case resyncRequestEventType:
         _onResyncRequest(msg);
       case expenseEventType ||
-            settlementEventType ||
-            groupMetaEventType ||
-            memberEventType ||
-            bootstrapEventType:
+          settlementEventType ||
+          groupMetaEventType ||
+          memberEventType ||
+          bootstrapEventType:
         final group = msg.content['group'] as String?;
         if (group != null) pokeGroup(group);
         // A bootstrap answers our new-device recovery: stop retrying. The
@@ -324,8 +336,32 @@ class SyncEngine {
     }
   }
 
-  Future<void> _sendDigest(String groupId,
-      {String? onlyTo, bool reply = false}) async {
+  /// A repair / answer send (digest-triggered repair, bootstrap reply, removal
+  /// notice): its outcome feeds [SyncHealth] like replication and digests do
+  /// (G15 — these used to fail with only a debug log). Rethrows so the caller
+  /// stops its sequence; only send errors are reported, never a malformed
+  /// inbound payload (a peer must not be able to flip our health state).
+  Future<void> _sendTracked(
+    LedgerTransport transport,
+    Set<String> targets,
+    String type,
+    Map<String, dynamic> content,
+  ) async {
+    final SendResult result;
+    try {
+      result = await transport.sendToUsers(targets, type, content);
+    } catch (e) {
+      _reportFailure(e);
+      rethrow;
+    }
+    _reportDelivery(targets, result);
+  }
+
+  Future<void> _sendDigest(
+    String groupId, {
+    String? onlyTo,
+    bool reply = false,
+  }) async {
     final transport = _transport;
     if (transport == null || !_alive) return;
     try {
@@ -349,12 +385,15 @@ class SyncEngine {
       final targets = onlyTo != null
           ? {onlyTo}
           : members
-              .where((m) => m.isActive && m.matrixId != null)
-              .map((m) => m.matrixId!)
-              .toSet();
+                .where((m) => m.isActive && m.matrixId != null)
+                .map((m) => m.matrixId!)
+                .toSet();
       if (targets.isEmpty) return;
-      final result = await transport.sendToUsers(targets, digestEventType,
-          buildDigestContent(group, members, expenses, settlements, reply: reply));
+      final result = await transport.sendToUsers(
+        targets,
+        digestEventType,
+        buildDigestContent(group, members, expenses, settlements, reply: reply),
+      );
       if (!_alive) return;
       final now = DateTime.now().millisecondsSinceEpoch;
       // Only targets that had a device were actually sent to.
@@ -391,8 +430,12 @@ class SyncEngine {
             leftAt: left.leftAt,
           );
           if (view == PeerViewOfMe.staleActive && left.removalNotice != null) {
-            await transport.sendToUsers(
-                {msg.senderId}, memberEventType, left.removalNotice!);
+            await _sendTracked(
+              transport,
+              {msg.senderId},
+              memberEventType,
+              left.removalNotice!,
+            );
             return;
           }
           if (view != PeerViewOfMe.readded) return;
@@ -408,8 +451,12 @@ class SyncEngine {
           return;
         }
         _groupResyncAskedAt[groupId] = now;
-        await transport.sendToUsers({msg.senderId}, resyncRequestEventType,
-            {'v': protocolVersion, 'scope': 'group', 'group': groupId});
+        await _sendTracked(
+          transport,
+          {msg.senderId},
+          resyncRequestEventType,
+          {'v': protocolVersion, 'scope': 'group', 'group': groupId},
+        );
         return;
       }
 
@@ -418,8 +465,12 @@ class SyncEngine {
       final senderRec = _claimedBy(members, msg.senderId);
       if (senderRec != null && !senderRec.isActive) {
         // Rule 6: the sender was removed — tell their device, nothing else.
-        await transport.sendToUsers(
-            {msg.senderId}, memberEventType, memberPayload(senderRec));
+        await _sendTracked(
+          transport,
+          {msg.senderId},
+          memberEventType,
+          memberPayload(senderRec),
+        );
         return;
       }
 
@@ -434,7 +485,7 @@ class SyncEngine {
         localMetaUpdatedAt: group.updatedAt,
         localMembers: {
           for (final m in members)
-            m.userId: (status: m.status, updatedAt: m.updatedAt)
+            m.userId: (status: m.status, updatedAt: m.updatedAt),
         },
         localExpenses: {for (final e in expenses) e.id: e.updatedAt},
         localSettlements: {for (final s in settlements) s.id: s.updatedAt},
@@ -443,18 +494,19 @@ class SyncEngine {
 
       // Rule 2: membership gossip, merged LWW (same merge as live member
       // payloads — see LedgerSyncer.processMember).
-      for (final entry
-          in (content['members'] as Map? ?? const {}).entries) {
+      for (final entry in (content['members'] as Map? ?? const {}).entries) {
         if (!_alive) return;
         final m = entry.value as Map;
-        await _members.upsertMemberLww(MembersCompanion(
-          groupId: Value(groupId),
-          userId: Value(entry.key as String),
-          displayName: Value(m['name'] as String? ?? ''),
-          matrixId: Value(m['matrix_id'] as String?),
-          status: Value(m['status'] as String? ?? 'active'),
-          updatedAt: Value(m['updated_at'] as int? ?? 0),
-        ));
+        await _members.upsertMemberLww(
+          MembersCompanion(
+            groupId: Value(groupId),
+            userId: Value(entry.key as String),
+            displayName: Value(m['name'] as String? ?? ''),
+            matrixId: Value(m['matrix_id'] as String?),
+            status: Value(m['status'] as String? ?? 'active'),
+            updatedAt: Value(m['updated_at'] as int? ?? 0),
+          ),
+        );
       }
 
       // Rule 1: targeted repair of records the sender lacks or has stale.
@@ -462,31 +514,44 @@ class SyncEngine {
         if (!_alive) return;
         final e = await _expenses.getExpenseById(id);
         if (e != null && _alive) {
-          await transport.sendToUsers(
-              {msg.senderId}, expenseEventType, expensePayload(e));
+          await _sendTracked(
+            transport,
+            {msg.senderId},
+            expenseEventType,
+            expensePayload(e),
+          );
         }
       }
       for (final id in diff.settlementIdsToSend) {
         if (!_alive) return;
         final s = await _expenses.getSettlementById(id);
         if (s != null && _alive) {
-          await transport.sendToUsers(
-              {msg.senderId}, settlementEventType, settlementPayload(s));
+          await _sendTracked(
+            transport,
+            {msg.senderId},
+            settlementEventType,
+            settlementPayload(s),
+          );
         }
       }
       if (!_alive) return;
       if (diff.sendGroupMeta) {
-        await transport.sendToUsers(
-            {msg.senderId}, groupMetaEventType, groupMetaPayload(group));
+        await _sendTracked(
+          transport,
+          {msg.senderId},
+          groupMetaEventType,
+          groupMetaPayload(group),
+        );
         if (!_alive) return;
       }
 
       // Rule 4: an exact match proves the sender has everything we have.
       if (diff.identical) {
         await _syncStates.markInSync(
-            groupId,
-            msg.senderId,
-            DateTime.now().millisecondsSinceEpoch);
+          groupId,
+          msg.senderId,
+          DateTime.now().millisecondsSinceEpoch,
+        );
         if (!_alive) return;
       }
 
@@ -523,7 +588,10 @@ class SyncEngine {
   }
 
   Future<void> _sendBootstrapIfMember(
-      LedgerTransport transport, String groupId, String requester) async {
+    LedgerTransport transport,
+    String groupId,
+    String requester,
+  ) async {
     if (requester != transport.userId) {
       final members = await _members.getMembers(groupId);
       final rec = _claimedBy(members, requester);
@@ -542,7 +610,10 @@ class SyncEngine {
       claimedBy(members, matrixId);
 
   Future<void> _sendBootstrap(
-      LedgerTransport transport, String groupId, String to) async {
+    LedgerTransport transport,
+    String groupId,
+    String to,
+  ) async {
     final content = buildBootstrapContent(
       groupId,
       await _groups.getGroup(groupId),
@@ -551,7 +622,7 @@ class SyncEngine {
       await _expenses.getAllSettlementsForGroup(groupId),
     );
     if (!_alive) return;
-    await transport.sendToUsers({to}, bootstrapEventType, content);
+    await _sendTracked(transport, {to}, bootstrapEventType, content);
   }
 }
 
@@ -564,24 +635,23 @@ Map<String, dynamic> buildDigestContent(
   List<ExpenseModel> expenses,
   List<SettlementModel> settlements, {
   required bool reply,
-}) =>
-    {
-      'v': protocolVersion,
-      'group': group.roomId,
-      'reply': reply,
-      'meta_updated_at': group.updatedAt,
-      'members': {
-        for (final m in members)
-          m.userId: {
-            'status': m.status,
-            'updated_at': m.updatedAt,
-            'name': m.displayName,
-            'matrix_id': m.matrixId,
-          }
+}) => {
+  'v': protocolVersion,
+  'group': group.roomId,
+  'reply': reply,
+  'meta_updated_at': group.updatedAt,
+  'members': {
+    for (final m in members)
+      m.userId: {
+        'status': m.status,
+        'updated_at': m.updatedAt,
+        'name': m.displayName,
+        'matrix_id': m.matrixId,
       },
-      'expenses': {for (final e in expenses) e.id: e.updatedAt},
-      'settlements': {for (final s in settlements) s.id: s.updatedAt},
-    };
+  },
+  'expenses': {for (final e in expenses) e.id: e.updatedAt},
+  'settlements': {for (final s in settlements) s.id: s.updatedAt},
+};
 
 class DigestDiff {
   /// Records our side must re-send because the sender lacks them or has an
@@ -618,7 +688,9 @@ DigestDiff compareDigest({
   var senderHasNewer = false;
 
   (List<String>, bool) diffRecords(
-      Map<String, int> local, Map<String, dynamic> remoteMap) {
+    Map<String, int> local,
+    Map<String, dynamic> remoteMap,
+  ) {
     final toSend = <String>[];
     var theirsNewer = false;
     for (final entry in local.entries) {
@@ -634,10 +706,14 @@ DigestDiff compareDigest({
 
   final remoteExpenses = (remote['expenses'] as Map? ?? const {});
   final remoteSettlements = (remote['settlements'] as Map? ?? const {});
-  final (expensesToSend, expTheirs) =
-      diffRecords(localExpenses, Map<String, dynamic>.from(remoteExpenses));
+  final (expensesToSend, expTheirs) = diffRecords(
+    localExpenses,
+    Map<String, dynamic>.from(remoteExpenses),
+  );
   final (settlementsToSend, setTheirs) = diffRecords(
-      localSettlements, Map<String, dynamic>.from(remoteSettlements));
+    localSettlements,
+    Map<String, dynamic>.from(remoteSettlements),
+  );
   senderHasNewer = expTheirs || setTheirs;
 
   final remoteMeta = remote['meta_updated_at'] as int? ?? 0;
@@ -661,7 +737,8 @@ DigestDiff compareDigest({
     settlementIdsToSend: settlementsToSend,
     sendGroupMeta: sendGroupMeta,
     senderHasNewer: senderHasNewer,
-    identical: !senderHasNewer &&
+    identical:
+        !senderHasNewer &&
         expensesToSend.isEmpty &&
         settlementsToSend.isEmpty &&
         !sendGroupMeta &&

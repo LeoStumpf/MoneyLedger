@@ -5,23 +5,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'app.dart';
 import 'core/background/background_sync.dart';
+import 'core/demo/demo_mode.dart';
+import 'core/demo/demo_overrides.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // G21: MoneyLedger's own license on the in-app licenses page, above the
   // automatically collected package licenses.
-  LicenseRegistry.addLicense(() => Stream.value(const LicenseEntryWithLineBreaks(
-      ['MoneyLedger'],
-      'MoneyLedger is free software: you can redistribute it and/or modify it '
-      'under the terms of the GNU Affero General Public License as published '
-      'by the Free Software Foundation, either version 3 of the License, or '
-      '(at your option) any later version.\n\n'
-      'Source code: https://github.com/LeoStumpf/MoneyLedger')));
+  LicenseRegistry.addLicense(
+    () => Stream.value(
+      const LicenseEntryWithLineBreaks(
+        ['MoneyLedger'],
+        'MoneyLedger is free software: you can redistribute it and/or modify it '
+        'under the terms of the GNU Affero General Public License as published '
+        'by the Free Software Foundation, either version 3 of the License, or '
+        '(at your option) any later version.\n\n'
+        'Source code: https://github.com/LeoStumpf/MoneyLedger',
+      ),
+    ),
+  );
   // G17: the bundled Manrope font (SIL Open Font License 1.1).
   LicenseRegistry.addLicense(() async* {
-    yield LicenseEntryWithLineBreaks(['Manrope font'],
-        await rootBundle.loadString('assets/fonts/manrope/OFL.txt'));
+    yield LicenseEntryWithLineBreaks([
+      'Manrope font',
+    ], await rootBundle.loadString('assets/fonts/manrope/OFL.txt'));
   });
+  // G15: offline demo (`--dart-define=OFFLINE_DEMO=true`) — seeded ledger,
+  // fake relay + auth; no Matrix client, crypto or background sync at all.
+  // A compile-time constant, so a normal build tree-shakes this branch.
+  if (kOfflineDemo) {
+    runApp(ProviderScope(overrides: demoOverrides(), child: const App()));
+    return;
+  }
   // G31: take the app's slot before the Matrix store / ledger DB are opened —
   // a periodic background sync round running in this process (Android
   // WorkManager) is asked to stop and close its stores first, so the two

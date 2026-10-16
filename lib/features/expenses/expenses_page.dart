@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/widgets/text_prompt_dialog.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/sync/sync_health.dart';
 import '../../core/sync/sync_status_provider.dart';
@@ -46,7 +47,8 @@ class ExpensesPage extends ConsumerWidget {
         .firstOrNull;
     final overview = ref.watch(groupOverviewProvider(roomId));
     // Invited but not yet linked to anyone in this group → offer self-claim.
-    final needsClaim = meAsync.hasValue &&
+    final needsClaim =
+        meAsync.hasValue &&
         meAsync.value == null &&
         members.any((m) => m.isActive);
     // G26: another member removed us — the group stays as read-only history
@@ -61,8 +63,7 @@ class ExpensesPage extends ConsumerWidget {
     // Same for the leave/delete (G9) and edit-group (G10) notifiers.
     ref.watch(groupExiterProvider);
     ref.watch(groupEditorProvider);
-    final exitKind =
-        groupExitKind(members, ref.watch(currentUserIdProvider));
+    final exitKind = groupExitKind(members, ref.watch(currentUserIdProvider));
     final l = context.l10n;
     final theme = Theme.of(context);
     final activeCount = members.where((m) => m.isActive).length;
@@ -74,15 +75,20 @@ class ExpensesPage extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(group?.name ?? l.expensesTitle,
-                key: const Key('groupTitle'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
+            Text(
+              group?.name ?? l.expensesTitle,
+              key: const Key('groupTitle'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             if (members.isNotEmpty)
-              Text(l.membersCount(activeCount),
-                  maxLines: 1,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant)),
+              Text(
+                l.membersCount(activeCount),
+                maxLines: 1,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
           ],
         ),
         actions: [
@@ -98,8 +104,11 @@ class ExpensesPage extends ConsumerWidget {
           PopupMenuButton<_GroupMenuAction>(
             tooltip: l.moreTooltip,
             onSelected: (action) => switch (action) {
-              _GroupMenuAction.addMember =>
-                showAddPersonDialog(context, ref, roomId),
+              _GroupMenuAction.addMember => showAddPersonDialog(
+                context,
+                ref,
+                roomId,
+              ),
               _GroupMenuAction.edit => _editGroup(context, ref),
               _GroupMenuAction.export => _exportCsv(context, ref),
               _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
@@ -134,12 +143,16 @@ class ExpensesPage extends ConsumerWidget {
               PopupMenuItem(
                 value: _GroupMenuAction.exit,
                 child: ListTile(
-                  leading: Icon(exitKind == GroupExitKind.leave
-                      ? Icons.logout
-                      : Icons.delete_outline),
-                  title: Text(exitKind == GroupExitKind.leave
-                      ? l.leaveGroup
-                      : l.deleteGroup),
+                  leading: Icon(
+                    exitKind == GroupExitKind.leave
+                        ? Icons.logout
+                        : Icons.delete_outline,
+                  ),
+                  title: Text(
+                    exitKind == GroupExitKind.leave
+                        ? l.leaveGroup
+                        : l.deleteGroup,
+                  ),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -182,11 +195,18 @@ class ExpensesPage extends ConsumerWidget {
           Expanded(
             child: Stack(
               children: [
-                _ledgerList(context, ref, expensesAsync, settlementsAsync,
-                    names, syncStatus, overview,
-                    readOnly: removed,
-                    busy: expenseState.isLoading,
-                    myId: meAsync.value?.userId),
+                _ledgerList(
+                  context,
+                  ref,
+                  expensesAsync,
+                  settlementsAsync,
+                  names,
+                  syncStatus,
+                  overview,
+                  readOnly: removed,
+                  busy: expenseState.isLoading,
+                  myId: meAsync.value?.userId,
+                ),
                 if (adderState.isLoading)
                   ColoredBox(
                     color: theme.colorScheme.scrim.withValues(alpha: 0.2),
@@ -218,11 +238,13 @@ class ExpensesPage extends ConsumerWidget {
     final l = context.l10n;
     if (expensesAsync.hasError) {
       return Center(
-          child: Text(l.errorWithDetail(expensesAsync.error.toString())));
+        child: Text(l.errorWithDetail(expensesAsync.error.toString())),
+      );
     }
     if (settlementsAsync.hasError) {
       return Center(
-          child: Text(l.errorWithDetail(settlementsAsync.error.toString())));
+        child: Text(l.errorWithDetail(settlementsAsync.error.toString())),
+      );
     }
     if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
       return const Center(child: CircularProgressIndicator());
@@ -252,8 +274,8 @@ class ExpensesPage extends ConsumerWidget {
           title: record.fromUser == myId
               ? l.settlementYouPaid(to)
               : record.toUser == myId
-                  ? l.settlementPaidYou(from)
-                  : l.settlementTitle(from, to),
+              ? l.settlementPaidYou(from)
+              : l.settlementTitle(from, to),
           pending: syncStatus.isRecordPending(record.updatedAt),
           onDelete: readOnly
               ? null
@@ -270,8 +292,8 @@ class ExpensesPage extends ConsumerWidget {
         pending: syncStatus.isRecordPending(expense.updatedAt),
         onTap: readOnly
             ? null
-            : () => context.push('/groups/$roomId/expenses/edit',
-                extra: expense),
+            : () =>
+                  context.push('/groups/$roomId/expenses/edit', extra: expense),
         onDelete: readOnly ? null : () => _confirmDelete(context, ref, expense),
       );
     }
@@ -289,8 +311,12 @@ class ExpensesPage extends ConsumerWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(Insets.page, Insets.s, Insets.page,
-          96), // clear the FAB
+      padding: const EdgeInsets.fromLTRB(
+        Insets.page,
+        Insets.s,
+        Insets.page,
+        96,
+      ), // clear the FAB
       children: [
         ContentWidth(
           child: _GroupSummaryCard(
@@ -299,10 +325,16 @@ class ExpensesPage extends ConsumerWidget {
             busy: busy,
             onSettleUp: () {
               final String my = myId ?? ref.read(currentUserIdProvider);
-              recordPaymentFlow(context, ref, roomId,
-                  myId: my,
-                  debt: settleUpSuggestion(
-                      ref.read(balanceForRoomProvider(roomId)), my));
+              recordPaymentFlow(
+                context,
+                ref,
+                roomId,
+                myId: my,
+                debt: settleUpSuggestion(
+                  ref.read(balanceForRoomProvider(roomId)),
+                  my,
+                ),
+              );
             },
             onBalances: () => context.push('/groups/$roomId/balance'),
           ),
@@ -333,14 +365,20 @@ class ExpensesPage extends ConsumerWidget {
   /// Leave / delete this group (G9) after a confirmation that warns about an
   /// unsettled balance; then back to the groups list.
   Future<void> _exitGroup(
-      BuildContext context, WidgetRef ref, GroupExitKind kind) async {
+    BuildContext context,
+    WidgetRef ref,
+    GroupExitKind kind,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
     final group = await ref.read(groupsDaoProvider).getGroup(roomId);
     if (!context.mounted) return;
     final me = ref.read(currentParticipantProvider(roomId)).value;
     final warning = unsettledWarning(
-        ref.read(balanceForRoomProvider(roomId)), me?.userId, l);
+      ref.read(balanceForRoomProvider(roomId)),
+      me?.userId,
+      l,
+    );
     final confirmed = await confirmGroupExit(
       context,
       kind: kind,
@@ -356,13 +394,19 @@ class ExpensesPage extends ConsumerWidget {
     final error = ref.read(groupExiterProvider).error;
     if (error != null) {
       messenger.showSnackBar(
-          SnackBar(content: Text(l.failedWithError(error.toString()))));
+        SnackBar(content: Text(l.failedWithError(error.toString()))),
+      );
       return;
     }
-    messenger.showSnackBar(SnackBar(
-        content: Text(kind == GroupExitKind.leave
-            ? l.youLeftGroup(group?.name ?? '')
-            : l.deletedGroup(group?.name ?? ''))));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          kind == GroupExitKind.leave
+              ? l.youLeftGroup(group?.name ?? '')
+              : l.deletedGroup(group?.name ?? ''),
+        ),
+      ),
+    );
     if (context.mounted) context.go('/groups');
   }
 
@@ -372,8 +416,11 @@ class ExpensesPage extends ConsumerWidget {
     final l = context.l10n;
     final group = await ref.read(groupsDaoProvider).getGroup(roomId);
     if (group == null || !context.mounted) return;
-    final result = await showEditGroupDialog(context,
-        name: group.name, currency: group.currency);
+    final result = await showEditGroupDialog(
+      context,
+      name: group.name,
+      currency: group.currency,
+    );
     if (result == null) return;
     await ref
         .read(groupEditorProvider.notifier)
@@ -381,32 +428,48 @@ class ExpensesPage extends ConsumerWidget {
     final error = ref.read(groupEditorProvider).error;
     if (error != null) {
       messenger.showSnackBar(
-          SnackBar(content: Text(l.failedWithError(error.toString()))));
+        SnackBar(content: Text(l.failedWithError(error.toString()))),
+      );
     }
   }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
-    final group = await ref.read(groupsDaoProvider).getGroup(roomId);
-    if (group == null) return;
-    final csv = await buildGroupCsvForExport(
-      ref.read(groupsDaoProvider),
-      ref.read(membersDaoProvider),
-      ref.read(expensesDaoProvider),
-      roomId,
-    );
-    await saveCsvFile(csvFileName(group.name), csv);
-    messenger.showSnackBar(
-        SnackBar(content: Text(l.exportedFile(csvFileName(group.name)))));
+    final groups = ref.read(groupsDaoProvider);
+    final members = ref.read(membersDaoProvider);
+    final expenses = ref.read(expensesDaoProvider);
+    try {
+      final group = await groups.getGroup(roomId);
+      if (group == null) return;
+      final csv = await buildGroupCsvForExport(
+        groups,
+        members,
+        expenses,
+        roomId,
+      );
+      await saveCsvFile(csvFileName(group.name), csv);
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.exportedFile(csvFileName(group.name)))),
+      );
+    } catch (e) {
+      // e.g. the file couldn't be written — tell the user (G15).
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.exportFailed(e.toString()))),
+      );
+    }
   }
 
   /// Lets a just-invited user say which participant they are: pick an existing
   /// (unclaimed) local person → self-claim them, or join as a new participant.
   Future<void> _showClaimPicker(
-      BuildContext context, WidgetRef ref, List<MemberModel> members) async {
-    final unclaimed =
-        members.where((m) => m.isActive && m.matrixId == null).toList();
+    BuildContext context,
+    WidgetRef ref,
+    List<MemberModel> members,
+  ) async {
+    final unclaimed = members
+        .where((m) => m.isActive && m.matrixId == null)
+        .toList();
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
     final choice = await showDialog<MemberModel?>(
@@ -440,36 +503,27 @@ class ExpensesPage extends ConsumerWidget {
     final error = ref.read(memberAdderProvider).error;
     if (error != null) {
       messenger.showSnackBar(
-          SnackBar(content: Text(l.failedWithError(error.toString()))));
+        SnackBar(content: Text(l.failedWithError(error.toString()))),
+      );
     }
   }
 
   Future<String?> _promptName(BuildContext context) {
-    final ctrl = TextEditingController();
     final l = context.l10n;
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.yourName),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: InputDecoration(labelText: l.nameLabel),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(l.cancel)),
-          FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
-              child: Text(l.join)),
-        ],
-      ),
-    ).whenComplete(ctrl.dispose);
+    return showTextPrompt(
+      context,
+      title: l.yourName,
+      label: l.nameLabel,
+      cancelLabel: l.cancel,
+      confirmLabel: l.join,
+    );
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, ExpenseModel expense) async {
+    BuildContext context,
+    WidgetRef ref,
+    ExpenseModel expense,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
     final confirmed = await showDialog<bool>(
@@ -497,12 +551,18 @@ class ExpensesPage extends ConsumerWidget {
     final error = ref.read(expenseAdderProvider).error;
     if (error != null) {
       messenger.showSnackBar(
-          SnackBar(content: Text(l.failedWithError(error.toString()))));
+        SnackBar(content: Text(l.failedWithError(error.toString()))),
+      );
     }
   }
 
-  Future<void> _confirmDeleteSettlement(BuildContext context, WidgetRef ref,
-      SettlementModel settlement, String fromName, String toName) async {
+  Future<void> _confirmDeleteSettlement(
+    BuildContext context,
+    WidgetRef ref,
+    SettlementModel settlement,
+    String fromName,
+    String toName,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
     final amount = context.money(settlement.amountCents, settlement.currency);
@@ -531,10 +591,10 @@ class ExpensesPage extends ConsumerWidget {
     final error = ref.read(expenseAdderProvider).error;
     if (error != null) {
       messenger.showSnackBar(
-          SnackBar(content: Text(l.failedWithError(error.toString()))));
+        SnackBar(content: Text(l.failedWithError(error.toString()))),
+      );
     }
   }
-
 }
 
 /// App-bar indicator. **Error** (tappable) when background sync has failed
@@ -566,8 +626,9 @@ class _SyncStatusIcon extends ConsumerWidget {
     }
     // A pending peer with no logged-in device isn't a sync error — say so
     // instead of "waiting" forever (G24).
-    final noDevice =
-        status.pendingPeers.where(health.unreachablePeers.contains).firstOrNull;
+    final noDevice = status.pendingPeers
+        .where(health.unreachablePeers.contains)
+        .firstOrNull;
     final waitingFor = noDevice ?? status.pendingPeers.first;
     return IconButton(
       icon: const Icon(Icons.cloud_queue),
@@ -579,7 +640,10 @@ class _SyncStatusIcon extends ConsumerWidget {
   }
 
   void _showHealthSheet(
-      BuildContext context, WidgetRef ref, SyncHealthState health) {
+    BuildContext context,
+    WidgetRef ref,
+    SyncHealthState health,
+  ) {
     final l = context.l10n;
     showModalBottomSheet<void>(
       context: context,
@@ -590,24 +654,31 @@ class _SyncStatusIcon extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l.syncProblemTitle,
-                  style: Theme.of(sheetCtx).textTheme.titleMedium),
+              Text(
+                l.syncProblemTitle,
+                style: Theme.of(sheetCtx).textTheme.titleMedium,
+              ),
               const SizedBox(height: 8),
               Text(l.syncProblemBody),
               const SizedBox(height: 12),
               if (health.lastSuccessAt != null)
-                Text(l.lastSynced(_ago(l, health.lastSuccessAt!)),
-                    style: Theme.of(sheetCtx).textTheme.bodySmall),
+                Text(
+                  l.lastSynced(_ago(l, health.lastSuccessAt!)),
+                  style: Theme.of(sheetCtx).textTheme.bodySmall,
+                ),
               if (health.lastError != null)
-                Text(l.lastError(health.lastError.toString()),
-                    style: Theme.of(sheetCtx).textTheme.bodySmall),
+                Text(
+                  l.lastError(health.lastError.toString()),
+                  style: Theme.of(sheetCtx).textTheme.bodySmall,
+                ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () {
                   ref.read(syncEngineProvider).broadcastDigests();
                   Navigator.pop(sheetCtx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l.retryingSync)));
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(l.retryingSync)));
                 },
                 icon: const Icon(Icons.refresh),
                 label: Text(l.retryNow),
@@ -622,7 +693,9 @@ class _SyncStatusIcon extends ConsumerWidget {
 
 /// A coarse "x ago" for the last-synced line (minutes / hours / days).
 String _ago(AppLocalizations l, int msEpoch) {
-  final d = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(msEpoch));
+  final d = DateTime.now().difference(
+    DateTime.fromMillisecondsSinceEpoch(msEpoch),
+  );
   if (d.inMinutes < 1) return l.agoJustNow;
   if (d.inHours < 1) return l.agoMinutes(d.inMinutes);
   if (d.inDays < 1) return l.agoHours(d.inHours);
@@ -638,12 +711,18 @@ class _DayHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Insets.xs, Insets.xl, Insets.xs, Insets.s),
+      padding: const EdgeInsets.fromLTRB(
+        Insets.xs,
+        Insets.xl,
+        Insets.xs,
+        Insets.s,
+      ),
       child: Text(
         text,
         key: const Key('dayHeader'),
-        style: theme.textTheme.labelLarge
-            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -673,20 +752,25 @@ class _GroupSummaryCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     // Tighter than the default so "Begleichen" fits two-up on a phone.
     final compact = FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: Insets.m));
+      padding: const EdgeInsets.symmetric(horizontal: Insets.m),
+    );
     return Card(
       key: const Key('groupSummaryCard'),
       color: scheme.primaryContainer.withValues(alpha: 0.55),
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.l)),
+        borderRadius: BorderRadius.circular(Radii.l),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(Insets.l + Insets.xs),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l.yourBalance,
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(color: scheme.onPrimaryContainer)),
+            Text(
+              l.yourBalance,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: scheme.onPrimaryContainer,
+              ),
+            ),
             const SizedBox(height: Insets.xs),
             BalanceSummaryText(
               overview: overview,
@@ -702,8 +786,11 @@ class _GroupSummaryCard extends StatelessWidget {
                       style: compact,
                       onPressed: busy ? null : onSettleUp,
                       icon: const Icon(Icons.payments_outlined, size: 20),
-                      label: Text(l.settleUp,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      label: Text(
+                        l.settleUp,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                   const SizedBox(width: Insets.m),
@@ -713,13 +800,15 @@ class _GroupSummaryCard extends StatelessWidget {
                     key: const Key('balancesButton'),
                     onPressed: onBalances,
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.m),
+                      padding: const EdgeInsets.symmetric(horizontal: Insets.m),
                       backgroundColor: AppTheme.cardColor(scheme),
                     ),
                     icon: const Icon(Icons.balance, size: 20),
-                    label: Text(l.balancesButton,
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    label: Text(
+                      l.balancesButton,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ],
@@ -736,19 +825,22 @@ class _LeadingTile extends StatelessWidget {
   final IconData icon;
   final Color background;
   final Color foreground;
-  const _LeadingTile(
-      {required this.icon, required this.background, required this.foreground});
+  const _LeadingTile({
+    required this.icon,
+    required this.background,
+    required this.foreground,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(Radii.m),
-        ),
-        child: Icon(icon, color: foreground, size: 22),
-      );
+    width: 44,
+    height: 44,
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(Radii.m),
+    ),
+    child: Icon(icon, color: foreground, size: 22),
+  );
 }
 
 /// Shared row layout for expenses and settlements: icon tile, two text
@@ -785,7 +877,11 @@ class _LedgerRow extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-            Insets.l, Insets.m, onDelete == null ? Insets.l : 0, Insets.m),
+          Insets.l,
+          Insets.m,
+          onDelete == null ? Insets.l : 0,
+          Insets.m,
+        ),
         child: Row(
           children: [
             leading,
@@ -794,17 +890,23 @@ class _LedgerRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -818,13 +920,19 @@ class _LedgerRow extends StatelessWidget {
                     if (pending)
                       Padding(
                         padding: const EdgeInsets.only(right: Insets.xs),
-                        child: Icon(Icons.cloud_queue,
-                            size: 16, color: scheme.outline),
+                        child: Icon(
+                          Icons.cloud_queue,
+                          size: 16,
+                          color: scheme.outline,
+                        ),
                       ),
-                    Text(amount,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontFeatures: kTabularFigures)),
+                    Text(
+                      amount,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: kTabularFigures,
+                      ),
+                    ),
                   ],
                 ),
                 if (amountNote != null) ...[
@@ -836,8 +944,11 @@ class _LedgerRow extends StatelessWidget {
             if (onDelete != null)
               PopupMenuButton<String>(
                 tooltip: menuTooltip,
-                icon: Icon(Icons.more_vert,
-                    size: 20, color: scheme.onSurfaceVariant),
+                icon: Icon(
+                  Icons.more_vert,
+                  size: 20,
+                  color: scheme.onSurfaceVariant,
+                ),
                 padding: EdgeInsets.zero,
                 onSelected: (action) {
                   if (action == 'delete') onDelete!();
@@ -862,13 +973,14 @@ class _ExpenseTile extends StatelessWidget {
   final bool pending;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
-  const _ExpenseTile(
-      {required this.expense,
-      required this.payerLine,
-      required this.effect,
-      required this.pending,
-      this.onTap,
-      this.onDelete});
+  const _ExpenseTile({
+    required this.expense,
+    required this.payerLine,
+    required this.effect,
+    required this.pending,
+    this.onTap,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -879,21 +991,27 @@ class _ExpenseTile extends StatelessWidget {
     final effect = this.effect;
     Widget? note;
     if (effect != null) {
-      final small = theme.textTheme.labelMedium
-          ?.copyWith(fontFeatures: kTabularFigures);
+      final small = theme.textTheme.labelMedium?.copyWith(
+        fontFeatures: kTabularFigures,
+      );
       final (text, color) = !effect.involved
           ? (l.notInvolved, scheme.onSurfaceVariant)
           : effect.net > 0
-              ? (l.youLentAmount(context.money(effect.net, expense.currency)),
-                  colors.positive)
-              : effect.net < 0
-                  ? (l.youBorrowedAmount(
-                          context.money(-effect.net, expense.currency)),
-                      colors.negative)
-                  : (l.settledUp, scheme.onSurfaceVariant);
-      note = Text(text,
-          key: const Key('expenseEffect'),
-          style: small?.copyWith(color: color));
+          ? (
+              l.youLentAmount(context.money(effect.net, expense.currency)),
+              colors.positive,
+            )
+          : effect.net < 0
+          ? (
+              l.youBorrowedAmount(context.money(-effect.net, expense.currency)),
+              colors.negative,
+            )
+          : (l.settledUp, scheme.onSurfaceVariant);
+      note = Text(
+        text,
+        key: const Key('expenseEffect'),
+        style: small?.copyWith(color: color),
+      );
     }
     return _LedgerRow(
       leading: _LeadingTile(

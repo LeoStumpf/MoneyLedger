@@ -32,13 +32,12 @@ Map<String, int> localRecordClocks({
   required List<MemberModel> members,
   required List<ExpenseModel> expenses,
   required List<SettlementModel> settlements,
-}) =>
-    {
-      if (group != null) groupMetaKey(): group.updatedAt,
-      for (final m in members) memberKey(m.userId): m.updatedAt,
-      for (final e in expenses) expenseKey(e.id): e.updatedAt,
-      for (final s in settlements) settlementKey(s.id): s.updatedAt,
-    };
+}) => {
+  if (group != null) groupMetaKey(): group.updatedAt,
+  for (final m in members) memberKey(m.userId): m.updatedAt,
+  for (final e in expenses) expenseKey(e.id): e.updatedAt,
+  for (final s in settlements) settlementKey(s.id): s.updatedAt,
+};
 
 /// Whether the peer provably holds every record in [local]: everything up to
 /// [inSyncAt] was proven by an earlier sync, and every record newer than that
@@ -81,7 +80,9 @@ class PeerConvergenceTracker {
 /// The record key + revision an inbound record payload of [type] carries, or
 /// null for payloads that aren't a single record (bootstrap, digest, …).
 ({String key, int updatedAt})? inboundRecordRevision(
-    String type, Map<String, dynamic> content) {
+  String type,
+  Map<String, dynamic> content,
+) {
   final at = content['updated_at'];
   if (at is! int) return null;
   if (type == expenseEventType || type == settlementEventType) {
@@ -89,7 +90,7 @@ class PeerConvergenceTracker {
     if (id == null) return null;
     return (
       key: type == expenseEventType ? expenseKey(id) : settlementKey(id),
-      updatedAt: at
+      updatedAt: at,
     );
   }
   if (type == groupMetaEventType) return (key: groupMetaKey(), updatedAt: at);

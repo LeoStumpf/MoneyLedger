@@ -26,12 +26,14 @@ void main() {
   ProviderContainer makeUser(FakeMatrixNetwork net, String userId) {
     final db = openTestDatabase();
     net.clientFor(userId);
-    final c = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
-      pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
-      syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
-    ]);
+    final c = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
+        pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
+        syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
+      ],
+    );
     addTearDown(() {
       c.dispose();
       db.close();
@@ -41,8 +43,11 @@ void main() {
     return c;
   }
 
-  Future<String> seed(ProviderContainer a, ProviderContainer b,
-      FakeMatrixNetwork net) async {
+  Future<String> seed(
+    ProviderContainer a,
+    ProviderContainer b,
+    FakeMatrixNetwork net,
+  ) async {
     await net.settle();
     await a.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
     final groupId =
@@ -66,7 +71,9 @@ void main() {
   }
 
   Future<void> addExpense(ProviderContainer c, String groupId, String paidBy) =>
-      c.read(expenseAdderProvider.notifier).addExpense(
+      c
+          .read(expenseAdderProvider.notifier)
+          .addExpense(
             roomId: groupId,
             description: 'Taxi',
             amountCents: 1400,
@@ -75,27 +82,33 @@ void main() {
             splits: {alice: 700, bob: 700},
           );
 
-  test('a peer\'s own change proves convergence without a digest round-trip',
-      () async {
-    final net = FakeMatrixNetwork();
-    final a = makeUser(net, alice);
-    final b = makeUser(net, bob);
-    final groupId = await seed(a, b, net);
-    expect((await statusOf(a, groupId)).synced, isTrue,
-        reason: 'sanity: the seed exchange proved convergence');
+  test(
+    'a peer\'s own change proves convergence without a digest round-trip',
+    () async {
+      final net = FakeMatrixNetwork();
+      final a = makeUser(net, alice);
+      final b = makeUser(net, bob);
+      final groupId = await seed(a, b, net);
+      expect(
+        (await statusOf(a, groupId)).synced,
+        isTrue,
+        reason: 'sanity: the seed exchange proved convergence',
+      );
 
-    // No digests at all from now on: only the record itself reaches alice.
-    net.dropWhere = (_, _, type) => type == digestEventType;
-    await addExpense(b, groupId, bob);
-    await net.settle();
+      // No digests at all from now on: only the record itself reaches alice.
+      net.dropWhere = (_, _, type) => type == digestEventType;
+      await addExpense(b, groupId, bob);
+      await net.settle();
 
-    expect(
+      expect(
         await a.read(expensesDaoProvider).getExpensesForRoom(groupId),
-        hasLength(1));
-    final s = await statusOf(a, groupId);
-    expect(s.synced, isTrue, reason: 'bob sent the only newer record');
-    expect(s.pendingPeers, isEmpty);
-  });
+        hasLength(1),
+      );
+      final s = await statusOf(a, groupId);
+      expect(s.synced, isTrue, reason: 'bob sent the only newer record');
+      expect(s.pendingPeers, isEmpty);
+    },
+  );
 
   test('not proven while we hold a newer record the peer may lack', () async {
     final net = FakeMatrixNetwork();
@@ -113,8 +126,11 @@ void main() {
     await net.settle();
 
     final s = await statusOf(a, groupId);
-    expect(s.synced, isFalse,
-        reason: 'bob never got alice\'s expense — must not look synced');
+    expect(
+      s.synced,
+      isFalse,
+      reason: 'bob never got alice\'s expense — must not look synced',
+    );
     expect(s.pendingPeers, {bob});
 
     // The regular digest exchange repairs bob and then proves convergence.
@@ -129,41 +145,60 @@ void main() {
   group('peerHoldsEverything', () {
     test('records up to the sync point are covered', () {
       expect(
-          peerHoldsEverything(
-              local: {'g': 1, 'e:1': 5}, inSyncAt: 5, heldByPeer: const {}),
-          isTrue);
+        peerHoldsEverything(
+          local: {'g': 1, 'e:1': 5},
+          inSyncAt: 5,
+          heldByPeer: const {},
+        ),
+        isTrue,
+      );
     });
     test('a newer record the peer sent at the same revision is covered', () {
       expect(
-          peerHoldsEverything(
-              local: {'g': 1, 'e:1': 9}, inSyncAt: 5, heldByPeer: {'e:1': 9}),
-          isTrue);
+        peerHoldsEverything(
+          local: {'g': 1, 'e:1': 9},
+          inSyncAt: 5,
+          heldByPeer: {'e:1': 9},
+        ),
+        isTrue,
+      );
     });
     test('a newer record at a different revision is not', () {
       expect(
-          peerHoldsEverything(
-              local: {'e:1': 9}, inSyncAt: 5, heldByPeer: {'e:1': 8}),
-          isFalse);
+        peerHoldsEverything(
+          local: {'e:1': 9},
+          inSyncAt: 5,
+          heldByPeer: {'e:1': 8},
+        ),
+        isFalse,
+      );
     });
     test('an unknown newer record blocks the proof', () {
       expect(
-          peerHoldsEverything(
-              local: {'e:1': 9, 's:2': 7},
-              inSyncAt: 5,
-              heldByPeer: {'e:1': 9}),
-          isFalse);
+        peerHoldsEverything(
+          local: {'e:1': 9, 's:2': 7},
+          inSyncAt: 5,
+          heldByPeer: {'e:1': 9},
+        ),
+        isFalse,
+      );
     });
     test('inboundRecordRevision keys by record type', () {
       expect(
-          inboundRecordRevision(
-              expenseEventType, {'id': 'x', 'updated_at': 3}),
-          (key: 'e:x', updatedAt: 3));
+        inboundRecordRevision(expenseEventType, {'id': 'x', 'updated_at': 3}),
+        (key: 'e:x', updatedAt: 3),
+      );
       expect(
-          inboundRecordRevision(
-              memberEventType, {'participant_id': 'p', 'updated_at': 4}),
-          (key: 'm:p', updatedAt: 4));
-      expect(inboundRecordRevision(bootstrapEventType, {'updated_at': 1}),
-          isNull);
+        inboundRecordRevision(memberEventType, {
+          'participant_id': 'p',
+          'updated_at': 4,
+        }),
+        (key: 'm:p', updatedAt: 4),
+      );
+      expect(
+        inboundRecordRevision(bootstrapEventType, {'updated_at': 1}),
+        isNull,
+      );
     });
   });
 }

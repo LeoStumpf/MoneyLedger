@@ -12,9 +12,9 @@ import '../helpers/fake_auth_gateway.dart';
 
 void main() {
   ProviderContainer makeContainer(FakeAuthGateway gateway) {
-    final container = ProviderContainer(overrides: [
-      authGatewayProvider.overrideWith((ref) => gateway),
-    ]);
+    final container = ProviderContainer(
+      overrides: [authGatewayProvider.overrideWith((ref) => gateway)],
+    );
     addTearDown(() {
       container.dispose();
       gateway.dispose();
@@ -35,7 +35,9 @@ void main() {
     final container = makeContainer(FakeAuthGateway());
     await container.read(loginStateProvider.future);
 
-    await container.read(authProvider.notifier).login(
+    await container
+        .read(authProvider.notifier)
+        .login(
           resolvedHomeserver: 'https://matrix.org',
           username: 'alice',
           password: 'hunter2',
@@ -62,7 +64,9 @@ void main() {
     final container = makeContainer(gateway);
     await container.read(loginStateProvider.future);
 
-    await container.read(authProvider.notifier).login(
+    await container
+        .read(authProvider.notifier)
+        .login(
           resolvedHomeserver: 'https://matrix.org',
           username: 'alice',
           password: 'wrong',
@@ -81,7 +85,9 @@ void main() {
     await container.read(loginStateProvider.future);
     expect(container.read(isLoggedInProvider), isFalse);
 
-    await container.read(authProvider.notifier).login(
+    await container
+        .read(authProvider.notifier)
+        .login(
           resolvedHomeserver: 'https://x.org',
           username: 'a',
           password: 'hunter2',
@@ -118,7 +124,9 @@ void main() {
     final container = makeContainer(FakeAuthGateway());
     await container.read(loginStateProvider.future);
 
-    await container.read(authProvider.notifier).register(
+    await container
+        .read(authProvider.notifier)
+        .register(
           resolvedHomeserver: 'https://matrix.org',
           username: 'alice',
           password: 'password123',
@@ -130,11 +138,14 @@ void main() {
   });
 
   test('register surfaces a web-fallback error and stays logged out', () async {
-    final gateway = FakeAuthGateway()..registerRequiresWeb = ['m.login.recaptcha'];
+    final gateway = FakeAuthGateway()
+      ..registerRequiresWeb = ['m.login.recaptcha'];
     final container = makeContainer(gateway);
     await container.read(loginStateProvider.future);
 
-    await container.read(authProvider.notifier).register(
+    await container
+        .read(authProvider.notifier)
+        .register(
           resolvedHomeserver: 'https://matrix.org',
           username: 'alice',
           password: 'password123',

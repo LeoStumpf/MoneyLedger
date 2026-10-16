@@ -50,6 +50,7 @@
   "thisGroup": "Diese Gruppe",
   "youLeftGroup": "Du hast „{group}“ verlassen",
   "deletedGroup": "„{group}“ gelöscht",
+  "exportFailed": "Export fehlgeschlagen: {error}",
   "exportedFile": "{fileName} exportiert",
   "whichParticipantAreYou": "Welche Person bist du?",
   "imSomeoneNew": "Ich bin neu dabei",

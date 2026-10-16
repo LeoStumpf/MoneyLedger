@@ -15,13 +15,28 @@ class OnboardingPage extends ConsumerWidget {
   const OnboardingPage({super.key});
 
   static List<(IconData, String, String)> _points(AppLocalizations l) => [
-        (Icons.phone_android_outlined, l.onboardingLocalTitle, l.onboardingLocalBody),
-        (Icons.lock_outline, l.onboardingSyncTitle, l.onboardingSyncBody),
-        (Icons.group_add_outlined, l.onboardingAddTitle, l.onboardingAddBody),
-      ];
+    (
+      Icons.phone_android_outlined,
+      l.onboardingLocalTitle,
+      l.onboardingLocalBody,
+    ),
+    (Icons.lock_outline, l.onboardingSyncTitle, l.onboardingSyncBody),
+    (Icons.group_add_outlined, l.onboardingAddTitle, l.onboardingAddBody),
+  ];
 
   Future<void> _getStarted(BuildContext context, WidgetRef ref) async {
-    await ref.read(onboardingControllerProvider.notifier).markSeen();
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    try {
+      await ref.read(onboardingControllerProvider.notifier).markSeen();
+    } catch (e) {
+      // The flag couldn't be stored (DB error): say so instead of a dead
+      // button (G15). The user can retry.
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.failedWithError(e.toString()))),
+      );
+      return;
+    }
     if (context.mounted) context.go('/groups');
   }
 
@@ -39,7 +54,11 @@ class OnboardingPage extends ConsumerWidget {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(
-                    Insets.xl, Insets.xxl, Insets.xl, Insets.l),
+                  Insets.xl,
+                  Insets.xxl,
+                  Insets.xl,
+                  Insets.l,
+                ),
                 child: ContentWidth(
                   maxWidth: 520,
                   child: Column(
@@ -47,15 +66,20 @@ class OnboardingPage extends ConsumerWidget {
                     children: [
                       const Center(child: BrandLogo(size: 96)),
                       const SizedBox(height: Insets.xl),
-                      Text(l.onboardingWelcome,
-                          style: theme.textTheme.headlineMedium,
-                          textAlign: TextAlign.center),
+                      Text(
+                        l.onboardingWelcome,
+                        style: theme.textTheme.headlineMedium,
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: Insets.s),
-                      Text(l.onboardingTagline,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w500),
-                          textAlign: TextAlign.center),
+                      Text(
+                        l.onboardingTagline,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: Insets.xxl),
                       for (final (icon, title, body) in _points(l))
                         Padding(
@@ -71,11 +95,14 @@ class OnboardingPage extends ConsumerWidget {
                                     height: 44,
                                     decoration: BoxDecoration(
                                       color: scheme.primaryContainer,
-                                      borderRadius:
-                                          BorderRadius.circular(Radii.m),
+                                      borderRadius: BorderRadius.circular(
+                                        Radii.m,
+                                      ),
                                     ),
-                                    child: Icon(icon,
-                                        color: scheme.onPrimaryContainer),
+                                    child: Icon(
+                                      icon,
+                                      color: scheme.onPrimaryContainer,
+                                    ),
                                   ),
                                   const SizedBox(width: Insets.l),
                                   Expanded(
@@ -83,17 +110,21 @@ class OnboardingPage extends ConsumerWidget {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(title,
-                                            style: theme.textTheme.titleMedium
-                                                ?.copyWith(
-                                                    fontWeight:
-                                                        FontWeight.w700)),
+                                        Text(
+                                          title,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
                                         const SizedBox(height: Insets.xs),
-                                        Text(body,
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(
-                                                    color: scheme
-                                                        .onSurfaceVariant)),
+                                        Text(
+                                          body,
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                color: scheme.onSurfaceVariant,
+                                              ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -109,7 +140,11 @@ class OnboardingPage extends ConsumerWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  Insets.xl, Insets.s, Insets.xl, Insets.l),
+                Insets.xl,
+                Insets.s,
+                Insets.xl,
+                Insets.l,
+              ),
               child: ContentWidth(
                 maxWidth: 520,
                 child: SizedBox(

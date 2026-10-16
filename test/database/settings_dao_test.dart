@@ -33,9 +33,12 @@ void main() {
   test('left-group tombstones: mark / read / clear (G9)', () async {
     expect(await dao.leftGroup('g1'), isNull);
     await dao.markGroupLeft(
-        'g1',
-        const LeftGroupTombstone(
-            leftAt: 42, removalNotice: {'participant_id': 'p', 'status': 'removed'}));
+      'g1',
+      const LeftGroupTombstone(
+        leftAt: 42,
+        removalNotice: {'participant_id': 'p', 'status': 'removed'},
+      ),
+    );
     final t = await dao.leftGroup('g1');
     expect(t!.leftAt, 42);
     expect(t.removalNotice!['status'], 'removed');

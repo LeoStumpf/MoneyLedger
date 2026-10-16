@@ -4,14 +4,16 @@ import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
 
 // Most cases assume onboarding is already done; the onboarding groups cover the
 // first-run and still-loading branches explicitly.
-String? redirect(bool isLoggedIn, String location,
-        {bool onboardingSeen = true,
-        OnboardingStatus? status}) =>
-    routerRedirect(
-        isLoggedIn,
-        status ??
-            (onboardingSeen ? OnboardingStatus.seen : OnboardingStatus.notSeen),
-        location);
+String? redirect(
+  bool isLoggedIn,
+  String location, {
+  bool onboardingSeen = true,
+  OnboardingStatus? status,
+}) => routerRedirect(
+  isLoggedIn,
+  status ?? (onboardingSeen ? OnboardingStatus.seen : OnboardingStatus.notSeen),
+  location,
+);
 
 void main() {
   group('routerRedirect — not logged in', () {
@@ -31,10 +33,12 @@ void main() {
       expect(redirect(false, '/login'), isNull);
     });
 
-    test('stays on /register (in-app sign-up is reachable while signed out)',
-        () {
-      expect(redirect(false, '/register'), isNull);
-    });
+    test(
+      'stays on /register (in-app sign-up is reachable while signed out)',
+      () {
+        expect(redirect(false, '/register'), isNull);
+      },
+    );
 
     test('About + privacy policy are reachable signed out (G12)', () {
       expect(redirect(false, '/about'), isNull);
@@ -42,10 +46,12 @@ void main() {
       expect(redirect(true, '/about'), isNull);
     });
 
-    test('redirects /onboarding to /login (not an auth page when signed out)',
-        () {
-      expect(redirect(false, '/onboarding'), '/login');
-    });
+    test(
+      'redirects /onboarding to /login (not an auth page when signed out)',
+      () {
+        expect(redirect(false, '/onboarding'), '/login');
+      },
+    );
   });
 
   group('routerRedirect — logged in', () {
@@ -84,8 +90,10 @@ void main() {
     });
 
     test('forces /onboarding from a deep link', () {
-      expect(redirect(true, '/groups/r1/expenses', onboardingSeen: false),
-          '/onboarding');
+      expect(
+        redirect(true, '/groups/r1/expenses', onboardingSeen: false),
+        '/onboarding',
+      );
     });
 
     test('stays on /onboarding (no redirect)', () {
@@ -99,8 +107,10 @@ void main() {
     });
 
     test('an unknown flag is irrelevant while signed out', () {
-      expect(redirect(false, '/login', status: OnboardingStatus.unknown),
-          isNull);
+      expect(
+        redirect(false, '/login', status: OnboardingStatus.unknown),
+        isNull,
+      );
     });
   });
 

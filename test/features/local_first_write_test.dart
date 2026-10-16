@@ -18,8 +18,10 @@ class _OfflineTransport implements LedgerTransport {
   Stream<TransportMessage> get onMessage => const Stream.empty();
   @override
   Future<SendResult> sendToUsers(
-          Set<String> userIds, String type, Map<String, dynamic> content) async =>
-      throw Exception('offline');
+    Set<String> userIds,
+    String type,
+    Map<String, dynamic> content,
+  ) async => throw Exception('offline');
   @override
   Future<String?> profileName(String matrixId) async => null;
 }
@@ -29,84 +31,102 @@ void main() {
     Future<void> seedMembers(ProviderContainer c, String group) async {
       final dao = c.read(membersDaoProvider);
       for (final u in ['@alice:x.org', '@bob:x.org']) {
-        await dao.upsertMemberLww(MembersCompanion(
-          groupId: Value(group),
-          userId: Value(u),
-          matrixId: Value(u), // claimed members are the replication targets
-          status: const Value('active'),
-          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
-        ));
+        await dao.upsertMemberLww(
+          MembersCompanion(
+            groupId: Value(group),
+            userId: Value(u),
+            matrixId: Value(u), // claimed members are the replication targets
+            status: const Value('active'),
+            updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+          ),
+        );
       }
     }
 
-    test('addExpense persists to Drift even when replication fails (offline)',
-        () async {
-      final container = ProviderContainer(overrides: [
-        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
-        ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
-      ]);
-      addTearDown(container.dispose);
-      await seedMembers(container, 'g1');
+    test(
+      'addExpense persists to Drift even when replication fails (offline)',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+            ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
+          ],
+        );
+        addTearDown(container.dispose);
+        await seedMembers(container, 'g1');
 
-      await container.read(expenseAdderProvider.notifier).addExpense(
-            roomId: 'g1',
-            description: 'Pizza',
-            amountCents: 2000,
-            currency: 'CHF',
-            paidBy: '@alice:x.org',
-            splits: const {'@alice:x.org': 1000, '@bob:x.org': 1000},
-          );
+        await container
+            .read(expenseAdderProvider.notifier)
+            .addExpense(
+              roomId: 'g1',
+              description: 'Pizza',
+              amountCents: 2000,
+              currency: 'CHF',
+              paidBy: '@alice:x.org',
+              splits: const {'@alice:x.org': 1000, '@bob:x.org': 1000},
+            );
 
-      // The user's action succeeded locally despite replication throwing.
-      expect(container.read(expenseAdderProvider).hasError, isFalse);
-      final saved =
-          await container.read(expensesDaoProvider).getExpensesForRoom('g1');
-      expect(saved, hasLength(1));
-      expect(saved.first.description, 'Pizza');
-      expect(saved.first.amountCents, 2000);
-    });
+        // The user's action succeeded locally despite replication throwing.
+        expect(container.read(expenseAdderProvider).hasError, isFalse);
+        final saved = await container
+            .read(expensesDaoProvider)
+            .getExpensesForRoom('g1');
+        expect(saved, hasLength(1));
+        expect(saved.first.description, 'Pizza');
+        expect(saved.first.amountCents, 2000);
+      },
+    );
 
-    test('addExpense writes locally AND replicates to members when online',
-        () async {
-      final net = FakeMatrixNetwork();
-      final alice = net.clientFor('@alice:x.org');
-      final bob = net.clientFor('@bob:x.org');
-      final received = <TransportMessage>[];
-      bob.onMessage.listen(received.add);
+    test(
+      'addExpense writes locally AND replicates to members when online',
+      () async {
+        final net = FakeMatrixNetwork();
+        final alice = net.clientFor('@alice:x.org');
+        final bob = net.clientFor('@bob:x.org');
+        final received = <TransportMessage>[];
+        bob.onMessage.listen(received.add);
 
-      final container = ProviderContainer(overrides: [
-        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
-        ledgerTransportProvider.overrideWith((ref) => alice),
-      ]);
-      addTearDown(container.dispose);
-      await seedMembers(container, 'g1');
+        final container = ProviderContainer(
+          overrides: [
+            appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+            ledgerTransportProvider.overrideWith((ref) => alice),
+          ],
+        );
+        addTearDown(container.dispose);
+        await seedMembers(container, 'g1');
 
-      await container.read(expenseAdderProvider.notifier).addExpense(
-            roomId: 'g1',
-            description: 'Pizza',
-            amountCents: 2000,
-            currency: 'CHF',
-            paidBy: '@alice:x.org',
-            splits: const {'@alice:x.org': 1000, '@bob:x.org': 1000},
-          );
-      await net.settle();
+        await container
+            .read(expenseAdderProvider.notifier)
+            .addExpense(
+              roomId: 'g1',
+              description: 'Pizza',
+              amountCents: 2000,
+              currency: 'CHF',
+              paidBy: '@alice:x.org',
+              splits: const {'@alice:x.org': 1000, '@bob:x.org': 1000},
+            );
+        await net.settle();
 
-      // Local copy exists immediately...
-      final local =
-          await container.read(expensesDaoProvider).getExpensesForRoom('g1');
-      expect(local, hasLength(1));
-      // ...and the same record was relayed to the other member (not to self).
-      expect(received, hasLength(1));
-      expect(received.first.type, expenseEventType);
-      expect(received.first.content['id'], local.first.id);
-      expect(received.first.content['description'], 'Pizza');
-    });
+        // Local copy exists immediately...
+        final local = await container
+            .read(expensesDaoProvider)
+            .getExpensesForRoom('g1');
+        expect(local, hasLength(1));
+        // ...and the same record was relayed to the other member (not to self).
+        expect(received, hasLength(1));
+        expect(received.first.type, expenseEventType);
+        expect(received.first.content['id'], local.first.id);
+        expect(received.first.content['description'], 'Pizza');
+      },
+    );
 
     test('updateExpense persists the edit locally when offline', () async {
-      final container = ProviderContainer(overrides: [
-        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
-        ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
-      ]);
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+          ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
+        ],
+      );
       addTearDown(container.dispose);
       await seedMembers(container, 'g1');
 
@@ -145,10 +165,12 @@ void main() {
     });
 
     test('deleteExpense tombstones locally when offline', () async {
-      final container = ProviderContainer(overrides: [
-        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
-        ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
-      ]);
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+          ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
+        ],
+      );
       addTearDown(container.dispose);
       await seedMembers(container, 'g1');
 
@@ -174,10 +196,12 @@ void main() {
     });
 
     test('deleteSettlement tombstones locally when offline', () async {
-      final container = ProviderContainer(overrides: [
-        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
-        ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
-      ]);
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+          ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
+        ],
+      );
       addTearDown(container.dispose);
       await seedMembers(container, 'g1');
 
@@ -201,14 +225,18 @@ void main() {
     });
 
     test('addSettlement persists locally when replication fails', () async {
-      final container = ProviderContainer(overrides: [
-        appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
-        ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
-      ]);
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => openTestDatabase()),
+          ledgerTransportProvider.overrideWith((ref) => _OfflineTransport()),
+        ],
+      );
       addTearDown(container.dispose);
       await seedMembers(container, 'g1');
 
-      await container.read(expenseAdderProvider.notifier).addSettlement(
+      await container
+          .read(expenseAdderProvider.notifier)
+          .addSettlement(
             roomId: 'g1',
             amountCents: 500,
             currency: 'CHF',
@@ -217,8 +245,9 @@ void main() {
           );
 
       expect(container.read(expenseAdderProvider).hasError, isFalse);
-      final saved =
-          await container.read(expensesDaoProvider).getSettlementsForRoom('g1');
+      final saved = await container
+          .read(expensesDaoProvider)
+          .getSettlementsForRoom('g1');
       expect(saved, hasLength(1));
       expect(saved.first.amountCents, 500);
     });

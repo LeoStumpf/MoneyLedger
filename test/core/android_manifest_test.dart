@@ -10,9 +10,10 @@ void main() {
   final manifest = File(
     'android/app/src/main/AndroidManifest.xml',
   ).readAsStringSync();
-  final appTag = RegExp(r'<application\b[^>]*>', dotAll: true)
-      .firstMatch(manifest)!
-      .group(0)!;
+  final appTag = RegExp(
+    r'<application\b[^>]*>',
+    dotAll: true,
+  ).firstMatch(manifest)!.group(0)!;
 
   test('auto backup is off on every Android version', () {
     expect(appTag, contains('android:allowBackup="false"'));
@@ -30,13 +31,13 @@ void main() {
     ).readAsStringSync();
     expect(rules, isNot(contains('<include')));
     for (final path in ['cloud-backup', 'device-transfer']) {
-      final section = RegExp('<$path>(.*?)</$path>', dotAll: true)
-          .firstMatch(rules)!
-          .group(1)!;
-      final excluded = RegExp(r'<exclude domain="(\w+)"')
-          .allMatches(section)
-          .map((m) => m.group(1))
-          .toSet();
+      final section = RegExp(
+        '<$path>(.*?)</$path>',
+        dotAll: true,
+      ).firstMatch(rules)!.group(1)!;
+      final excluded = RegExp(
+        r'<exclude domain="(\w+)"',
+      ).allMatches(section).map((m) => m.group(1)).toSet();
       expect(
         excluded,
         containsAll(<String>['root', 'file', 'database', 'sharedpref']),

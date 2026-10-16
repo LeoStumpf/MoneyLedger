@@ -57,8 +57,11 @@ void main() {
 
   group('unreachable peers (G24)', () {
     test('a peer with no device is tracked but is not a failure', () {
-      final s = const SyncHealthState()
-          .afterSuccess(10, reached: {'@a:x'}, unreachable: {'@b:y'});
+      final s = const SyncHealthState().afterSuccess(
+        10,
+        reached: {'@a:x'},
+        unreachable: {'@b:y'},
+      );
       expect(s.unreachablePeers, {'@b:y'});
       expect(s.failing, isFalse);
       expect(s.consecutiveFailures, 0);

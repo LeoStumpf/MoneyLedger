@@ -33,8 +33,12 @@ class FakeVerificationSession implements VerificationSession {
   final _controller = StreamController<VerificationState>();
 
   FakeVerificationSession(this._gateway, this._deviceId) {
-    _controller.add(const VerificationState(VerificationPhase.compareEmojis,
-        emojis: FakeDeviceGateway.sampleEmojis));
+    _controller.add(
+      const VerificationState(
+        VerificationPhase.compareEmojis,
+        emojis: FakeDeviceGateway.sampleEmojis,
+      ),
+    );
   }
 
   @override

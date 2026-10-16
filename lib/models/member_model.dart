@@ -31,17 +31,16 @@ class MemberModel {
 
   /// The name to show for this participant (G17): its display name, else the
   /// claimed account's localpart, else the raw participant id.
-  String get label => displayName.isNotEmpty
-      ? displayName
-      : localpartOf(matrixId ?? userId);
+  String get label =>
+      displayName.isNotEmpty ? displayName : localpartOf(matrixId ?? userId);
 }
 
 /// A friendly default display name for a Matrix ID — its localpart
 /// (`@alice:server` → `alice`) — or the input unchanged if it isn't an MXID.
 String localpartOf(String matrixId) =>
     (matrixId.startsWith('@') && matrixId.contains(':'))
-        ? matrixId.substring(1, matrixId.indexOf(':'))
-        : matrixId;
+    ? matrixId.substring(1, matrixId.indexOf(':'))
+    : matrixId;
 
 /// The participant in [members] claimed by the Matrix account [matrixId]
 /// (G26). Normally there is at most one, but DBs written before the re-add fix

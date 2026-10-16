@@ -152,7 +152,7 @@ final class OnboardingGateProvider
   }
 }
 
-String _$onboardingGateHash() => r'38740c8468f392755d69acc10d51dc4f8d4f8e6a';
+String _$onboardingGateHash() => r'df7f6efb25674e7d403230a655d61e5c44d3b3c4';
 
 /// Router-facing onboarding state. Signed out → [OnboardingStatus.seen] (the
 /// router never forces onboarding then). Signed in → [OnboardingStatus.unknown]

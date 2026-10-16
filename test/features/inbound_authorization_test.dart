@@ -10,11 +10,12 @@ import 'package:money_ledger/models/member_model.dart';
 
 MemberModel _m(String userId, {String? matrixId, String status = 'active'}) =>
     MemberModel(
-        groupId: 'g1',
-        userId: userId,
-        matrixId: matrixId,
-        status: status,
-        updatedAt: 1);
+      groupId: 'g1',
+      userId: userId,
+      matrixId: matrixId,
+      status: status,
+      updatedAt: 1,
+    );
 
 bool _auth({
   required String type,
@@ -22,14 +23,13 @@ bool _auth({
   Map<String, dynamic> content = const {},
   required List<MemberModel> members,
   bool groupKnown = true,
-}) =>
-    LedgerSyncer.isSenderAuthorized(
-      type: type,
-      senderId: sender,
-      content: content,
-      members: members,
-      groupKnown: groupKnown,
-    );
+}) => LedgerSyncer.isSenderAuthorized(
+  type: type,
+  senderId: sender,
+  content: content,
+  members: members,
+  groupKnown: groupKnown,
+);
 
 void main() {
   // alice (claimed), a local-only participant "bobby", and bob's account.
@@ -40,46 +40,80 @@ void main() {
 
   group('expense / settlement / group meta', () {
     test('an active claimed member is authorized', () {
-      expect(_auth(type: expenseEventType, sender: '@alice:x.org', members: members),
-          isTrue);
       expect(
-          _auth(type: settlementEventType, sender: '@alice:x.org', members: members),
-          isTrue);
-      expect(_auth(type: groupMetaEventType, sender: '@alice:x.org', members: members),
-          isTrue);
+        _auth(type: expenseEventType, sender: '@alice:x.org', members: members),
+        isTrue,
+      );
+      expect(
+        _auth(
+          type: settlementEventType,
+          sender: '@alice:x.org',
+          members: members,
+        ),
+        isTrue,
+      );
+      expect(
+        _auth(
+          type: groupMetaEventType,
+          sender: '@alice:x.org',
+          members: members,
+        ),
+        isTrue,
+      );
     });
 
     test('a non-member is rejected (the forge-a-record hole)', () {
       expect(
-          _auth(type: expenseEventType, sender: '@mallory:x.org', members: members),
-          isFalse);
+        _auth(
+          type: expenseEventType,
+          sender: '@mallory:x.org',
+          members: members,
+        ),
+        isFalse,
+      );
     });
 
     test('a removed member is rejected', () {
-      final removed = [_m('@bob:x.org', matrixId: '@bob:x.org', status: 'removed')];
-      expect(_auth(type: expenseEventType, sender: '@bob:x.org', members: removed),
-          isFalse);
+      final removed = [
+        _m('@bob:x.org', matrixId: '@bob:x.org', status: 'removed'),
+      ];
+      expect(
+        _auth(type: expenseEventType, sender: '@bob:x.org', members: removed),
+        isFalse,
+      );
     });
   });
 
   group('bootstrap', () {
     test('an unknown group is TOFU-accepted from anyone', () {
       expect(
-          _auth(
-              type: bootstrapEventType,
-              sender: '@whoever:x.org',
-              members: const [],
-              groupKnown: false),
-          isTrue);
+        _auth(
+          type: bootstrapEventType,
+          sender: '@whoever:x.org',
+          members: const [],
+          groupKnown: false,
+        ),
+        isTrue,
+      );
     });
 
     test('a known group is re-snapshotted only by an active member', () {
       expect(
-          _auth(type: bootstrapEventType, sender: '@alice:x.org', members: members),
-          isTrue);
+        _auth(
+          type: bootstrapEventType,
+          sender: '@alice:x.org',
+          members: members,
+        ),
+        isTrue,
+      );
       expect(
-          _auth(type: bootstrapEventType, sender: '@mallory:x.org', members: members),
-          isFalse);
+        _auth(
+          type: bootstrapEventType,
+          sender: '@mallory:x.org',
+          members: members,
+        ),
+        isFalse,
+      );
     });
   });
 
@@ -87,74 +121,83 @@ void main() {
     test('an active member may gossip any membership change', () {
       // Alice marks the local participant removed.
       expect(
-          _auth(
-              type: memberEventType,
-              sender: '@alice:x.org',
-              content: const {'participant_id': 'p-bobby', 'status': 'removed'},
-              members: members),
-          isTrue);
+        _auth(
+          type: memberEventType,
+          sender: '@alice:x.org',
+          content: const {'participant_id': 'p-bobby', 'status': 'removed'},
+          members: members,
+        ),
+        isTrue,
+      );
     });
 
     test('self-claim of an existing unclaimed participant is allowed', () {
       expect(
-          _auth(
-              type: memberEventType,
-              sender: '@bob:y.org',
-              content: const {
-                'participant_id': 'p-bobby',
-                'matrix_id': '@bob:y.org'
-              },
-              members: members),
-          isTrue);
+        _auth(
+          type: memberEventType,
+          sender: '@bob:y.org',
+          content: const {
+            'participant_id': 'p-bobby',
+            'matrix_id': '@bob:y.org',
+          },
+          members: members,
+        ),
+        isTrue,
+      );
     });
 
     test('join-as-new (a fresh participant for yourself) is allowed', () {
       expect(
-          _auth(
-              type: memberEventType,
-              sender: '@bob:y.org',
-              content: const {
-                'participant_id': 'p-new',
-                'matrix_id': '@bob:y.org'
-              },
-              members: members),
-          isTrue);
+        _auth(
+          type: memberEventType,
+          sender: '@bob:y.org',
+          content: const {'participant_id': 'p-new', 'matrix_id': '@bob:y.org'},
+          members: members,
+        ),
+        isTrue,
+      );
     });
 
     test('hijacking a participant another account owns is rejected', () {
       expect(
-          _auth(
-              type: memberEventType,
-              sender: '@mallory:x.org',
-              content: const {
-                'participant_id': '@alice:x.org', // alice's participant
-                'matrix_id': '@mallory:x.org'
-              },
-              members: members),
-          isFalse);
+        _auth(
+          type: memberEventType,
+          sender: '@mallory:x.org',
+          content: const {
+            'participant_id': '@alice:x.org', // alice's participant
+            'matrix_id': '@mallory:x.org',
+          },
+          members: members,
+        ),
+        isFalse,
+      );
     });
 
     test('forging membership for another account is rejected', () {
       expect(
-          _auth(
-              type: memberEventType,
-              sender: '@mallory:x.org',
-              content: const {
-                'participant_id': 'p-victim',
-                'matrix_id': '@victim:x.org'
-              },
-              members: members),
-          isFalse);
+        _auth(
+          type: memberEventType,
+          sender: '@mallory:x.org',
+          content: const {
+            'participant_id': 'p-victim',
+            'matrix_id': '@victim:x.org',
+          },
+          members: members,
+        ),
+        isFalse,
+      );
     });
 
     test('a non-member cannot gossip a local participant', () {
       expect(
-          _auth(
-              type: memberEventType,
-              sender: '@mallory:x.org',
-              content: const {'participant_id': 'p-x', 'name': 'X'},
-              members: members),
-          isFalse);
+        _auth(
+          type: memberEventType,
+          sender: '@mallory:x.org',
+          content: const {'participant_id': 'p-x', 'name': 'X'},
+          members: members,
+        ),
+        isFalse,
+      );
     });
   });
 
@@ -168,13 +211,17 @@ void main() {
     });
 
     test('a clock within tolerance is unchanged', () {
-      expect(LedgerSyncer.clampInboundClock(now + tolerance, now: now),
-          now + tolerance);
+      expect(
+        LedgerSyncer.clampInboundClock(now + tolerance, now: now),
+        now + tolerance,
+      );
     });
 
     test('a far-future clock is clamped to now + tolerance', () {
-      expect(LedgerSyncer.clampInboundClock(now + 999999999, now: now),
-          now + tolerance);
+      expect(
+        LedgerSyncer.clampInboundClock(now + 999999999, now: now),
+        now + tolerance,
+      );
     });
   });
 }

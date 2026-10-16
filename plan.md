@@ -172,14 +172,14 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
 
 ### G15. Test & tooling debt 🟡
 - [x] Test the `routerProvider` `refreshListenable` wiring (done in G25)
-- [ ] Offline demo mode `--dart-define=OFFLINE_DEMO=true` (override transport +
+- [x] Offline demo mode `--dart-define=OFFLINE_DEMO=true` (override transport +
       auth gateway with seeded fakes) for screenshots / manual multi-user checks
-- [ ] CI (GitHub Actions): `./build.sh` on push — needs G2 first for Android
-- [ ] `first_login_recovery_test` "restoring falls back after the timeout" (40 ms
+- [x] CI (GitHub Actions): `./build.sh` on push — needs G2 first for Android
+- [x] `first_login_recovery_test` "restoring falls back after the timeout" (40 ms
       timeouts) failed once under load → make deterministic (fake clock)
-- [ ] `dart format` the whole repo once (files are unformatted; agents avoid it to keep diffs small)
-- [ ] Regenerate stale `.g.dart` files (build_runner changes hashes in 4 untouched files)
-- [ ] Audit the ~30 `debugPrint` / swallowed `catch` sites in `lib/` — route
+- [x] `dart format` the whole repo once (files are unformatted; agents avoid it to keep diffs small)
+- [x] Regenerate stale `.g.dart` files (build_runner changes hashes in 4 untouched files)
+- [x] Audit the ~30 `debugPrint` / swallowed `catch` sites in `lib/` — route
       user-relevant failures into `SyncHealth` or a snackbar
 
 ### G16. Nice-to-have features
@@ -355,8 +355,14 @@ stale crypto identity (broken sessions) and is a privacy concern.
       long names wrap the settlement title over 4 lines; expense tiles show no date
 
 ### G33. Design follow-ups (found in G17) 🟡
-- [ ] Settlement row title shows only the payer's (truncated) name — show
-      "A → B" / "A paid B" with both names compact
+- [ ] Settlement row title with long names (MXID localparts) truncates to the
+      payer only — keep both names visible ("A → B"), e.g. ellipsize each name
+- [ ] The extended FAB covers the last list row's amount on the group and
+      groups pages — add bottom padding (~88 dp) to the scroll views
+- [ ] G15 follow-ups: unit test for `_TrackingTransport.quiet` (background
+      round); show an error when background-sync scheduling fails; clear banner
+      when vodozemac init fails (E2EE off); German screenshots + web demo deploy
+      for the README
 - [ ] Test accounts' Matrix profile names equal their localparts, so devices
       still show `moneyledger-test-a-c725` — optionally set display names
       ("Anna"/"Ben") on the test accounts to exercise the profile-name path
@@ -400,7 +406,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G31 — background sync on Android (feature before i18n)
 - [x] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
 - [x] G32+G17 — disable Android auto-backup; design pass (icons, theme, polish)
-- [ ] G15 — test/tooling debt, offline demo, CI
+- [x] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup
 - [ ] G13 — CSV improvements
 - [ ] G6 — signed records (any member may edit; every version signed by its editor)

@@ -62,8 +62,11 @@ class RegistrationRequiresWebException implements Exception {
   /// then the UI falls back to [homeserverUrl].
   final String? signUpUrl;
 
-  const RegistrationRequiresWebException(this.homeserverUrl, this.stages,
-      {this.signUpUrl});
+  const RegistrationRequiresWebException(
+    this.homeserverUrl,
+    this.stages, {
+    this.signUpUrl,
+  });
 
   /// The page "Open homeserver website" opens.
   String get webUrl => signUpUrl ?? homeserverUrl;
@@ -72,7 +75,7 @@ class RegistrationRequiresWebException implements Exception {
   String toString() => stages.isEmpty
       ? 'This homeserver requires registering on its website.'
       : 'This homeserver requires ${stages.join(', ')} — '
-          'please register on its website.';
+            'please register on its website.';
 }
 
 // ── Plain-Dart auth failures (G20) ──────────────────────────────────────────
@@ -91,8 +94,11 @@ class AuthServerException implements Exception {
   /// `retry_after_ms` of an `M_LIMIT_EXCEEDED` response.
   final int? retryAfterMs;
 
-  const AuthServerException(this.errcode,
-      {this.serverMessage, this.retryAfterMs});
+  const AuthServerException(
+    this.errcode, {
+    this.serverMessage,
+    this.retryAfterMs,
+  });
 
   @override
   String toString() =>
@@ -110,8 +116,11 @@ class AuthNetworkException implements Exception {
   /// The underlying error (shown only behind "Details").
   final Object cause;
 
-  const AuthNetworkException(this.host,
-      {required this.deviceOffline, required this.cause});
+  const AuthNetworkException(
+    this.host, {
+    required this.deviceOffline,
+    required this.cause,
+  });
 
   @override
   String toString() => cause.toString();

@@ -8,17 +8,16 @@ ExpenseModel _expense({
   required int amountCents,
   required String splitsJson,
   String currency = 'EUR',
-}) =>
-    ExpenseModel(
-      id: id,
-      roomId: 'r1',
-      description: 'Test',
-      amountCents: amountCents,
-      currency: currency,
-      paidBy: paidBy,
-      splitsJson: splitsJson,
-      createdAt: 0,
-    );
+}) => ExpenseModel(
+  id: id,
+  roomId: 'r1',
+  description: 'Test',
+  amountCents: amountCents,
+  currency: currency,
+  paidBy: paidBy,
+  splitsJson: splitsJson,
+  createdAt: 0,
+);
 
 SettlementModel _settlement({
   required String id,
@@ -26,16 +25,15 @@ SettlementModel _settlement({
   required String toUser,
   required int amountCents,
   String currency = 'EUR',
-}) =>
-    SettlementModel(
-      id: id,
-      roomId: 'r1',
-      amountCents: amountCents,
-      currency: currency,
-      fromUser: fromUser,
-      toUser: toUser,
-      createdAt: 0,
-    );
+}) => SettlementModel(
+  id: id,
+  roomId: 'r1',
+  amountCents: amountCents,
+  currency: currency,
+  fromUser: fromUser,
+  toUser: toUser,
+  createdAt: 0,
+);
 
 void main() {
   group('calculateDebts', () {

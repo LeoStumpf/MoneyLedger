@@ -109,8 +109,10 @@ class MatrixLedgerTransport implements LedgerTransport {
   @override
   Future<String?> profileName(String matrixId) async {
     try {
-      final profile = await _client.getUserProfile(matrixId,
-          timeout: const Duration(seconds: 5));
+      final profile = await _client.getUserProfile(
+        matrixId,
+        timeout: const Duration(seconds: 5),
+      );
       return normalizeProfileName(profile.displayname);
     } catch (e) {
       if (kDebugMode) debugPrint('[transport] profile of $matrixId: $e');

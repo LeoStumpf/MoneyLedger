@@ -9,7 +9,10 @@ import 'group_provider.dart';
 /// simplified [debts]. Null when settled (or when we have no participant).
 /// Localized through [l] (amounts in its locale) — pure, no BuildContext.
 String? unsettledWarning(
-    List<DebtEntry> debts, String? meId, AppLocalizations l) {
+  List<DebtEntry> debts,
+  String? meId,
+  AppLocalizations l,
+) {
   if (meId == null) return null;
   final net = <String, int>{}; // currency → + owed to me / − I owe
   for (final d in debts) {
@@ -20,11 +23,11 @@ String? unsettledWarning(
       formatMoney(cents.abs(), currency, l.localeName);
   final owe = [
     for (final e in net.entries)
-      if (e.value < 0) fmt(e.value, e.key)
+      if (e.value < 0) fmt(e.value, e.key),
   ];
   final owed = [
     for (final e in net.entries)
-      if (e.value > 0) fmt(e.value, e.key)
+      if (e.value > 0) fmt(e.value, e.key),
   ];
   final parts = [
     if (owe.isNotEmpty) l.unsettledYouOwe(owe.join(' + ')),
@@ -52,16 +55,18 @@ Future<bool> confirmGroupExit(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(leave
-              ? l.leaveGroupBody(groupName)
-              : l.deleteGroupBody(groupName)),
+          Text(
+            leave ? l.leaveGroupBody(groupName) : l.deleteGroupBody(groupName),
+          ),
           if (warning != null) ...[
             const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.warning_amber_rounded,
-                    color: Theme.of(ctx).colorScheme.error),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Theme.of(ctx).colorScheme.error,
+                ),
                 const SizedBox(width: 8),
                 Expanded(child: Text(warning)),
               ],
@@ -87,7 +92,8 @@ Future<bool> confirmGroupExit(
         ),
         FilledButton(
           style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error),
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+          ),
           onPressed: () => Navigator.of(ctx).pop(true),
           child: Text(leave ? l.leave : l.delete),
         ),

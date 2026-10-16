@@ -18,10 +18,12 @@ void main() {
   ProviderContainer makeUser(FakeMatrixNetwork net, String userId) {
     final db = openTestDatabase();
     net.clientFor(userId);
-    final container = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
-    ]);
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith((ref) => net.clientFor(userId)),
+      ],
+    );
     addTearDown(() {
       container.dispose();
       db.close();
@@ -31,11 +33,16 @@ void main() {
   }
 
   /// Polls the (stream-derived) balance provider until [done] holds.
-  Future<List<DebtEntry>> balanceWhen(ProviderContainer c, String groupId,
-      bool Function(List<DebtEntry>) done) async {
+  Future<List<DebtEntry>> balanceWhen(
+    ProviderContainer c,
+    String groupId,
+    bool Function(List<DebtEntry>) done,
+  ) async {
     final sub = c.listen(balanceForRoomProvider(groupId), (_, _) {});
     try {
-      for (var i = 0; i < 200; i++) {
+      // Bounded by wall time, not an iteration count (G15: robust under load).
+      final sw = Stopwatch()..start();
+      while (sw.elapsed < const Duration(seconds: 10)) {
         final debts = c.read(balanceForRoomProvider(groupId));
         if (done(debts)) return debts;
         await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -46,62 +53,70 @@ void main() {
     }
   }
 
-  test('a settlement delete on A replicates to B and restores the balance',
-      () async {
-    final net = FakeMatrixNetwork();
-    final alice = makeUser(net, '@alice:x.org');
-    final bob = makeUser(net, '@bob:y.org');
-    await net.settle();
+  test(
+    'a settlement delete on A replicates to B and restores the balance',
+    () async {
+      final net = FakeMatrixNetwork();
+      final alice = makeUser(net, '@alice:x.org');
+      final bob = makeUser(net, '@bob:y.org');
+      await net.settle();
 
-    await alice.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
-    final groupId =
-        (await alice.read(groupsDaoProvider).watchAllGroups().first).first.roomId;
-    await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
-    await net.settle();
+      await alice.read(groupCreatorProvider.notifier).create('Trip', 'EUR');
+      final groupId =
+          (await alice.read(groupsDaoProvider).watchAllGroups().first)
+              .first
+              .roomId;
+      await alice.read(memberAdderProvider.notifier).add(groupId, '@bob:y.org');
+      await net.settle();
 
-    // Alice pays 40 EUR split evenly → Bob owes Alice 20 EUR.
-    await alice.read(expenseAdderProvider.notifier).addExpense(
-      roomId: groupId,
-      description: 'Dinner',
-      amountCents: 4000,
-      currency: 'EUR',
-      paidBy: '@alice:x.org',
-      splits: {'@alice:x.org': 2000, '@bob:y.org': 2000},
-    );
-    // Bob settles up (wrongly, say) — the debt disappears on both devices.
-    await net.settle();
-    await bob.read(expenseAdderProvider.notifier).addSettlement(
-          roomId: groupId,
-          amountCents: 2000,
-          currency: 'EUR',
-          fromUser: '@bob:y.org',
-          toUser: '@alice:x.org',
-        );
-    await net.settle();
-    expect(await balanceWhen(alice, groupId, (d) => d.isEmpty), isEmpty);
-    final settlement =
-        (await alice.read(expensesDaoProvider).getSettlementsForRoom(groupId))
-            .single;
+      // Alice pays 40 EUR split evenly → Bob owes Alice 20 EUR.
+      await alice
+          .read(expenseAdderProvider.notifier)
+          .addExpense(
+            roomId: groupId,
+            description: 'Dinner',
+            amountCents: 4000,
+            currency: 'EUR',
+            paidBy: '@alice:x.org',
+            splits: {'@alice:x.org': 2000, '@bob:y.org': 2000},
+          );
+      // Bob settles up (wrongly, say) — the debt disappears on both devices.
+      await net.settle();
+      await bob
+          .read(expenseAdderProvider.notifier)
+          .addSettlement(
+            roomId: groupId,
+            amountCents: 2000,
+            currency: 'EUR',
+            fromUser: '@bob:y.org',
+            toUser: '@alice:x.org',
+          );
+      await net.settle();
+      expect(await balanceWhen(alice, groupId, (d) => d.isEmpty), isEmpty);
+      final settlement =
+          (await alice.read(expensesDaoProvider).getSettlementsForRoom(groupId))
+              .single;
 
-    // Alice deletes it from her list.
-    await alice
-        .read(expenseAdderProvider.notifier)
-        .deleteSettlement(settlement.id, groupId);
-    await net.settle();
+      // Alice deletes it from her list.
+      await alice
+          .read(expenseAdderProvider.notifier)
+          .deleteSettlement(settlement.id, groupId);
+      await net.settle();
 
-    for (final user in [alice, bob]) {
-      final dao = user.read(expensesDaoProvider);
-      expect(await dao.getSettlementsForRoom(groupId), isEmpty);
-      // Kept as a tombstone so anti-entropy can't resurrect it.
-      final all = await dao.getAllSettlementsForGroup(groupId);
-      expect(all.single.id, settlement.id);
-      expect(all.single.deleted, true);
+      for (final user in [alice, bob]) {
+        final dao = user.read(expensesDaoProvider);
+        expect(await dao.getSettlementsForRoom(groupId), isEmpty);
+        // Kept as a tombstone so anti-entropy can't resurrect it.
+        final all = await dao.getAllSettlementsForGroup(groupId);
+        expect(all.single.id, settlement.id);
+        expect(all.single.deleted, true);
 
-      final debts = await balanceWhen(user, groupId, (d) => d.isNotEmpty);
-      expect(debts, hasLength(1));
-      expect(debts.single.from, '@bob:y.org');
-      expect(debts.single.to, '@alice:x.org');
-      expect(debts.single.cents, 2000);
-    }
-  });
+        final debts = await balanceWhen(user, groupId, (d) => d.isNotEmpty);
+        expect(debts, hasLength(1));
+        expect(debts.single.from, '@bob:y.org');
+        expect(debts.single.to, '@alice:x.org');
+        expect(debts.single.cents, 2000);
+      }
+    },
+  );
 }

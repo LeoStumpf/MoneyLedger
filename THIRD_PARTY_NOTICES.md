@@ -53,7 +53,7 @@ license as the app. The in-app icons are Flutter's bundled Material Icons
 ## Transitive and build-only dependencies
 
 Build/dev-only tools (`build_runner`, `drift_dev`, `riverpod_generator`,
-`flutter_lints`, `sqlite3` for tests) and all transitive dependencies are
+`flutter_lints`, `sqlite3` and `fake_async` for tests) and all transitive dependencies are
 permissive — MIT, BSD-2/3-Clause or Apache-2.0 — plus:
 
 - `vodozemac` (Dart package, pulled in by `matrix`) — AGPL-3.0;

@@ -61,7 +61,7 @@ final class SelfRecoveryProvider extends $NotifierProvider<SelfRecovery, bool> {
   }
 }
 
-String _$selfRecoveryHash() => r'f2f830bd3cd2a679da1f5fd054c8c1b7c134f93d';
+String _$selfRecoveryHash() => r'aa311c8eb73ab3e6b3fa44212f1e36011cf7533c';
 
 /// Whether this device's first-login recovery is outstanding: the account DB
 /// was empty at start-up, a self `resync_request` is out, and nothing has been

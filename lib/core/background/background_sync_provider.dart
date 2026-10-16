@@ -12,12 +12,14 @@ import 'background_sync.dart';
 
 /// The OS scheduler (WorkManager on Android, no-op elsewhere / in tests).
 final backgroundSchedulerProvider = Provider<BackgroundScheduler>(
-    (ref) => createPlatformBackgroundScheduler());
+  (ref) => createPlatformBackgroundScheduler(),
+);
 
 /// Whether this platform has a background sync at all (the settings toggle is
 /// only shown where it does something).
-final backgroundSyncSupportedProvider =
-    Provider<bool>((ref) => backgroundSyncSupported);
+final backgroundSyncSupportedProvider = Provider<bool>(
+  (ref) => backgroundSyncSupported,
+);
 
 /// The signed-in account's background-sync setting (device-local, default
 /// on). Signed out → false.

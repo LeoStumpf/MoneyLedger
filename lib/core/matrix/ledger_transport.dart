@@ -87,8 +87,7 @@ class DevicePlan {
 
   const DevicePlan({required this.devices, required this.unreachableUsers});
 
-  int get deviceCount =>
-      devices.values.fold(0, (sum, ids) => sum + ids.length);
+  int get deviceCount => devices.values.fold(0, (sum, ids) => sum + ids.length);
 }
 
 /// Decides which devices of [targets] to send to, given every target's known
@@ -109,7 +108,7 @@ DevicePlan planDeviceSend({
     final ids = [
       for (final d in devicesByUser[user] ?? const <TransportDevice>[])
         if (!d.blocked && !(user == selfUserId && d.deviceId == selfDeviceId))
-          d.deviceId
+          d.deviceId,
     ];
     if (ids.isNotEmpty) {
       devices[user] = ids;

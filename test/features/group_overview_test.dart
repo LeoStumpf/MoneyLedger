@@ -17,22 +17,31 @@ import 'package:money_ledger/models/member_model.dart';
 
 import '../helpers/test_providers.dart';
 
-ExpenseModel expense(String paidBy, int amount, Map<String, int> split,
-        {String currency = 'EUR', int at = 1}) =>
-    ExpenseModel(
-      id: 'e$at',
-      roomId: 'g1',
-      description: 'x',
-      amountCents: amount,
-      currency: currency,
-      paidBy: paidBy,
-      splitsJson:
-          '{${split.entries.map((e) => '"${e.key}":${e.value}').join(',')}}',
-      createdAt: at,
-    );
+ExpenseModel expense(
+  String paidBy,
+  int amount,
+  Map<String, int> split, {
+  String currency = 'EUR',
+  int at = 1,
+}) => ExpenseModel(
+  id: 'e$at',
+  roomId: 'g1',
+  description: 'x',
+  amountCents: amount,
+  currency: currency,
+  paidBy: paidBy,
+  splitsJson:
+      '{${split.entries.map((e) => '"${e.key}":${e.value}').join(',')}}',
+  createdAt: at,
+);
 
 MemberModel member(String id) => MemberModel(
-    groupId: 'g1', userId: id, displayName: id, status: 'active', updatedAt: 1);
+  groupId: 'g1',
+  userId: id,
+  displayName: id,
+  status: 'active',
+  updatedAt: 1,
+);
 
 void main() {
   group('netBalances / netBalanceOf', () {
@@ -42,13 +51,14 @@ void main() {
     ];
     final settlements = [
       const SettlementModel(
-          id: 's',
-          roomId: 'g1',
-          amountCents: 500,
-          currency: 'EUR',
-          fromUser: 'c',
-          toUser: 'a',
-          createdAt: 3),
+        id: 's',
+        roomId: 'g1',
+        amountCents: 500,
+        currency: 'EUR',
+        fromUser: 'c',
+        toUser: 'a',
+        createdAt: 3,
+      ),
     ];
 
     test('per currency, sums to zero, settlements applied', () {
@@ -58,15 +68,21 @@ void main() {
     });
 
     test('netBalanceOf drops zero currencies and sorts by currency', () {
-      expect(netBalanceOf('a', expenses, settlements),
-          {'CHF': -500, 'EUR': 1500});
+      expect(netBalanceOf('a', expenses, settlements), {
+        'CHF': -500,
+        'EUR': 1500,
+      });
       expect(netBalanceOf('z', expenses, settlements), isEmpty);
     });
 
     test('nets derived from the simplified debts match', () {
       final debts = calculateDebts(expenses, settlements);
       final fromDebts = netsFromDebts(debts);
-      expect(Map.fromEntries(fromDebts['EUR']!), {'a': 1500, 'b': -1000, 'c': -500});
+      expect(Map.fromEntries(fromDebts['EUR']!), {
+        'a': 1500,
+        'b': -1000,
+        'c': -500,
+      });
       // creditors first
       expect(fromDebts['EUR']!.first.key, 'a');
     });
@@ -85,8 +101,10 @@ void main() {
       expect(expenseEffectFor(e, null), (net: 0, involved: false));
     });
     test('paying only for yourself nets zero', () {
-      expect(expenseEffectFor(expense('a', 500, {'a': 500}), 'a'),
-          (net: 0, involved: true));
+      expect(expenseEffectFor(expense('a', 500, {'a': 500}), 'a'), (
+        net: 0,
+        involved: true,
+      ));
     });
   });
 
@@ -111,17 +129,26 @@ void main() {
   });
 
   group('GroupCard balance text', () {
-    Future<void> pump(WidgetTester tester, GroupOverview o,
-        {Locale? locale}) async {
-      await tester.pumpWidget(testApp(
-        Scaffold(
-          body: GroupCard(
-            group: const GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
-            overview: o,
+    Future<void> pump(
+      WidgetTester tester,
+      GroupOverview o, {
+      Locale? locale,
+    }) async {
+      await tester.pumpWidget(
+        testApp(
+          Scaffold(
+            body: GroupCard(
+              group: const GroupModel(
+                roomId: 'g1',
+                name: 'Trip',
+                currency: 'EUR',
+              ),
+              overview: o,
+            ),
           ),
+          locale: locale,
         ),
-        locale: locale,
-      ));
+      );
       await tester.pump();
     }
 
@@ -147,20 +174,21 @@ void main() {
       expect(find.text('Trip'), findsOneWidget);
     });
 
-    testWidgets('settled up / no expenses / not a participant',
-        (tester) async {
+    testWidgets('settled up / no expenses / not a participant', (tester) async {
       await pump(tester, overview({}));
       expect(find.text('Settled up'), findsOneWidget);
       await pump(tester, overview({}, records: 0));
       expect(find.text('No expenses yet'), findsOneWidget);
       await pump(
-          tester,
-          GroupOverview(
-              members: [member('Bea')],
-              me: null,
-              myBalance: const {},
-              lastActivityAt: null,
-              recordCount: 3));
+        tester,
+        GroupOverview(
+          members: [member('Bea')],
+          me: null,
+          myBalance: const {},
+          lastActivityAt: null,
+          recordCount: 3,
+        ),
+      );
       expect(find.text('Not a participant'), findsOneWidget);
     });
 

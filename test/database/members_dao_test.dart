@@ -21,19 +21,22 @@ void main() {
 
   tearDown(() => db.close());
 
-  Future<void> add(String id,
-          {String? matrixId,
-          String name = '',
-          String status = 'active',
-          int updatedAt = 1000}) =>
-      dao.upsertMemberLww(MembersCompanion(
-        groupId: const Value('g1'),
-        userId: Value(id),
-        displayName: Value(name),
-        matrixId: Value(matrixId),
-        status: Value(status),
-        updatedAt: Value(updatedAt),
-      ));
+  Future<void> add(
+    String id, {
+    String? matrixId,
+    String name = '',
+    String status = 'active',
+    int updatedAt = 1000,
+  }) => dao.upsertMemberLww(
+    MembersCompanion(
+      groupId: const Value('g1'),
+      userId: Value(id),
+      displayName: Value(name),
+      matrixId: Value(matrixId),
+      status: Value(status),
+      updatedAt: Value(updatedAt),
+    ),
+  );
 
   group('MembersDao — participant identity', () {
     test('round-trips displayName and matrixId', () async {
@@ -52,15 +55,17 @@ void main() {
       expect(m.isClaimed, false);
     });
 
-    test('activeClaimedMatrixIds returns only active, claimed participants',
-        () async {
-      await add('p1', name: 'Alice', matrixId: '@alice:x.org');
-      await add('p2', name: 'Bob', matrixId: '@bob:y.org', status: 'removed');
-      await add('p-local', name: 'Cash', matrixId: null);
+    test(
+      'activeClaimedMatrixIds returns only active, claimed participants',
+      () async {
+        await add('p1', name: 'Alice', matrixId: '@alice:x.org');
+        await add('p2', name: 'Bob', matrixId: '@bob:y.org', status: 'removed');
+        await add('p-local', name: 'Cash', matrixId: null);
 
-      final targets = await dao.activeClaimedMatrixIds('g1');
-      expect(targets, ['@alice:x.org']);
-    });
+        final targets = await dao.activeClaimedMatrixIds('g1');
+        expect(targets, ['@alice:x.org']);
+      },
+    );
 
     test('memberByMatrixId finds the claiming participant', () async {
       await add('p1', name: 'Alice', matrixId: '@alice:x.org');
@@ -89,11 +94,15 @@ void main() {
     // MXID, so matrixId is copied from it and displayName is the localpart.
     Future<void> runBackfill() async {
       await db.customStatement('UPDATE members SET matrix_id = user_id');
-      await db.customStatement("UPDATE members SET display_name = "
-          "substr(user_id, 2, instr(user_id, ':') - 2) "
-          "WHERE user_id LIKE '@%:%'");
-      await db.customStatement("UPDATE members SET display_name = user_id "
-          "WHERE user_id NOT LIKE '@%:%'");
+      await db.customStatement(
+        "UPDATE members SET display_name = "
+        "substr(user_id, 2, instr(user_id, ':') - 2) "
+        "WHERE user_id LIKE '@%:%'",
+      );
+      await db.customStatement(
+        "UPDATE members SET display_name = user_id "
+        "WHERE user_id NOT LIKE '@%:%'",
+      );
     }
 
     test('an MXID row backfills matrixId and the localpart name', () async {

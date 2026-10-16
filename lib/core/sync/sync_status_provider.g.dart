@@ -309,7 +309,7 @@ final class GroupSyncStatusProvider
   }
 }
 
-String _$groupSyncStatusHash() => r'6e93b90b288dd1a35dd63460d034ffb1e63fccae';
+String _$groupSyncStatusHash() => r'53dc95ef5f23824255b85f2d811ba4ae8b031066';
 
 /// Reactive sync status for one group: recomputes whenever members, peer sync
 /// state, or any record (including tombstones) changes.

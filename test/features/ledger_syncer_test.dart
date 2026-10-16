@@ -52,7 +52,10 @@ void main() {
 
     test('missing id or group — no row written', () async {
       await LedgerSyncer.processExpense({'description': 'No id'}, expDao);
-      await LedgerSyncer.processExpense({'id': 'x', 'description': 'No group'}, expDao);
+      await LedgerSyncer.processExpense({
+        'id': 'x',
+        'description': 'No group',
+      }, expDao);
       final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows, isEmpty);
     });
@@ -96,7 +99,10 @@ void main() {
     });
 
     test('missing id — no row written', () async {
-      await LedgerSyncer.processSettlement({'group': 'g1', 'amount': 100}, expDao);
+      await LedgerSyncer.processSettlement({
+        'group': 'g1',
+        'amount': 100,
+      }, expDao);
       final rows = await expDao.watchSettlementsForRoom('g1').first;
       expect(rows, isEmpty);
     });
@@ -104,8 +110,11 @@ void main() {
 
   group('LedgerSyncer.processGroupMeta', () {
     test('writes group row to DB', () async {
-      await LedgerSyncer.processGroupMeta(
-          {'group': 'g1', 'name': 'Alpine Hut', 'currency': 'CHF'}, groupDao);
+      await LedgerSyncer.processGroupMeta({
+        'group': 'g1',
+        'name': 'Alpine Hut',
+        'currency': 'CHF',
+      }, groupDao);
       final groups = await groupDao.watchAllGroups().first;
       expect(groups.length, 1);
       expect(groups.first.roomId, 'g1');
@@ -114,7 +123,10 @@ void main() {
     });
 
     test('missing currency falls back to EUR', () async {
-      await LedgerSyncer.processGroupMeta({'group': 'g1', 'name': 'X'}, groupDao);
+      await LedgerSyncer.processGroupMeta({
+        'group': 'g1',
+        'name': 'X',
+      }, groupDao);
       final groups = await groupDao.watchAllGroups().first;
       expect(groups.first.currency, 'EUR');
     });
@@ -152,155 +164,188 @@ void main() {
       expect(members.single.status, 'removed');
     });
 
-    test('reads participant_id + name + matrix_id (virtual-users shape)',
-        () async {
-      await LedgerSyncer.processMember({
-        'group': 'g1',
-        'participant_id': 'p-uuid',
-        'name': 'Cash',
-        'matrix_id': null, // pure-local participant
-        'status': 'active',
-        'updated_at': 100,
-      }, memberDao);
-      final m = (await memberDao.getMembers('g1')).single;
-      expect(m.userId, 'p-uuid');
-      expect(m.displayName, 'Cash');
-      expect(m.matrixId, isNull);
-      expect(m.isClaimed, false);
-    });
+    test(
+      'reads participant_id + name + matrix_id (virtual-users shape)',
+      () async {
+        await LedgerSyncer.processMember({
+          'group': 'g1',
+          'participant_id': 'p-uuid',
+          'name': 'Cash',
+          'matrix_id': null, // pure-local participant
+          'status': 'active',
+          'updated_at': 100,
+        }, memberDao);
+        final m = (await memberDao.getMembers('g1')).single;
+        expect(m.userId, 'p-uuid');
+        expect(m.displayName, 'Cash');
+        expect(m.matrixId, isNull);
+        expect(m.isClaimed, false);
+      },
+    );
 
-    test('a newer payload claims a participant (sets matrixId via LWW)',
-        () async {
-      await LedgerSyncer.processMember({
-        'group': 'g1',
-        'participant_id': 'p-uuid',
-        'name': 'Bob',
-        'matrix_id': null,
-        'status': 'active',
-        'updated_at': 100,
-      }, memberDao);
-      // Bob joins and claims the slot.
-      await LedgerSyncer.processMember({
-        'group': 'g1',
-        'participant_id': 'p-uuid',
-        'name': 'Bob',
-        'matrix_id': '@bob:y.org',
-        'status': 'active',
-        'updated_at': 200,
-      }, memberDao);
-      final m = (await memberDao.getMembers('g1')).single;
-      expect(m.matrixId, '@bob:y.org');
-      expect(m.userId, 'p-uuid'); // identity unchanged by the claim
-    });
+    test(
+      'a newer payload claims a participant (sets matrixId via LWW)',
+      () async {
+        await LedgerSyncer.processMember({
+          'group': 'g1',
+          'participant_id': 'p-uuid',
+          'name': 'Bob',
+          'matrix_id': null,
+          'status': 'active',
+          'updated_at': 100,
+        }, memberDao);
+        // Bob joins and claims the slot.
+        await LedgerSyncer.processMember({
+          'group': 'g1',
+          'participant_id': 'p-uuid',
+          'name': 'Bob',
+          'matrix_id': '@bob:y.org',
+          'status': 'active',
+          'updated_at': 200,
+        }, memberDao);
+        final m = (await memberDao.getMembers('g1')).single;
+        expect(m.matrixId, '@bob:y.org');
+        expect(m.userId, 'p-uuid'); // identity unchanged by the claim
+      },
+    );
   });
 
   group('LedgerSyncer.processBootstrap', () {
     test('applies group meta, members and ledger in one payload', () async {
-      await LedgerSyncer.processBootstrap({
-        'group': 'g1',
-        'name': 'Trip',
-        'currency': 'USD',
-        'members': [
-          {'group': 'g1', 'user': '@a:m.org', 'status': 'active', 'updated_at': 1},
-          {'group': 'g1', 'user': '@b:m.org', 'status': 'active', 'updated_at': 1},
-        ],
-        'expenses': [
-          {
-            'group': 'g1',
-            'id': 'e1',
-            'description': 'Hotel',
-            'amount': 8000,
-            'currency': 'USD',
-            'paid_by': '@a:m.org',
-            'split': {'@a:m.org': 4000, '@b:m.org': 4000},
-            'created_at': 5,
-          },
-        ],
-        'settlements': [
-          {
-            'group': 'g1',
-            'id': 's1',
-            'amount': 4000,
-            'currency': 'USD',
-            'from': '@b:m.org',
-            'to': '@a:m.org',
-            'created_at': 6,
-          },
-        ],
-      }, groupDao, memberDao, expDao);
+      await LedgerSyncer.processBootstrap(
+        {
+          'group': 'g1',
+          'name': 'Trip',
+          'currency': 'USD',
+          'members': [
+            {
+              'group': 'g1',
+              'user': '@a:m.org',
+              'status': 'active',
+              'updated_at': 1,
+            },
+            {
+              'group': 'g1',
+              'user': '@b:m.org',
+              'status': 'active',
+              'updated_at': 1,
+            },
+          ],
+          'expenses': [
+            {
+              'group': 'g1',
+              'id': 'e1',
+              'description': 'Hotel',
+              'amount': 8000,
+              'currency': 'USD',
+              'paid_by': '@a:m.org',
+              'split': {'@a:m.org': 4000, '@b:m.org': 4000},
+              'created_at': 5,
+            },
+          ],
+          'settlements': [
+            {
+              'group': 'g1',
+              'id': 's1',
+              'amount': 4000,
+              'currency': 'USD',
+              'from': '@b:m.org',
+              'to': '@a:m.org',
+              'created_at': 6,
+            },
+          ],
+        },
+        groupDao,
+        memberDao,
+        expDao,
+      );
 
       expect((await groupDao.watchAllGroups().first).single.currency, 'USD');
       expect((await memberDao.getMembers('g1')).length, 2);
       expect((await expDao.watchExpensesForRoom('g1').first).single.id, 'e1');
-      expect((await expDao.watchSettlementsForRoom('g1').first).single.id, 's1');
+      expect(
+        (await expDao.watchSettlementsForRoom('g1').first).single.id,
+        's1',
+      );
     });
 
-    test('bootstrap containing a tombstone deletes the local live copy',
-        () async {
-      await LedgerSyncer.processExpense({
-        'id': 'e1',
-        'group': 'g1',
-        'description': 'Hotel',
-        'amount': 8000,
-        'currency': 'EUR',
-        'paid_by': '@a:m.org',
-        'split': <String, int>{},
-        'created_at': 5,
-        'updated_at': 5,
-      }, expDao);
+    test(
+      'bootstrap containing a tombstone deletes the local live copy',
+      () async {
+        await LedgerSyncer.processExpense({
+          'id': 'e1',
+          'group': 'g1',
+          'description': 'Hotel',
+          'amount': 8000,
+          'currency': 'EUR',
+          'paid_by': '@a:m.org',
+          'split': <String, int>{},
+          'created_at': 5,
+          'updated_at': 5,
+        }, expDao);
 
-      await LedgerSyncer.processBootstrap({
-        'group': 'g1',
-        'name': 'Trip',
-        'currency': 'EUR',
-        'members': const [],
-        'expenses': [
+        await LedgerSyncer.processBootstrap(
           {
             'group': 'g1',
-            'id': 'e1',
-            'description': 'Hotel',
-            'amount': 8000,
+            'name': 'Trip',
             'currency': 'EUR',
-            'paid_by': '@a:m.org',
-            'split': <String, int>{},
-            'created_at': 5,
-            'updated_at': 10,
-            'deleted': true,
+            'members': const [],
+            'expenses': [
+              {
+                'group': 'g1',
+                'id': 'e1',
+                'description': 'Hotel',
+                'amount': 8000,
+                'currency': 'EUR',
+                'paid_by': '@a:m.org',
+                'split': <String, int>{},
+                'created_at': 5,
+                'updated_at': 10,
+                'deleted': true,
+              },
+            ],
+            'settlements': const [],
           },
-        ],
-        'settlements': const [],
-      }, groupDao, memberDao, expDao);
+          groupDao,
+          memberDao,
+          expDao,
+        );
 
-      expect(await expDao.watchExpensesForRoom('g1').first, isEmpty);
-      final all = await expDao.getAllExpensesForGroup('g1');
-      expect(all.single.deleted, true);
-    });
+        expect(await expDao.watchExpensesForRoom('g1').first, isEmpty);
+        final all = await expDao.getAllExpensesForGroup('g1');
+        expect(all.single.deleted, true);
+      },
+    );
   });
 
   group('LedgerSyncer — LWW edits and tombstones (protocol v1)', () {
-    Map<String, dynamic> expenseContent(
-            {required int updatedAt,
-            String description = 'Pizza',
-            bool deleted = false}) =>
-        {
-          'v': 1,
-          'id': 'e1',
-          'group': 'g1',
-          'description': description,
-          'amount': 3000,
-          'currency': 'EUR',
-          'paid_by': '@alice:m.org',
-          'split': {'@alice:m.org': 3000},
-          'created_at': 1000,
-          'updated_at': updatedAt,
-          'deleted': deleted,
-        };
+    Map<String, dynamic> expenseContent({
+      required int updatedAt,
+      String description = 'Pizza',
+      bool deleted = false,
+    }) => {
+      'v': 1,
+      'id': 'e1',
+      'group': 'g1',
+      'description': description,
+      'amount': 3000,
+      'currency': 'EUR',
+      'paid_by': '@alice:m.org',
+      'split': {'@alice:m.org': 3000},
+      'created_at': 1000,
+      'updated_at': updatedAt,
+      'deleted': deleted,
+    };
 
     test('a stale edit does not overwrite a newer row', () async {
       await LedgerSyncer.processExpense(
-          expenseContent(updatedAt: 2000, description: 'current'), expDao);
+        expenseContent(updatedAt: 2000, description: 'current'),
+        expDao,
+      );
       await LedgerSyncer.processExpense(
-          expenseContent(updatedAt: 1500, description: 'stale'), expDao);
+        expenseContent(updatedAt: 1500, description: 'stale'),
+        expDao,
+      );
 
       final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows.single.description, 'current');
@@ -308,47 +353,63 @@ void main() {
 
     test('a newer edit wins', () async {
       await LedgerSyncer.processExpense(
-          expenseContent(updatedAt: 1000, description: 'v1'), expDao);
+        expenseContent(updatedAt: 1000, description: 'v1'),
+        expDao,
+      );
       await LedgerSyncer.processExpense(
-          expenseContent(updatedAt: 2000, description: 'v2'), expDao);
+        expenseContent(updatedAt: 2000, description: 'v2'),
+        expDao,
+      );
 
       final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows.single.description, 'v2');
     });
 
     test('a delete payload tombstones the expense', () async {
-      await LedgerSyncer.processExpense(expenseContent(updatedAt: 1000), expDao);
       await LedgerSyncer.processExpense(
-          expenseContent(updatedAt: 2000, deleted: true), expDao);
+        expenseContent(updatedAt: 1000),
+        expDao,
+      );
+      await LedgerSyncer.processExpense(
+        expenseContent(updatedAt: 2000, deleted: true),
+        expDao,
+      );
 
       expect(await expDao.watchExpensesForRoom('g1').first, isEmpty);
     });
 
     test('an older live payload cannot resurrect a tombstone', () async {
       await LedgerSyncer.processExpense(
-          expenseContent(updatedAt: 2000, deleted: true), expDao);
-      await LedgerSyncer.processExpense(expenseContent(updatedAt: 1000), expDao);
+        expenseContent(updatedAt: 2000, deleted: true),
+        expDao,
+      );
+      await LedgerSyncer.processExpense(
+        expenseContent(updatedAt: 1000),
+        expDao,
+      );
 
       expect(await expDao.watchExpensesForRoom('g1').first, isEmpty);
       expect((await expDao.getAllExpensesForGroup('g1')).single.deleted, true);
     });
 
-    test('payload without updated_at falls back to created_at (pre-v1 peer)',
-        () async {
-      await LedgerSyncer.processExpense({
-        'id': 'e1',
-        'group': 'g1',
-        'description': 'Legacy',
-        'amount': 100,
-        'currency': 'EUR',
-        'paid_by': '@a:m.org',
-        'split': <String, int>{},
-        'created_at': 1234,
-      }, expDao);
+    test(
+      'payload without updated_at falls back to created_at (pre-v1 peer)',
+      () async {
+        await LedgerSyncer.processExpense({
+          'id': 'e1',
+          'group': 'g1',
+          'description': 'Legacy',
+          'amount': 100,
+          'currency': 'EUR',
+          'paid_by': '@a:m.org',
+          'split': <String, int>{},
+          'created_at': 1234,
+        }, expDao);
 
-      final rows = await expDao.watchExpensesForRoom('g1').first;
-      expect(rows.single.updatedAt, 1234);
-    });
+        final rows = await expDao.watchExpensesForRoom('g1').first;
+        expect(rows.single.updatedAt, 1234);
+      },
+    );
 
     test('stale group meta does not overwrite a newer rename', () async {
       await LedgerSyncer.processGroupMeta({
@@ -410,7 +471,10 @@ void main() {
         updatedAt: 2500,
       );
 
-      await LedgerSyncer.processSettlement(settlementPayload(settlement), expDao);
+      await LedgerSyncer.processSettlement(
+        settlementPayload(settlement),
+        expDao,
+      );
 
       final row = (await expDao.watchSettlementsForRoom('g1').first).single;
       expect(row.id, settlement.id);

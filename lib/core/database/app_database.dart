@@ -100,25 +100,24 @@ class AppSettings extends Table {
 }
 
 @DriftDatabase(
-    tables: [Groups, Expenses, Settlements, Members, PeerSyncStates, AppSettings])
+  tables: [Groups, Expenses, Settlements, Members, PeerSyncStates, AppSettings],
+)
 class AppDatabase extends _$AppDatabase {
   /// Opens the on-device database file/store called [name] (per-account ledger
   /// DBs are named via `accountDatabaseName` — see `account_database.dart`).
   /// [onOpen] runs once per open, after migrations, inside drift's
   /// `beforeOpen` (used to adopt the pre-per-account legacy ledger).
   AppDatabase.named(String name, {this.onOpen})
-      : isSignedOutPlaceholder = false,
-        super(openNamedConnection(name));
+    : isSignedOutPlaceholder = false,
+      super(openNamedConnection(name));
 
   /// Wraps an arbitrary executor (in-memory / temp-file DBs in tests).
   AppDatabase.forTesting(super.e, {this.onOpen})
-      : isSignedOutPlaceholder = false;
+    : isSignedOutPlaceholder = false;
 
   /// The storage-less placeholder behind `appDatabaseProvider` while signed
   /// out (executor: `SignedOutExecutor`).
-  AppDatabase.signedOut(super.e)
-      : onOpen = null,
-        isSignedOutPlaceholder = true;
+  AppDatabase.signedOut(super.e) : onOpen = null, isSignedOutPlaceholder = true;
 
   /// True for the signed-out placeholder: there is no account, so sync
   /// components (SyncEngine / LedgerSyncer) must not start against it — an
@@ -148,70 +147,71 @@ class AppDatabase extends _$AppDatabase {
   /// expenses, settlements (tombstones included) and peer sync bookkeeping —
   /// in one transaction (G9 leave / delete). Device-local: nothing is sent.
   Future<void> purgeGroup(String groupId) => transaction(() async {
-        await (delete(groups)..where((t) => t.roomId.equals(groupId))).go();
-        await (delete(members)..where((t) => t.groupId.equals(groupId))).go();
-        await (delete(expenses)..where((t) => t.roomId.equals(groupId))).go();
-        await (delete(settlements)..where((t) => t.roomId.equals(groupId)))
-            .go();
-        await (delete(peerSyncStates)..where((t) => t.groupId.equals(groupId)))
-            .go();
-      });
+    await (delete(groups)..where((t) => t.roomId.equals(groupId))).go();
+    await (delete(members)..where((t) => t.groupId.equals(groupId))).go();
+    await (delete(expenses)..where((t) => t.roomId.equals(groupId))).go();
+    await (delete(settlements)..where((t) => t.roomId.equals(groupId))).go();
+    await (delete(
+      peerSyncStates,
+    )..where((t) => t.groupId.equals(groupId))).go();
+  });
 
   @override
   int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
-        onUpgrade: (m, from, to) async {
-          // v2 (Phase B): add the local membership table. Existing
-          // groups/expenses/settlements are left untouched (clean-slate move to
-          // roomless — old room-based groups simply stop syncing).
-          if (from < 2) {
-            await m.createTable(members);
-          }
-          // v3 (Phase C): per-record LWW clocks + tombstones for edit/delete
-          // and digest anti-entropy, plus per-peer sync bookkeeping.
-          if (from < 3) {
-            await m.addColumn(groups, groups.updatedAt);
-            await m.addColumn(expenses, expenses.updatedAt);
-            await m.addColumn(expenses, expenses.deleted);
-            await m.addColumn(settlements, settlements.updatedAt);
-            await m.addColumn(settlements, settlements.deleted);
-            await m.createTable(peerSyncStates);
-            await customStatement('UPDATE expenses SET updated_at = created_at');
-            await customStatement(
-                'UPDATE settlements SET updated_at = created_at');
-          }
-          // v4 (virtual users): participants gain a display name and an optional
-          // Matrix-account claim. Existing rows were created from real accounts,
-          // so their userId already IS the MXID — backfill matrixId from it and
-          // derive a display name from the localpart. Non-destructive: userId
-          // (the participant id) is untouched, so all expense/settlement
-          // references stay valid.
-          if (from < 4) {
-            await m.addColumn(members, members.displayName);
-            await m.addColumn(members, members.matrixId);
-            await customStatement('UPDATE members SET matrix_id = user_id');
-            // localpart of @local:server → strip leading '@' up to the ':'
-            await customStatement(
-                "UPDATE members SET display_name = "
-                "substr(user_id, 2, instr(user_id, ':') - 2) "
-                "WHERE user_id LIKE '@%:%'");
-            await customStatement(
-                "UPDATE members SET display_name = user_id "
-                "WHERE user_id NOT LIKE '@%:%'");
-          }
-          // v5 (Phase F): device-local settings (onboarding-seen flag).
-          if (from < 5) {
-            await m.createTable(appSettings);
-          }
-        },
-        beforeOpen: (_) async {
-          final hook = onOpen;
-          if (hook != null) await hook(this);
-        },
-      );
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      // v2 (Phase B): add the local membership table. Existing
+      // groups/expenses/settlements are left untouched (clean-slate move to
+      // roomless — old room-based groups simply stop syncing).
+      if (from < 2) {
+        await m.createTable(members);
+      }
+      // v3 (Phase C): per-record LWW clocks + tombstones for edit/delete
+      // and digest anti-entropy, plus per-peer sync bookkeeping.
+      if (from < 3) {
+        await m.addColumn(groups, groups.updatedAt);
+        await m.addColumn(expenses, expenses.updatedAt);
+        await m.addColumn(expenses, expenses.deleted);
+        await m.addColumn(settlements, settlements.updatedAt);
+        await m.addColumn(settlements, settlements.deleted);
+        await m.createTable(peerSyncStates);
+        await customStatement('UPDATE expenses SET updated_at = created_at');
+        await customStatement('UPDATE settlements SET updated_at = created_at');
+      }
+      // v4 (virtual users): participants gain a display name and an optional
+      // Matrix-account claim. Existing rows were created from real accounts,
+      // so their userId already IS the MXID — backfill matrixId from it and
+      // derive a display name from the localpart. Non-destructive: userId
+      // (the participant id) is untouched, so all expense/settlement
+      // references stay valid.
+      if (from < 4) {
+        await m.addColumn(members, members.displayName);
+        await m.addColumn(members, members.matrixId);
+        await customStatement('UPDATE members SET matrix_id = user_id');
+        // localpart of @local:server → strip leading '@' up to the ':'
+        await customStatement(
+          "UPDATE members SET display_name = "
+          "substr(user_id, 2, instr(user_id, ':') - 2) "
+          "WHERE user_id LIKE '@%:%'",
+        );
+        await customStatement(
+          "UPDATE members SET display_name = user_id "
+          "WHERE user_id NOT LIKE '@%:%'",
+        );
+      }
+      // v5 (Phase F): device-local settings (onboarding-seen flag).
+      if (from < 5) {
+        await m.createTable(appSettings);
+      }
+    },
+    beforeOpen: (_) async {
+      final hook = onOpen;
+      if (hook != null) await hook(this);
+    },
+  );
 }
 
 /// The platform executor for the database called [name]: a `<name>.sqlite`
@@ -220,6 +220,11 @@ class AppDatabase extends _$AppDatabase {
 QueryExecutor openNamedConnection(String name) {
   return driftDatabase(
     name: name,
-    web: kIsWeb ? DriftWebOptions(sqlite3Wasm: Uri.parse('sqlite3.wasm'), driftWorker: Uri.parse('drift_worker.js')) : null,
+    web: kIsWeb
+        ? DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          )
+        : null,
   );
 }

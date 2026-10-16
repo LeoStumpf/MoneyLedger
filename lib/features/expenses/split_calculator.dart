@@ -35,8 +35,9 @@ Map<String, int> distributeByWeights(int total, Map<String, num> weights) {
   final result = {for (final id in weights.keys) id: 0};
   if (total <= 0) return result;
 
-  final totalWeight =
-      weights.values.where((w) => w > 0).fold<num>(0, (a, b) => a + b);
+  final totalWeight = weights.values
+      .where((w) => w > 0)
+      .fold<num>(0, (a, b) => a + b);
   if (totalWeight <= 0) return result;
 
   // Floor each share; track the fractional remainder for leftover assignment.

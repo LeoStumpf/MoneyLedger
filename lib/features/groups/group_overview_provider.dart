@@ -35,7 +35,12 @@ class GroupOverview {
   });
 
   static const empty = GroupOverview(
-      members: [], me: null, myBalance: {}, lastActivityAt: null, recordCount: 0);
+    members: [],
+    me: null,
+    myBalance: {},
+    lastActivityAt: null,
+    recordCount: 0,
+  );
 }
 
 /// [GroupOverview] of [groupId], recomputed from the Drift streams.
@@ -44,8 +49,10 @@ GroupOverview groupOverview(Ref ref, String groupId) {
   final all =
       ref.watch(groupMembersProvider(groupId)).value ?? const <MemberModel>[];
   final expenses =
-      ref.watch(expensesForRoomProvider(groupId)).value ?? const <ExpenseModel>[];
-  final settlements = ref.watch(settlementsForRoomProvider(groupId)).value ??
+      ref.watch(expensesForRoomProvider(groupId)).value ??
+      const <ExpenseModel>[];
+  final settlements =
+      ref.watch(settlementsForRoomProvider(groupId)).value ??
       const <SettlementModel>[];
   final me = claimedBy(all, ref.watch(currentUserIdProvider));
   int? last;
@@ -56,7 +63,10 @@ GroupOverview groupOverview(Ref ref, String groupId) {
     if (last == null || t > last) last = t;
   }
   return GroupOverview(
-    members: [for (final m in all) if (m.isActive) m],
+    members: [
+      for (final m in all)
+        if (m.isActive) m,
+    ],
     me: me,
     myBalance: me == null
         ? const {}
@@ -71,7 +81,8 @@ GroupOverview groupOverview(Ref ref, String groupId) {
 /// netted, like the per-group cards (being owed in one group doesn't pay a
 /// debt in another). Both maps hold positive cents, sorted by currency.
 ({Map<String, int> owed, Map<String, int> owing}) balanceTotals(
-    Iterable<Map<String, int>> balances) {
+  Iterable<Map<String, int>> balances,
+) {
   final owed = <String, int>{};
   final owing = <String, int>{};
   for (final b in balances) {
@@ -80,7 +91,8 @@ GroupOverview groupOverview(Ref ref, String groupId) {
       if (v < 0) owing[c] = (owing[c] ?? 0) - v;
     });
   }
-  Map<String, int> sorted(Map<String, int> m) =>
-      {for (final c in m.keys.toList()..sort()) c: m[c]!};
+  Map<String, int> sorted(Map<String, int> m) => {
+    for (final c in m.keys.toList()..sort()) c: m[c]!,
+  };
   return (owed: sorted(owed), owing: sorted(owing));
 }

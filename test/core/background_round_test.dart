@@ -76,8 +76,9 @@ void main() {
   /// A file-backed ledger DB per (user, device) — survives close/reopen like
   /// the real per-account file.
   AppDatabase openDb(String user, {String device = 'D1'}) {
-    final db = AppDatabase.forTesting(NativeDatabase(File(
-        '${tmp.path}/${user.hashCode}_$device.sqlite')));
+    final db = AppDatabase.forTesting(
+      NativeDatabase(File('${tmp.path}/${user.hashCode}_$device.sqlite')),
+    );
     dbs.add(db);
     return db;
   }
@@ -85,13 +86,16 @@ void main() {
   /// The running app on a device.
   ProviderContainer openApp(String user, {String device = 'D1'}) {
     final db = openDb(user, device: device);
-    final c = ProviderContainer(overrides: [
-      appDatabaseProvider.overrideWithValue(db),
-      ledgerTransportProvider
-          .overrideWith((ref) => net.clientFor(user, device: device)),
-      pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
-      syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
-    ]);
+    final c = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith(
+          (ref) => net.clientFor(user, device: device),
+        ),
+        pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
+        syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
+      ],
+    );
     containers.add(c);
     c.listen(ledgerSyncerProvider, (_, _) {});
     c.listen(syncEngineProvider, (_, _) {});
@@ -114,19 +118,18 @@ void main() {
     Future<void>? abort,
     Duration timeout = const Duration(seconds: 10),
     Duration digestMaxAge = const Duration(minutes: 15),
-  }) =>
-      runBackgroundRound(
-        tryAcquire: tryAcquire ?? () async => true,
-        openSession: () async =>
-            session ?? FakeSession(net.clientFor(user, device: device)),
-        openDatabase: (_) => openDb(user, device: device),
-        abort: abort,
-        timeout: timeout,
-        quietPeriod: const Duration(milliseconds: 100),
-        pokeDebounce: const Duration(milliseconds: 1),
-        followUpWait: Duration.zero,
-        digestMaxAge: digestMaxAge,
-      );
+  }) => runBackgroundRound(
+    tryAcquire: tryAcquire ?? () async => true,
+    openSession: () async =>
+        session ?? FakeSession(net.clientFor(user, device: device)),
+    openDatabase: (_) => openDb(user, device: device),
+    abort: abort,
+    timeout: timeout,
+    quietPeriod: const Duration(milliseconds: 100),
+    pokeDebounce: const Duration(milliseconds: 1),
+    followUpWait: Duration.zero,
+    digestMaxAge: digestMaxAge,
+  );
 
   /// Alice and Bob share "Trip"; both apps ran once, Bob's is now closed.
   Future<(ProviderContainer, String)> sharedGroupBobClosed() async {
@@ -148,7 +151,8 @@ void main() {
   Future<List<String>> bobExpenseDescriptions() async {
     final db = openDb(bob);
     final rows = await ExpensesDao(db).getAllExpensesForGroup(
-        (await GroupsDao(db).getAllGroups()).single.roomId);
+      (await GroupsDao(db).getAllGroups()).single.roomId,
+    );
     await db.close();
     return [for (final e in rows) e.description];
   }
@@ -156,14 +160,16 @@ void main() {
   test('applies records queued while the app was closed and answers the '
       "peer's digest", () async {
     final (a, groupId) = await sharedGroupBobClosed();
-    await a.read(expenseAdderProvider.notifier).addExpense(
-      roomId: groupId,
-      description: 'G31 bg',
-      amountCents: 100,
-      currency: 'EUR',
-      paidBy: alice,
-      splits: {alice: 50, bob: 50},
-    );
+    await a
+        .read(expenseAdderProvider.notifier)
+        .addExpense(
+          roomId: groupId,
+          description: 'G31 bg',
+          amountCents: 100,
+          currency: 'EUR',
+          paidBy: alice,
+          splits: {alice: 50, bob: 50},
+        );
     await a.read(syncEngineProvider).broadcastDigests();
     await net.settle();
     net.sent.clear();
@@ -176,20 +182,24 @@ void main() {
     expect(await bobExpenseDescriptions(), ['G31 bg']);
     // Bob answered Alice's digest (reply: true) …
     expect(
-        net.sent.where((s) =>
+      net.sent.where(
+        (s) =>
             s.sender == bob &&
             s.type == digestEventType &&
             s.targets.contains(alice) &&
-            s.content['reply'] == true),
-        isNotEmpty);
+            s.content['reply'] == true,
+      ),
+      isNotEmpty,
+    );
     // … which proved to Alice that Bob has everything ("Synced").
     final states = await a.read(syncStatesDaoProvider).getSyncStates(groupId);
-    expect(states.singleWhere((s) => s.userId == bob).lastInSyncAt,
-        greaterThan(0));
+    expect(
+      states.singleWhere((s) => s.userId == bob).lastInSyncAt,
+      greaterThan(0),
+    );
   });
 
-  test("answers a pending resync_request from the user's new device",
-      () async {
+  test("answers a pending resync_request from the user's new device", () async {
     final (a, groupId) = await sharedGroupBobClosed();
     await closeApp(a); // Alice's phone app is closed too.
     // Alice signs in on a new device: empty DB → resync_request{all} to self,
@@ -203,29 +213,36 @@ void main() {
 
     expect(result.status, BackgroundRoundStatus.completed);
     expect(
-        net.sent.where((s) =>
+      net.sent.where(
+        (s) =>
             s.sender == alice &&
             s.type == bootstrapEventType &&
-            s.content['group'] == groupId),
-        isNotEmpty);
-    expect((await d2.read(groupsDaoProvider).getAllGroups()).single.roomId,
-        groupId);
+            s.content['group'] == groupId,
+      ),
+      isNotEmpty,
+    );
+    expect(
+      (await d2.read(groupsDaoProvider).getAllGroups()).single.roomId,
+      groupId,
+    );
   });
 
-  test('skips without opening anything while the app holds the stores',
-      () async {
-    var opened = false;
-    final result = await runBackgroundRound(
-      tryAcquire: () async => false,
-      openSession: () async {
-        opened = true;
-        return null;
-      },
-      openDatabase: (_) => throw StateError('must not open'),
-    );
-    expect(result.status, BackgroundRoundStatus.skippedBusy);
-    expect(opened, isFalse);
-  });
+  test(
+    'skips without opening anything while the app holds the stores',
+    () async {
+      var opened = false;
+      final result = await runBackgroundRound(
+        tryAcquire: () async => false,
+        openSession: () async {
+          opened = true;
+          return null;
+        },
+        openDatabase: (_) => throw StateError('must not open'),
+      );
+      expect(result.status, BackgroundRoundStatus.skippedBusy);
+      expect(opened, isFalse);
+    },
+  );
 
   test('skips when signed out', () async {
     final result = await runBackgroundRound(
@@ -257,11 +274,16 @@ void main() {
 
   test('respects the time budget and still shuts down cleanly', () async {
     await sharedGroupBobClosed();
-    final session = FakeSession(net.clientFor(bob),
-        onFetch: () => Completer<void>().future); // /sync hangs
+    final session = FakeSession(
+      net.clientFor(bob),
+      onFetch: () => Completer<void>().future,
+    ); // /sync hangs
     final sw = Stopwatch()..start();
-    final result = await round(bob,
-        session: session, timeout: const Duration(milliseconds: 300));
+    final result = await round(
+      bob,
+      session: session,
+      timeout: const Duration(milliseconds: 300),
+    );
     expect(result.status, BackgroundRoundStatus.timedOut);
     expect(sw.elapsed, lessThan(const Duration(seconds: 3)));
     expect(session.closed, isTrue);
@@ -271,10 +293,13 @@ void main() {
   test('stops early when the app asks it to', () async {
     await sharedGroupBobClosed();
     final abort = Completer<void>();
-    final session = FakeSession(net.clientFor(bob), onFetch: () async {
-      abort.complete(); // the app starts mid-round
-      await Completer<void>().future;
-    });
+    final session = FakeSession(
+      net.clientFor(bob),
+      onFetch: () async {
+        abort.complete(); // the app starts mid-round
+        await Completer<void>().future;
+      },
+    );
     final result = await round(bob, session: session, abort: abort.future);
     expect(result.status, BackgroundRoundStatus.aborted);
     expect(session.closed, isTrue);
@@ -298,11 +323,14 @@ void main() {
     await net.settle();
     expect(result.broadcastDigests, isTrue);
     expect(
-        net.sent.where((s) =>
+      net.sent.where(
+        (s) =>
             s.sender == bob &&
             s.type == digestEventType &&
-            s.content['reply'] == false),
-        isNotEmpty);
+            s.content['reply'] == false,
+      ),
+      isNotEmpty,
+    );
     expect(a, isNotNull);
   });
 }
