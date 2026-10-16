@@ -493,6 +493,119 @@ Must happen before the first Play upload (the id is permanent there).
 - [x] `./build.sh` green; release APK on emulator + phone
 - [x] Docs in sync (CLAUDE.md, README, open-points); release notes (`docs/release-notes.md`)
 
+## Phase H — Goals review follow-ups (Leo, 2026-10-16)
+
+A review of the app against its seven goals (1 split bills with friends,
+2 easy to use, 3 serverless / no server of ours, 4 usable without login,
+5 Matrix only as transport — nothing stored on the homeserver, 6 AGPL,
+7 local data, no ads, nothing reported anywhere). Result: 3, 4, 6 met;
+1, 5 met with gaps; **7 is contradicted in practice** (web build loads
+CanvasKit + fonts from Google, the login page queries matrix.org on open,
+an offline probe hits matrix.org) and the privacy texts don't say so;
+2 is good inside a group, but inviting friends (typed MXID, friend needs a
+Matrix account) is the biggest gap. Product decision (Leo): a **no-login
+"link group" synced over public Nostr relays becomes the default** for new
+groups; Matrix stays as the optional "secure mode". Research notes:
+ntfy.sh (4 KB msgs, 250/day/IP, 12 h cache) rejected in favour of Nostr
+(addressable event per device + group holding the whole encrypted
+snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
+
+### G43. Privacy promises must be true (goal 7) 🔴
+- [ ] Web build without Google CDN: `--no-web-resources-cdn` in `build.sh` +
+      CI; bundle Roboto (web only) + a local `fontFallbackBaseUrl` so no
+      Noto fetches leave the app; check the SAS emoji still render
+- [ ] Remove the matrix.org offline probe (`matrix_auth_gateway.dart`);
+      transport error → "server unreachable or you're offline"
+- [ ] Login page must not query `matrix.org` on open — load login flows only
+      after the user confirms the server / taps sign in
+- [ ] PRIVACY.md + in-app `privacy*` / local-mode texts (EN+DE) match
+      reality; CLAUDE.md "no font fetched" line fixed
+- [ ] Verify in a browser (network tab): no request to gstatic / matrix.org
+      in local mode and on the untouched login page
+
+### G44. Small release fixes (goal 6/7) 🟠
+- [ ] About page shows `AGPL-3.0-or-later`
+- [ ] Android: `dependenciesInfo { includeInApk = false; includeInBundle = false }`
+- [ ] Release builds: silence `debugPrint` (logcat holds MXIDs / homeservers)
+
+### G45. Minimal Matrix footprint (goal 5) 🟠
+- [ ] Minimal `syncFilter` (no rooms, presence, account data) +
+      `syncPresence = offline` in `buildMatrixClient` (also used by the
+      background round); to-device delivery must be unaffected
+- [ ] Decide device display name ("MoneyLedger") + whether the profile-name
+      refresh should stay automatic; document what the homeserver still keeps
+      (account, devices, keys, undelivered messages, who talks to whom)
+- [ ] Two-device smoke (sync, invite, SAS) + `docs/smoke-test.md`
+
+### G46. UX quick wins (goal 2) 🟠
+- [ ] "Which participant are you?" dialog: dismiss = cancel (not "I'm new")
+- [ ] After creating a group, open it; empty group shows "Add people" CTA
+- [ ] After *Delete local data* go to the welcome, not the login page
+- [ ] Hide signature/device details behind "Details" unless there is a real problem
+
+### G47. Custom categories + dropdown picker 🟡
+- [ ] Category selection becomes a dropdown/selector (icon + name, "None",
+      suggestion stays the preselection) instead of the chip row
+- [ ] Per-group custom categories in the signed group meta
+      (`categories: [{id: "c:<uuid>", name, icon}]`, hashed only when set),
+      create / rename / hide (group edit + "+ New category" in the dropdown);
+      unknown / hidden id → "Other"; filter chips, search, CSV aware
+
+### G48. Automatic restore points + revert (git-like) 🟡
+- [ ] `record_history` table: every version a DAO writes (local or inbound)
+      is appended (group, kind, id, updated_at, hash, content, source);
+      retention ~90 days / size cap
+- [ ] "Reset group to <date/time>": per record the newest version ≤ T,
+      records created later → tombstones; written as **new** versions
+      (`nextLwwClock`, signed) so peers adopt the revert; diff preview first
+- [ ] Rotating on-device full snapshots (`buildBackupJson`, daily if changed;
+      keep 7 daily + 4 weekly), restore via the existing preview path
+- [ ] Settings: restore-point list, "Restore…" / "Reset group…"; EN+DE; tests
+
+### G49. Expense date 🟡
+- [ ] Date picker on the add/edit form (expenses can be back-dated); decide
+      whether `created_at` or a new optional signed `date` field carries it
+
+### G50. No-login link groups — design doc 🟠 (stop: needs Leo's sign-off)
+- [ ] `docs/design/no-login-sharing.md`: invite link / QR (group secret in
+      the `#fragment`), key derivation, one addressable Nostr event per device
+      and group with the gzip + AES-GCM snapshot (≤ 100 KB, NIP-40 expiry
+      ~60 days), relay list (damus, primal, nos.lol) + custom relay, live
+      WebSocket + Android background poll, LWW merge via the DAOs, identity
+      without G6 signatures / membership gate (builds on `local:self`),
+      dependency + license check (secp256k1 Schnorr), privacy texts, relay
+      ToS grey zone, "Why Matrix instead of a link" section (identity +
+      signatures, removal sticks, multi-device recovery, own homeserver,
+      no third-party relays, scale), positioning "link = default"
+- [ ] **App key** (W5): group key = HKDF(link secret, salt = app key) so the
+      link alone can't decrypt relay data (a hurdle, not security); app key
+      from a gitignored `--dart-define` file in release builds, public default
+      otherwise — check against AGPL "Corresponding Source" first; key version
+      in the link
+
+### G51. Nostr spike 🟡
+- [ ] Two devices exchange a snapshot via 2–3 public relays; measure latency,
+      size limits, retention over a few days
+
+### G52. Link groups (implementation, incl. app key) 🟠
+- [ ] Sub-steps defined after G50/G51
+
+### G53. Mixed groups + "lock group" 🟡
+- [ ] A Matrix group can open a link channel ("Invite by link"); Matrix
+      devices bridge (publish + read the relay snapshot); link versions are
+      unsigned and shown "via link, not verified" (per-group `RecordGate`
+      allowance; never re-signed by a Matrix device)
+- [ ] A link participant can sign in later and claim their participant
+- [ ] "Lock group" once every active participant has a Matrix account: link
+      channel closed, key dropped, unsigned versions refused from then on
+      (signed group meta); reopening creates a new key + link
+
+### G54. "Why Matrix?" info screen + welcome reorder 🟡
+- [ ] Calm info page in the welcome style ("Hey, there's another mode — also
+      free and it works even better, you just sign in"), from a link group's
+      menu, "How it works" and once as a dismissible hint (no nagging); EN+DE
+- [ ] Welcome/onboarding reordered for "link = default", Matrix as the upgrade
+
 ---
 
 ## Execution queue (conductor process)
@@ -542,6 +655,18 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G41 — local-mode follow-ups (restore adoption, empty local DB file)
 - [x] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
 - [x] G18 — final release review
+- [ ] G43 — privacy promises true (web CDN, matrix.org probes, privacy texts)
+- [ ] G44 — small release fixes (license label, AGP blob, release logging)
+- [ ] G45 — minimal Matrix footprint (sync filter, presence)
+- [ ] G46 — UX quick wins
+- [ ] G47 — custom categories + dropdown
+- [ ] G48 — restore points + revert
+- [ ] G49 — expense date
+- [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
+- [ ] G51 — Nostr spike
+- [ ] G52 — link groups implementation
+- [ ] G53 — mixed groups + lock group
+- [ ] G54 — "Why Matrix?" info screen + welcome reorder
 
 ---
 
