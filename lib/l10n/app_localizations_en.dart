@@ -897,7 +897,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyCsvBody =>
-      'Exporting a group writes a CSV file with its expenses, payments, the participants\' names and the amounts; \"Back up all groups\" writes one JSON file with every group of your account, including the participants\' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice; it is plain text, not encrypted, and MoneyLedger has no visibility into it afterwards. Importing or restoring reads only the file you pick.';
+      'Exporting a group writes a CSV file with its expenses, payments, the participants\' names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the participants\' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.';
 
   @override
   String get privacyBackupTitle => 'Device backups';
@@ -1101,7 +1101,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backupExportBody =>
-      'Saves every group — with payments and deleted entries — to one file. The file is not encrypted: keep it somewhere safe.';
+      'Saves every group — with payments and deleted entries — to one file, optionally encrypted with a passphrase. Without one the file is plain text: keep it somewhere safe.';
 
   @override
   String get backupRestoreTitle => 'Restore from backup';
@@ -1227,7 +1227,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreLeftNote =>
-      'Groups you left or deleted come back on this device. If another member removed you, the group stays read-only.';
+      'Groups you left or deleted come back on this device. If the other members removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.';
 
   @override
   String get restoreAction => 'Restore';
@@ -1570,4 +1570,119 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get simplifyDebtsPerCurrency =>
       'Settled separately per currency — amounts are never converted.';
+
+  @override
+  String get backupPassphraseTitle => 'Protect the backup?';
+
+  @override
+  String get backupPassphraseBody =>
+      'You can encrypt the file with a passphrase. Leave it empty to save it unencrypted.';
+
+  @override
+  String get backupPassphraseLabel => 'Passphrase (optional)';
+
+  @override
+  String get backupPassphraseConfirmLabel => 'Repeat passphrase';
+
+  @override
+  String get backupPassphraseMismatch => 'The passphrases don\'t match';
+
+  @override
+  String get backupPassphraseWeak =>
+      'Strength: weak — use a longer one, e.g. four random words';
+
+  @override
+  String get backupPassphraseFair => 'Strength: fair';
+
+  @override
+  String get backupPassphraseStrong => 'Strength: strong';
+
+  @override
+  String get backupPlaintextWarning =>
+      'Without a passphrase the file is not encrypted: anyone who gets it can read all its groups.';
+
+  @override
+  String get backupPassphraseKeepSafe =>
+      'Don\'t lose the passphrase — without it the backup can\'t be restored, and nobody can recover it.';
+
+  @override
+  String get backupEncrypting => 'Encrypting…';
+
+  @override
+  String get backupDecrypting => 'Decrypting…';
+
+  @override
+  String get backupUnlockTitle => 'Encrypted backup';
+
+  @override
+  String get backupUnlockBody =>
+      'Enter the passphrase this backup was saved with.';
+
+  @override
+  String get backupUnlockLabel => 'Passphrase';
+
+  @override
+  String get backupUnlockAction => 'Unlock';
+
+  @override
+  String get backupWrongPassphrase =>
+      'Wrong passphrase — or the file was changed. Try again.';
+
+  @override
+  String get backupSavedNoName => 'Backup saved';
+
+  @override
+  String backupSavedEncrypted(String fileName) {
+    return 'Encrypted backup saved: $fileName';
+  }
+
+  @override
+  String get backupSavedEncryptedNoName => 'Encrypted backup saved';
+
+  @override
+  String get exportedNoName => 'CSV exported';
+
+  @override
+  String get backupThisGroup => 'Back up this group';
+
+  @override
+  String get showPassphrase => 'Show passphrase';
+
+  @override
+  String get hidePassphrase => 'Hide passphrase';
+
+  @override
+  String get restoreEncryptedNote =>
+      'Encrypted backup — unlocked with your passphrase.';
+
+  @override
+  String get restoreTagRemoved => 'read-only — you were removed';
+
+  @override
+  String restoreIncomplete(int count, String error) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count groups couldn\'t be restored and were left unchanged: $error',
+      one: '1 group couldn\'t be restored and was left unchanged: $error',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get legacyRefusedTitle => 'Some data couldn\'t be received';
+
+  @override
+  String legacyRefusedBody(int count, String sender, String group) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$sender sent $count entries of “$group” that were saved by an older app version without a signature. They were refused, so the group is incomplete or missing here. Ask $sender to recreate the group.',
+      one:
+          '$sender sent 1 entry of “$group” that was saved by an older app version without a signature. It was refused, so the group is incomplete or missing here. Ask $sender to recreate the group.',
+    );
+    return '$_temp0';
+  }
 }

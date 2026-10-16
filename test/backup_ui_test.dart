@@ -9,12 +9,14 @@ import 'package:money_ledger/core/l10n/formatting.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/features/backup/backup_crypto.dart';
 import 'package:money_ledger/features/backup/backup_providers.dart';
 import 'package:money_ledger/features/backup/backup_service.dart';
 import 'package:money_ledger/features/backup/backup_ui.dart';
 import 'package:money_ledger/features/backup/csv_import.dart';
 import 'package:money_ledger/features/backup/ledger_backup.dart';
 import 'package:money_ledger/features/groups/group_archive_provider.dart';
+import 'package:money_ledger/features/groups/group_exit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
 import 'package:money_ledger/models/group_model.dart';
@@ -37,8 +39,8 @@ void main() {
       expect(find.text('Last backup: never'), findsOneWidget);
       expect(find.byKey(const Key('backupExportTile')), findsOneWidget);
       expect(find.text('Back up all groups'), findsOneWidget);
-      // The export says the file is not encrypted.
-      expect(find.textContaining('not encrypted'), findsOneWidget);
+      // The export says the file can be encrypted — else it is plain text.
+      expect(find.textContaining('optionally encrypted'), findsOneWidget);
       expect(find.byKey(const Key('backupRestoreTile')), findsOneWidget);
       expect(find.text('Restore from backup'), findsOneWidget);
     });
@@ -57,7 +59,14 @@ void main() {
       await tester.tap(find.byKey(const Key('backupExportTile')));
       await tester.pumpAndSettle();
 
+      // G34: first the optional passphrase; empty = plaintext, with a warning.
       expect(find.byKey(const Key('backupExportTile')), findsNothing);
+      expect(find.byKey(const Key('backupPassphraseDialog')), findsOneWidget);
+      expect(find.byKey(const Key('backupPlaintextWarning')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('backupPassphraseSave')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('backupPassphraseDialog')), findsNothing);
       expect(find.textContaining('Export failed'), findsOneWidget);
     });
 
@@ -249,9 +258,11 @@ void main() {
     );
     // A tiny in-memory stand-in for the snooze setting.
     int? snoozedUntil;
+    var ownDeviceProtects = false;
     late List<StreamController<int?>> listeners;
     late List<int> snoozedTo;
     setUp(() {
+      ownDeviceProtects = false;
       snoozedUntil = null;
       listeners = [];
       snoozedTo = [];
@@ -266,6 +277,8 @@ void main() {
       expensesForRoomProvider.overrideWith((ref, g) => Stream.value([])),
       settlementsForRoomProvider.overrideWith((ref, g) => Stream.value([])),
       currentUserIdProvider.overrideWith((_) => '@me:x'),
+      // G34: no second device of ours (unless a test says otherwise).
+      ownDeviceProtectionProvider.overrideWith((_) => ownDeviceProtects),
       // G16: no archived groups (no drift stream in widget tests).
       groupArchivesProvider.overrideWith((_) => Stream.value(const {})),
       lastBackupAtProvider.overrideWith((_) => Stream.value(lastBackupAt)),
@@ -347,5 +360,273 @@ void main() {
       expect(find.text('Solo'), findsOneWidget);
       expect(find.byKey(const Key('backupNudge')), findsNothing);
     });
+
+    testWidgets('hidden when another device of ours holds the groups (G34)', (
+      tester,
+    ) async {
+      ownDeviceProtects = true;
+      await tester.pumpWidget(
+        testApp(const GroupsPage(), overrides: overrides([meMember])),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Solo'), findsOneWidget);
+      expect(find.byKey(const Key('backupNudge')), findsNothing);
+    });
+  });
+
+  group('G34 passphrase dialog', () {
+    Future<String? Function()> open(WidgetTester tester) async {
+      String? result;
+      var done = false;
+      await tester.pumpWidget(
+        testApp(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                result = await showDialog<String>(
+                  context: context,
+                  builder: (_) => const BackupPassphraseDialog(),
+                );
+                done = true;
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      return () => done ? result : 'not closed';
+    }
+
+    testWidgets('empty = unencrypted, with the plaintext warning', (
+      tester,
+    ) async {
+      final result = await open(tester);
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('backupPlaintextWarning')), findsOneWidget);
+      expect(find.byKey(const Key('backupPassphraseConfirm')), findsNothing);
+      await tester.tap(find.byKey(const Key('backupPassphraseSave')));
+      await tester.pumpAndSettle();
+      expect(result(), '');
+    });
+
+    testWidgets('a passphrase needs the matching confirmation; strength hint', (
+      tester,
+    ) async {
+      final result = await open(tester);
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('backupPassphrase')), 'abc');
+      await tester.pump();
+      expect(find.byKey(const Key('backupPlaintextWarning')), findsNothing);
+      expect(find.byKey(const Key('backupKeepSafe')), findsOneWidget);
+      expect(find.textContaining('Strength: weak'), findsOneWidget);
+      // Not confirmed yet → Save disabled.
+      FilledButton save() => tester.widget<FilledButton>(
+        find.byKey(const Key('backupPassphraseSave')),
+      );
+      expect(save().onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('backupPassphrase')),
+        'correct horse battery staple',
+      );
+      await tester.enterText(
+        find.byKey(const Key('backupPassphraseConfirm')),
+        'correct horse battery stable',
+      );
+      await tester.pump();
+      expect(find.text('Strength: strong'), findsOneWidget);
+      expect(find.text("The passphrases don't match"), findsOneWidget);
+      expect(save().onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('backupPassphraseConfirm')),
+        'correct horse battery staple',
+      );
+      await tester.pump();
+      expect(find.text("The passphrases don't match"), findsNothing);
+      await tester.tap(find.byKey(const Key('backupPassphraseSave')));
+      await tester.pumpAndSettle();
+      expect(result(), 'correct horse battery staple');
+    });
+
+    testWidgets('German', (tester) async {
+      await tester.pumpWidget(
+        testApp(
+          locale: const Locale('de'),
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showDialog<String>(
+                context: context,
+                builder: (_) => const BackupPassphraseDialog(),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sicherung schützen?'), findsOneWidget);
+      expect(find.textContaining('nicht verschlüsselt'), findsOneWidget);
+    });
+  });
+
+  testWidgets('G34 unlock: a wrong passphrase asks again, the right one '
+      'decrypts; cancel gives up', (tester) async {
+    final tried = <String>[];
+    Future<String> decrypt(String text, String pass) async {
+      tried.add(pass);
+      if (pass != 'right') throw const WrongPassphraseException();
+      return 'PLAIN';
+    }
+
+    String? result = 'pending';
+    await tester.pumpWidget(
+      testApp(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () async =>
+                result = await unlockEncryptedBackup(context, 'X', decrypt),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Encrypted backup'), findsOneWidget);
+    // Empty → Unlock disabled.
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('backupUnlockConfirm')))
+          .onPressed,
+      isNull,
+    );
+    await tester.enterText(
+      find.byKey(const Key('backupUnlockPassphrase')),
+      'wrong',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('backupUnlockConfirm')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Wrong passphrase'), findsOneWidget);
+    expect(result, 'pending');
+
+    await tester.enterText(
+      find.byKey(const Key('backupUnlockPassphrase')),
+      'right',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('backupUnlockConfirm')));
+    await tester.pumpAndSettle();
+    expect(result, 'PLAIN');
+    expect(tried, ['wrong', 'right']);
+    expect(find.byKey(const Key('backupUnlockDialog')), findsNothing);
+
+    // Cancel → null.
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(result, isNull);
+  });
+
+  testWidgets('G34 leave/delete dialog shows the backup result inside it', (
+    tester,
+  ) async {
+    bool? confirmed;
+    await tester.pumpWidget(
+      testApp(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => confirmed = await confirmGroupExit(
+              context,
+              kind: GroupExitKind.leave,
+              groupName: 'Trip',
+              warning: null,
+              onBackup: () async => 'Encrypted backup saved: b.json',
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('exitBackupResult')), findsNothing);
+    await tester.tap(find.byKey(const Key('exitBackupButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Encrypted backup saved: b.json'), findsOneWidget);
+    expect(find.text('Leave group?'), findsOneWidget); // still open
+    await tester.tap(find.text('Leave'));
+    await tester.pumpAndSettle();
+    expect(confirmed, isTrue);
+  });
+
+  test('G34 saved-backup messages', () {
+    expect(
+      backupSavedMessage(en, fileName: null, encrypted: false),
+      'Backup saved',
+    );
+    expect(
+      backupSavedMessage(en, fileName: 'x (1).json', encrypted: false),
+      'Backup saved: x (1).json',
+    );
+    expect(
+      backupSavedMessage(de, fileName: null, encrypted: true),
+      'Verschlüsselte Sicherung gespeichert',
+    );
+  });
+
+  testWidgets('G34 restore preview: removed + encrypted are spelled out', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      testApp(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showDialog<bool>(
+              context: context,
+              builder: (_) => RestorePreviewDialog(
+                encrypted: true,
+                preview: RestorePreview(
+                  backup: parseBackup(
+                    buildBackupJson(
+                      account: '@me:x',
+                      exportedAt: 1,
+                      groups: const [],
+                    ),
+                  ),
+                  groups: const [
+                    GroupRestorePlan(
+                      summary: BackupGroupSummary(
+                        groupId: 'g',
+                        name: 'Trip',
+                        expenseCount: 1,
+                        settlementCount: 0,
+                        memberCount: 1,
+                      ),
+                      isNew: true,
+                      wasLeft: false,
+                      changes: 3,
+                      removed: true,
+                    ),
+                  ],
+                  otherAccount: false,
+                ),
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('restoreEncrypted')), findsOneWidget);
+    expect(find.text('read-only — you were removed'), findsOneWidget);
+    expect(find.textContaining('comes back read-only'), findsOneWidget);
   });
 }

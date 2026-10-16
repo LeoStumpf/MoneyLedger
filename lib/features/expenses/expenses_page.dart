@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/l10n/l10n.dart';
@@ -10,6 +11,7 @@ import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../backup/csv_export.dart';
+import '../backup/ledger_backup.dart' show savedFileDisplayName;
 import '../backup/backup_files.dart';
 import '../backup/backup_ui.dart';
 import '../../core/theme/app_theme.dart';
@@ -36,7 +38,7 @@ import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../models/record_signature.dart';
 import 'record_attribution.dart';
 
-enum _GroupMenuAction { addMember, edit, archive, export, exit }
+enum _GroupMenuAction { addMember, edit, archive, export, backup, exit }
 
 class ExpensesPage extends ConsumerWidget {
   final String roomId;
@@ -153,6 +155,7 @@ class ExpensesPage extends ConsumerWidget {
                       unsettled: overview.myBalance.isNotEmpty,
                     ),
                     _GroupMenuAction.export => _exportCsv(context, ref),
+                    _GroupMenuAction.backup => _backupGroup(context, ref),
                     _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
                   },
                   itemBuilder: (_) => [
@@ -194,6 +197,15 @@ class ExpensesPage extends ConsumerWidget {
                       child: ListTile(
                         leading: const Icon(Icons.save_alt),
                         title: Text(l.exportCsv),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _GroupMenuAction.backup,
+                      child: ListTile(
+                        key: const Key('backupGroupMenuItem'),
+                        leading: const Icon(Icons.backup_outlined),
+                        title: Text(l.backupThisGroup),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
@@ -541,7 +553,7 @@ class ExpensesPage extends ConsumerWidget {
       kind: kind,
       groupName: group?.name ?? l.thisGroup,
       warning: warning,
-      onBackup: () => exportFullBackup(context, ref),
+      onBackup: () async => (await runBackupExport(context, ref)).message,
     );
     if (!confirmed) return;
     final exiter = ref.read(groupExiterProvider.notifier);
@@ -643,6 +655,18 @@ class ExpensesPage extends ConsumerWidget {
     }
   }
 
+  /// G34: a JSON backup of just this group (same format as the full one).
+  Future<void> _backupGroup(BuildContext context, WidgetRef ref) async {
+    final group = await ref.read(groupsDaoProvider).getGroup(roomId);
+    if (group == null || !context.mounted) return;
+    await exportGroupBackup(
+      context,
+      ref,
+      groupId: roomId,
+      groupName: group.name,
+    );
+  }
+
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
@@ -663,9 +687,15 @@ class ExpensesPage extends ConsumerWidget {
         csv,
         LedgerFileKind.csv,
       );
-      if (!saved) return; // dialog cancelled
+      if (saved == null) return; // dialog cancelled
+      // G34: the name Android actually used, if the platform tells us.
+      final name = kIsWeb
+          ? csvFileName(group.name)
+          : savedFileDisplayName(saved.path, LedgerFileKind.csv.extension);
       messenger.showSnackBar(
-        SnackBar(content: Text(l.exportedFile(csvFileName(group.name)))),
+        SnackBar(
+          content: Text(name == null ? l.exportedNoName : l.exportedFile(name)),
+        ),
       );
     } catch (e) {
       // e.g. the file couldn't be written — tell the user (G15).

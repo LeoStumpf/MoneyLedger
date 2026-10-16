@@ -38,8 +38,10 @@ and sees only ciphertext.
   JSON file with every group (participants, expenses, payments, deletions);
   *Restore from backup* previews and merges it back (idempotent, newer entries
   win). Your data lives only on your devices — the groups page nudges you when
-  a group exists nowhere else and you haven't backed up for 30 days. The file
-  is plain text, not encrypted.
+  a group exists nowhere else (not even on another device of yours) and you
+  haven't backed up for 30 days. Optionally **encrypted with a passphrase**
+  (Argon2id + AES-256-GCM); without one the file is plain text. A single
+  group can be backed up from its ⋮ menu (*Back up this group*).
 - **CSV export/import** per group (expenses + payments) for spreadsheets and
   sharing, with an import preview that warns about unknown / duplicate names.
 - **In-app registration** (open / dummy-UIA homeservers) and **SSO** login.

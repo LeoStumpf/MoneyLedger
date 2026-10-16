@@ -378,28 +378,28 @@ stale crypto identity (broken sessions) and is a privacy concern.
 - [ ] Balance page "You pay <long name>" could use `NamesLine` (wraps today)
 
 ### G34. Backup follow-ups (found in G5) 🟡
-- [ ] Nudge ignores a second device of the same account (would also protect
+- [x] Nudge ignores a second device of the same account (would also protect
       solo groups) — needs the device list
-- [ ] Restore of a group where peers have us `removed` (newer) → read-only
+- [x] Restore of a group where peers have us `removed` (newer) → read-only
       history again; manual two-device test
-- [ ] Saved-file snackbar shows the proposed name, not Android's actual one
+- [x] Saved-file snackbar shows the proposed name, not Android's actual one
       (`… (1).json`); leave dialog's backup snackbar shows behind the dialog
-- [ ] Optional per-group JSON backup in the group ⋮ menu
-- [ ] Optional: encrypted backup (passphrase) — file is plaintext JSON today
+- [x] Optional per-group JSON backup in the group ⋮ menu
+- [x] Optional: encrypted backup (passphrase) — file is plaintext JSON today
 
 ### G35. Signed-records follow-ups (found in G6) 🟡
 See `docs/design/g6-signed-records.md` + `docs/open-points.md`.
-- [ ] Pre-G6 (legacy, unsigned) rows are refused when relayed, so an old group
+- [x] (decided: no migration; recreate test groups before release — G18) Pre-G6 (legacy, unsigned) rows are refused when relayed, so an old group
       can't onboard a new member/device until its meta + member rows are
       re-saved. Unreleased app → only the test groups are affected; decide:
       re-create test groups before release, or a "re-sign legacy rows as
       migrated-by-this-device" step
-- [ ] Residual risks: invented device ids (flagged "unverified"; needs
+- [x] (documented; cross-signing = future) Residual risks: invented device ids (flagged "unverified"; needs
       cross-signing — with G11), malicious inviter vouching fake keys,
       divergence by disagreement (not auto-resolved)
-- [ ] Restore is no longer one transaction per group (verification may hit
+- [x] Restore is no longer one transaction per group (verification may hit
       the server mid-merge)
-- [ ] Footer wraps long MXIDs ("…test-a-\nc725") — use display label / ellipsis
+- [x] Footer wraps long MXIDs — fixed in G33 (NamesLine / per-part ellipsis)
 
 ### G36. Verification follow-ups (found in G11) 🟡
 Decided by the conductor: inbound records from unverified devices stay
@@ -469,9 +469,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G22 — dependency upgrades (matrix, file_picker)
 - [x] G27 — LWW tie-break
 - [x] G33 — design follow-ups (settlement title, test display names)
-- [ ] G34 — backup follow-ups
-- [ ] G35 — signed-records follow-ups
-- [ ] G36 — verification follow-ups
+- [x] G34+G35 — backup + signed-records follow-ups
+- [ ] G36+ — verification follow-ups + robustness leftovers (G29/G30/G31/G33/G37)
 - [ ] G37 — scale follow-ups (optional)
 - [ ] *(G32+ — newly discovered points)*
 - [ ] G18 — final release review

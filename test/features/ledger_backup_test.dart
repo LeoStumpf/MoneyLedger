@@ -324,4 +324,102 @@ void main() {
       expect(show(now), isTrue);
     });
   });
+
+  group('G34 file names', () {
+    test('a per-group backup carries the group name slug', () {
+      final at = DateTime(2026, 3, 7);
+      expect(
+        backupFileName(at, groupName: 'Ski Trip 2026!'),
+        'moneyledger-backup-ski-trip-2026-2026-03-07.json',
+      );
+      expect(
+        backupFileName(at, groupName: 'WG Küche & Bad'),
+        'moneyledger-backup-wg-küche-bad-2026-03-07.json',
+      );
+      expect(
+        backupFileName(at, groupName: '???'),
+        'moneyledger-backup-group-2026-03-07.json',
+      );
+      expect(fileNameSlug('a' * 60), hasLength(40));
+      expect(fileNameSlug('${'a' * 39} b'), 'a' * 39);
+    });
+
+    test('the saved name is shown only when the platform reports it', () {
+      const ext = 'json';
+      expect(
+        savedFileDisplayName(
+          '/document/primary:Download/moneyledger-backup-2026-03-07 (1).json',
+          ext,
+        ),
+        'moneyledger-backup-2026-03-07 (1).json',
+      );
+      expect(
+        savedFileDisplayName(
+          '/document/raw:/storage/emulated/0/Download/my%20backup.json',
+          ext,
+        ),
+        'my backup.json',
+      );
+      // Downloads provider ids carry no name.
+      expect(savedFileDisplayName('/document/msf:1000000033', ext), isNull);
+      expect(savedFileDisplayName('/document/1234', ext), isNull);
+      expect(savedFileDisplayName(null, ext), isNull);
+      expect(savedFileDisplayName('', ext), isNull);
+      expect(savedFileDisplayName('/x/.json', ext), isNull);
+      expect(savedFileDisplayName('/a/Trip.csv', 'csv'), 'Trip.csv');
+    });
+  });
+
+  group('G34 second own device', () {
+    const day = 24 * 60 * 60 * 1000;
+    const now = 100 * day;
+    test('a verified other device of ours protects the solo groups', () {
+      expect(
+        secondOwnDeviceProtects(
+          otherVerifiedOwnDevice: true,
+          lastOwnDeviceInSyncAt: null,
+          now: now,
+        ),
+        isTrue,
+      );
+    });
+
+    test('so does one recently in sync with us', () {
+      expect(
+        secondOwnDeviceProtects(
+          otherVerifiedOwnDevice: false,
+          lastOwnDeviceInSyncAt: now - 3 * day,
+          now: now,
+        ),
+        isTrue,
+      );
+    });
+
+    test('an own device last seen long ago (or never) does not', () {
+      expect(
+        secondOwnDeviceProtects(
+          otherVerifiedOwnDevice: false,
+          lastOwnDeviceInSyncAt: now - 31 * day,
+          now: now,
+        ),
+        isFalse,
+      );
+      expect(
+        secondOwnDeviceProtects(
+          otherVerifiedOwnDevice: false,
+          lastOwnDeviceInSyncAt: 0,
+          now: now,
+        ),
+        isFalse,
+      );
+      expect(
+        secondOwnDeviceProtects(
+          otherVerifiedOwnDevice: false,
+          lastOwnDeviceInSyncAt: null,
+          now: now,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

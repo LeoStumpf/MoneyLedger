@@ -518,7 +518,7 @@
   "privacyBackgroundTitle": "Background sync on Android",
   "privacyBackgroundBody": "On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.",
   "privacyCsvTitle": "Export, backup and import",
-  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, payments, the participants' names and the amounts; \"Back up all groups\" writes one JSON file with every group of your account, including the participants' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice; it is plain text, not encrypted, and MoneyLedger has no visibility into it afterwards. Importing or restoring reads only the file you pick.",
+  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, payments, the participants' names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the participants' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.",
   "privacyBackupTitle": "Device backups",
   "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.",
   "privacyDeleteTitle": "Deleting your data",
@@ -654,7 +654,7 @@
   },
   "backupSectionTitle": "Backup",
   "backupExportTitle": "Back up all groups",
-  "backupExportBody": "Saves every group — with payments and deleted entries — to one file. The file is not encrypted: keep it somewhere safe.",
+  "backupExportBody": "Saves every group — with payments and deleted entries — to one file, optionally encrypted with a passphrase. Without one the file is plain text: keep it somewhere safe.",
   "backupRestoreTitle": "Restore from backup",
   "backupRestoreBody": "Merges a backup file into this device. Newer entries win; nothing is duplicated.",
   "lastBackupAt": "Last backup: {date}",
@@ -752,7 +752,7 @@
     }
   },
   "restoreTagUpToDate": "up to date",
-  "restoreLeftNote": "Groups you left or deleted come back on this device. If another member removed you, the group stays read-only.",
+  "restoreLeftNote": "Groups you left or deleted come back on this device. If the other members removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.",
   "restoreAction": "Restore",
   "restoredGroups": "{count, plural, =1{Restored 1 group} other{Restored {count} groups}}",
   "@restoredGroups": {
@@ -1180,5 +1180,145 @@
   "simplifyDebtsPerCurrency": "Settled separately per currency — amounts are never converted.",
   "@simplifyDebtsPerCurrency": {
     "description": "G16 settle-up explanation (simplify debts)"
+  },
+  "backupPassphraseTitle": "Protect the backup?",
+  "@backupPassphraseTitle": {
+    "description": "G34/G35"
+  },
+  "backupPassphraseBody": "You can encrypt the file with a passphrase. Leave it empty to save it unencrypted.",
+  "@backupPassphraseBody": {
+    "description": "G34/G35"
+  },
+  "backupPassphraseLabel": "Passphrase (optional)",
+  "@backupPassphraseLabel": {
+    "description": "G34/G35"
+  },
+  "backupPassphraseConfirmLabel": "Repeat passphrase",
+  "@backupPassphraseConfirmLabel": {
+    "description": "G34/G35"
+  },
+  "backupPassphraseMismatch": "The passphrases don't match",
+  "@backupPassphraseMismatch": {
+    "description": "G34/G35"
+  },
+  "backupPassphraseWeak": "Strength: weak — use a longer one, e.g. four random words",
+  "@backupPassphraseWeak": {
+    "description": "G34/G35"
+  },
+  "backupPassphraseFair": "Strength: fair",
+  "@backupPassphraseFair": {
+    "description": "G34/G35"
+  },
+  "backupPassphraseStrong": "Strength: strong",
+  "@backupPassphraseStrong": {
+    "description": "G34/G35"
+  },
+  "backupPlaintextWarning": "Without a passphrase the file is not encrypted: anyone who gets it can read all its groups.",
+  "@backupPlaintextWarning": {
+    "description": "G34/G35"
+  },
+  "backupPassphraseKeepSafe": "Don't lose the passphrase — without it the backup can't be restored, and nobody can recover it.",
+  "@backupPassphraseKeepSafe": {
+    "description": "G34/G35"
+  },
+  "backupEncrypting": "Encrypting…",
+  "@backupEncrypting": {
+    "description": "G34/G35"
+  },
+  "backupDecrypting": "Decrypting…",
+  "@backupDecrypting": {
+    "description": "G34/G35"
+  },
+  "backupUnlockTitle": "Encrypted backup",
+  "@backupUnlockTitle": {
+    "description": "G34/G35"
+  },
+  "backupUnlockBody": "Enter the passphrase this backup was saved with.",
+  "@backupUnlockBody": {
+    "description": "G34/G35"
+  },
+  "backupUnlockLabel": "Passphrase",
+  "@backupUnlockLabel": {
+    "description": "G34/G35"
+  },
+  "backupUnlockAction": "Unlock",
+  "@backupUnlockAction": {
+    "description": "G34/G35"
+  },
+  "backupWrongPassphrase": "Wrong passphrase — or the file was changed. Try again.",
+  "@backupWrongPassphrase": {
+    "description": "G34/G35"
+  },
+  "backupSavedNoName": "Backup saved",
+  "@backupSavedNoName": {
+    "description": "G34/G35"
+  },
+  "backupSavedEncrypted": "Encrypted backup saved: {fileName}",
+  "@backupSavedEncrypted": {
+    "description": "G34/G35",
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "backupSavedEncryptedNoName": "Encrypted backup saved",
+  "@backupSavedEncryptedNoName": {
+    "description": "G34/G35"
+  },
+  "exportedNoName": "CSV exported",
+  "@exportedNoName": {
+    "description": "G34/G35"
+  },
+  "backupThisGroup": "Back up this group",
+  "@backupThisGroup": {
+    "description": "G34/G35"
+  },
+  "showPassphrase": "Show passphrase",
+  "@showPassphrase": {
+    "description": "G34/G35"
+  },
+  "hidePassphrase": "Hide passphrase",
+  "@hidePassphrase": {
+    "description": "G34/G35"
+  },
+  "restoreEncryptedNote": "Encrypted backup — unlocked with your passphrase.",
+  "@restoreEncryptedNote": {
+    "description": "G34/G35"
+  },
+  "restoreTagRemoved": "read-only — you were removed",
+  "@restoreTagRemoved": {
+    "description": "G34/G35"
+  },
+  "restoreIncomplete": "{count, plural, =1{1 group couldn't be restored and was left unchanged: {error}} other{{count} groups couldn't be restored and were left unchanged: {error}}}",
+  "@restoreIncomplete": {
+    "description": "G34/G35",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "legacyRefusedTitle": "Some data couldn't be received",
+  "@legacyRefusedTitle": {
+    "description": "G34/G35"
+  },
+  "legacyRefusedBody": "{count, plural, =1{{sender} sent 1 entry of “{group}” that was saved by an older app version without a signature. It was refused, so the group is incomplete or missing here. Ask {sender} to recreate the group.} other{{sender} sent {count} entries of “{group}” that were saved by an older app version without a signature. They were refused, so the group is incomplete or missing here. Ask {sender} to recreate the group.}}",
+  "@legacyRefusedBody": {
+    "description": "G34/G35",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "sender": {
+        "type": "String"
+      },
+      "group": {
+        "type": "String"
+      }
+    }
   }
 }

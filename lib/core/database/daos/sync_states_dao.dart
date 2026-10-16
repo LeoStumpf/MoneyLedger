@@ -62,6 +62,18 @@ class SyncStatesDao extends DatabaseAccessor<AppDatabase>
     return row.read(latest) ?? 0;
   }
 
+  /// The newest `lastInSyncAt` recorded for [userId] in any group (null if
+  /// none). For our own MXID this is when another device of this account last
+  /// proved it holds our state (G34 backup nudge).
+  Stream<int?> watchLatestInSyncWith(String userId) {
+    final latest = peerSyncStates.lastInSyncAt.max();
+    return (selectOnly(peerSyncStates)
+          ..addColumns([latest])
+          ..where(peerSyncStates.userId.equals(userId)))
+        .watchSingle()
+        .map((row) => row.read(latest));
+  }
+
   static PeerSyncStateModel _toModel(PeerSyncState s) => PeerSyncStateModel(
     groupId: s.groupId,
     userId: s.userId,

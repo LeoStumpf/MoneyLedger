@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 
 /// Thin platform glue around the system file dialogs (web download / native
 /// save + picker), shared by the CSV export/import and the full JSON backup
@@ -19,9 +19,17 @@ enum LedgerFileKind {
   const LedgerFileKind(this.extension, this.mimeType);
 }
 
+/// Where a save went: [path] is what the platform reported (Android: the
+/// saved document's path, see `savedFileDisplayName`; web: null — a browser
+/// download has no path).
+class SavedFile {
+  final String? path;
+  const SavedFile(this.path);
+}
+
 /// Saves [content] as [fileName] via the system save dialog (web: a browser
-/// download). Returns false when the user cancelled the dialog.
-Future<bool> saveTextFile(
+/// download). Returns null when the user cancelled the dialog.
+Future<SavedFile?> saveTextFile(
   String fileName,
   String content,
   LedgerFileKind kind,
@@ -33,7 +41,10 @@ Future<bool> saveTextFile(
   );
   // Web (file_picker's default download mode) triggers a browser download and
   // always returns null — there is no dialog to cancel.
-  return kIsWeb || saved != null;
+  if (kIsWeb) return const SavedFile(null);
+  if (saved == null) return null;
+  debugPrint('[backup] saved to $saved');
+  return SavedFile(saved.path);
 }
 
 /// Prompts the user to pick a file of [kind] and returns its text, or null if

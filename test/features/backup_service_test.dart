@@ -18,6 +18,7 @@ import 'package:money_ledger/core/sync/record_signing.dart';
 import 'package:money_ledger/core/sync/record_verifier.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
+import 'package:money_ledger/models/member_model.dart';
 import 'package:money_ledger/features/backup/backup_service.dart';
 import 'package:money_ledger/features/backup/ledger_backup.dart';
 
@@ -383,4 +384,205 @@ void main() {
       },
     );
   });
+
+  group('G34 per-group backup', () {
+    test('onlyGroup exports just that group, in the same format', () async {
+      await GroupsDao(source).upsertGroupLww(
+        const GroupsCompanion(
+          roomId: Value('g9'),
+          name: Value('Other'),
+          currency: Value('EUR'),
+          updatedAt: Value(1),
+        ),
+      );
+      final full = parseBackup(
+        await serviceFor(source).exportJson(account: me, now: 1),
+      );
+      expect(full.groups, hasLength(2));
+      final one = parseBackup(
+        await serviceFor(
+          source,
+        ).exportJson(account: me, now: 1, onlyGroup: 'g1'),
+      );
+      expect(one.groups.single['group'], 'g1');
+      expect(one.groups.single['expenses'], hasLength(2));
+      // …and restores like any backup.
+      expect(await serviceFor(target).restore(one), ['g1']);
+    });
+  });
+
+  group('G35 restore is all-or-nothing per group', () {
+    BackupService failing(AppDatabase db) => BackupService(
+      db: db,
+      groups: GroupsDao(db),
+      members: MembersDao(db),
+      expenses: _FailingSettlementsDao(db),
+      settings: SettingsDao(db),
+      signing: SigningDao(db),
+      transport: Future.value(FakeMatrixNetwork().clientFor(me)),
+    );
+
+    test('a failure mid-group rolls the whole group back (incl. the cleared '
+        'left-group tombstone); other groups still restore', () async {
+      // A second group without settlements — it restores fine.
+      await GroupsDao(source).upsertGroupLww(
+        const GroupsCompanion(
+          roomId: Value('g9'),
+          name: Value('Other'),
+          currency: Value('EUR'),
+          updatedAt: Value(1),
+        ),
+      );
+      final backup = parseBackup(
+        await serviceFor(source).exportJson(account: me, now: 1),
+      );
+      await SettingsDao(
+        target,
+      ).purgeGroupAsLeft('g1', const LeftGroupTombstone(leftAt: 5));
+
+      await expectLater(
+        failing(target).restore(backup),
+        throwsA(
+          isA<RestoreIncompleteException>()
+              .having((e) => e.restored, 'restored', ['g9'])
+              .having((e) => e.failed.keys, 'failed', ['g1']),
+        ),
+      );
+      // g1: nothing at all — not the meta, members or expenses written
+      // before the settlement failed.
+      expect(await GroupsDao(target).getGroup('g1'), isNull);
+      expect(await MembersDao(target).getMembers('g1'), isEmpty);
+      expect(await ExpensesDao(target).getAllExpensesForGroup('g1'), isEmpty);
+      expect(await SettingsDao(target).leftGroup('g1'), isNotNull);
+      expect(await GroupsDao(target).getGroup('g9'), isNotNull);
+
+      // A later good restore brings it back completely.
+      expect(
+        await serviceFor(target).restore(backup),
+        unorderedEquals(['g1', 'g9']),
+      );
+      expect(
+        await ExpensesDao(target).getAllSettlementsForGroup('g1'),
+        hasLength(1),
+      );
+    });
+
+    test('signer users of a payload (for the prefetch)', () {
+      expect(
+        payloadSignerUsers({
+          'meta': {
+            'sig': {'user': '@a:x'},
+          },
+          'members': [
+            {
+              'sig': {'user': '@b:x'},
+            },
+          ],
+          'expenses': [
+            {
+              'sig': {'user': '@c:x'},
+              'origin': {'user': '@d:x'},
+            },
+            {'no': 'sig'},
+          ],
+        }),
+        {'@a:x', '@b:x', '@c:x', '@d:x'},
+      );
+    });
+  });
+
+  group('G34 preview: removed from the group', () {
+    Map<String, dynamic> groupWith(String status, int at) => {
+      'group': 'g1',
+      'members': [
+        {
+          'group': 'g1',
+          'participant_id': 'p-me',
+          'name': 'Me',
+          'matrix_id': me,
+          'status': status,
+          'updated_at': at,
+        },
+      ],
+    };
+    MemberModel local(String status, int at) => MemberModel(
+      groupId: 'g1',
+      userId: 'p-me',
+      displayName: 'Me',
+      matrixId: me,
+      status: status,
+      updatedAt: at,
+    );
+
+    test('removed in the backup', () {
+      expect(
+        backupShowsMeRemoved(
+          groupWith('removed', 10),
+          myMxid: me,
+          local: const [],
+        ),
+        isTrue,
+      );
+      expect(
+        backupShowsMeRemoved(groupWith('active', 10), myMxid: me, local: []),
+        isFalse,
+      );
+    });
+
+    test('the newer of backup and local copy decides', () {
+      expect(
+        backupShowsMeRemoved(
+          groupWith('active', 10),
+          myMxid: me,
+          local: [local('removed', 20)],
+        ),
+        isTrue,
+      );
+      expect(
+        backupShowsMeRemoved(
+          groupWith('removed', 10),
+          myMxid: me,
+          local: [local('active', 20)],
+        ),
+        isFalse,
+      );
+    });
+
+    test('not a participant at all → not "removed"', () {
+      expect(
+        backupShowsMeRemoved(
+          groupWith('removed', 10),
+          myMxid: '@other:y',
+          local: const [],
+        ),
+        isFalse,
+      );
+    });
+
+    test('preview flags it', () async {
+      await MembersDao(source).upsertMemberLww(
+        const MembersCompanion(
+          groupId: Value('g1'),
+          userId: Value(me),
+          displayName: Value('Me'),
+          matrixId: Value(me),
+          status: Value('removed'),
+          updatedAt: Value(99),
+        ),
+      );
+      final backup = parseBackup(
+        await serviceFor(source).exportJson(account: me, now: 1),
+      );
+      final preview = await serviceFor(target).preview(backup, myMxid: me);
+      expect(preview.groups.single.removed, isTrue);
+    });
+  });
+}
+
+class _FailingSettlementsDao extends ExpensesDao {
+  _FailingSettlementsDao(super.db);
+
+  @override
+  Future<void> upsertSettlementLww(SettlementsCompanion settlement) =>
+      Future.error(StateError('disk full'));
 }

@@ -126,6 +126,11 @@ Expected results are in *italics*.
 | 8.5 | Settings (gear) → Back up all groups → *save dialog `moneyledger-backup-YYYY-MM-DD.json`; "Backup saved"; settings shows "Last backup: <today>"* | phone |
 | 8.6 | Settings → Restore from backup → pick that file → *preview "No new groups … already on this device"; Restore → "Restored N groups", nothing duplicated* | phone |
 | 8.7 | Solo group (no other Matrix member), no backup for 30 days → *"Back up your groups" card on the groups page; Later hides it for 30 days* | phone |
+| 8.8 | Settings → Back up all groups → passphrase dialog: type one → *confirm field + strength hint; mismatch disables Save*; matching → *"Encrypting…" (≈ 1 s), "Encrypted backup saved[: name]"; the file is a `moneyledger-backup-encrypted` wrapper (no readable names)* | emu |
+| 8.9 | Restore that file → *"Encrypted backup" prompt*; wrong passphrase → *"Wrong passphrase — or the file was changed. Try again."*; right one → *preview incl. "Encrypted backup — unlocked…", "Everything … already on this device"; Restore = no-op* | emu |
+| 8.10 | Group ⋮ → Back up this group → *file `moneyledger-backup-<group>-YYYY-MM-DD.json` with only that group; "Last backup" unchanged* | emu |
+| 8.11 | Leave/Delete group dialog → "Back up all groups first" → *passphrase dialog over it; the result ("Backup saved …") shows inside the leave dialog* | emu |
+| 8.12 | A second own device that is verified (or synced with this one in the last 30 days) → *no backup nudge for solo groups* | phone |
 
 ## 9. Devices & verification
 
@@ -156,6 +161,26 @@ iOS Rust/XCFramework build that has never been done. `ios/Runner` is template
 level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
+
+**2026-10-16 (G34 backup follow-ups)** · working tree on `ce20a75` + G34/G35 ·
+release APK via `adb install -r` on emu-5554 (B, EN) and phone (A, DE), no
+logout / data clear. 8.8: emu → Back up all groups → passphrase (mismatch
+shown, Save disabled; "Strength: strong") → "Encrypting…" → logcat
+`[backup] encrypted in 1081 ms` → snackbar "Encrypted backup saved" (the
+Downloads provider returned `/document/21`, so no name — as designed); the
+file is the `moneyledger-backup-encrypted` wrapper, no group name in it.
+8.9: restore it → wrong passphrase → "Wrong passphrase — or the file was
+changed. Try again." → right one → preview "Encrypted backup — unlocked…",
+"No new groups / Everything … already on this device", both groups "up to
+date" → Restore → "Restored 2 groups", totals unchanged. 8.10: G7a Test ⋮ →
+Back up this group → save dialog proposes
+`moneyledger-backup-g7a-test-2026-10-16.json`; file holds 1 group (18
+expenses incl. tombstones). 8.11: Leave group? → "Back up all groups first" →
+passphrase dialog over it → saved → "Backup saved" shown **inside** the
+leave dialog; leave cancelled. Phone (DE): "Sicherung schützen?" dialog,
+encrypted export `[backup] encrypted in 806 ms` (Pixel 4a, Argon2id 32 MiB
+t=3) → "Verschlüsselte Sicherung gespeichert" (the phone now shows a "last
+backup" date). Test files deleted afterwards. Screenshots `g34_*.png`.
 
 **2026-10-16 (G11 device verification)** · working tree on `81754eb` + G11 ·
 release APK via `adb install -r` on phone (A, German), emu-5554 (B) and a

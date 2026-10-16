@@ -24,7 +24,9 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
   (inbound isn't refused) and stay "unverified".
 - **Malicious inviter.** A new member trusts the inviter's bootstrap
   (TOFU, as before) including its `device_keys` attestations, so the inviter
-  could vouch for fake keys ("vouched" in the details).
+  could vouch for fake keys ("vouched" in the details). Not fixable without
+  cross-signing either (a vouched key can't be checked against anything
+  first-hand once its device has signed out).
 - **Homeserver.** A user's homeserver can add devices for that user (the
   Matrix E2EE trust model). *Mitigated, opt-in (G11):* with "Only sync with
   verified devices" a device we never emoji-verified gets nothing from us,
@@ -33,11 +35,20 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
   "unverified" and one that refused it (key conflict) keep different
   versions; the digest `rejected` map stops the repair loop and the refusing
   side shows a notice on the record.
-- **Grandfathered rows.** Rows from before G6 stay local legacy/unsigned;
-  peers refuse them when relayed, so they can't be bootstrapped to new
-  members/devices (re-edit to sign). Unsigned member / meta rows of an old
-  group likewise; group meta of such a group must be re-saved (edit) before a
-  new member can be bootstrapped.
+- **Divergence is not auto-resolved.** Nothing arbitrates between the two
+  sides (no "majority" or authority); it stays until the record is edited
+  again (a newer, verifiable version wins everywhere) — accepted for v1.
+- **Grandfathered rows — decided (G35): no migration.** Rows from before G6
+  stay local legacy/unsigned; peers refuse them when relayed, so they can't
+  be bootstrapped to new members/devices (an unsigned group meta → the whole
+  group is refused; unsigned records → the group arrives incomplete). The app
+  is unreleased and only the test groups contain such rows, so there is **no
+  re-sign step**; **before the release the test groups get recreated**.
+  The receiving side is told instead of silently showing a half-empty or
+  missing group: a `[g6] refused unsigned …` log line and a dismissible
+  groups-page hint ("Some data couldn't be received … ask X to recreate the
+  group", `SyncHealthState.legacyRefusals`, session-only). A user's own
+  backup still restores them as legacy (G5).
 - **Size.** Signatures roughly double a record's wire size (~0.86 KB per
   record in a bootstrap) — handled by chunked bootstraps (G14, below).
 - **Refusal granularity is the clock.** A refused version at `T` also blocks
@@ -117,6 +128,31 @@ already exist for tests.
   ledger activity (expenses / payments incl. deletions) un-archives; member
   or group-name changes don't. A same-millisecond LWW tie-break version
   (G27) doesn't change the fingerprint (practically irrelevant).
+
+### Backups (G5 / G34) — limits
+- **Encrypted backups** (optional passphrase): Argon2id (32 MiB, t = 3,
+  p = 1) + AES-256-GCM via the pure-Dart `cryptography` implementations.
+  A forgotten passphrase can't be recovered (by design). The passphrase
+  strength hint is a heuristic, not a guarantee; a weak passphrase on a file
+  that leaks can still be guessed offline (Argon2id only makes each guess
+  expensive). The KDF cost is fixed per release (stored per file, so it can
+  be raised later); on the web it takes ≈ 2 s.
+- **Second own device** (nudge): counts only a *verified* other device of
+  ours, or one that proved within 30 days (matching digest) that it holds our
+  state. An unverified device that is offline for a month makes the nudge
+  come back — intended.
+- **Saved-file name**: Android's Downloads provider returns a document id
+  (`msf:…`), not the name; then the snackbar says "Backup saved" without one.
+- **Restore vs. removal after the backup**: a group restored from a backup
+  taken before the other members removed us comes back active and turns
+  read-only only at the next digest exchange with them (integration-tested:
+  `test/integration/backup_restore_sync_test.dart`). If none of them is
+  online, the group looks editable until then; edits made meanwhile are
+  refused by the peers (we are not an active member there).
+- Restore is **all-or-nothing per group** (one transaction; the homeserver
+  lookups for signature verification happen before it). Different groups of
+  one file are independent: a failing group is rolled back and reported, the
+  others restore.
 
 ### Real-device smoke tests
 Three flows can only be verified on a real device + homeserver, not in

@@ -50,6 +50,7 @@ dependencies:
   canonical_json: ^1.1.3
   crypto: ^3.0.7
   workmanager: ^0.10.10
+  cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:

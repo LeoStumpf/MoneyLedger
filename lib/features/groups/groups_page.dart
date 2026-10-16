@@ -12,6 +12,7 @@ import '../expenses/ledger_syncer.dart';
 import '../../core/background/background_sync_provider.dart';
 import '../../core/sync/self_recovery.dart';
 import '../../core/sync/sync_engine.dart';
+import '../../core/sync/sync_health.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/widgets/content_width.dart';
@@ -83,6 +84,8 @@ class GroupsPage extends ConsumerWidget {
           // G33: E2EE failed to start (vodozemac init) — nothing can sync.
           if (!ref.watch(cryptoAvailableProvider))
             const _EncryptionUnavailableBanner(),
+          // G35: a peer relayed unsigned (pre-G6) records we had to refuse.
+          const _LegacyRefusalBanner(),
           Expanded(
             child: _GroupsBody(
               groupsAsync: groupsAsync,
@@ -161,6 +164,98 @@ class _EncryptionUnavailableBanner extends StatelessWidget {
                 child: Text(
                   context.l10n.encryptionUnavailableBanner,
                   style: TextStyle(color: scheme.onErrorContainer),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// G35: unsigned records from before signed records (G6) can't be relayed —
+/// a peer's old group arrives incomplete or not at all. Says so (with who
+/// sent it and what to do) instead of leaving a silently half-empty group.
+class _LegacyRefusalBanner extends ConsumerWidget {
+  const _LegacyRefusalBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final refusals = ref.watch(
+      syncHealthProvider.select((s) => s.legacyRefusals),
+    );
+    if (refusals.isEmpty) return const SizedBox.shrink();
+    final l = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final localNames = {
+      for (final g in ref.watch(ledgerGroupsProvider).value ?? const [])
+        g.roomId: g.name,
+    };
+    return Material(
+      key: const Key('legacyRefusalBanner'),
+      color: scheme.tertiaryContainer,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Insets.page,
+            Insets.m,
+            Insets.page,
+            Insets.xs,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.report_gmailerrorred_outlined,
+                    color: scheme.onTertiaryContainer,
+                  ),
+                  const SizedBox(width: Insets.m),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.legacyRefusedTitle,
+                          style: TextStyle(
+                            color: scheme.onTertiaryContainer,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        for (final r in refusals.values)
+                          Padding(
+                            padding: const EdgeInsets.only(top: Insets.xs),
+                            child: Text(
+                              l.legacyRefusedBody(
+                                r.count,
+                                r.relayedBy,
+                                r.groupName ??
+                                    localNames[r.groupId] ??
+                                    r.groupId,
+                              ),
+                              style: TextStyle(
+                                color: scheme.onTertiaryContainer,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: const Key('legacyRefusalDismiss'),
+                  onPressed: () => ref
+                      .read(syncHealthProvider.notifier)
+                      .dismissLegacyRefusals(),
+                  child: Text(l.ok),
                 ),
               ),
             ],

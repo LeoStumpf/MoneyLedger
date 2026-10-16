@@ -118,6 +118,8 @@ List<dynamic> testOverrides({
   lastBackupAtProvider.overrideWith((_) => Stream.value(lastBackupAt)),
   backupNudgeSnoozedUntilProvider.overrideWith((_) => Stream.value(null)),
   allMembersProvider.overrideWith((_) => Stream.value(const [])),
+  // G34: no second device of ours (the device list needs a Matrix client).
+  ownDeviceProtectionProvider.overrideWith((_) => false),
   // Never touch the app_links plugin in widget tests.
   ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
   ...signingUiOverrides(archives: archives),

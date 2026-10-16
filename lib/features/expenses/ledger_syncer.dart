@@ -18,6 +18,8 @@ import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/left_groups.dart';
 import '../../core/sync/peer_convergence.dart';
 import '../../core/sync/record_gate.dart';
+import '../../core/sync/record_signing.dart' show RecordKind;
+import '../../core/sync/sync_health.dart';
 import '../../core/sync/record_verifier.dart';
 import '../../models/member_model.dart';
 import '../../models/record_signature.dart';
@@ -86,7 +88,34 @@ class LedgerSyncer {
       _members = ref.read(membersDaoProvider),
       _settings = SettingsDao(ref.read(appDatabaseProvider)),
       _syncStates = ref.read(syncStatesDaoProvider),
-      _signing = ref.read(signingDaoProvider);
+      _signing = ref.read(signingDaoProvider),
+      _health = ref.read(syncHealthProvider.notifier);
+
+  /// G35: where refused unsigned (pre-G6) records are surfaced.
+  final SyncHealth _health;
+
+  /// Names of groups whose bootstrap is being applied (from its meta) — for
+  /// the legacy-refusal hint when the group itself isn't stored.
+  final Map<String, String> _snapshotNames = {};
+
+  void _onRefused(
+    String groupId,
+    RecordKind kind,
+    RejectReason reason,
+    String relayedBy,
+  ) {
+    if (reason != RejectReason.unsigned || !_alive) return;
+    debugPrint(
+      '[g6] refused unsigned (pre-G6) ${kind.wire} of $groupId from '
+      '$relayedBy — legacy rows can\'t be relayed; re-save or recreate the '
+      'group',
+    );
+    _health.reportLegacyRefused(
+      groupId,
+      relayedBy: relayedBy,
+      groupName: _snapshotNames[groupId],
+    );
+  }
 
   /// False once disposed or once the captured DB is closed (on an account
   /// switch the old DB closes before this syncer's `onDispose` runs).
@@ -129,6 +158,7 @@ class LedgerSyncer {
       members: _members,
       expenses: _expenses,
       isAlive: () => _alive,
+      onRefused: _onRefused,
     );
     _sub = transport.onMessage.listen(_onMessage);
     _ready.complete();
@@ -222,6 +252,9 @@ class LedgerSyncer {
           // Key attestations are trusted only from a sender we trust with the
           // whole group anyway: the inviter of a group new to us (TOFU), or
           // one of our own devices.
+          final meta = msg.content['meta'];
+          final name = meta is Map ? meta['name'] : msg.content['name'];
+          if (name is String) _snapshotNames[group] = name;
           await gate.snapshot(
             msg.content,
             relayedBy: via,

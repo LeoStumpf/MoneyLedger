@@ -10,6 +10,7 @@ import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
 import 'package:money_ledger/core/matrix/hmac_record_crypto.dart';
+import 'package:money_ledger/core/matrix/record_crypto.dart';
 import 'package:money_ledger/core/sync/ledger_payloads.dart';
 import 'package:money_ledger/core/sync/record_gate.dart';
 import 'package:money_ledger/core/sync/record_signing.dart';
@@ -307,4 +308,94 @@ void main() {
       );
     });
   });
+
+  group('G35 prefetch + refusal hook', () {
+    test('prefetch looks every signer up once; the verifications that follow '
+        'need no further homeserver call', () async {
+      final dir = _CountingDirectory(keys);
+      final verifier = RecordVerifier(
+        crypto: aliceDevice,
+        directory: dir,
+        signing: signing,
+        clock: () => now,
+        refreshInterval: const Duration(minutes: 10),
+      );
+      final g = RecordGate(
+        verifier: verifier,
+        signing: signing,
+        groups: GroupsDao(db),
+        members: MembersDao(db),
+        expenses: expenses,
+      );
+      await verifier.prefetch({alice, mallory});
+      expect(dir.calls, 1);
+      expect(dir.requested.single, {alice, mallory});
+      // Pinned first-hand by the prefetch.
+      expect((await signing.keysFor(alice, 'AAAA')).single.isServer, isTrue);
+      final e = await signExpense(aliceDevice, draft(), creating: true);
+      expect(await g.expense(expensePayload(e), relayedBy: alice), isTrue);
+      expect(dir.calls, 1);
+    });
+
+    test(
+      'an unreachable server during prefetch counts as "no answer"',
+      () async {
+        final dir = _CountingDirectory(keys)..fail = true;
+        final verifier = RecordVerifier(
+          crypto: aliceDevice,
+          directory: dir,
+          signing: signing,
+          clock: () => now,
+          refreshInterval: const Duration(minutes: 10),
+        );
+        await verifier.prefetch({alice});
+        final e = await signExpense(aliceDevice, draft(), creating: true);
+        expect(await verifier.expense(e), same(Verdict.accept));
+        expect(dir.calls, 1); // no retry mid-batch
+      },
+    );
+
+    test('onRefused reports unsigned (legacy) versions', () async {
+      final refused = <(String, RecordKind, RejectReason, String)>[];
+      final g = RecordGate(
+        verifier: RecordVerifier(
+          crypto: aliceDevice,
+          directory: keys,
+          signing: signing,
+          clock: () => now,
+        ),
+        signing: signing,
+        groups: GroupsDao(db),
+        members: MembersDao(db),
+        expenses: expenses,
+        onRefused: (gid, kind, reason, via) =>
+            refused.add((gid, kind, reason, via)),
+      );
+      expect(
+        await g.expense(expensePayload(draft()), relayedBy: alice),
+        isFalse,
+      );
+      expect(refused, [
+        ('g1', RecordKind.expense, RejectReason.unsigned, alice),
+      ]);
+    });
+  });
+}
+
+class _CountingDirectory implements DeviceKeyDirectory {
+  _CountingDirectory(this.inner);
+  final DeviceKeyDirectory inner;
+  int calls = 0;
+  bool fail = false;
+  final requested = <Set<String>>[];
+
+  @override
+  Future<Map<String, Map<String, String>>> currentDevices(
+    Set<String> users,
+  ) async {
+    calls++;
+    requested.add(users);
+    if (fail) throw StateError('offline');
+    return inner.currentDevices(users);
+  }
 }

@@ -39,6 +39,12 @@ class SyncHealthState {
   /// "X has no verified device" instead of "waiting".
   final Set<String> unverifiedPeers;
 
+  /// G35: groups for which we refused **unsigned** (pre-G6, legacy) records
+  /// a peer sent us — e.g. a bootstrap of an old group — keyed by group id.
+  /// Shown as a hint on the groups page (instead of a silently half-empty
+  /// or missing group) until dismissed. Session-only.
+  final Map<String, LegacyRefusal> legacyRefusals;
+
   const SyncHealthState({
     this.consecutiveFailures = 0,
     this.lastError,
@@ -46,6 +52,7 @@ class SyncHealthState {
     this.lastSuccessAt,
     this.unreachablePeers = const {},
     this.unverifiedPeers = const {},
+    this.legacyRefusals = const {},
   });
 
   /// Whether the UI should surface a sync problem.
@@ -58,6 +65,7 @@ class SyncHealthState {
     lastSuccessAt: lastSuccessAt,
     unreachablePeers: unreachablePeers,
     unverifiedPeers: unverifiedPeers,
+    legacyRefusals: legacyRefusals,
   );
 
   /// A send went through. Resets failures and clears the error; [reached]
@@ -75,7 +83,58 @@ class SyncHealthState {
       ...unverifiedPeers.difference(reached).difference(unreachable),
       ...unverified,
     },
+    legacyRefusals: legacyRefusals,
   );
+
+  SyncHealthState _withLegacy(Map<String, LegacyRefusal> refusals) =>
+      SyncHealthState(
+        consecutiveFailures: consecutiveFailures,
+        lastError: lastError,
+        lastErrorAt: lastErrorAt,
+        lastSuccessAt: lastSuccessAt,
+        unreachablePeers: unreachablePeers,
+        unverifiedPeers: unverifiedPeers,
+        legacyRefusals: refusals,
+      );
+
+  /// One more refused unsigned record of [groupId] from [relayedBy].
+  SyncHealthState afterLegacyRefused(
+    String groupId, {
+    required String relayedBy,
+    String? groupName,
+  }) {
+    final old = legacyRefusals[groupId];
+    return _withLegacy({
+      ...legacyRefusals,
+      groupId: LegacyRefusal(
+        groupId: groupId,
+        groupName: groupName ?? old?.groupName,
+        relayedBy: relayedBy,
+        count: (old?.count ?? 0) + 1,
+      ),
+    });
+  }
+
+  SyncHealthState withoutLegacyRefusals() => _withLegacy(const {});
+}
+
+/// Unsigned (pre-G6) records of one group that we refused (G35).
+@immutable
+class LegacyRefusal {
+  final String groupId;
+
+  /// The group's name when known (from the refused bootstrap's meta).
+  final String? groupName;
+
+  /// Who relayed the (last) refused records.
+  final String relayedBy;
+  final int count;
+  const LegacyRefusal({
+    required this.groupId,
+    required this.groupName,
+    required this.relayedBy,
+    required this.count,
+  });
 }
 
 /// Holds [SyncHealthState] for the whole session. `keepAlive` so it survives
@@ -116,6 +175,28 @@ class SyncHealth extends _$SyncHealth {
   void reportFailure(Object error) {
     if (!ref.mounted) return;
     state = state.afterFailure(error, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  /// G35: we refused an unsigned (pre-G6) record of [groupId] relayed by
+  /// [relayedBy] — never a sync failure (the peer's data is the problem),
+  /// but the user should know why the group is incomplete or missing.
+  void reportLegacyRefused(
+    String groupId, {
+    required String relayedBy,
+    String? groupName,
+  }) {
+    if (!ref.mounted) return;
+    state = state.afterLegacyRefused(
+      groupId,
+      relayedBy: relayedBy,
+      groupName: groupName,
+    );
+  }
+
+  /// The user dismissed the legacy-refusal hint.
+  void dismissLegacyRefusals() {
+    if (!ref.mounted) return;
+    state = state.withoutLegacyRefusals();
   }
 }
 

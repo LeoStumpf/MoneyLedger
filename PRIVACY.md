@@ -57,12 +57,15 @@ it off in Settings. The web version syncs only while its tab is open.
 ## Export, backup and import
 
 Exporting a group writes a CSV file with its expenses, payments, the
-participants' names and the amounts; "Back up all groups" (Settings) writes one
-JSON file with every group of your account, including the participants' Matrix
-IDs and deleted entries. Both happen only when you ask for it. Where the file
-goes is your choice; it is plain text, not encrypted, and MoneyLedger has no
-visibility into it afterwards. Importing or restoring reads only the file you
-pick.
+participants' names and the amounts; a backup ("Back up all groups" in
+Settings, or one group from its menu) writes one JSON file with the groups,
+including the participants' Matrix IDs and deleted entries. Both happen only
+when you ask for it. Where the file goes is your choice. A CSV is always plain
+text; a backup is plain text too unless you set a passphrase — then it is
+encrypted on your device (Argon2id + AES-256-GCM) and can only be restored
+with that passphrase, which MoneyLedger never stores or sends anywhere.
+MoneyLedger has no visibility into the file afterwards. Importing or restoring
+reads only the file you pick.
 
 ## Device backups
 

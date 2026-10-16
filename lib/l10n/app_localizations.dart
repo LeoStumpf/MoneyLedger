@@ -1559,7 +1559,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyCsvBody.
   ///
   /// In en, this message translates to:
-  /// **'Exporting a group writes a CSV file with its expenses, payments, the participants\' names and the amounts; \"Back up all groups\" writes one JSON file with every group of your account, including the participants\' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice; it is plain text, not encrypted, and MoneyLedger has no visibility into it afterwards. Importing or restoring reads only the file you pick.'**
+  /// **'Exporting a group writes a CSV file with its expenses, payments, the participants\' names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the participants\' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.'**
   String get privacyCsvBody;
 
   /// No description provided for @privacyBackupTitle.
@@ -1895,7 +1895,7 @@ abstract class AppLocalizations {
   /// No description provided for @backupExportBody.
   ///
   /// In en, this message translates to:
-  /// **'Saves every group — with payments and deleted entries — to one file. The file is not encrypted: keep it somewhere safe.'**
+  /// **'Saves every group — with payments and deleted entries — to one file, optionally encrypted with a passphrase. Without one the file is plain text: keep it somewhere safe.'**
   String get backupExportBody;
 
   /// No description provided for @backupRestoreTitle.
@@ -2021,7 +2021,7 @@ abstract class AppLocalizations {
   /// No description provided for @restoreLeftNote.
   ///
   /// In en, this message translates to:
-  /// **'Groups you left or deleted come back on this device. If another member removed you, the group stays read-only.'**
+  /// **'Groups you left or deleted come back on this device. If the other members removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.'**
   String get restoreLeftNote;
 
   /// No description provided for @restoreAction.
@@ -2527,6 +2527,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settled separately per currency — amounts are never converted.'**
   String get simplifyDebtsPerCurrency;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Protect the backup?'**
+  String get backupPassphraseTitle;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'You can encrypt the file with a passphrase. Leave it empty to save it unencrypted.'**
+  String get backupPassphraseBody;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase (optional)'**
+  String get backupPassphraseLabel;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat passphrase'**
+  String get backupPassphraseConfirmLabel;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'The passphrases don\'t match'**
+  String get backupPassphraseMismatch;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Strength: weak — use a longer one, e.g. four random words'**
+  String get backupPassphraseWeak;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Strength: fair'**
+  String get backupPassphraseFair;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Strength: strong'**
+  String get backupPassphraseStrong;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Without a passphrase the file is not encrypted: anyone who gets it can read all its groups.'**
+  String get backupPlaintextWarning;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t lose the passphrase — without it the backup can\'t be restored, and nobody can recover it.'**
+  String get backupPassphraseKeepSafe;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypting…'**
+  String get backupEncrypting;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Decrypting…'**
+  String get backupDecrypting;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted backup'**
+  String get backupUnlockTitle;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the passphrase this backup was saved with.'**
+  String get backupUnlockBody;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase'**
+  String get backupUnlockLabel;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get backupUnlockAction;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong passphrase — or the file was changed. Try again.'**
+  String get backupWrongPassphrase;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Backup saved'**
+  String get backupSavedNoName;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted backup saved: {fileName}'**
+  String backupSavedEncrypted(String fileName);
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted backup saved'**
+  String get backupSavedEncryptedNoName;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'CSV exported'**
+  String get exportedNoName;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Back up this group'**
+  String get backupThisGroup;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Show passphrase'**
+  String get showPassphrase;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Hide passphrase'**
+  String get hidePassphrase;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted backup — unlocked with your passphrase.'**
+  String get restoreEncryptedNote;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'read-only — you were removed'**
+  String get restoreTagRemoved;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 group couldn\'t be restored and was left unchanged: {error}} other{{count} groups couldn\'t be restored and were left unchanged: {error}}}'**
+  String restoreIncomplete(int count, String error);
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'Some data couldn\'t be received'**
+  String get legacyRefusedTitle;
+
+  /// G34/G35
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{sender} sent 1 entry of “{group}” that was saved by an older app version without a signature. It was refused, so the group is incomplete or missing here. Ask {sender} to recreate the group.} other{{sender} sent {count} entries of “{group}” that were saved by an older app version without a signature. They were refused, so the group is incomplete or missing here. Ask {sender} to recreate the group.}}'**
+  String legacyRefusedBody(int count, String sender, String group);
 }
 
 class _AppLocalizationsDelegate

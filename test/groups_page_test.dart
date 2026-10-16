@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/core/sync/self_recovery.dart';
+import 'package:money_ledger/core/sync/sync_health.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
@@ -45,6 +46,31 @@ void main() {
       expect(find.textContaining('Noch keine Gruppen'), findsOneWidget);
       expect(find.text('Neue Gruppe'), findsOneWidget);
       expect(find.byTooltip('Einstellungen'), findsOneWidget);
+    });
+
+    testWidgets('G35: refused legacy records show a dismissible hint', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        testApp(
+          const GroupsPage(),
+          overrides: [
+            ...testOverrides(isLoggedIn: true),
+            syncHealthProvider.overrideWith(_LegacyRefusedHealth.new),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('legacyRefusalBanner')), findsOneWidget);
+      expect(find.text("Some data couldn't be received"), findsOneWidget);
+      expect(
+        find.textContaining('@alice:x sent 3 entries of “Old flat”'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('legacyRefusalDismiss')));
+      await tester.pump();
+      expect(find.byKey(const Key('legacyRefusalBanner')), findsNothing);
     });
 
     testWidgets('settings sheet links to the About page', (tester) async {
@@ -325,4 +351,18 @@ class _SpyAuth extends AuthNotifier {
 class _Restoring extends SelfRecovery {
   @override
   bool build() => true;
+}
+
+class _LegacyRefusedHealth extends SyncHealth {
+  @override
+  SyncHealthState build() => const SyncHealthState(
+    legacyRefusals: {
+      'old': LegacyRefusal(
+        groupId: 'old',
+        groupName: 'Old flat',
+        relayedBy: '@alice:x',
+        count: 3,
+      ),
+    },
+  );
 }

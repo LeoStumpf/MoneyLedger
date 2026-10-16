@@ -909,7 +909,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyCsvBody =>
-      'Beim Export einer Gruppe entsteht eine CSV-Datei mit ihren Ausgaben, Zahlungen, den Namen der Personen und den Beträgen; „Alle Gruppen sichern“ schreibt eine JSON-Datei mit allen Gruppen deines Kontos, inklusive der Matrix-IDs der Personen und gelöschter Einträge. Beides passiert nur, wenn du es auslöst. Wohin die Datei geht, entscheidest du; sie ist reiner Text, nicht verschlüsselt, und MoneyLedger hat danach keinen Einblick mehr. Beim Import oder Wiederherstellen wird nur die Datei gelesen, die du auswählst.';
+      'Beim Export einer Gruppe entsteht eine CSV-Datei mit ihren Ausgaben, Zahlungen, den Namen der Personen und den Beträgen; eine Sicherung („Alle Gruppen sichern“ oder eine Gruppe über ihr Menü) schreibt eine JSON-Datei mit den Gruppen, inklusive der Matrix-IDs der Personen und gelöschter Einträge. Beides passiert nur, wenn du es auslöst. Wohin die Datei geht, entscheidest du. Eine CSV ist immer reiner Text; eine Sicherung ebenfalls, außer du legst eine Passphrase fest – dann wird sie auf deinem Gerät verschlüsselt (Argon2id + AES-256-GCM) und lässt sich nur mit dieser Passphrase wiederherstellen, die MoneyLedger weder speichert noch irgendwohin sendet. MoneyLedger hat danach keinen Einblick mehr in die Datei. Beim Import oder Wiederherstellen wird nur die Datei gelesen, die du auswählst.';
 
   @override
   String get privacyBackupTitle => 'Gerätesicherungen';
@@ -1115,7 +1115,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get backupExportBody =>
-      'Speichert alle Gruppen – mit Zahlungen und gelöschten Einträgen – in einer Datei. Die Datei ist nicht verschlüsselt: Bewahre sie sicher auf.';
+      'Speichert alle Gruppen – mit Zahlungen und gelöschten Einträgen – in einer Datei, auf Wunsch mit einer Passphrase verschlüsselt. Ohne Passphrase ist sie reiner Text: Bewahre sie sicher auf.';
 
   @override
   String get backupRestoreTitle => 'Aus Sicherung wiederherstellen';
@@ -1241,7 +1241,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restoreLeftNote =>
-      'Gruppen, die du verlassen oder gelöscht hast, kommen auf diesem Gerät zurück. Hat dich ein anderes Mitglied entfernt, bleibt die Gruppe schreibgeschützt.';
+      'Gruppen, die du verlassen oder gelöscht hast, kommen auf diesem Gerät zurück. Haben dich die anderen Mitglieder aus einer Gruppe entfernt, kommt sie schreibgeschützt zurück (nur der Verlauf) – eine Entfernung nach dieser Sicherung zeigt sich beim nächsten Sync.';
 
   @override
   String get restoreAction => 'Wiederherstellen';
@@ -1589,4 +1589,123 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get simplifyDebtsPerCurrency =>
       'Jede Währung wird separat ausgeglichen — Beträge werden nie umgerechnet.';
+
+  @override
+  String get backupPassphraseTitle => 'Sicherung schützen?';
+
+  @override
+  String get backupPassphraseBody =>
+      'Du kannst die Datei mit einer Passphrase verschlüsseln. Lass das Feld leer, um sie unverschlüsselt zu speichern.';
+
+  @override
+  String get backupPassphraseLabel => 'Passphrase (optional)';
+
+  @override
+  String get backupPassphraseConfirmLabel => 'Passphrase wiederholen';
+
+  @override
+  String get backupPassphraseMismatch =>
+      'Die Passphrasen stimmen nicht überein';
+
+  @override
+  String get backupPassphraseWeak =>
+      'Stärke: schwach – nimm eine längere, z. B. vier zufällige Wörter';
+
+  @override
+  String get backupPassphraseFair => 'Stärke: mittel';
+
+  @override
+  String get backupPassphraseStrong => 'Stärke: stark';
+
+  @override
+  String get backupPlaintextWarning =>
+      'Ohne Passphrase ist die Datei nicht verschlüsselt: Wer sie bekommt, kann alle Gruppen darin lesen.';
+
+  @override
+  String get backupPassphraseKeepSafe =>
+      'Verliere die Passphrase nicht – ohne sie lässt sich die Sicherung nicht wiederherstellen, und niemand kann sie zurückholen.';
+
+  @override
+  String get backupEncrypting => 'Verschlüssele …';
+
+  @override
+  String get backupDecrypting => 'Entschlüssele …';
+
+  @override
+  String get backupUnlockTitle => 'Verschlüsselte Sicherung';
+
+  @override
+  String get backupUnlockBody =>
+      'Gib die Passphrase ein, mit der diese Sicherung gespeichert wurde.';
+
+  @override
+  String get backupUnlockLabel => 'Passphrase';
+
+  @override
+  String get backupUnlockAction => 'Entsperren';
+
+  @override
+  String get backupWrongPassphrase =>
+      'Falsche Passphrase – oder die Datei wurde verändert. Versuch es noch einmal.';
+
+  @override
+  String get backupSavedNoName => 'Sicherung gespeichert';
+
+  @override
+  String backupSavedEncrypted(String fileName) {
+    return 'Verschlüsselte Sicherung gespeichert: $fileName';
+  }
+
+  @override
+  String get backupSavedEncryptedNoName =>
+      'Verschlüsselte Sicherung gespeichert';
+
+  @override
+  String get exportedNoName => 'CSV exportiert';
+
+  @override
+  String get backupThisGroup => 'Diese Gruppe sichern';
+
+  @override
+  String get showPassphrase => 'Passphrase anzeigen';
+
+  @override
+  String get hidePassphrase => 'Passphrase verbergen';
+
+  @override
+  String get restoreEncryptedNote =>
+      'Verschlüsselte Sicherung – mit deiner Passphrase entsperrt.';
+
+  @override
+  String get restoreTagRemoved => 'schreibgeschützt – du wurdest entfernt';
+
+  @override
+  String restoreIncomplete(int count, String error) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Gruppen konnten nicht wiederhergestellt werden und blieben unverändert: $error',
+      one:
+          '1 Gruppe konnte nicht wiederhergestellt werden und blieb unverändert: $error',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get legacyRefusedTitle =>
+      'Einige Daten konnten nicht empfangen werden';
+
+  @override
+  String legacyRefusedBody(int count, String sender, String group) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$sender hat $count Einträge von „$group“ geschickt, die mit einer älteren App-Version ohne Signatur gespeichert wurden. Sie wurden abgelehnt – die Gruppe ist hier deshalb unvollständig oder fehlt. Bitte $sender, die Gruppe neu anzulegen.',
+      one:
+          '$sender hat 1 Eintrag von „$group“ geschickt, der mit einer älteren App-Version ohne Signatur gespeichert wurde. Er wurde abgelehnt – die Gruppe ist hier deshalb unvollständig oder fehlt. Bitte $sender, die Gruppe neu anzulegen.',
+    );
+    return '$_temp0';
+  }
 }

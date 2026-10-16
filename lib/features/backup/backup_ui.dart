@@ -7,6 +7,8 @@
 /// first await, and `context` is only used after an await when still mounted.
 library;
 
+import 'package:flutter/foundation.dart'
+    show debugPrint, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +16,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/theme/app_theme.dart';
 import '../groups/group_provider.dart';
+import 'backup_crypto.dart';
 import 'backup_files.dart';
 import 'backup_providers.dart';
 import 'backup_service.dart';
@@ -78,26 +81,279 @@ void _closeSheetThen(
 
 // ── export ───────────────────────────────────────────────────────────────────
 
-/// Writes the whole account's backup file and records `last_backup_at`.
-Future<void> exportFullBackup(BuildContext context, WidgetRef ref) async {
-  final l = context.l10n;
-  final messenger = ScaffoldMessenger.of(context);
-  final service = ref.read(backupServiceProvider);
-  final account = ref.read(currentUserIdProvider);
-  final now = DateTime.now();
-  final name = backupFileName(now);
+/// How a backup export ended (G34) — the caller shows [message] as a snackbar
+/// or, in the leave/delete dialog, inside the dialog.
+class BackupExportOutcome {
+  /// False when the user cancelled (passphrase or save dialog).
+  final bool saved;
+  final String? message;
+  const BackupExportOutcome._(this.saved, this.message);
+  static const cancelled = BackupExportOutcome._(false, null);
+}
+
+/// The snackbar / dialog text for a saved backup: the real file name when the
+/// platform reports one ([savedFileDisplayName]), else a neutral text.
+String backupSavedMessage(
+  AppLocalizations l, {
+  required String? fileName,
+  required bool encrypted,
+}) => switch ((fileName, encrypted)) {
+  (null, false) => l.backupSavedNoName,
+  (null, true) => l.backupSavedEncryptedNoName,
+  (final String n, false) => l.backupSaved(n),
+  (final String n, true) => l.backupSavedEncrypted(n),
+};
+
+/// Runs [work] behind a modal, non-dismissible progress dialog (the Argon2id
+/// key derivation takes a moment).
+Future<T> _withProgress<T>(
+  BuildContext context,
+  String text,
+  Future<T> Function() work,
+) async {
+  final nav = Navigator.of(context, rootNavigator: true);
+  final route = DialogRoute<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => PopScope(
+      canPop: false,
+      child: AlertDialog(
+        key: const Key('backupProgress'),
+        content: Row(
+          children: [
+            const SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+            const SizedBox(width: Insets.l),
+            Expanded(child: Text(text)),
+          ],
+        ),
+      ),
+    ),
+  );
+  nav.push(route);
   try {
-    final json = await service.exportJson(
+    return await work();
+  } finally {
+    if (route.isActive) nav.removeRoute(route);
+  }
+}
+
+/// Asks for an optional passphrase, builds the backup ([groupId] = one group,
+/// else all), encrypts it when a passphrase was set, and saves it. Records
+/// `last_backup_at` only for a full backup (a single group's file doesn't
+/// protect the others). Never throws: failures come back as the message.
+Future<BackupExportOutcome> runBackupExport(
+  BuildContext context,
+  WidgetRef ref, {
+  String? groupId,
+  String? groupName,
+}) async {
+  final l = context.l10n;
+  final service = ref.read(backupServiceProvider);
+  final params = ref.read(backupKdfParamsProvider);
+  final account = ref.read(currentUserIdProvider);
+  final passphrase = await showDialog<String>(
+    context: context,
+    builder: (_) => const BackupPassphraseDialog(),
+  );
+  if (passphrase == null || !context.mounted) {
+    return BackupExportOutcome.cancelled;
+  }
+  final now = DateTime.now();
+  final name = backupFileName(
+    now,
+    groupName: groupId == null ? null : groupName,
+  );
+  try {
+    var text = await service.exportJson(
       account: account.isEmpty ? null : account,
       now: now.millisecondsSinceEpoch,
+      onlyGroup: groupId,
     );
-    final saved = await saveTextFile(name, json, LedgerFileKind.backup);
-    if (!saved) return; // dialog cancelled
-    await service.markBackedUp(now.millisecondsSinceEpoch);
-    messenger.showSnackBar(SnackBar(content: Text(l.backupSaved(name))));
+    final encrypted = passphrase.isNotEmpty;
+    if (encrypted) {
+      if (!context.mounted) return BackupExportOutcome.cancelled;
+      final plain = text;
+      text = await _withProgress(context, l.backupEncrypting, () async {
+        final sw = Stopwatch()..start();
+        final enc = await encryptBackup(plain, passphrase, params: params);
+        debugPrint(
+          '[backup] encrypted in ${sw.elapsedMilliseconds} ms '
+          '(argon2id ${params.memoryKib} KiB, t=${params.iterations})',
+        );
+        return enc;
+      });
+    }
+    final saved = await saveTextFile(name, text, LedgerFileKind.backup);
+    if (saved == null) return BackupExportOutcome.cancelled;
+    if (groupId == null) await service.markBackedUp(now.millisecondsSinceEpoch);
+    return BackupExportOutcome._(
+      true,
+      backupSavedMessage(
+        l,
+        fileName: kIsWeb
+            ? name
+            : savedFileDisplayName(saved.path, LedgerFileKind.backup.extension),
+        encrypted: encrypted,
+      ),
+    );
   } catch (e) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.exportFailed(e.toString()))),
+    return BackupExportOutcome._(false, l.exportFailed(e.toString()));
+  }
+}
+
+/// Writes the whole account's backup file (optionally encrypted) and records
+/// `last_backup_at`; the result shows as a snackbar.
+Future<void> exportFullBackup(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final outcome = await runBackupExport(context, ref);
+  if (outcome.message != null) {
+    messenger.showSnackBar(SnackBar(content: Text(outcome.message!)));
+  }
+}
+
+/// G34: backs up one group (group ⋮ menu) — same format, one entry.
+Future<void> exportGroupBackup(
+  BuildContext context,
+  WidgetRef ref, {
+  required String groupId,
+  required String groupName,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final outcome = await runBackupExport(
+    context,
+    ref,
+    groupId: groupId,
+    groupName: groupName,
+  );
+  if (outcome.message != null) {
+    messenger.showSnackBar(SnackBar(content: Text(outcome.message!)));
+  }
+}
+
+/// Export step 1 (G34): an optional passphrase with a confirmation field and
+/// a strength hint. Pops the passphrase — `''` for an unencrypted file — or
+/// null when cancelled.
+class BackupPassphraseDialog extends StatefulWidget {
+  const BackupPassphraseDialog({super.key});
+
+  @override
+  State<BackupPassphraseDialog> createState() => _BackupPassphraseDialogState();
+}
+
+class _BackupPassphraseDialogState extends State<BackupPassphraseDialog> {
+  final _pass = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _obscure = true;
+
+  @override
+  void dispose() {
+    _pass.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final pass = _pass.text;
+    final strength = passphraseStrength(pass);
+    final mismatch = pass.isNotEmpty && _confirm.text != pass;
+    final strengthText = switch (strength) {
+      PassphraseStrength.empty => null,
+      PassphraseStrength.weak => l.backupPassphraseWeak,
+      PassphraseStrength.fair => l.backupPassphraseFair,
+      PassphraseStrength.strong => l.backupPassphraseStrong,
+    };
+    final strengthColor = switch (strength) {
+      PassphraseStrength.weak => theme.colorScheme.error,
+      _ => theme.colorScheme.onSurfaceVariant,
+    };
+    return AlertDialog(
+      key: const Key('backupPassphraseDialog'),
+      title: Text(l.backupPassphraseTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.backupPassphraseBody),
+            const SizedBox(height: Insets.m),
+            TextField(
+              key: const Key('backupPassphrase'),
+              controller: _pass,
+              obscureText: _obscure,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: l.backupPassphraseLabel,
+                suffixIcon: IconButton(
+                  tooltip: _obscure ? l.showPassphrase : l.hidePassphrase,
+                  icon: Icon(
+                    _obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                ),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            if (pass.isNotEmpty) ...[
+              const SizedBox(height: Insets.s),
+              TextField(
+                key: const Key('backupPassphraseConfirm'),
+                controller: _confirm,
+                obscureText: _obscure,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: l.backupPassphraseConfirmLabel,
+                  errorText: mismatch && _confirm.text.isNotEmpty
+                      ? l.backupPassphraseMismatch
+                      : null,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+            const SizedBox(height: Insets.s),
+            if (strengthText != null)
+              Text(
+                strengthText,
+                key: const Key('backupPassphraseStrength'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: strengthColor,
+                ),
+              ),
+            const SizedBox(height: Insets.s),
+            if (pass.isEmpty)
+              _Warning(
+                key: const Key('backupPlaintextWarning'),
+                text: l.backupPlaintextWarning,
+              )
+            else
+              Text(
+                l.backupPassphraseKeepSafe,
+                key: const Key('backupKeepSafe'),
+                style: theme.textTheme.bodySmall,
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          key: const Key('backupPassphraseSave'),
+          onPressed: mismatch ? null : () => Navigator.of(context).pop(pass),
+          child: Text(l.save),
+        ),
+      ],
     );
   }
 }
@@ -112,17 +368,48 @@ String backupErrorMessage(BackupFormatException e, AppLocalizations l) =>
       BackupErrorKind.malformed => l.backupMalformed,
     };
 
-/// Pick a backup file → preview → confirm → merge, then nudge peers with a
-/// digest per restored group (best-effort; anti-entropy does the rest).
+/// G34: asks for the passphrase of an encrypted backup [text] and decrypts it
+/// — again after a wrong one. Null when the user cancelled.
+@visibleForTesting
+Future<String?> unlockEncryptedBackup(
+  BuildContext context,
+  String text,
+  BackupDecrypter decrypt,
+) async {
+  final l = context.l10n;
+  String? error;
+  while (context.mounted) {
+    final pass = await showDialog<String>(
+      context: context,
+      builder: (_) => BackupUnlockDialog(errorText: error),
+    );
+    if (pass == null || !context.mounted) return null;
+    try {
+      return await _withProgress(
+        context,
+        l.backupDecrypting,
+        () => decrypt(text, pass),
+      );
+    } on WrongPassphraseException {
+      error = l.backupWrongPassphrase;
+    }
+  }
+  return null;
+}
+
+/// Pick a backup file → (unlock an encrypted one) → preview → confirm →
+/// merge, then nudge peers with a digest per restored group (best-effort;
+/// anti-entropy does the rest).
 Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   final messenger = ScaffoldMessenger.of(context);
   final service = ref.read(backupServiceProvider);
   final engine = ref.read(syncEngineProvider);
+  final decrypt = ref.read(backupDecrypterProvider);
   final me = ref.read(currentUserIdProvider);
-  final String? text;
+  String? text;
   try {
-    text = await pickTextFile(LedgerFileKind.backup);
+    text = await ref.read(backupFilePickerProvider)();
   } catch (e) {
     messenger.showSnackBar(
       SnackBar(content: Text(l.restoreFailed(e.toString()))),
@@ -131,15 +418,40 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
   }
   if (text == null) return; // cancelled
   try {
+    final encrypted = isEncryptedBackup(text);
+    if (encrypted) {
+      if (!context.mounted) return;
+      text = await unlockEncryptedBackup(context, text, decrypt);
+      if (text == null) return;
+    }
     final backup = parseBackup(text);
     final preview = await service.preview(backup, myMxid: me);
     if (!context.mounted) return;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => RestorePreviewDialog(preview: preview),
+      builder: (_) =>
+          RestorePreviewDialog(preview: preview, encrypted: encrypted),
     );
     if (ok != true) return;
-    final restored = await service.restore(backup);
+    List<String> restored;
+    try {
+      restored = await service.restore(backup);
+    } on RestoreIncompleteException catch (e) {
+      for (final id in e.restored) {
+        engine.pokeGroup(id);
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            l.restoreIncomplete(
+              e.failed.length,
+              e.failed.values.first.toString(),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     for (final id in restored) {
       engine.pokeGroup(id);
     }
@@ -155,10 +467,95 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
   }
 }
 
+/// Restore step: the passphrase of an encrypted backup. Pops it, or null.
+class BackupUnlockDialog extends StatefulWidget {
+  /// Shown under the field (e.g. "wrong passphrase") on a retry.
+  final String? errorText;
+  const BackupUnlockDialog({super.key, this.errorText});
+
+  @override
+  State<BackupUnlockDialog> createState() => _BackupUnlockDialogState();
+}
+
+class _BackupUnlockDialogState extends State<BackupUnlockDialog> {
+  final _pass = TextEditingController();
+  bool _obscure = true;
+
+  @override
+  void dispose() {
+    _pass.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_pass.text.isEmpty) return;
+    Navigator.of(context).pop(_pass.text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return AlertDialog(
+      key: const Key('backupUnlockDialog'),
+      title: Text(l.backupUnlockTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.backupUnlockBody),
+          const SizedBox(height: Insets.m),
+          TextField(
+            key: const Key('backupUnlockPassphrase'),
+            controller: _pass,
+            autofocus: true,
+            obscureText: _obscure,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+              labelText: l.backupUnlockLabel,
+              errorText: widget.errorText,
+              errorMaxLines: 3,
+              suffixIcon: IconButton(
+                tooltip: _obscure ? l.showPassphrase : l.hidePassphrase,
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          key: const Key('backupUnlockConfirm'),
+          onPressed: _pass.text.isEmpty ? null : _submit,
+          child: Text(l.backupUnlockAction),
+        ),
+      ],
+    );
+  }
+}
+
 /// What a restore would do; pops `true` to restore.
 class RestorePreviewDialog extends StatelessWidget {
   final RestorePreview preview;
-  const RestorePreviewDialog({super.key, required this.preview});
+
+  /// The file was an encrypted backup (unlocked with the passphrase).
+  final bool encrypted;
+  const RestorePreviewDialog({
+    super.key,
+    required this.preview,
+    this.encrypted = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +565,7 @@ class RestorePreviewDialog extends StatelessWidget {
       color: theme.colorScheme.onSurfaceVariant,
     );
     final exportedAt = preview.backup.exportedAt;
-    final anyLeft = preview.groups.any((g) => g.wasLeft);
+    final anyLeft = preview.groups.any((g) => g.wasLeft || g.removed);
     return AlertDialog(
       key: const Key('restorePreviewDialog'),
       title: Text(l.restorePreviewTitle),
@@ -179,6 +576,12 @@ class RestorePreviewDialog extends StatelessWidget {
           children: [
             if (exportedAt != null)
               Text(l.restoreBackupFrom(context.date(exportedAt)), style: muted),
+            if (encrypted)
+              Text(
+                l.restoreEncryptedNote,
+                key: const Key('restoreEncrypted'),
+                style: muted,
+              ),
             if (preview.otherAccount) ...[
               const SizedBox(height: Insets.m),
               _Warning(
@@ -220,7 +623,9 @@ class RestorePreviewDialog extends StatelessWidget {
                     ),
                     const SizedBox(width: Insets.s),
                     Text(
-                      g.wasLeft
+                      g.removed
+                          ? l.restoreTagRemoved
+                          : g.wasLeft
                           ? l.restoreTagLeft
                           : g.isNew
                           ? l.restoreTagNew
@@ -234,7 +639,11 @@ class RestorePreviewDialog extends StatelessWidget {
               ),
             if (anyLeft) ...[
               const SizedBox(height: Insets.s),
-              Text(l.restoreLeftNote, style: muted),
+              Text(
+                l.restoreLeftNote,
+                key: const Key('restoreLeftNote'),
+                style: muted,
+              ),
             ],
           ],
         ),

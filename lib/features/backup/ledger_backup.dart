@@ -236,10 +236,47 @@ BackupGroupSummary summarizeBackupGroup(Map<String, dynamic> g) {
 }
 
 /// File name for a backup taken on [at] (local date):
-/// `moneyledger-backup-YYYY-MM-DD.json`.
-String backupFileName(DateTime at) {
+/// `moneyledger-backup-YYYY-MM-DD.json`, or for a single group (G34)
+/// `moneyledger-backup-<group-slug>-YYYY-MM-DD.json`.
+String backupFileName(DateTime at, {String? groupName}) {
   String two(int n) => n.toString().padLeft(2, '0');
-  return 'moneyledger-backup-${at.year}-${two(at.month)}-${two(at.day)}.json';
+  final slug = groupName == null ? '' : '${fileNameSlug(groupName)}-';
+  return 'moneyledger-backup-$slug${at.year}-${two(at.month)}-${two(at.day)}'
+      '.json';
+}
+
+/// A short, filesystem-safe slug of [name]: lower case, letters (incl.
+/// non-ASCII ones like "ü") and digits kept, everything else collapsed to
+/// `-`, at most 40 characters; `group` when nothing is left.
+String fileNameSlug(String name) {
+  final slug = name
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '-')
+      .replaceAll(RegExp(r'^-+|-+$'), '');
+  if (slug.isEmpty) return 'group';
+  final cut = slug.length > 40 ? slug.substring(0, 40) : slug;
+  return cut.replaceAll(RegExp(r'-+$'), '');
+}
+
+/// The file name to show after a save (G34). On Android the save dialog may
+/// store the file under another name (`… (1).json`, or one the user typed);
+/// file_picker returns the saved document's path, whose last segment is the
+/// real name only for some providers (`…/primary:Download/x (1).json`, but
+/// `…/document/msf:1000000033` for the Downloads provider). Returns that
+/// name when it looks like a file of [extension], else null — the UI then
+/// says "Backup saved" without a (possibly wrong) name.
+String? savedFileDisplayName(String? savedPath, String extension) {
+  if (savedPath == null || savedPath.isEmpty) return null;
+  var last = savedPath;
+  try {
+    last = Uri.decodeFull(savedPath);
+  } on ArgumentError {
+    // keep it raw
+  }
+  last = last.split('/').last.split(':').last.trim();
+  if (last.isEmpty || !last.toLowerCase().endsWith('.$extension')) return null;
+  if (last.length == extension.length + 1) return null; // just ".json"
+  return last;
 }
 
 // ── backup nudge (G5) ────────────────────────────────────────────────────────
@@ -250,8 +287,8 @@ const kBackupNudgeInterval = Duration(days: 30);
 
 /// The groups nobody else could restore: no **active claimed** participant
 /// other than [myMxid] (solo groups, or only local people). If this device is
-/// lost, these are gone unless backed up. (A second device of the same
-/// account would also help, but its existence isn't known here.)
+/// lost, these are gone unless backed up — or unless a second device of the
+/// same account holds them ([secondOwnDeviceProtects]).
 List<GroupModel> unprotectedGroups({
   required List<GroupModel> groups,
   required List<MemberModel> members,
@@ -265,6 +302,30 @@ List<GroupModel> unprotectedGroups({
     for (final g in groups)
       if (!protectedIds.contains(g.roomId)) g,
   ];
+}
+
+/// How recently another device of our own account must have proven it holds
+/// our groups (a matching digest / record from our own MXID) to count as a
+/// second copy for the nudge.
+const kOwnDeviceSeenWindow = Duration(days: 30);
+
+/// Whether another device of this account protects the solo groups too, so
+/// the backup nudge isn't needed (G34): one of our other current devices is
+/// **verified** ([otherVerifiedOwnDevice] — a device the user confirmed is
+/// theirs; it keeps every group in sync), or one of them proved within
+/// [kOwnDeviceSeenWindow] that it holds our state ([lastOwnDeviceInSyncAt]:
+/// the newest `lastInSyncAt` recorded for our own MXID — set when a digest
+/// from another own device matched ours).
+bool secondOwnDeviceProtects({
+  required bool otherVerifiedOwnDevice,
+  required int? lastOwnDeviceInSyncAt,
+  required int now,
+}) {
+  if (otherVerifiedOwnDevice) return true;
+  final seen = lastOwnDeviceInSyncAt;
+  return seen != null &&
+      seen > 0 &&
+      now - seen < kOwnDeviceSeenWindow.inMilliseconds;
 }
 
 /// Whether to show the backup nudge: there is an [unprotected] group, no

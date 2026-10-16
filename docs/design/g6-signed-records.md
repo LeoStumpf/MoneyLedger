@@ -198,7 +198,10 @@ Attestations relayed by another member for a known group are ignored. A `server`
 2. **Malicious inviter.** For a new member, the inviter can attest fake keys, so those records show as "vouched". This is no worse than today, where the inviter's bootstrap is TOFU-accepted wholesale.
 3. **Homeserver.** It can add devices for its own users. *G11 (opt-in):* "Only sync with verified devices" sends nothing to a device we never emoji-verified, and the details dialog says whether the signing device was verified by us; inbound records are still accepted (not refused).
 4. **Mixed mode.** v1 peers verify nothing and strip signatures when they relay (§9).
-5. **Disagreement between honest devices.** An honest device that accepted M's fabricated-device version as "unverified", while another device that knew a conflicting pin rejected it, can end up holding different versions. The `rejected` digest map stops the repair loop and both sides surface it in the UI. Divergence beats accepting a provable forgery.
+5. **Disagreement between honest devices.** An honest device that accepted M's fabricated-device version as "unverified", while another device that knew a conflicting pin rejected it, can end up holding different versions. The `rejected` digest map stops the repair loop and both sides surface it in the UI. Divergence beats accepting a provable forgery. It is **not auto-resolved** — it lasts until the record is edited again (a newer verifiable version wins everywhere).
+6. **Legacy (pre-G6) rows can't be relayed** (G35, decided: no migration). Unsigned rows stay readable locally but are refused by every peer, so an old group can't onboard a new member or a new device (unsigned meta → whole snapshot refused; unsigned records → the group arrives incomplete). The app is unreleased and only the test groups have such rows, so there is no "re-sign as migrated" step; the test groups are recreated before the release. The receiver logs `[g6] refused unsigned …` and the groups page shows a dismissible hint naming the group and the sender (`RecordGate.onRefused` → `SyncHealth.reportLegacyRefused`).
+
+**Status (G35 review).** Risks 1–3 and 5 are accepted for v1 and listed in `docs/open-points.md`. 1 and 2 **need cross-signing** (future item: set up cross-signing for in-app accounts, then treat SSK-signed devices as verified and, optionally, refuse unknown devices of accounts that have it); G11's opt-in verified-only sync narrows 3 for outbound data only.
 
 ## 6. Reception policy
 
@@ -230,6 +233,8 @@ Attestations relayed by another member for a known group are ignored. A `server`
 
 - A valid signature with a key status of `unverified` or `vouched`.
 - (Backup restore only: unsigned rows of the user's own file are restored as legacy.)
+
+**Backup restore (G35).** A restore verifies like any snapshot, but the homeserver lookups come **first** (`RecordVerifier.prefetch` for every signer in the file, one call); each group is then applied inside **one DB transaction** with no network round-trips, so a group is restored completely or not at all (a failure rolls it back, including the cleared left-group tombstone; other groups of the file are independent).
 
 **Signer policy.**
 

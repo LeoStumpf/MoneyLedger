@@ -41,6 +41,7 @@ class RecordGate {
     required this.expenses,
     this.acceptUnsigned = false,
     bool Function()? isAlive,
+    this.onRefused,
   }) : _isAlive = isAlive ?? (() => true);
 
   final RecordVerifier verifier;
@@ -50,6 +51,16 @@ class RecordGate {
   final ExpensesDao expenses;
   final bool acceptUnsigned;
   final bool Function() _isAlive;
+
+  /// Called for every refused version (after logging) — the syncer uses it
+  /// to surface refused **unsigned** (pre-G6) records to the user (G35).
+  final void Function(
+    String groupId,
+    RecordKind kind,
+    RejectReason reason,
+    String relayedBy,
+  )?
+  onRefused;
 
   /// Clamp for the unsigned (restored legacy) clocks — same bound as
   /// `LedgerSyncer.clampInboundClock`.
@@ -88,6 +99,7 @@ class RecordGate {
       '[g6] refused ${kind.wire} $id@$updatedAt in $group '
       '(${reason.wire}, via $relayedBy, signer ${sig?.user}/${sig?.device})',
     );
+    onRefused?.call(group, kind, reason, relayedBy);
     if (!reason.recorded || !_isAlive()) return;
     await signing.recordRejected(
       RefusedVersion(

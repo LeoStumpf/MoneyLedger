@@ -20,6 +20,7 @@ The version-exact list of all packages (direct and transitive) is in
 | `vodozemac` (Dart API — Ed25519 verify for signed records, G6) | 0.8.0 | **AGPL-3.0** |
 | `canonical_json` (signed-record encoding, G6) | 1.1.3 | Apache-2.0 |
 | `crypto` (SHA-256 for signed records, G6) | 3.0.7 | BSD-3-Clause |
+| `cryptography` (Argon2id + AES-256-GCM for encrypted backups, G34; pure-Dart implementations only) | 2.9.0 | Apache-2.0 |
 | `flutter`, `flutter_localizations` (SDK) | 3.44 | BSD-3-Clause |
 | `go_router`, `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
 | `sqflite` | 2.4.4+2 | BSD-2-Clause |

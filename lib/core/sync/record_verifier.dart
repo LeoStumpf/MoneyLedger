@@ -163,6 +163,37 @@ class RecordVerifier {
     return pins.any((p) => p.isServer);
   }
 
+  /// Looks up the current devices of all [users] in one homeserver call (and
+  /// pins them as first-hand) **before** a batch of verifications — so a
+  /// backup restore can then verify a whole group inside one DB transaction
+  /// without network round-trips (G35). Until [refreshInterval] passes, the
+  /// verifications use this result; an unreachable server counts as "no
+  /// answer" for each user (like a failed on-demand lookup).
+  Future<void> prefetch(Set<String> users) async {
+    if (users.isEmpty) return;
+    final now = _clock();
+    Map<String, Map<String, String>>? all;
+    try {
+      all = await directory.currentDevices(users).timeout(directoryTimeout);
+    } catch (_) {
+      all = null;
+    }
+    for (final u in users) {
+      _refreshedAt[u] = now;
+      if (all == null) {
+        _lastDevices.remove(u);
+      } else {
+        _lastDevices[u] = all[u] ?? const <String, String>{};
+      }
+    }
+    if (all != null && all.isNotEmpty) {
+      await signing.pinServerKeys({
+        for (final e in all.entries)
+          if (e.value.isNotEmpty) e.key: e.value,
+      });
+    }
+  }
+
   /// [user]'s current devices from the homeserver (pinned as first-hand),
   /// at most one lookup per [refreshInterval]; null when unreachable.
   Future<Map<String, String>?> _currentDevices(String user) async {

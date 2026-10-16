@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
@@ -11,6 +12,7 @@ import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_gate.dart';
 import '../../core/sync/record_verifier.dart';
+import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
 import '../onboarding/onboarding_provider.dart';
 import 'ledger_backup.dart';
@@ -47,13 +49,19 @@ class BackupService {
 
   bool get _alive => !db.isClosed;
 
-  /// The backup JSON for every local group of this account.
+  /// The backup JSON for every local group of this account — or, with
+  /// [onlyGroup] (G34 per-group backup from the group menu), for that one
+  /// group (same format, a single entry in `groups`).
   Future<String> exportJson({
     required String? account,
     required int now,
+    String? onlyGroup,
   }) async {
     final snapshots = <GroupSnapshot>[];
-    for (final g in await groups.getAllGroups()) {
+    final all = await groups.getAllGroups();
+    for (final g in all.where(
+      (g) => onlyGroup == null || g.roomId == onlyGroup,
+    )) {
       if (!_alive) throw StateError('account switched during export');
       final ms = await members.getMembers(g.roomId);
       final es = await expenses.getAllExpensesForGroup(g.roomId);
@@ -128,6 +136,13 @@ class BackupService {
           isNew: local == null,
           wasLeft: local == null && left != null,
           changes: changes,
+          removed: myMxid != null && myMxid.isNotEmpty
+              ? backupShowsMeRemoved(
+                  g,
+                  myMxid: myMxid,
+                  local: await members.getMembers(gid),
+                )
+              : false,
         ),
       );
     }
@@ -142,30 +157,39 @@ class BackupService {
     );
   }
 
-  /// Merges [backup] into the local ledger: per group, in one transaction,
-  /// the same last-writer-wins upserts the syncer applies to a `bootstrap`
-  /// (by stable id; tombstones win when newer) — so a restore is idempotent
-  /// and never duplicates. Restoring is an explicit user intent, so there is
-  /// no membership gate, and a group this account had left/deleted here has
-  /// its left-group tombstone cleared first (otherwise the syncer would keep
-  /// dropping its records). Returns the ids of the restored groups.
+  /// Merges [backup] into the local ledger: per group, in **one
+  /// transaction**, the same last-writer-wins upserts the syncer applies to a
+  /// `bootstrap` (by stable id; tombstones win when newer) — so a restore is
+  /// idempotent and never duplicates, and a group is restored completely or
+  /// not at all. Restoring is an explicit user intent, so there is no
+  /// membership gate, and a group this account had left/deleted here has its
+  /// left-group tombstone cleared (otherwise the syncer would keep dropping
+  /// its records). Returns the ids of the restored groups.
   ///
   /// G6: every signed version is verified like an inbound record
   /// ([RecordGate]); a tampered one is refused, the rest restore. The file's
   /// `device_keys` are trusted as vouched-for keys (the user chose the
   /// file), and unsigned rows (pre-G6 history in the user's own backup) are
-  /// restored as legacy. (Not in one transaction: verifying may look up
-  /// device keys on the homeserver.)
+  /// restored as legacy.
+  ///
+  /// G35: the homeserver lookups verification needs happen **first**, for
+  /// every signer in the file ([RecordVerifier.prefetch]); the per-group
+  /// transactions then run without network round-trips. A group whose
+  /// transaction fails is rolled back and the others still restore; the
+  /// failures are reported together at the end ([RestoreIncompleteException]).
   Future<List<String>> restore(LedgerBackup backup) async {
     final restored = <String>[];
     final t = await transport;
     if (!_alive) return restored;
+    final verifier = RecordVerifier(
+      crypto: t.crypto,
+      directory: t.deviceKeys,
+      signing: signing,
+      // Long enough to cover the whole restore: no lookups mid-transaction.
+      refreshInterval: const Duration(minutes: 10),
+    );
     final gate = RecordGate(
-      verifier: RecordVerifier(
-        crypto: t.crypto,
-        directory: t.deviceKeys,
-        signing: signing,
-      ),
+      verifier: verifier,
       signing: signing,
       groups: groups,
       members: members,
@@ -173,20 +197,95 @@ class BackupService {
       acceptUnsigned: true,
       isAlive: () => _alive,
     );
+    await verifier.prefetch({
+      for (final g in backup.groups) ...payloadSignerUsers(g),
+    });
+    final failed = <String, Object>{};
     for (final g in backup.groups) {
       if (!_alive) return restored;
       final gid = g['group'] as String;
-      await settings.clearGroupLeft(gid);
+      try {
+        await db.transaction(() async {
+          await settings.clearGroupLeft(gid);
+          if (!_alive) return;
+          await gate.snapshot(
+            g,
+            relayedBy: backup.account ?? t.userId,
+            trustAttestations: true,
+          );
+        });
+      } catch (e) {
+        if (!_alive) return restored;
+        debugPrint('[backup] restore of $gid failed, rolled back: $e');
+        failed[gid] = e;
+        continue;
+      }
       if (!_alive) return restored;
-      await gate.snapshot(
-        g,
-        relayedBy: backup.account ?? t.userId,
-        trustAttestations: true,
-      );
       if (await groups.getGroup(gid) != null) restored.add(gid);
+    }
+    if (failed.isNotEmpty) {
+      throw RestoreIncompleteException(restored: restored, failed: failed);
     }
     return restored;
   }
+}
+
+/// Some groups of a backup couldn't be restored (each was rolled back as a
+/// whole); [restored] went through.
+class RestoreIncompleteException implements Exception {
+  final List<String> restored;
+  final Map<String, Object> failed;
+  const RestoreIncompleteException({
+    required this.restored,
+    required this.failed,
+  });
+
+  @override
+  String toString() =>
+      '${failed.length} group(s) not restored: ${failed.values.first}';
+}
+
+/// Every account that signed a version in a backed-up group payload (`sig`
+/// and `origin` of its meta, members, expenses and settlements).
+Set<String> payloadSignerUsers(Map<String, dynamic> group) {
+  final users = <String>{};
+  void add(Object? record) {
+    if (record is! Map) return;
+    for (final k in const ['sig', 'origin']) {
+      final s = record[k];
+      if (s is Map && s['user'] is String) users.add(s['user'] as String);
+    }
+  }
+
+  add(group['meta']);
+  for (final section in const ['members', 'expenses', 'settlements']) {
+    for (final r in group[section] as List? ?? const []) {
+      add(r);
+    }
+  }
+  return users;
+}
+
+/// Whether restoring backed-up [group] leaves this account ([myMxid]) as a
+/// **removed** participant — the newer of the backup's and the [local]
+/// version of the participant [myMxid] claims says `removed`. Such a group
+/// comes back as read-only history (G26); peers that removed us *after* the
+/// backup can only tell us at the next sync (then it turns read-only too).
+bool backupShowsMeRemoved(
+  Map<String, dynamic> group, {
+  required String myMxid,
+  required List<MemberModel> local,
+}) {
+  // LWW-merge the local and the backed-up participants, as the restore will.
+  final merged = {for (final m in local) m.userId: m};
+  for (final raw in group['members'] as List? ?? const []) {
+    final m = memberFromPayload(Map<String, dynamic>.from(raw as Map));
+    if (m == null) continue;
+    final have = merged[m.userId];
+    if (have == null || m.updatedAt > have.updatedAt) merged[m.userId] = m;
+  }
+  final me = claimedBy(merged.values, myMxid);
+  return me != null && !me.isActive;
 }
 
 class GroupRestorePlan {
@@ -199,11 +298,16 @@ class GroupRestorePlan {
 
   /// Records the restore would add or update (0 = already up to date).
   final int changes;
+
+  /// This account is a removed participant after the restore (backup or
+  /// local copy, whichever is newer) — the group comes back read-only.
+  final bool removed;
   const GroupRestorePlan({
     required this.summary,
     required this.isNew,
     required this.wasLeft,
     required this.changes,
+    this.removed = false,
   });
 }
 

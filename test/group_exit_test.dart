@@ -194,6 +194,7 @@ void main() {
     await tester.tap(find.byTooltip('More'));
     await tester.pumpAndSettle();
     expect(find.text('Export CSV'), findsOneWidget);
+    expect(find.text('Back up this group'), findsOneWidget); // G34
     expect(find.text('Delete group'), findsNothing);
     await tester.runAsync(() async {
       await tester.tap(find.text('Leave group'));

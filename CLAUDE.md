@@ -26,6 +26,7 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 - [`package_info_plus`](https://pub.dev/packages/package_info_plus) 10.x — app version on the About page
 - [`file_picker`](https://pub.dev/packages/file_picker) 13.x — CSV/backup save + open (static `FilePicker.saveFile` / `pickFile`, web download included)
 - `vodozemac` (Ed25519 verify), [`canonical_json`](https://pub.dev/packages/canonical_json) + [`crypto`](https://pub.dev/packages/crypto) (SHA-256) — G6 signed records
+- [`cryptography`](https://pub.dev/packages/cryptography) 2.9 (Apache-2.0) — encrypted backups (G34): its **pure-Dart** `DartArgon2id` + `DartAesGcm` on every platform
 
 **License: AGPL-3.0-or-later** (`LICENSE`; `matrix` + `flutter_vodozemac` are
 AGPL). Dependency licenses: `THIRD_PARTY_NOTICES.md` — update it when adding a
@@ -178,7 +179,8 @@ lib/
       balance_provider.dart    # Riverpod: watches Drift streams, recomputes on change
       record_payment_dialog.dart # G28 "X paid Y" dialog (any two participants)
     backup/                    # Full JSON backup (G5) + CSV export/import (Phase D, G13) — see "Backup" below
-      ledger_backup.dart       # Pure-Dart backup codec (buildBackupJson / parseBackup) + nudge logic
+      ledger_backup.dart       # Pure-Dart backup codec (buildBackupJson / parseBackup) + nudge logic + file names
+      backup_crypto.dart       # G34: optional passphrase encryption (Argon2id + AES-256-GCM wrapper)
       backup_service.dart      # BackupService: export all groups / preview / restore (DB seam)
       backup_providers.dart    # last-backup + nudge providers (backupNudgeProvider)
       backup_ui.dart           # settings-sheet section, restore + CSV preview dialogs, nudge card
@@ -356,7 +358,16 @@ Matrix **Ed25519 fingerprint key** (vodozemac olm account,
   conflicts and someone posing as us.
 - Rows from before G6 (schema ≤ 5) are **grandfathered** as legacy/unsigned
   locally; peers refuse them if relayed (they can't be bootstrapped to new
-  members/devices — re-edit to sign). Residual risks: `docs/open-points.md`.
+  members/devices). **Decided (G35): no migration / re-sign step** — the app
+  is unreleased and only the test groups have such rows; they get
+  **recreated before the release**. The refusal is visible on the receiving
+  side: `RecordGate.onRefused` → `LedgerSyncer` logs `[g6] refused unsigned
+  …` and calls `SyncHealth.reportLegacyRefused` → dismissible groups-page
+  banner "Some data couldn't be received … ask X to recreate the group"
+  (`SyncHealthState.legacyRefusals`, session-only, never a sync failure).
+- Residual risks (fabricated device ids / malicious inviter → **need
+  cross-signing**, future; homeserver-added devices; divergence by
+  disagreement, not auto-resolved): `docs/open-points.md` + design doc §5.4.
 
 **Leaving / deleting a group (G9).** The expenses app bar's overflow menu (⋮,
 next to *Export CSV*) offers **Leave group** when this account is an active
@@ -559,8 +570,8 @@ merges one back. `lib/features/backup/`: `ledger_backup.dart` is the pure codec
 (+ the nudge logic), `backup_service.dart` (`BackupService`,
 `backupServiceProvider`) the DB seam, `backup_ui.dart` the UI.
 
-**Format** (`moneyledger-backup-YYYY-MM-DD.json`, pretty-printed, plain text —
-**not encrypted**, the export tile and the privacy policy say so):
+**Format** (`moneyledger-backup-YYYY-MM-DD.json`, pretty-printed, plain text
+unless a passphrase is set — see *Encrypted backups* below):
 
 ```json
 { "format": "moneyledger-backup", "version": 1, "exported_at": 1760000000000,
@@ -578,20 +589,32 @@ it only for incompatible changes, keep old versions readable), `malformed`
 without id / `updated_at`) — mapped to localized messages
 (`backupErrorMessage`).
 
-**Restore** = pick → `BackupService.preview` (per group: new / left earlier /
-N records that are absent or older locally / up to date; totals; *other
-account* warning when `account` ≠ the signed-in MXID) → confirm →
-`BackupService.restore`: per group, `RecordGate.snapshot` — the syncer's own
-verifying apply path (**LWW by stable id**, tombstones win when newer) —
-idempotent, re-restoring is a no-op. **G6:** every signed version is
+**Restore** = pick → (encrypted → passphrase, see below) →
+`BackupService.preview` (per group: new / left earlier / *read-only — you
+were removed* (`backupShowsMeRemoved`: the newer of backup and local copy of
+our participant is `removed`) / N records that are absent or older locally /
+up to date; totals; *other account* warning when `account` ≠ the signed-in
+MXID) → confirm → `BackupService.restore`: per group, **one DB transaction**
+(G35) around `RecordGate.snapshot` — the syncer's own verifying apply path
+(**LWW by stable id**, tombstones win when newer) — idempotent, re-restoring
+is a no-op. The homeserver lookups verification needs run **before** the
+transactions (`RecordVerifier.prefetch` for every signer in the file; the
+restore verifier caches them 10 min), so a group is restored completely or
+not at all; a failing group is rolled back (incl. its cleared left-group
+tombstone), the others still restore, and `RestoreIncompleteException`
+reports it ("N groups couldn't be restored and were left unchanged").
+**G6:** every signed version is
 **verified** like an inbound record (a tampered one is refused, the rest
 restores); the file's `device_keys` are trusted as vouched-for keys (the user
 chose the file); unsigned rows (pre-G6 history) are restored as legacy. Export
 includes `pending_sign` rows (unsigned) and the attestations. User
 intent, so **no membership gate**; a group this account had **left/deleted**
 here gets its `LeftGroupTombstone` cleared first (else the syncer would keep
-dropping it). If the peers have us `removed` with a newer clock, digest gossip
-turns it into read-only history again (G26) — documented in the preview. After
+dropping it). If the peers have us `removed` with a newer clock, the next
+digest exchange turns it into read-only history again (G26; rule 6 answers
+our digest with the `removed` record) — the preview says so, and
+`test/integration/backup_restore_sync_test.dart` covers restore → digest →
+read-only with no repair loop. After
 the restore every restored group gets a `SyncEngine.pokeGroup` (digest →
 normal anti-entropy repair with peers; best-effort). Backups of **another
 account** are allowed (warning): their groups land in this account's DB, where
@@ -605,15 +628,66 @@ so dialogs and snackbars aren't hidden under it. The groups page shows a
 dismissible `BackupNudgeCard` (`backupNudgeProvider`) when some group has **no
 other active claimed member** (`unprotectedGroups`) and there was no backup in
 `kBackupNudgeInterval` (30 days); *Later* snoozes it 30 days
-(`backup_nudge_snoozed_until`). A second device of our own would also protect
-those groups, but isn't detected (open point).
+(`backup_nudge_snoozed_until`). **G34:** no nudge when a **second device of
+our own** holds the groups too — pure `secondOwnDeviceProtects`: another
+current own device is **verified** (`myDevicesProvider`, SDK or G11 record)
+or one proved within `kOwnDeviceSeenWindow` (30 days) that it holds our
+state (newest `PeerSyncStates.lastInSyncAt` for our own MXID —
+`SyncStatesDao.watchLatestInSyncWith`; a matching digest from another own
+device sets it). `ownDeviceProtectionProvider` is null while loading (nudge
+hidden); the device list failing (offline) counts as "no verified device".
+Widget tests: `testOverrides` sets it to false.
 
 **Files:** `backup_files.dart` (`saveTextFile` / `pickTextFile`,
-`LedgerFileKind.csv|backup`) — native: file_picker save dialog (returns false
-when cancelled → no `last_backup_at`); web: file_picker's own download mode
-(returns null → treated as saved; the custom Blob glue went with G22).
-Backups are picked without an extension filter (Android doesn't map `.json`
-reliably); the parser rejects wrong files.
+`LedgerFileKind.csv|backup`) — native: file_picker save dialog (returns null
+when cancelled → no `last_backup_at`, else `SavedFile(path)`); web:
+file_picker's own download mode (always "saved", no path; the custom Blob
+glue went with G22). Backups are picked without an extension filter (Android
+doesn't map `.json` reliably); the parser rejects wrong files. **Saved name
+(G34):** Android may rename (`… (1).json`) — the snackbar shows
+`savedFileDisplayName(path)` (last path segment, only if it ends in the
+extension; the Downloads provider returns `msf:<id>` → neutral "Backup
+saved" / "CSV exported" without a possibly wrong name; web: the proposed
+name). Same for the CSV export.
+
+**Per-group backup (G34):** group ⋮ → *Back up this group* →
+`exportGroupBackup` → `exportJson(onlyGroup:)`: the same format with one
+entry in `groups`, file `moneyledger-backup-<slug>-YYYY-MM-DD.json`
+(`fileNameSlug`: lower case, letters incl. umlauts + digits, ≤ 40 chars).
+Doesn't update `last_backup_at` (it doesn't protect the other groups).
+**Leave/delete dialog:** its *Back up all groups first* runs
+`runBackupExport` and shows the outcome **inside** the dialog
+(`exitBackupResult`) — a snackbar would be hidden behind it.
+
+**Encrypted backups (G34).** Every export (settings, nudge, group menu,
+leave dialog) first shows `BackupPassphraseDialog`: optional passphrase +
+confirmation + strength hint (`passphraseStrength`, heuristic); empty →
+plaintext as before, with the "not encrypted" warning. `backup_crypto.dart`
+(pure Dart, `cryptography` package, **pure-Dart implementations on every
+platform** — same behaviour on Android and web, no platform channel):
+
+```json
+{ "format": "moneyledger-backup-encrypted", "version": 1,
+  "kdf": { "name": "argon2id", "memory_kib": 32768, "iterations": 3,
+           "parallelism": 1, "salt": "<b64 16 B>" },
+  "cipher": { "name": "aes-256-gcm", "nonce": "<b64 12 B>" },
+  "ciphertext": "<b64 ciphertext ‖ 16-byte tag>" }
+```
+
+The plaintext is the normal backup JSON; the header (key-sorted JSON of
+format/version/kdf/cipher) is the AES-GCM associated data, so changing a
+parameter fails like a wrong passphrase. Parameters are read from the file
+(bounded: ≤ 256 MiB, ≤ 16 passes, ≤ 8 lanes — a crafted file can't make us
+allocate gigabytes), so the defaults (`BackupKdfParams.standard`) can be
+raised later without breaking old files. Measured (encrypt, incl. KDF):
+0.8 s Pixel 4a, 1.1 s emulator, 0.4 s desktop AOT, ≈ 2.1 s dart2js (node);
+decrypt is the same cost (logcat `[backup] encrypted in N ms`). Import:
+`isEncryptedBackup` → `unlockEncryptedBackup` (passphrase prompt; a wrong one —
+or a tampered file, GCM can't tell — → "Wrong passphrase … try again", loop
+until cancel) → `decryptBackup` → `parseBackup`. Key derivation runs behind a
+modal progress dialog (`DartArgon2id` yields to the event loop). Test seams:
+`backupKdfParamsProvider` (cheap params), `backupDecrypterProvider`,
+`backupFilePickerProvider`.
 
 ### Backup (CSV export/import — Phase D, G13)
 
