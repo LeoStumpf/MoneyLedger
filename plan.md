@@ -647,6 +647,21 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [ ] Decide: encrypt snapshot files (plaintext like the DB today)
 - [ ] Concurrent resets by two members converge per record (mix) — merge UI?
 
+### G59. Smarter split defaults (Leo, 2026-10-17) 🟡
+Switching split modes or editing amounts today starts from blanks; make the
+`SplitEditor` (`split_editor.dart`) do the obvious thing.
+- [ ] Switching mode prefills from the current split (Equal → Exact shows the
+      equal amounts, → Shares 1 each, → Percent the matching percentages;
+      on edit the stored split converts the same way)
+- [ ] Exact: an "auto / fill the rest" action — e.g. total 5 €, one person
+      2.50 € → the remaining 2.50 € is spread over the people left blank
+      (largest-remainder, `split_calculator.dart`); per-row "rest" button and
+      a status line "2.50 € left — distribute"
+- [ ] Percent: same "rest" for the last open person; Shares: +/- steppers
+- [ ] Changing the total keeps the chosen proportions where it makes sense
+      (Exact stays exact with a "doesn't add up" hint + one-tap rescale)
+- [ ] EN+DE, widget tests for each default / auto-fill path
+
 ---
 
 ## Execution queue (conductor process)
@@ -703,6 +718,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G47 — custom categories + dropdown
 - [x] G48 — restore points + revert
 - [x] G49 — expense date
+- [ ] G59 — smarter split defaults (prefill from current split, "fill the rest")
 - [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
 - [ ] G51 — Nostr spike
 - [ ] G52 — link groups implementation
