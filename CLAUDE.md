@@ -394,7 +394,8 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
   `localAdoptionKeyWaitProvider` = 30 s for the device key, else the sync
   engine signs before the first digest — without origin for edited rows),
   archive entries + attested keys copied, then the **local DB is wiped**,
-  `finishLocalAdoption(mxid)` (`lastAdoptedInto`), a groups-page banner, and
+  `finishLocalAdoption(mxid)` (`lastAdoptedInto`), the local DB's files are
+  deleted (G41, see below), a groups-page banner, and
   each adopted group is poked → the digest reaches our other devices (unknown
   group → resync → bootstrap). Inviting Matrix members afterwards = the normal
   G18 invite flow. Signing out later is the normal non-destructive logout.
@@ -402,9 +403,42 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
   count) → `AppDatabase.wipeAll()` + `endLocalProfile()` → login page. Starting
   local mode again (also after an adoption) starts with an empty ledger; the
   setup page says where earlier local groups went (`lastAdoptedInto`).
-- Not done: a local-mode backup restored into a Matrix account keeps its rows
-  unsigned/legacy and the `local:self` claim — use *Connect a Matrix account*
-  instead (open point).
+- **Local DB files (G41):** after *Delete local data* (`deleteLocalLedger`:
+  wipe → end profile → `invalidate(appDatabaseProvider)` → await the close)
+  and after a finished adoption (the adoption's own instance closed), the
+  `money_ledger_local` files are deleted via `localDatabaseDeleterProvider`
+  → `LocalLedgerFiles` (`account_database.dart`): it tracks every instance
+  `openLocalDatabase` handed out, **refuses while one is still open**
+  (logged, files kept), awaits each close, then `deleteDatabase` (native
+  `.sqlite` + `-wal`/`-shm`/`-journal`; web: drift probe). An open during the
+  deletion connects only after it (`AppDatabase.named(after:)` →
+  `LazyDatabase`), so starting local mode again gets a fresh DB. Tests:
+  `test/core/local_ledger_files_test.dart`, `local_mode_test.dart`.
+- **Backups across the boundary (G41)** — `BackupService.restore`,
+  `restoreTakeover(backup.account, me)`:
+  - a **local-mode backup** (`account` = `local:self`) restored into a Matrix
+    account = the adoption above, per group **inside the restore
+    transaction**: `reclaimGroupInPlace(from: local:self, to: mxid,
+    signLater: true)` (same `reclaimedMember` / `nextLwwClock` as
+    `adoptedMember`; every unsigned row → `pendingSign`), then after the
+    transactions `signAdoptedGroups` (shared with `adoptLocalLedger`;
+    `signPendingRows(originIfMissing: true)`, "added by" included). Key not
+    ready → the sync engine signs before the first digest. Also applied to a
+    group of any backup that still holds a `local:self` claim. The preview
+    says so (`RestoreTakeover.localIntoAccount`, `restoreLocalIntoAccount`;
+    no "other account" warning);
+  - a **Matrix backup restored in local mode**: signatures are verified
+    (`LocalOnlyTransport` verifies Ed25519 via `verifyEd25519` — no Matrix
+    client needed; before G41 it refused every signature, so nothing was
+    restored), then the participant claimed by the backup's account is
+    re-claimed by `local:self` (`reclaimGroupInPlace(signLater: false)`;
+    never a second "me": skipped when `local:self` already claims an active
+    participant) — the user is "me" there; nothing is sent. *Connect a
+    Matrix account* later adopts it back (same account → peers accept it;
+    another account → peers ignore it as a non-member). Preview:
+    `restoreAccountIntoLocal`;
+  - a local backup in local mode / a Matrix backup into an account: unchanged.
+  Tests: `test/features/local_backup_restore_test.dart`.
 
 ### Data Flow
 

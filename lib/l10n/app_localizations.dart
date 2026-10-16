@@ -1928,6 +1928,18 @@ abstract class AppLocalizations {
   /// **'This backup was made by {account}. Its groups will be added to the account you are signed in with.'**
   String restoreOtherAccount(String account);
 
+  /// G41 restore preview: a local-mode backup is restored into a signed-in Matrix account.
+  ///
+  /// In en, this message translates to:
+  /// **'This backup was made without a Matrix account. Restoring it moves its groups into {account}: you become their member there, and this device signs your entries so they can sync.'**
+  String restoreLocalIntoAccount(String account);
+
+  /// G41 restore preview: a Matrix account's backup is restored in local mode (no account).
+  ///
+  /// In en, this message translates to:
+  /// **'This backup belongs to the Matrix account {account}. Here you take that account\'s place in its groups; nothing is sent. Connect {account} later to sync them again.'**
+  String restoreAccountIntoLocal(String account);
+
   /// No description provided for @groupsCount.
   ///
   /// In en, this message translates to:

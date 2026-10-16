@@ -233,12 +233,12 @@ today: another claimed account can't adopt it anymore. A per-group adoption
 for further accounts would be needed to make use of it (test devices only).
 
 ### Local mode / welcome (G39 / G40) — limits
-- A **backup made in local mode** restored into a Matrix account keeps its
-  rows unsigned (restored as legacy, G35 — peers refuse them if relayed) and
-  the user's participant stays claimed by `local:self` (not offered by the
-  "Which participant are you?" picker). The supported path is *Connect a
-  Matrix account* (adoption signs and re-claims). A restore that applies the
-  same adoption transform would fix it.
+- (G41, done) A backup made in local mode restored into a Matrix account is
+  adopted like *Connect a Matrix account* (re-claim + sign); a Matrix backup
+  restored in local mode makes the user that account's participant locally.
+  Limit: restored into a **different** account than the backup's, the
+  re-claimed participant is only ours locally — peers ignore it (non-member),
+  like any other-account restore.
 - The adoption waits up to 30 s for the new device's signing key; if it isn't
   ready, the sync engine signs the rows later — records edited in local mode
   then have no creation statement ("added by" missing; they still verify).
@@ -249,8 +249,9 @@ for further accounts would be needed to make use of it (test devices only).
   as soon as an account is connected).
 - Existing installs: the device-wide `welcome_seen` flag starts unset, so a
   user who signs out after the update sees the welcome once.
-- The local DB file stays on disk (empty) after *Delete local data* / an
-  adoption — rows are wiped, the file is reused by the next local profile.
+- (G41) The local DB files are deleted after *Delete local data* / an
+  adoption — unless some instance is still open at that moment (logged, kept;
+  the next deletion takes it). No start-up sweep for leftovers.
 
 ### Smaller items
 - Balance page suggested payments are one line (G33 `NamesLine`): on a phone

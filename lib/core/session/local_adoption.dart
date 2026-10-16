@@ -15,8 +15,10 @@
 ///    unsigned versions (G6), so without this an adopted group could never
 ///    be relayed.
 ///
-/// Afterwards the local DB is wiped (local mode would start empty again) and
-/// the device preferences say where the data went.
+/// Afterwards the local DB is wiped and (G41) its files deleted — local mode
+/// would start empty again — and the device preferences say where the data
+/// went. A backup made in local mode gets the same treatment when it is
+/// restored into an account ([reclaimGroupInPlace], `BackupService.restore`).
 library;
 
 import 'dart:async';
@@ -27,6 +29,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/expenses_provider.dart';
+import '../../models/expense_model.dart';
+import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../database/app_database.dart';
 import '../database/daos/expenses_dao.dart';
@@ -98,30 +102,18 @@ Future<LocalAdoptionResult> adoptLocalLedger({
 
   await target.transaction(() async {
     for (final g in groups) {
-      await to.groups.upsertGroupLww(
-        groupCompanion(g.sig == null ? g.withSigning(pendingSign: true) : g),
-      );
+      await to.groups.upsertGroupLww(groupCompanion(_groupToSign(g)));
       for (final m in await from.members.getMembers(g.roomId)) {
         await to.members.upsertMemberLww(
           memberCompanion(adoptedMember(m, mxid)),
         );
       }
       for (final e in await from.expenses.getAllExpensesForGroup(g.roomId)) {
-        await to.expenses.upsertExpenseLww(
-          expenseCompanion(
-            e.sig == null
-                ? e.withSigning(origin: e.origin, pendingSign: true)
-                : e,
-          ),
-        );
+        await to.expenses.upsertExpenseLww(expenseCompanion(_expenseToSign(e)));
       }
       for (final s in await from.expenses.getAllSettlementsForGroup(g.roomId)) {
         await to.expenses.upsertSettlementLww(
-          settlementCompanion(
-            s.sig == null
-                ? s.withSigning(origin: s.origin, pendingSign: true)
-                : s,
-          ),
+          settlementCompanion(_settlementToSign(s)),
         );
       }
       final archive = archives[g.roomId];
@@ -137,34 +129,128 @@ Future<LocalAdoptionResult> adoptLocalLedger({
     );
   });
 
-  var signed = 0;
-  var allSigned = true;
   final ids = [for (final g in groups) g.roomId];
-  if (crypto != null && crypto.identity != null) {
-    for (final id in ids) {
-      if (!alive()) break;
-      signed += await signPendingRows(
-        crypto: crypto,
-        groups: to.groups,
-        members: to.members,
-        expenses: to.expenses,
-        groupId: id,
-        isAlive: alive,
-        originIfMissing: true,
-      );
-    }
-  } else {
-    allSigned = ids.isEmpty;
-  }
+  final signed = await signAdoptedGroups(
+    crypto: crypto,
+    groups: to.groups,
+    members: to.members,
+    expenses: to.expenses,
+    groupIds: ids,
+    isAlive: alive,
+  );
   if (!alive()) return LocalAdoptionResult.nothing;
   // Everything lives in the account DB now — local mode starts empty again.
   await local.wipeAll();
   return LocalAdoptionResult(
     groupIds: ids,
-    signed: signed,
-    allSigned: allSigned,
+    signed: signed ?? 0,
+    allSigned: signed != null || ids.isEmpty,
   );
 }
+
+/// Signs the adopted groups' `pendingSign` rows with [crypto] — creation
+/// statements included ("added by", `originIfMissing`): local mode never
+/// signed anything. Returns the number of rows signed, or null when
+/// [crypto] has no device key yet (the sync engine signs them before the
+/// first digest, without "added by" for records edited in local mode).
+/// Shared by "Connect a Matrix account" and restoring a local-mode backup
+/// into an account (G41).
+Future<int?> signAdoptedGroups({
+  required RecordCrypto? crypto,
+  required GroupsDao groups,
+  required MembersDao members,
+  required ExpensesDao expenses,
+  required Iterable<String> groupIds,
+  required bool Function() isAlive,
+}) async {
+  if (crypto == null || crypto.identity == null) return null;
+  var signed = 0;
+  for (final id in groupIds) {
+    if (!isAlive()) break;
+    signed += await signPendingRows(
+      crypto: crypto,
+      groups: groups,
+      members: members,
+      expenses: expenses,
+      groupId: id,
+      isAlive: isAlive,
+      originIfMissing: true,
+    );
+  }
+  return signed;
+}
+
+/// G41: the adoption step for a group that is **already** in the DB behind
+/// the DAOs — restored from a backup — instead of copied from the local
+/// ledger: every participant claimed by [from] becomes claimed by [to]
+/// ([reclaimedMember]); with [signLater], every unsigned row of the group is
+/// marked `pendingSign` as well (for [signAdoptedGroups]).
+///
+/// * Restoring a **local-mode backup into a Matrix account**: [from] =
+///   [kLocalAccountId], [to] = the MXID, [signLater] — the same result as
+///   "Connect a Matrix account" ([adoptLocalLedger]).
+/// * Restoring a **Matrix backup in local mode**: [from] = the backup's
+///   account, [to] = [kLocalAccountId], no [signLater] (nothing can be
+///   signed here; connecting an account later adopts as usual).
+///
+/// A participant isn't re-claimed when [to] already claims an active one in
+/// the group (no second "me"). Run it inside the restore's transaction.
+/// Returns whether a participant was re-claimed.
+Future<bool> reclaimGroupInPlace({
+  required GroupsDao groups,
+  required MembersDao members,
+  required ExpensesDao expenses,
+  required String groupId,
+  required String from,
+  required String to,
+  required bool signLater,
+}) async {
+  var reclaimed = false;
+  final all = await members.getMembers(groupId);
+  final mine = claimedBy(all, to);
+  final mayReclaim = mine == null || !mine.isActive;
+  for (final m in all) {
+    if (mayReclaim && m.matrixId == from) {
+      await members.upsertMemberLww(
+        memberCompanion(reclaimedMember(m, from: from, to: to)),
+      );
+      reclaimed = true;
+    } else if (signLater && m.sig == null && !m.pendingSign) {
+      await members.upsertMemberLww(
+        memberCompanion(m.withSigning(pendingSign: true)),
+      );
+    }
+  }
+  if (!signLater) return reclaimed;
+  final g = await groups.getGroup(groupId);
+  if (g != null && g.sig == null && !g.pendingSign) {
+    await groups.upsertGroupLww(groupCompanion(_groupToSign(g)));
+  }
+  for (final e in await expenses.getAllExpensesForGroup(groupId)) {
+    if (e.sig == null && !e.pendingSign) {
+      await expenses.upsertExpenseLww(expenseCompanion(_expenseToSign(e)));
+    }
+  }
+  for (final st in await expenses.getAllSettlementsForGroup(groupId)) {
+    if (st.sig == null && !st.pendingSign) {
+      await expenses.upsertSettlementLww(
+        settlementCompanion(_settlementToSign(st)),
+      );
+    }
+  }
+  return reclaimed;
+}
+
+// Unsigned versions wait for the adopting account's signature (same clock:
+// the signed copy is the same G27 version).
+GroupModel _groupToSign(GroupModel g) =>
+    g.sig == null ? g.withSigning(pendingSign: true) : g;
+
+ExpenseModel _expenseToSign(ExpenseModel e) =>
+    e.sig == null ? e.withSigning(origin: e.origin, pendingSign: true) : e;
+
+SettlementModel _settlementToSign(SettlementModel s) =>
+    s.sig == null ? s.withSigning(origin: s.origin, pendingSign: true) : s;
 
 /// [m] as adopted into [mxid]'s account: the participant claimed by local
 /// mode's pseudo account becomes claimed by [mxid] (a new LWW version — it
@@ -173,17 +259,30 @@ Future<LocalAdoptionResult> adoptLocalLedger({
 @visibleForTesting
 MemberModel adoptedMember(MemberModel m, String mxid) {
   if (isLocalAccountId(m.matrixId)) {
-    return MemberModel(
-      groupId: m.groupId,
-      userId: m.userId,
-      displayName: m.displayName,
-      matrixId: mxid,
-      status: m.status,
-      updatedAt: nextLwwClock(m.updatedAt),
-      pendingSign: true,
-    );
+    return reclaimedMember(m, from: kLocalAccountId, to: mxid);
   }
   return m.sig == null ? m.withSigning(pendingSign: true) : m;
+}
+
+/// [m] with its claim moved from account [from] to [to] (G40 / G41): the same
+/// participant (id, name, status — history untouched), a new LWW version
+/// ([nextLwwClock], it beats the old claim everywhere) that waits for a
+/// signature. Any other participant is returned unchanged.
+MemberModel reclaimedMember(
+  MemberModel m, {
+  required String from,
+  required String to,
+}) {
+  if (m.matrixId != from) return m;
+  return MemberModel(
+    groupId: m.groupId,
+    userId: m.userId,
+    displayName: m.displayName,
+    matrixId: to,
+    status: m.status,
+    updatedAt: nextLwwClock(m.updatedAt),
+    pendingSign: true,
+  );
 }
 
 /// How long the adoption waits for the new device's signing key (normally
@@ -224,6 +323,7 @@ final localLedgerAdoptionProvider = Provider<void>((ref) {
 
   // Captured before the first await (G19).
   final openLocal = ref.read(localDatabaseOpenerProvider);
+  final deleteLocal = ref.read(localDatabaseDeleterProvider);
   final transport = ref.read(ledgerTransportProvider.future)..ignore();
   final keyWait = ref.read(localAdoptionKeyWaitProvider);
   final prefs = ref.read(devicePrefsProvider.notifier);
@@ -249,6 +349,7 @@ final localLedgerAdoptionProvider = Provider<void>((ref) {
 
   Future<void> run() async {
     final local = openLocal();
+    var adopted = false;
     try {
       final crypto = await waitForKey();
       if (!alive()) return;
@@ -265,6 +366,7 @@ final localLedgerAdoptionProvider = Provider<void>((ref) {
         '(${r.signed} rows signed${r.allSigned ? '' : ', rest pending'})',
       );
       await prefs.finishLocalAdoption(mxid);
+      adopted = true;
       results.report(r);
       // Our other devices learn the groups from the digest (unknown group →
       // resync), invitees later through the normal invite flow.
@@ -276,6 +378,8 @@ final localLedgerAdoptionProvider = Provider<void>((ref) {
     } finally {
       await local.close();
     }
+    // G41: the (now empty) local ledger's files go too — once closed.
+    if (adopted) await deleteLocal();
   }
 
   unawaited(run());

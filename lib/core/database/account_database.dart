@@ -13,6 +13,7 @@
 /// G36).
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -93,7 +94,75 @@ bool shouldAdoptLegacy({
 
 /// Opens local mode's device-local ledger (G40) — no legacy adoption (the
 /// pre-G4 ledger belongs to Matrix accounts).
-AppDatabase openLocalDatabase() => AppDatabase.named(localDatabaseName);
+AppDatabase openLocalDatabase() => localLedgerFiles.open();
+
+/// Deletes local mode's ledger files (G41) once every instance is closed —
+/// after "Delete local data" and after the local ledger was adopted into an
+/// account. See [LocalLedgerFiles.delete].
+Future<bool> deleteLocalDatabase() => localLedgerFiles.delete();
+
+/// The production [LocalLedgerFiles] for [localDatabaseName].
+final localLedgerFiles = LocalLedgerFiles(
+  open: (after) => AppDatabase.named(localDatabaseName, after: after),
+  delete: () => deleteDatabase(localDatabaseName),
+);
+
+/// Local mode's ledger DB on disk (G41): opens it and deletes its files when
+/// local mode ends (data deleted, or adopted into an account) — an empty
+/// `money_ledger_local` must not stay behind.
+///
+/// Deleting is only safe on a **closed** database, so every instance [open]
+/// hands out is tracked: [delete] refuses (logs, returns false) while one is
+/// still open, else waits until each has finished closing and then removes
+/// the files (native: `.sqlite` + `-wal` / `-shm` / `-journal`; web: every
+/// stored copy, via drift's probe). An [open] during a deletion connects only
+/// once the deletion is done, so starting local mode again right away gets
+/// a fresh, empty DB.
+class LocalLedgerFiles {
+  LocalLedgerFiles({
+    required AppDatabase Function(Future<void>? after) open,
+    required Future<void> Function() delete,
+  }) : _openDb = open,
+       _deleteFiles = delete;
+
+  final AppDatabase Function(Future<void>? after) _openDb;
+  final Future<void> Function() _deleteFiles;
+  final _instances = <AppDatabase>{};
+  Future<void>? _deleting;
+
+  AppDatabase open() {
+    final db = _openDb(_deleting);
+    _instances.add(db);
+    return db;
+  }
+
+  /// Deletes the files if every instance is closed. True when deleted.
+  Future<bool> delete() async {
+    if (_instances.any((db) => !db.isClosed)) {
+      debugPrint('[local] ledger DB still open — its files are kept');
+      return false;
+    }
+    final closed = _instances.toList();
+    _instances.removeAll(closed);
+    // An open from here on waits for the deletion.
+    final done = Completer<void>();
+    final previous = _deleting;
+    _deleting = done.future;
+    try {
+      await previous;
+      for (final db in closed) {
+        await db.close(); // idempotent: waits for the close in progress
+      }
+      await _deleteFiles();
+      return true;
+    } catch (e) {
+      debugPrint('[local] deleting the local ledger DB failed: $e');
+      return false;
+    } finally {
+      done.complete();
+    }
+  }
+}
 
 /// Opens the ledger DB for [mxid], adopting the legacy global ledger on first
 /// open if applicable. The production `accountDatabaseOpenerProvider`.

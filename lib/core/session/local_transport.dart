@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../matrix/ed25519_verify.dart';
 import '../matrix/ledger_transport.dart';
 import 'app_session.dart';
 
@@ -12,8 +13,16 @@ import 'app_session.dart';
 /// [userId] is [kLocalAccountId], the claimant of the user's own participant
 /// ("me"); [profileName] answers the local profile's name for it, so a new
 /// group's creator is named like the user chose.
+///
+/// G41: signatures can still be **verified** ([verify], Ed25519 via
+/// vodozemac — no Matrix client needed), so a backup made with a Matrix
+/// account restores in local mode instead of being refused as forged.
 class LocalOnlyTransport implements LedgerTransport {
-  LocalOnlyTransport(this.profile);
+  LocalOnlyTransport(
+    this.profile, {
+    bool Function(String key, String message, String signature) verify =
+        verifyEd25519,
+  }) : crypto = _NoCrypto(verify);
 
   /// The local profile's display name.
   final String profile;
@@ -37,16 +46,18 @@ class LocalOnlyTransport implements LedgerTransport {
       isLocalAccountId(matrixId) ? normalizeProfileName(profile) : null;
 
   @override
-  final RecordCrypto crypto = const _NoCrypto();
+  final RecordCrypto crypto;
 
   @override
   DeviceKeyDirectory get deviceKeys => const _NoDirectory();
 }
 
 /// No device key: [identity] is null, so `LocalRecordSigner` stores every
-/// write `pendingSign` at once (no wait).
+/// write `pendingSign` at once (no wait). Verifying works (G41).
 class _NoCrypto implements RecordCrypto {
-  const _NoCrypto();
+  const _NoCrypto(this._verify);
+
+  final bool Function(String key, String message, String signature) _verify;
 
   @override
   SignerId? get identity => null;
@@ -56,7 +67,8 @@ class _NoCrypto implements RecordCrypto {
       throw StateError('Local mode has no device key');
 
   @override
-  bool verify(String key, String message, String signature) => false;
+  bool verify(String key, String message, String signature) =>
+      _verify(key, message, signature);
 }
 
 class _NoDirectory implements DeviceKeyDirectory {

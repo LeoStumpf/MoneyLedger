@@ -695,6 +695,24 @@
       }
     }
   },
+  "restoreLocalIntoAccount": "This backup was made without a Matrix account. Restoring it moves its groups into {account}: you become their member there, and this device signs your entries so they can sync.",
+  "@restoreLocalIntoAccount": {
+    "description": "G41 restore preview: a local-mode backup is restored into a signed-in Matrix account.",
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "restoreAccountIntoLocal": "This backup belongs to the Matrix account {account}. Here you take that account's place in its groups; nothing is sent. Connect {account} later to sync them again.",
+  "@restoreAccountIntoLocal": {
+    "description": "G41 restore preview: a Matrix account's backup is restored in local mode (no account).",
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
   "groupsCount": "{count, plural, =1{1 group} other{{count} groups}}",
   "@groupsCount": {
     "placeholders": {

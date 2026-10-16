@@ -38,6 +38,14 @@ final localDatabaseOpenerProvider = Provider<AppDatabase Function()>(
   (ref) => openLocalDatabase,
 );
 
+/// Deletes local mode's ledger files once every instance opened by
+/// [localDatabaseOpenerProvider] is closed (G41: after "Delete local data"
+/// and after an adoption). Returns whether they were deleted. Injectable
+/// with the opener.
+final localDatabaseDeleterProvider = Provider<Future<bool> Function()>(
+  (ref) => deleteLocalDatabase,
+);
+
 /// The **current account's** ledger database (Phase G4: one DB per Matrix
 /// account, see `account_database.dart`). Rebuilds when the signed-in account
 /// changes: the previous account's DB is closed and every DAO / stream /

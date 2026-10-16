@@ -188,6 +188,65 @@ void main() {
       expect(find.byKey(const Key('restorePreviewDialog')), findsNothing);
     });
 
+    testWidgets('G41: a local backup restored into an account is taken over', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        RestorePreview(
+          backup: backup(account: 'local:self'),
+          groups: [plan('Trip', isNew: true, changes: 4)],
+          otherAccount: false,
+          takeover: RestoreTakeover.localIntoAccount,
+          myAccount: '@lea:x.test',
+        ),
+      );
+      expect(find.byKey(const Key('restoreTakeover')), findsOneWidget);
+      expect(
+        find.textContaining('made without a Matrix account'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('into @lea:x.test'), findsOneWidget);
+      expect(find.byKey(const Key('restoreOtherAccount')), findsNothing);
+    });
+
+    testWidgets('G41: an account backup restored in local mode (German)', (
+      tester,
+    ) async {
+      bool? result;
+      await tester.pumpWidget(
+        testApp(
+          locale: const Locale('de'),
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => result = await showDialog<bool>(
+                context: context,
+                builder: (_) => RestorePreviewDialog(
+                  preview: RestorePreview(
+                    backup: backup(account: '@lea:x.test'),
+                    groups: [plan('Trip', isNew: true, changes: 4)],
+                    otherAccount: false,
+                    takeover: RestoreTakeover.accountIntoLocal,
+                    myAccount: 'local:self',
+                  ),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('restoreTakeover')), findsOneWidget);
+      expect(
+        find.textContaining('gehört zum Matrix-Konto @lea:x.test'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('restoreOtherAccount')), findsNothing);
+      expect(result, isNull);
+    });
+
     testWidgets('backup error messages are localized', (tester) async {
       expect(
         backupErrorMessage(

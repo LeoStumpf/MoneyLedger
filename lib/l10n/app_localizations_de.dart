@@ -1142,6 +1142,16 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String restoreLocalIntoAccount(String account) {
+    return 'Diese Sicherung wurde ohne Matrix-Konto erstellt. Beim Wiederherstellen übernimmt $account ihre Gruppen: Du wirst dort ihr Mitglied, und dieses Gerät signiert deine Einträge, damit sie synchronisiert werden können.';
+  }
+
+  @override
+  String restoreAccountIntoLocal(String account) {
+    return 'Diese Sicherung gehört zum Matrix-Konto $account. Hier nimmst du in ihren Gruppen den Platz dieses Kontos ein; es wird nichts gesendet. Verbinde später $account, um sie wieder zu synchronisieren.';
+  }
+
+  @override
   String groupsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

@@ -9,6 +9,8 @@ import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/session/app_session.dart';
+import '../../core/session/local_adoption.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_gate.dart';
 import '../../core/sync/record_verifier.dart';
@@ -97,6 +99,13 @@ class BackupService {
     LedgerBackup backup, {
     required String? myMxid,
   }) async {
+    final takeover = restoreTakeover(backup.account, myMxid);
+    // Whose participant becomes "me" (G41), for the removed check too.
+    final alias = switch (takeover) {
+      RestoreTakeover.localIntoAccount => kLocalAccountId,
+      RestoreTakeover.accountIntoLocal => backup.account,
+      RestoreTakeover.none => null,
+    };
     final plans = <GroupRestorePlan>[];
     for (final g in backup.groups) {
       if (!_alive) throw StateError('account switched during preview');
@@ -106,8 +115,9 @@ class BackupService {
       var changes = 0;
       final metaClock = g['updated_at'] as int? ?? 0;
       if (local == null || local.updatedAt < metaClock) changes++;
-      final localMembers = {
-        for (final m in await members.getMembers(gid)) m.userId: m.updatedAt,
+      final localMembers = await members.getMembers(gid);
+      final localMemberClocks = {
+        for (final m in localMembers) m.userId: m.updatedAt,
       };
       final localExpenses = {
         for (final e in await expenses.getAllExpensesForGroup(gid))
@@ -127,7 +137,7 @@ class BackupService {
         return n;
       }
 
-      changes += count('members', 'participant_id', localMembers);
+      changes += count('members', 'participant_id', localMemberClocks);
       changes += count('expenses', 'id', localExpenses);
       changes += count('settlements', 'id', localSettlements);
       plans.add(
@@ -136,20 +146,22 @@ class BackupService {
           isNew: local == null,
           wasLeft: local == null && left != null,
           changes: changes,
-          removed: myMxid != null && myMxid.isNotEmpty
-              ? backupShowsMeRemoved(
-                  g,
-                  myMxid: myMxid,
-                  local: await members.getMembers(gid),
-                )
-              : false,
+          removed: [myMxid, alias].any(
+            (id) =>
+                id != null &&
+                id.isNotEmpty &&
+                backupShowsMeRemoved(g, myMxid: id, local: localMembers),
+          ),
         ),
       );
     }
     return RestorePreview(
       backup: backup,
       groups: plans,
+      takeover: takeover,
+      myAccount: myMxid,
       otherAccount:
+          takeover == RestoreTakeover.none &&
           backup.account != null &&
           myMxid != null &&
           myMxid.isNotEmpty &&
@@ -177,10 +189,24 @@ class BackupService {
   /// transactions then run without network round-trips. A group whose
   /// transaction fails is rolled back and the others still restore; the
   /// failures are reported together at the end ([RestoreIncompleteException]).
+  ///
+  /// G41: a backup made in **local mode** (`account` = [kLocalAccountId])
+  /// restored into a Matrix account is adopted like "Connect a Matrix
+  /// account": in the same transaction the participant claimed by the local
+  /// pseudo account becomes claimed by this account and every unsigned row
+  /// of the group is marked `pendingSign` ([reclaimGroupInPlace]); after the
+  /// transactions this device signs them ([signAdoptedGroups], incl. "added
+  /// by") — or, if its key isn't ready, the sync engine does before the
+  /// first digest. A Matrix backup restored **in local mode** hands the
+  /// backup account's participant to the local pseudo account (the user is
+  /// "me" there; nothing can be signed or sent) — connecting that account
+  /// later adopts it back.
   Future<List<String>> restore(LedgerBackup backup) async {
     final restored = <String>[];
     final t = await transport;
     if (!_alive) return restored;
+    final takeover = restoreTakeover(backup.account, t.userId);
+    final adopted = <String>[];
     final verifier = RecordVerifier(
       crypto: t.crypto,
       directory: t.deviceKeys,
@@ -219,6 +245,9 @@ class BackupService {
           if (await groups.getGroup(gid) == null) {
             throw const _GroupNotRestored();
           }
+          if (await _takeOver(gid, takeover, backup.account, t.userId)) {
+            adopted.add(gid);
+          }
         });
       } on _GroupNotRestored {
         debugPrint('[backup] $gid not restored: its group meta was refused');
@@ -232,11 +261,94 @@ class BackupService {
       if (!_alive) return restored;
       if (await groups.getGroup(gid) != null) restored.add(gid);
     }
+    if (adopted.isNotEmpty && _alive) {
+      final signed = await signAdoptedGroups(
+        crypto: t.crypto,
+        groups: groups,
+        members: members,
+        expenses: expenses,
+        groupIds: adopted.where(restored.contains),
+        isAlive: () => _alive,
+      );
+      debugPrint(
+        '[backup] adopted ${adopted.length} local-mode group(s) into '
+        '${t.userId} (${signed ?? 'none yet, key not ready —'} rows signed)',
+      );
+    }
     if (failed.isNotEmpty) {
       throw RestoreIncompleteException(restored: restored, failed: failed);
     }
     return restored;
   }
+
+  /// G41, inside [gid]'s restore transaction: the [takeover] step. Returns
+  /// whether the group now waits for this account's signatures.
+  Future<bool> _takeOver(
+    String gid,
+    RestoreTakeover takeover,
+    String? backupAccount,
+    String me,
+  ) async {
+    if (takeover == RestoreTakeover.accountIntoLocal) {
+      await reclaimGroupInPlace(
+        groups: groups,
+        members: members,
+        expenses: expenses,
+        groupId: gid,
+        from: backupAccount!,
+        to: kLocalAccountId,
+        signLater: false,
+      );
+      return false;
+    }
+    // A local-mode claim in a group restored into an account (a local
+    // backup — or one nested in an account's backup, e.g. restored there
+    // before G41) is adopted.
+    if (!me.startsWith('@')) return false;
+    if (takeover == RestoreTakeover.none &&
+        !(await members.getMembers(
+          gid,
+        )).any((m) => isLocalAccountId(m.matrixId))) {
+      return false;
+    }
+    await reclaimGroupInPlace(
+      groups: groups,
+      members: members,
+      expenses: expenses,
+      groupId: gid,
+      from: kLocalAccountId,
+      to: me,
+      signLater: true,
+    );
+    return true;
+  }
+}
+
+/// G41: whose participant a restore hands to whom.
+enum RestoreTakeover {
+  /// A normal restore (same account, another account's backup, or a local
+  /// backup in local mode).
+  none,
+
+  /// A local-mode backup restored into a Matrix account: adopted by it.
+  localIntoAccount,
+
+  /// A Matrix account's backup restored in local mode: the user becomes that
+  /// account's participant here.
+  accountIntoLocal,
+}
+
+/// Which [RestoreTakeover] restoring a backup of [backupAccount] into
+/// [me]'s ledger (an MXID, or [kLocalAccountId] in local mode) means.
+RestoreTakeover restoreTakeover(String? backupAccount, String? me) {
+  bool isMxid(String? id) => id != null && id.startsWith('@');
+  if (isLocalAccountId(backupAccount) && isMxid(me)) {
+    return RestoreTakeover.localIntoAccount;
+  }
+  if (isMxid(backupAccount) && isLocalAccountId(me)) {
+    return RestoreTakeover.accountIntoLocal;
+  }
+  return RestoreTakeover.none;
 }
 
 /// Aborts (rolls back) a group's restore transaction whose group meta was
@@ -332,10 +444,19 @@ class RestorePreview {
 
   /// The backup was taken by a different Matrix account.
   final bool otherAccount;
+
+  /// G41: the backup's "me" moves to this ledger's (local backup into an
+  /// account, or an account's backup in local mode).
+  final RestoreTakeover takeover;
+
+  /// The ledger restored into: the signed-in MXID, or [kLocalAccountId].
+  final String? myAccount;
   const RestorePreview({
     required this.backup,
     required this.groups,
     required this.otherAccount,
+    this.takeover = RestoreTakeover.none,
+    this.myAccount,
   });
 
   int get newGroups => groups.where((g) => g.isNew).length;

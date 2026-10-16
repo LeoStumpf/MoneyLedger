@@ -582,6 +582,15 @@ class RestorePreviewDialog extends StatelessWidget {
                 key: const Key('restoreEncrypted'),
                 style: muted,
               ),
+            if (preview.takeover != RestoreTakeover.none) ...[
+              const SizedBox(height: Insets.m),
+              _Note(
+                key: const Key('restoreTakeover'),
+                text: preview.takeover == RestoreTakeover.localIntoAccount
+                    ? l.restoreLocalIntoAccount(preview.myAccount ?? '')
+                    : l.restoreAccountIntoLocal(preview.backup.account!),
+              ),
+            ],
             if (preview.otherAccount) ...[
               const SizedBox(height: Insets.m),
               _Warning(
@@ -659,6 +668,41 @@ class RestorePreviewDialog extends StatelessWidget {
           child: Text(l.restoreAction),
         ),
       ],
+    );
+  }
+}
+
+/// G41: an informational box (no warning) in the restore preview.
+class _Note extends StatelessWidget {
+  final String text;
+  const _Note({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(Insets.m),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(Radii.s),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.swap_horiz_rounded,
+            size: 20,
+            color: scheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: Insets.s),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: scheme.onSecondaryContainer),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

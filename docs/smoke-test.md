@@ -39,6 +39,10 @@ Expected results are in *italics*.
 | 1.10 | Settings → *Connect a Matrix account* → login (close = cancel back to local) → sign in → *groups page banner "Your N local groups now belong to @…"; group members: you are the claimed member (MXID shown); logcat `[local] adopted N local group(s) … rows signed`* | emu |
 | 1.11 | After 1.10, another device of the same account → *the adopted group arrives (own-device digest → resync) with all entries; logcat there: no `[g6] refused`* | 2dev |
 | 1.12 | Signed out afterwards → *Use without an account* again → *setup page says the earlier local groups moved into @…; local mode starts empty*; Settings → *Delete local data* → confirm → *login page* | emu |
+| 1.13 | (G41) Local mode: a group with a person + an expense → *Back up all groups* (unencrypted) → Settings → *Delete local data* → confirm → *login page; `run-as`/root `ls …/app_flutter/` shows **no** `money_ledger_local.sqlite` (nor `-wal`/`-shm`/`-journal`)* | emu |
+| 1.14 | (G41) After 1.13: sign in with a Matrix account → Settings → *Restore from backup* → the local backup → *preview shows the takeover note "made without a Matrix account … moves its groups into @…" (no "other account" warning)* → Restore → *logcat `[backup] adopted N local-mode group(s) into @… (M rows signed)`; the expense shows "Added by you"; members: you are the claimed member* | emu |
+| 1.15 | (G41) After 1.14, another device of the same account → *the restored group arrives with all entries; logcat there: no `refused` lines* | 2dev |
+| 1.16 | (G41) A Matrix account's backup restored **in local mode** → *preview note "belongs to the Matrix account @… — you take that account's place"; groups appear, you are "me" in them; nothing sent* — **not yet run on a device** (unit-tested: `test/features/local_backup_restore_test.dart`) | emu |
 
 ## 2. Login, registration, account switch
 
@@ -175,6 +179,21 @@ iOS Rust/XCFramework build that has never been done. `ios/Runner` is template
 level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
+
+**2026-10-16 (G41 local-mode follow-ups)** · working tree on `dd5cf76` +
+G41 · release APK. Spare emu-5556 (`zc-shot-phone`): uninstalled → fresh
+install (EN) → local mode "Lea" → 1.13: group "G41 Local Trip", Kim, Dinner
+€42 equal → unencrypted backup `Download/g41-local-backup.json` (`account:
+local:self`); `app_flutter/` held `money_ledger_local.sqlite` before *Delete
+local data* and was **empty** after it (login page). 1.14: signed in as test
+account B (matrix.org SSO) → restore → preview with the takeover note, no
+other-account warning → logcat `[backup] adopted 1 local-mode group(s) into
+@moneyledger-test-b-c725:matrix.org (4 rows signed)`; Dinner shows "Added by
+you". 1.15: emu-5554 (B's own device, only `install -r`) shows "G41 Local
+Trip · 2 members · You are owed €21.00"; **0** `refused` lines in its logcat
+after the restore (5556 logged the known G35 refusals of the pre-G6 "G7a"
+groups from 5554). 1.16 not run on a device (unit tests only). 5556 signed
+out and killed. Screenshots `g41_*.png` (session scratchpad).
 
 **2026-10-16 (G39 welcome + G40 local mode)** · working tree on `cdb14e8` +
 G39/G40 · release APK. Spare emu-5556 (`zc-shot-phone`): uninstalled → fresh

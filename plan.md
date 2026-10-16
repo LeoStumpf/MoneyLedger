@@ -461,11 +461,11 @@ flag). A first-time user lands on a bare Matrix login without knowing why.
 - [x] EN + DE, design system, tests; verified on a fresh install (emulator-5556); fresh-install recheck on phone/5554 in G38
 
 ### G41. Local-mode follow-ups (found in G40) 🟢
-- [ ] Restoring a backup made in local mode into a Matrix account: apply the
+- [x] Restoring a backup made in local mode into a Matrix account: apply the
       same adoption step as *Connect a Matrix account* (re-claim `local:self`
       participant by the MXID, sign pending rows) instead of keeping rows
       unsigned + the `local:self` claim
-- [ ] Remove the empty `money_ledger_local` DB file after deletion / adoption
+- [x] Remove the empty `money_ledger_local` DB file after deletion / adoption
       (today it stays on disk, empty)
 
 ### G38. App id → `io.github.leostumpf.moneyledger` (Leo, 2026-10-16) 🟠
@@ -539,7 +539,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G37 — scale follow-ups (optional)
 - [ ] *(G32+ — newly discovered points)*
 - [x] G40+G39 — fully local mode (no Matrix account) + first-open welcome
-- [ ] G41 — local-mode follow-ups (restore adoption, empty local DB file)
+- [x] G41 — local-mode follow-ups (restore adoption, empty local DB file)
 - [ ] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
 - [~] G18 — final release review
 

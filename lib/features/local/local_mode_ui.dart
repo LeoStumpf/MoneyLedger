@@ -215,6 +215,8 @@ Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
   // Captured before any await (G19).
   final db = ref.read(appDatabaseProvider);
   final prefs = ref.read(devicePrefsProvider.notifier);
+  final deleteFiles = ref.read(localDatabaseDeleterProvider);
+  final container = ProviderScope.containerOf(context, listen: false);
   final groups = ref.read(ledgerGroupsProvider).value?.length ?? 0;
   final ok = await showDialog<bool>(
     context: context,
@@ -242,6 +244,8 @@ Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
   await deleteLocalLedger(
     db: db,
     prefs: prefs,
+    deleteFiles: deleteFiles,
+    releaseDb: () => container.invalidate(appDatabaseProvider),
     onError: (e) {
       messenger?.showSnackBar(
         SnackBar(content: Text(l.failedWithError(e.toString()))),
@@ -251,17 +255,26 @@ Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
 }
 
 /// Wipes the local ledger [db] and ends local mode. Nothing is ended when
-/// the wipe fails ([onError] is told).
+/// the wipe fails ([onError] is told). G41: then [releaseDb] lets
+/// `appDatabaseProvider` drop (close) [db] — it rebuilds for whatever comes
+/// next, so nothing keeps a closed DB — and once it is closed its files are
+/// removed ([deleteFiles]); best-effort, the data is already gone.
 Future<void> deleteLocalLedger({
   required AppDatabase db,
   required DevicePrefsNotifier prefs,
+  Future<bool> Function()? deleteFiles,
+  void Function()? releaseDb,
   void Function(Object e)? onError,
 }) async {
   try {
-    if (!db.isSignedOutPlaceholder && !db.isClosed) {
-      await db.wipeAll();
-    }
+    final real = !db.isSignedOutPlaceholder && !db.isClosed;
+    if (real) await db.wipeAll();
     await prefs.endLocalProfile();
+    if (real && deleteFiles != null && releaseDb != null) {
+      releaseDb();
+      await db.close(); // idempotent: waits for the provider's close
+      await deleteFiles();
+    }
   } catch (e) {
     onError?.call(e);
   }

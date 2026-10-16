@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:matrix/matrix.dart';
-import 'package:vodozemac/vodozemac.dart' as vod;
 
 import 'buffered_inbox.dart';
+import 'ed25519_verify.dart';
 import '../sync/payload_budget.dart';
 import 'ledger_transport.dart';
 
@@ -182,17 +182,8 @@ class MatrixRecordCrypto implements RecordCrypto {
   }
 
   @override
-  bool verify(String key, String message, String signature) {
-    try {
-      vod.Ed25519PublicKey.fromBase64(key).verify(
-        message: message,
-        signature: vod.Ed25519Signature.fromBase64(signature),
-      );
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
+  bool verify(String key, String message, String signature) =>
+      verifyEd25519(key, message, signature);
 }
 
 /// G6: the homeserver's current (self-signed, unblocked) device keys.

@@ -33,6 +33,7 @@ import 'package:money_ledger/features/devices/device_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/expenses/ledger_syncer.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/features/local/local_mode_ui.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
@@ -63,6 +64,10 @@ void main() {
   late _RecordingScheduler scheduler;
   var matrixClientBuilt = 0;
   final dbs = <AppDatabase>[];
+  final localDbs = <AppDatabase>[];
+  // G41: calls of the local-DB deleter, and whether every local DB instance
+  // was closed at that moment.
+  final localDeletes = <bool>[];
 
   AppDatabase fileDb(String name) {
     final db = AppDatabase.forTesting(
@@ -79,6 +84,8 @@ void main() {
     scheduler = _RecordingScheduler();
     matrixClientBuilt = 0;
     dbs.clear();
+    localDbs.clear();
+    localDeletes.clear();
   });
 
   tearDown(() async {
@@ -121,9 +128,15 @@ void main() {
         accountDatabaseOpenerProvider.overrideWithValue(
           (mxid) => fileDb(accountDatabaseName(mxid)),
         ),
-        localDatabaseOpenerProvider.overrideWithValue(
-          () => fileDb(localDatabaseName),
-        ),
+        localDatabaseOpenerProvider.overrideWithValue(() {
+          final db = fileDb(localDatabaseName);
+          localDbs.add(db);
+          return db;
+        }),
+        localDatabaseDeleterProvider.overrideWithValue(() async {
+          localDeletes.add(localDbs.every((db) => db.isClosed));
+          return true;
+        }),
         backgroundSchedulerProvider.overrideWithValue(scheduler),
         pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
         syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
@@ -266,9 +279,16 @@ void main() {
       await settle(c);
       await createLocalGroup(c);
       final db = c.read(appDatabaseProvider);
-      await db.wipeAll();
-      await c.read(devicePrefsProvider.notifier).endLocalProfile();
+      await deleteLocalLedger(
+        db: db,
+        prefs: c.read(devicePrefsProvider.notifier),
+        deleteFiles: c.read(localDatabaseDeleterProvider),
+        releaseDb: () => c.invalidate(appDatabaseProvider),
+      );
       expect(c.read(appSessionProvider), AppSessionKind.signedOut);
+      // G41: the (closed) local DB's files are deleted too.
+      expect(db.isClosed, isTrue);
+      expect(localDeletes, [true]);
       expect(store.values.containsKey('local_profile'), isFalse);
       expect(store.values['welcome_seen'], '1');
 
@@ -350,6 +370,12 @@ void main() {
         ).getAllSettlementsForGroup(groupId)).single;
         expect(payment.sig, isNotNull);
         expect(payment.origin, isNotNull);
+
+        // G41: its files are deleted once every local instance is closed.
+        for (var i = 0; i < 100 && localDeletes.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        expect(localDeletes, [true]);
 
         // The local ledger is empty now (local mode would start fresh).
         final local = fileDb(localDatabaseName);

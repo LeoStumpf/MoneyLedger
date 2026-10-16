@@ -191,9 +191,19 @@ class AppDatabase extends _$AppDatabase {
   /// DBs are named via `accountDatabaseName` — see `account_database.dart`).
   /// [onOpen] runs once per open, after migrations, inside drift's
   /// `beforeOpen` (used to adopt the pre-per-account legacy ledger).
-  AppDatabase.named(String name, {this.onOpen})
+  ///
+  /// [after] (G41): connect only once it completed — local mode's DB is
+  /// reopened only after a deletion of its files has finished.
+  AppDatabase.named(String name, {this.onOpen, Future<void>? after})
     : isSignedOutPlaceholder = false,
-      super(openNamedConnection(name));
+      super(
+        after == null
+            ? openNamedConnection(name)
+            : LazyDatabase(() async {
+                await after;
+                return openNamedConnection(name);
+              }),
+      );
 
   /// Wraps an arbitrary executor (in-memory / temp-file DBs in tests).
   AppDatabase.forTesting(super.e, {this.onOpen})
