@@ -522,71 +522,71 @@ class _TotalsCard extends StatelessWidget {
     final l = context.l10n;
     final theme = Theme.of(context);
     final settled = totals.owed.isEmpty && totals.owing.isEmpty;
-    const onBrand = Colors.white;
-    final labelStyle = theme.textTheme.labelMedium?.copyWith(
-      color: onBrand.withValues(alpha: 0.8),
+    final scheme = theme.colorScheme;
+    final ledger = context.ledgerColors;
+    final capsStyle = theme.textTheme.labelMedium?.copyWith(
+      color: scheme.onSurfaceVariant,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.8,
     );
-    final amountStyle = theme.textTheme.titleLarge?.copyWith(
-      color: onBrand,
-      fontFeatures: kTabularFigures,
-      height: 1.25,
-    );
+    TextStyle? amountStyle(Color color) =>
+        theme.textTheme.headlineSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.6,
+          fontFeatures: kTabularFigures,
+          height: 1.2,
+        );
 
-    Widget column(String label, Map<String, int> amounts, Key key) => Expanded(
+    Widget column(
+      String label,
+      Map<String, int> amounts,
+      Color color,
+      Key key,
+    ) => Expanded(
       child: Column(
         key: key,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: labelStyle),
+          Text(label.toUpperCase(), style: capsStyle),
           const SizedBox(height: Insets.xs),
           if (amounts.isEmpty)
-            Text(
-              l.totalNothing,
-              style: amountStyle?.copyWith(
-                color: onBrand.withValues(alpha: 0.7),
-              ),
-            )
+            Text(l.totalNothing, style: amountStyle(scheme.onSurfaceVariant))
           else
             for (final MapEntry(key: c, value: v) in amounts.entries)
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(context.money(v, c), style: amountStyle),
+                child: Text(context.money(v, c), style: amountStyle(color)),
               ),
         ],
       ),
     );
 
+    // "Paper & ink" (G42): no card — a ledger rule above, a hairline below.
     return Container(
       key: const Key('groupsTotals'),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(Radii.l),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [BrandColors.gradientStart, BrandColors.gradientEnd],
+        border: Border(
+          top: AppTheme.ledgerRule(scheme),
+          bottom: BorderSide(color: scheme.outlineVariant),
         ),
       ),
-      padding: const EdgeInsets.all(Insets.l + Insets.xs),
+      padding: const EdgeInsets.symmetric(vertical: Insets.l),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l.overviewTitle,
-            style: theme.textTheme.titleSmall?.copyWith(color: onBrand),
-          ),
+          Text(l.overviewTitle, style: theme.textTheme.titleSmall),
           const SizedBox(height: Insets.m),
           if (settled)
             Row(
               children: [
-                const Icon(Icons.check_circle_outline, color: onBrand),
+                Icon(Icons.check_circle_outline, color: ledger.positive),
                 const SizedBox(width: Insets.s),
                 Expanded(
                   child: Text(
                     l.overallSettledUp,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: onBrand,
-                    ),
+                    style: theme.textTheme.titleMedium,
                   ),
                 ),
               ],
@@ -595,16 +595,17 @@ class _TotalsCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                column(l.totalOwedLabel, totals.owed, const Key('totalsOwed')),
-                Container(
-                  width: 1,
-                  height: 44,
-                  margin: const EdgeInsets.symmetric(horizontal: Insets.m),
-                  color: onBrand.withValues(alpha: 0.25),
+                column(
+                  l.totalOwedLabel,
+                  totals.owed,
+                  ledger.positive,
+                  const Key('totalsOwed'),
                 ),
+                const SizedBox(width: Insets.l),
                 column(
                   l.totalOwingLabel,
                   totals.owing,
+                  ledger.negative,
                   const Key('totalsOwing'),
                 ),
               ],
@@ -698,7 +699,7 @@ class GroupCard extends StatelessWidget {
   }
 }
 
-/// A group's rounded-square icon: its initial on a colour from the group id.
+/// A group's monogram: its initials in an ink ring ([id] kept for callers).
 class GroupBadge extends StatelessWidget {
   final String id;
   final String name;
@@ -712,21 +713,21 @@ class GroupBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.ledgerColors;
-    final i = avatarIndexFor(id, colors.avatarBackgrounds.length);
+    final ink = Theme.of(context).colorScheme.onSurface;
     return Container(
       width: size,
       height: size,
       alignment: Alignment.center,
+      // "Paper & ink" (G42): an ink-ringed monogram, like a stamp.
       decoration: BoxDecoration(
-        color: colors.avatarBackgrounds[i],
-        borderRadius: BorderRadius.circular(size * 0.3),
+        shape: BoxShape.circle,
+        border: Border.all(color: ink, width: 1.5),
       ),
       child: Text(
         initialsOf(name),
         style: TextStyle(
-          color: colors.avatarForegrounds[i],
-          fontWeight: FontWeight.w700,
+          color: ink,
+          fontWeight: FontWeight.w800,
           fontSize: size * 0.38,
           height: 1,
         ),

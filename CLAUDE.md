@@ -1173,22 +1173,32 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
   (English by default, `locale: Locale('de')` for German tests); any other
   test `MaterialApp` needs `localizationsDelegates: testLocalizationsDelegates`.
 
-### Design system (G17)
+### Design system (G17, "Paper & ink" since G42)
+
+**Look (G42, chosen from three canvas directions):** paper background
+(`#F6F2EA`), ink text + ink primary (filled buttons, FAB, selected segment —
+`#1D1A16`), **one accent: rust** (`scheme.secondary`, *Settle up*, text
+buttons), petrol for "you get money back". Summaries (groups-page totals,
+group's *Your balance*) are **not cards**: a 2 px ink rule above
+(`AppTheme.ledgerRule`), a hairline below, caps labels. Buttons / chips /
+segments are pills; cards are flat sheets with a hairline border; group
+badges are ink-ringed monograms. Dark mode = warm near-black with the same
+roles. **No bundled font** — the platform's own (Roboto on Android).
 
 - **Tokens** live in `lib/core/theme/`: `app_theme.dart` (`AppTheme.light()` /
   `.dark()`, `ThemeMode.system`; component themes for cards, list tiles, FAB,
   inputs, buttons, segmented buttons, dialogs, sheets, snackbars; spacing
   `Insets`, radii `Radii`, `kContentMaxWidth` = 680, `kTabularFigures` for
-  amounts; `AppTheme.cardColor`) and `app_colors.dart` (`BrandColors` — the
-  teal seed `#0E7D6C`, logo gradient, launch backgrounds — and the
+  amounts; `AppTheme.cardColor`) and `app_colors.dart` (`BrandColors` — ink,
+  paper, orange / rust accent, petrol, launch backgrounds — and the
   **`LedgerColors` ThemeExtension**, read via `context.ledgerColors`).
   **Never hard-code `Colors.*`** in widgets — use the scheme or LedgerColors.
-- **Semantic money colours:** `positive` (green — "you are owed", "you lent",
-  "gets back") and `negative` (warm red-orange — "you owe", "you borrowed"),
+- **Semantic money colours:** `positive` (petrol blue — "you are owed", "you
+  lent", "gets back") and `negative` (rust — "you owe", "you borrowed"),
   plus `*Container` variants; light and dark values are pinned to WCAG-AA
   contrast by `test/core/design_system_test.dart`.
-- **Font:** Manrope (SIL OFL), bundled in `assets/fonts/manrope/` — never
-  fetched at runtime (privacy); its license is registered in `main.dart`.
+- **Font:** none bundled or fetched (G42 removed Manrope) — Material's
+  platform default; the design test pins that no custom family is set.
 - **People:** always shown by `MemberModel.label` (display name → MXID
   localpart → raw id; `participantNamesProvider` uses it) with a
   `PersonAvatar` (`lib/core/widgets/person_avatar.dart`): colour from the
@@ -1231,10 +1241,13 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
   page = per-person nets (`netsFromDebts`) + tappable suggested payments; add
   expense keeps the submit button in a bar below the scrolling form (stays
   above the keyboard).
-- **Brand assets:** `tool/brand/render_icons.py` (cairosvg) renders the split
-  coin logo from one geometry into `assets/brand/*.svg`, the in-app
+- **Brand assets:** `tool/brand/render_icons.py` (cairosvg) renders the logo
+  (G42: a split equals sign — paper bars on an ink squircle, one orange piece)
+  from one geometry into `assets/brand/*.svg`, the in-app
   `logo_512.png`, Android launcher icons (adaptive + monochrome), the pre-12
-  splash logo, web favicon / PWA (+ maskable) icons and the iOS set. Launch
+  splash logo, web favicon / PWA (+ maskable) icons, the iOS set and the Play
+  listing graphics `docs/store/icon_512.png` + `feature_graphic.png`
+  (1024×500, German claim; `feature_graphic.svg` source). Launch
   backgrounds: `res/values{,-night}/colors.xml`, `values{,-night}-v31` styles.
 
 ### Key Implementation Notes

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- G17: dark-mode launch background = the app's dark surface. -->
-    <color name="launch_background">#0E1513</color>
+    <color name="launch_background">#15130F</color>
 </resources>

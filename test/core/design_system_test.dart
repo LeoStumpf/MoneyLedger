@@ -57,9 +57,33 @@ void main() {
       final ledger = theme.extension<LedgerColors>()!;
       final scheme = theme.colorScheme;
 
-      test('uses the bundled font and the right brightness', () {
+      test('uses the platform font and the right brightness', () {
         expect(theme.colorScheme.brightness, brightness);
-        expect(theme.textTheme.bodyMedium?.fontFamily, kAppFontFamily);
+        // G42: no bundled font — Material's platform default (Roboto).
+        expect(theme.textTheme.bodyMedium?.fontFamily, isNot('Manrope'));
+      });
+
+      test('ink, paper and the accent are readable', () {
+        expect(
+          contrast(scheme.onSurface, scheme.surface),
+          greaterThanOrEqualTo(7),
+        );
+        expect(
+          contrast(scheme.onSurfaceVariant, scheme.surface),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          contrast(scheme.onPrimary, scheme.primary),
+          greaterThanOrEqualTo(7),
+        );
+        expect(
+          contrast(scheme.onSecondary, scheme.secondary),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          contrast(scheme.onPrimaryContainer, scheme.primaryContainer),
+          greaterThanOrEqualTo(4.5),
+        );
       });
 
       test('money colours meet AA contrast on the surfaces', () {

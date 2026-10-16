@@ -1,6 +1,7 @@
-/// MoneyLedger's Material 3 theme (G17): one builder for light and dark, the
-/// bundled Manrope font (no runtime font downloads), component themes and
-/// the spacing / radius tokens. Colours: see `app_colors.dart`.
+/// MoneyLedger's Material 3 theme (G17, "Paper & ink" since G42): one builder
+/// for light and dark, the platform's own font (no bundled or downloaded
+/// fonts), component themes and the spacing / radius tokens. Colours: see
+/// `app_colors.dart`.
 library;
 
 import 'package:flutter/material.dart';
@@ -8,9 +9,6 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 export 'app_colors.dart';
-
-/// The bundled font family (assets/fonts/manrope, SIL OFL 1.1).
-const kAppFontFamily = 'Manrope';
 
 /// Spacing scale (logical px). Use these instead of ad-hoc numbers.
 abstract final class Insets {
@@ -51,37 +49,89 @@ abstract final class AppTheme {
   static ThemeData light() => _build(Brightness.light);
   static ThemeData dark() => _build(Brightness.dark);
 
-  /// Cards and filled inputs: white on the tinted light background, one
+  /// Cards and filled inputs: a lighter sheet on the paper background, one
   /// step *lighter* than the background in dark mode (elevation = light).
   static Color cardColor(ColorScheme scheme) =>
       scheme.brightness == Brightness.dark
-      ? const Color(0xFF18211F)
-      : Colors.white;
+      ? const Color(0xFF1F1C17)
+      : const Color(0xFFFFFDF8);
+
+  /// The "ledger rule" above a summary (totals, my balance): a 2 px ink line.
+  static BorderSide ledgerRule(ColorScheme scheme) =>
+      BorderSide(color: scheme.onSurface, width: 2);
 
   static ThemeData _build(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     final base = ColorScheme.fromSeed(
-      seedColor: BrandColors.seed,
+      seedColor: BrandColors.rust,
       brightness: brightness,
     );
-    final scheme = base.copyWith(
-      // A slightly deeper primary in light mode (better contrast for text
-      // buttons), the brand surface tints for the backgrounds.
-      primary: isDark ? null : const Color(0xFF0B6E5F),
-      surface: isDark ? BrandColors.darkSurface : BrandColors.lightSurface,
-      surfaceContainerLowest: isDark ? const Color(0xFF0A100F) : Colors.white,
-      surfaceContainerLow: isDark
-          ? const Color(0xFF161F1D)
-          : const Color(0xFFFAFDFC),
-    );
+    // "Paper & ink": ink is the primary (filled buttons, FAB, selection),
+    // rust the one accent (secondary), petrol the tertiary. Every role the
+    // UI reads is set explicitly — the seed only fills the rest (error …).
+    final scheme = isDark
+        ? base.copyWith(
+            primary: const Color(0xFFF1ECE2),
+            onPrimary: BrandColors.ink,
+            primaryContainer: const Color(0xFF3A342B),
+            onPrimaryContainer: const Color(0xFFF1ECE2),
+            secondary: const Color(0xFFF0905E),
+            onSecondary: const Color(0xFF2A1205),
+            secondaryContainer: const Color(0xFF5A2A12),
+            onSecondaryContainer: const Color(0xFFFFD9C4),
+            tertiary: const Color(0xFF8CC4DB),
+            onTertiary: const Color(0xFF0B2C3A),
+            tertiaryContainer: const Color(0xFF1D4152),
+            onTertiaryContainer: const Color(0xFFD3E9F2),
+            surface: BrandColors.darkSurface,
+            onSurface: const Color(0xFFF1ECE2),
+            onSurfaceVariant: const Color(0xFFB3A998),
+            surfaceTint: Colors.transparent,
+            surfaceContainerLowest: const Color(0xFF100E0B),
+            surfaceContainerLow: const Color(0xFF1B1813),
+            surfaceContainer: const Color(0xFF24211B),
+            surfaceContainerHigh: const Color(0xFF2C2821),
+            surfaceContainerHighest: const Color(0xFF353027),
+            outline: const Color(0xFF8C8374),
+            outlineVariant: const Color(0xFF3D372E),
+            inverseSurface: const Color(0xFFF1ECE2),
+            onInverseSurface: BrandColors.ink,
+            inversePrimary: BrandColors.ink,
+          )
+        : base.copyWith(
+            primary: BrandColors.ink,
+            onPrimary: BrandColors.paper,
+            primaryContainer: const Color(0xFFEBE4D6),
+            onPrimaryContainer: BrandColors.ink,
+            secondary: BrandColors.rust,
+            onSecondary: Colors.white,
+            secondaryContainer: const Color(0xFFF6DDCD),
+            onSecondaryContainer: const Color(0xFF6E2A0B),
+            tertiary: BrandColors.petrol,
+            onTertiary: Colors.white,
+            tertiaryContainer: const Color(0xFFD6E7EE),
+            onTertiaryContainer: const Color(0xFF0B3445),
+            surface: BrandColors.lightSurface,
+            onSurface: BrandColors.ink,
+            onSurfaceVariant: const Color(0xFF6B6358),
+            surfaceTint: Colors.transparent,
+            surfaceContainerLowest: Colors.white,
+            surfaceContainerLow: const Color(0xFFFBF8F2),
+            surfaceContainer: const Color(0xFFF1ECE2),
+            surfaceContainerHigh: const Color(0xFFEBE5D9),
+            surfaceContainerHighest: const Color(0xFFE5DECF),
+            outline: const Color(0xFF8A8175),
+            outlineVariant: const Color(0xFFDDD4C4),
+            inverseSurface: BrandColors.ink,
+            onInverseSurface: BrandColors.paper,
+            inversePrimary: BrandColors.paper,
+          );
     final ledger = isDark ? LedgerColors.dark : LedgerColors.light;
 
     final typography = Typography.material2021(
       platform: TargetPlatform.android,
     );
-    final baseText = (isDark ? typography.white : typography.black).apply(
-      fontFamily: kAppFontFamily,
-    );
+    final baseText = isDark ? typography.white : typography.black;
     final text = baseText
         .copyWith(
           displaySmall: baseText.displaySmall?.copyWith(
@@ -102,6 +152,7 @@ abstract final class AppTheme {
           ),
           titleLarge: baseText.titleLarge?.copyWith(
             fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
           ),
           titleMedium: baseText.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
@@ -122,6 +173,8 @@ abstract final class AppTheme {
     final rounded = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(Radii.m),
     );
+    // Buttons, chips and segmented controls are pills.
+    const pill = StadiumBorder();
     const buttonPadding = EdgeInsets.symmetric(
       horizontal: Insets.xl,
       vertical: Insets.m,
@@ -131,7 +184,6 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      fontFamily: kAppFontFamily,
       textTheme: text,
       scaffoldBackgroundColor: scheme.surface,
       extensions: [ledger],
@@ -139,11 +191,15 @@ abstract final class AppTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
-        surfaceTintColor: scheme.surfaceTint,
-        scrolledUnderElevation: 2,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         titleSpacing: Insets.l,
-        titleTextStyle: text.titleLarge?.copyWith(fontSize: 21),
+        titleTextStyle: text.titleLarge?.copyWith(
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -152,10 +208,8 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.l),
-          side: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: isDark ? 0.5 : 0.7),
-          ),
+          borderRadius: BorderRadius.circular(Radii.m),
+          side: BorderSide(color: scheme.outlineVariant),
         ),
       ),
       listTileTheme: ListTileThemeData(
@@ -170,11 +224,9 @@ abstract final class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
-        elevation: 3,
-        highlightElevation: 6,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.l),
-        ),
+        elevation: 2,
+        highlightElevation: 4,
+        shape: pill,
         extendedTextStyle: text.labelLarge?.copyWith(fontSize: 15),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -194,7 +246,7 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(Radii.m),
-          borderSide: BorderSide(color: scheme.primary, width: 2),
+          borderSide: BorderSide(color: scheme.onSurface, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(Radii.m),
@@ -209,7 +261,7 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(64, 52),
           padding: buttonPadding,
-          shape: rounded,
+          shape: pill,
           textStyle: text.labelLarge?.copyWith(fontSize: 16),
         ),
       ),
@@ -217,20 +269,25 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(64, 52),
           padding: buttonPadding,
-          shape: rounded,
-          side: BorderSide(color: scheme.outlineVariant),
+          shape: pill,
+          foregroundColor: scheme.onSurface,
+          side: BorderSide(color: scheme.onSurface, width: 1.5),
           textStyle: text.labelLarge?.copyWith(fontSize: 16),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(shape: rounded, textStyle: text.labelLarge),
+        style: TextButton.styleFrom(
+          shape: pill,
+          foregroundColor: scheme.secondary,
+          textStyle: text.labelLarge,
+        ),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
-          shape: rounded,
-          selectedBackgroundColor: scheme.primaryContainer,
-          selectedForegroundColor: scheme.onPrimaryContainer,
-          side: BorderSide(color: scheme.outlineVariant),
+          shape: pill,
+          selectedBackgroundColor: scheme.primary,
+          selectedForegroundColor: scheme.onPrimary,
+          side: BorderSide(color: scheme.outline),
           textStyle: text.labelLarge,
         ),
       ),
@@ -265,14 +322,14 @@ abstract final class AppTheme {
         textStyle: text.bodyLarge,
       ),
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.s),
-        ),
-        side: BorderSide(color: scheme.outlineVariant),
+        shape: pill,
+        side: BorderSide(color: scheme.outline),
+        selectedColor: scheme.primaryContainer,
+        checkmarkColor: scheme.onPrimaryContainer,
         labelStyle: text.labelMedium,
       ),
       dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant.withValues(alpha: 0.6),
+        color: scheme.outlineVariant,
         space: 1,
         thickness: 1,
       ),
@@ -282,7 +339,9 @@ abstract final class AppTheme {
           color: scheme.onSecondaryContainer,
         ),
       ),
-      progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.secondary,
+      ),
       switchTheme: const SwitchThemeData(),
       checkboxTheme: CheckboxThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),

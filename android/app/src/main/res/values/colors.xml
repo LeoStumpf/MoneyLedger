@@ -2,5 +2,5 @@
 <resources>
     <!-- G17: launch screen background = the app's light surface
          (lib/core/theme/app_colors.dart). -->
-    <color name="launch_background">#F3F8F6</color>
+    <color name="launch_background">#F6F2EA</color>
 </resources>

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'app.dart';
@@ -26,12 +25,6 @@ Future<void> main() async {
       ),
     ),
   );
-  // G17: the bundled Manrope font (SIL Open Font License 1.1).
-  LicenseRegistry.addLicense(() async* {
-    yield LicenseEntryWithLineBreaks([
-      'Manrope font',
-    ], await rootBundle.loadString('assets/fonts/manrope/OFL.txt'));
-  });
   // G36: the SAS emoji names (EN/DE) come from the Matrix spec (Apache-2.0).
   LicenseRegistry.addLicense(
     () => Stream.value(

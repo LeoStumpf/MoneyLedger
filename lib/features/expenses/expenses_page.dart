@@ -1125,27 +1125,35 @@ class _GroupSummaryCard extends StatelessWidget {
     final compact = FilledButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: Insets.m),
     );
-    return Card(
+    // "Paper & ink" (G42): no card — a ledger rule above, a hairline below.
+    return Container(
       key: const Key('groupSummaryCard'),
-      color: scheme.primaryContainer.withValues(alpha: 0.55),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.l),
+      decoration: BoxDecoration(
+        border: Border(
+          top: AppTheme.ledgerRule(scheme),
+          bottom: BorderSide(color: scheme.outlineVariant),
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(Insets.l + Insets.xs),
+        padding: const EdgeInsets.symmetric(vertical: Insets.l),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              l.yourBalance,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: scheme.onPrimaryContainer,
+              l.yourBalance.toUpperCase(),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
               ),
             ),
             const SizedBox(height: Insets.xs),
             BalanceSummaryText(
               overview: overview,
-              style: theme.textTheme.titleLarge,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.6,
+              ),
             ),
             const SizedBox(height: Insets.l),
             Row(
@@ -1154,7 +1162,13 @@ class _GroupSummaryCard extends StatelessWidget {
                   Expanded(
                     child: FilledButton.icon(
                       key: const Key('settleUpButton'),
-                      style: compact,
+                      // The one accent: rust.
+                      style: compact.merge(
+                        FilledButton.styleFrom(
+                          backgroundColor: scheme.secondary,
+                          foregroundColor: scheme.onSecondary,
+                        ),
+                      ),
                       onPressed: busy ? null : onSettleUp,
                       icon: const Icon(Icons.payments_outlined, size: 20),
                       label: Text(
@@ -1172,7 +1186,6 @@ class _GroupSummaryCard extends StatelessWidget {
                     onPressed: onBalances,
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: Insets.m),
-                      backgroundColor: AppTheme.cardColor(scheme),
                     ),
                     icon: const Icon(Icons.balance, size: 20),
                     label: Text(

@@ -47,14 +47,6 @@ The version-exact list of all packages (direct and transitive) is in
   (commit `7aaeac0`) — Copyright The Matrix.org Foundation C.I.C.,
   **Apache-2.0**. Listed on the in-app licenses page.
 
-### Fonts
-
-- **Manrope** (`assets/fonts/manrope/`, static instances of the variable
-  font from [google/fonts](https://github.com/google/fonts/tree/main/ofl/manrope))
-  — Copyright 2018 The Manrope Project Authors, **SIL Open Font License 1.1**
-  ([`OFL.txt`](assets/fonts/manrope/OFL.txt)). Bundled with the app (never
-  downloaded at runtime) and listed on the in-app licenses page.
-
 ### Logo and icons
 
 The MoneyLedger logo, launcher icons, favicon and splash logo are MoneyLedger's

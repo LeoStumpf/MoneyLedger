@@ -5,28 +5,37 @@ library;
 
 import 'package:flutter/material.dart';
 
-/// Brand colours — keep in sync with `tool/brand/render_icons.py` (launcher
-/// icon, splash) and the Android/web launch backgrounds.
+/// Brand colours ("Paper & ink", G42) — keep in sync with
+/// `tool/brand/render_icons.py` (launcher icon, splash) and the Android/web
+/// launch backgrounds.
 abstract final class BrandColors {
-  /// The seed of both colour schemes: a deep "ledger" teal.
-  static const seed = Color(0xFF0E7D6C);
+  /// Ink: text, the primary (filled) buttons, the app icon's background.
+  static const ink = Color(0xFF1D1A16);
 
-  /// Logo gradient (top-left → bottom-right) and the coin's light half.
-  static const gradientStart = Color(0xFF17A58D);
-  static const gradientEnd = Color(0xFF0A5E54);
-  static const mint = Color(0xFF9DEBD3);
+  /// Paper: the light background and the icon's bars.
+  static const paper = Color(0xFFF6F2EA);
+
+  /// The single accent: the icon's orange bar piece.
+  static const orange = Color(0xFFE0703A);
+
+  /// Rust: the accent as a text / button colour (AA on paper and white).
+  static const rust = Color(0xFFB84E1C);
+
+  /// Petrol: "you get money back".
+  static const petrol = Color(0xFF1F5F7A);
 
   /// Scaffold backgrounds (also the native launch screen colours).
-  static const lightSurface = Color(0xFFF3F8F6);
-  static const darkSurface = Color(0xFF0E1513);
+  static const lightSurface = paper;
+  static const darkSurface = Color(0xFF15130F);
 }
 
 /// Semantic money colours + the avatar palette, as a [ThemeExtension] so they
 /// switch with light / dark mode. Read with `context.ledgerColors`.
 ///
-/// * [positive] — "you are owed" / "you lent" / "gets back" (green).
-/// * [negative] — "you owe" / "you borrowed" (warm red-orange — distinct from
-///   the error red, and not alarming for an ordinary debt).
+/// * [positive] — "you are owed" / "you lent" / "gets back" (petrol blue).
+/// * [negative] — "you owe" / "you borrowed" (rust — distinct from the error
+///   red, and not alarming for an ordinary debt). Blue vs. orange also differ
+///   in lightness, so they stay apart for red-green colour blindness.
 /// * The `*Container` variants are tinted backgrounds for chips / badges with
 ///   [onPositiveContainer] / [onNegativeContainer] text.
 ///
@@ -57,12 +66,12 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
   final List<Color> avatarForegrounds;
 
   static const light = LedgerColors(
-    positive: Color(0xFF167A48),
-    negative: Color(0xFFC03B12),
-    positiveContainer: Color(0xFFD9F3E3),
-    onPositiveContainer: Color(0xFF0B4F2D),
-    negativeContainer: Color(0xFFFCE3D9),
-    onNegativeContainer: Color(0xFF7A2306),
+    positive: BrandColors.petrol,
+    negative: BrandColors.rust,
+    positiveContainer: Color(0xFFD6E7EE),
+    onPositiveContainer: Color(0xFF0B3445),
+    negativeContainer: Color(0xFFF6DDCD),
+    onNegativeContainer: Color(0xFF6E2A0B),
     avatarBackgrounds: [
       Color(0xFFCDEFE6), // teal
       Color(0xFFD8E6FB), // blue
@@ -86,12 +95,12 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
   );
 
   static const dark = LedgerColors(
-    positive: Color(0xFF72D99E),
-    negative: Color(0xFFFF9F7E),
-    positiveContainer: Color(0xFF113C27),
-    onPositiveContainer: Color(0xFFB4F0CC),
-    negativeContainer: Color(0xFF4B1F12),
-    onNegativeContainer: Color(0xFFFFD2C2),
+    positive: Color(0xFF8CC4DB),
+    negative: Color(0xFFF0905E),
+    positiveContainer: Color(0xFF1D4152),
+    onPositiveContainer: Color(0xFFD3E9F2),
+    negativeContainer: Color(0xFF5A2A12),
+    onNegativeContainer: Color(0xFFFFD9C4),
     avatarBackgrounds: [
       Color(0xFF184A42),
       Color(0xFF213A60),
