@@ -100,6 +100,8 @@ Map<String, Object?> expenseContent(ExpenseModel e) => {
   // pre-G16 body, so older signatures and G27 hashes stay valid.
   if (e.category != null) 'category': e.category,
   if (e.note != null) 'note': e.note,
+  // G49: likewise — only a back-dated expense carries its `date`.
+  if (e.date != null) 'date': e.date,
 };
 
 Map<String, Object?> expenseBody(ExpenseModel e, SignerId signer) => {

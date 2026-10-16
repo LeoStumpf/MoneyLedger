@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/person_avatar.dart';
 import '../../models/expense_category.dart';
+import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../groups/create_group_page.dart' show kGroupCurrencies;
@@ -49,6 +50,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
   bool get _isEdit => widget.initial != null;
 
+  /// G49: the day the expense happened (local midnight) — today for a new
+  /// expense, the edited one's display day otherwise.
+  late DateTime _day;
+  late final DateTime _initialDay;
+
   // null = still loading. Loaded from the local DB (roomless).
   List<MemberModel>? _members;
   String? _paidBy; // participant id of the payer
@@ -81,6 +87,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   void initState() {
     super.initState();
     final initial = widget.initial;
+    _initialDay = initial?.displayDay ?? dayOf(DateTime.now());
+    _day = _initialDay;
     if (initial != null) {
       _descCtrl.text = initial.description;
       _noteCtrl.text = initial.note ?? '';
@@ -174,6 +182,74 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     });
   }
 
+  /// G49: pick the day the expense happened (2000 … a year ahead).
+  Future<void> _pickDay() async {
+    final today = dayOf(DateTime.now());
+    final last = DateTime(
+      today.year,
+      today.month,
+      today.day + kMaxExpenseDateAheadDays,
+    );
+    final first = DateTime(kMinExpenseDateYear);
+    final initial = _day.isBefore(first)
+        ? first
+        : _day.isAfter(last)
+        ? last
+        : _day;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
+      helpText: context.l10n.expenseDatePickerHelp,
+    );
+    if (picked != null && mounted) setState(() => _day = dayOf(picked));
+  }
+
+  Widget _dateField(BuildContext context) {
+    final l = context.l10n;
+    final today = dayOf(DateTime.now());
+    final yesterday = DateTime(today.year, today.month, today.day - 1);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          key: const Key('expenseDate'),
+          borderRadius: BorderRadius.circular(Radii.m),
+          onTap: _pickDay,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: l.expenseDateLabel,
+              prefixIcon: const Icon(Icons.event_outlined),
+            ),
+            child: Text(
+              context.dayHeader(_day.millisecondsSinceEpoch),
+              key: const Key('expenseDateValue'),
+            ),
+          ),
+        ),
+        const SizedBox(height: Insets.s),
+        Wrap(
+          spacing: Insets.s,
+          children: [
+            ChoiceChip(
+              key: const Key('expenseDateToday'),
+              label: Text(l.today),
+              selected: _day == today,
+              onSelected: (_) => setState(() => _day = today),
+            ),
+            ChoiceChip(
+              key: const Key('expenseDateYesterday'),
+              label: Text(l.yesterday),
+              selected: _day == yesterday,
+              onSelected: (_) => setState(() => _day = yesterday),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
     _descCtrl.dispose();
@@ -207,6 +283,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             createdAt: initial.createdAt,
             category: _category,
             note: _noteCtrl.text,
+            // G49: unchanged day → keep the stored date as it is.
+            date: _day == _initialDay
+                ? initial.date
+                : storedExpenseDate(_day, initial.createdAt),
           );
     } else {
       await ref
@@ -220,6 +300,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             splits: splits,
             category: _category,
             note: _noteCtrl.text,
+            day: _day,
           );
     }
 
@@ -415,6 +496,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               ],
                               onChanged: (v) => setState(() => _paidBy = v),
                             ),
+                            const SizedBox(height: Insets.l),
+                            _dateField(context),
                             const SizedBox(height: Insets.xl),
                             Text(
                               l.splitSection,

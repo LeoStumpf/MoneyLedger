@@ -49,6 +49,9 @@ class Expenses extends Table {
   // free-text note; NULL = none. Part of the signed content when set.
   TextColumn get category => text().nullable()();
   TextColumn get note => text().nullable()();
+  // G49: the day the expense happened (ISO `YYYY-MM-DD`, wire `date`);
+  // NULL = the day of `created_at`. Part of the signed content when set.
+  TextColumn get expenseDate => text().nullable()();
   // G37: cached G27 content hash (SHA-256 hex of the canonical content),
   // written by the DAO's LWW upsert; NULL = compute on demand.
   TextColumn get versionHash => text().nullable()();
@@ -309,12 +312,22 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
     onUpgrade: (m, from, to) async {
+      // G49 (v13): `expenses.expense_date`. The v8 / v12 backfills below read
+      // the expenses table with today's columns, so the column is added
+      // before the first of them that runs (once).
+      var expenseDateAdded = false;
+      Future<void> addExpenseDate() async {
+        if (expenseDateAdded) return;
+        expenseDateAdded = true;
+        await m.addColumn(expenses, expenses.expenseDate);
+      }
+
       // v2 (Phase B): add the local membership table. Existing
       // groups/expenses/settlements are left untouched (clean-slate move to
       // roomless — old room-based groups simply stop syncing).
@@ -397,6 +410,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 8) {
         await m.addColumn(expenses, expenses.versionHash);
         await m.addColumn(settlements, settlements.versionHash);
+        await addExpenseDate();
         await backfillVersionHashes(this);
       }
       // v9 (G18 review): device-key attestations are scoped to the group
@@ -443,7 +457,21 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(recordHistory);
         await m.createIndex(recordHistoryGroup);
         await m.createIndex(recordHistoryRecord);
+        await addExpenseDate();
         await backfillRecordHistory(this);
+      }
+      // v13 (G49): the optional expense date (nullable — existing expenses
+      // have none, their signatures and hashes are unchanged). Like v7: a
+      // pre-G49 build refused signed expense versions carrying a `date` (its
+      // rebuilt body lacks it) — forget expense refusals so peers re-send
+      // and this build verifies them properly.
+      if (from < 13) {
+        await addExpenseDate();
+        if (from >= 6) {
+          await customStatement(
+            "DELETE FROM rejected_versions WHERE kind = 'expense'",
+          );
+        }
       }
     },
     beforeOpen: (_) async {

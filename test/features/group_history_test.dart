@@ -299,5 +299,35 @@ void main() {
       expect(plan.changes, isEmpty);
       expect(plan.skipped, 1);
     });
+
+    test('G49: the expense date travels with the content — a reset brings '
+        'back the earlier day', () {
+      ExpenseModel dated(String date, int at) => ExpenseModel(
+        id: 'e1',
+        roomId: 'g1',
+        description: 'Dinner',
+        amountCents: 100,
+        currency: 'EUR',
+        paidBy: 'p1',
+        splitsJson: '{"p1":100}',
+        createdAt: 1,
+        updatedAt: at,
+        origin: _origin,
+        date: date,
+      );
+      final first = _ex(dated('2026-01-05', 1), 1);
+      final second = _ex(dated('2026-02-01', 5), 2);
+      final plan = planGroupReset(
+        groupId: 'g1',
+        beforeId: second.id,
+        entries: [first, second],
+        expenses: [dated('2026-02-01', 5)],
+        settlements: const [],
+        meta: null,
+        now: 3,
+      );
+      expect(plan.reverted, 1);
+      expect(plan.changes.single.expense!.date, '2026-01-05');
+    });
   });
 }

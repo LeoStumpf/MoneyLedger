@@ -21,6 +21,7 @@ import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
 import '../../models/expense_category.dart' show normalizeNote;
+import '../../models/expense_date.dart' show storedExpenseDate;
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart' show nextLwwClock;
 import '../history/snapshot_store.dart';
@@ -190,6 +191,7 @@ class ExpenseAdder extends _$ExpenseAdder {
     required Map<String, int> splits,
     String? category,
     String? note,
+    DateTime? day,
   }) => _run((w) async {
     final createdAt = DateTime.now().millisecondsSinceEpoch;
     final expense = ExpenseModel(
@@ -204,6 +206,8 @@ class ExpenseAdder extends _$ExpenseAdder {
       updatedAt: createdAt,
       category: category,
       note: normalizeNote(note),
+      // G49: only a back-dated expense carries a `date` (today → none).
+      date: day == null ? null : storedExpenseDate(day, createdAt),
     );
     final signed = await w.signer.expense(expense, creating: true);
     if (w.db.isClosed) return;
@@ -240,7 +244,8 @@ class ExpenseAdder extends _$ExpenseAdder {
 
   /// Edits an existing expense: the full record is re-written with a fresh
   /// LWW clock and replicated whole — concurrent edits of the same expense
-  /// converge to the latest writer on every device.
+  /// converge to the latest writer on every device. [date] (G49): the stored
+  /// ISO day (`YYYY-MM-DD`), null = none (the day of [createdAt]).
   Future<void> updateExpense({
     required String id,
     required String roomId,
@@ -252,6 +257,7 @@ class ExpenseAdder extends _$ExpenseAdder {
     required int createdAt,
     String? category,
     String? note,
+    String? date,
   }) => _run((w) async {
     // The creator's origin ("added by") is carried over unchanged (G6).
     final current = await w.expenses.getExpenseById(id);
@@ -267,6 +273,7 @@ class ExpenseAdder extends _$ExpenseAdder {
       updatedAt: nextLwwClock(current?.updatedAt ?? 0),
       category: category,
       note: normalizeNote(note),
+      date: date,
       origin: current?.origin,
     );
     final signed = await w.signer.expense(expense);
@@ -294,6 +301,7 @@ class ExpenseAdder extends _$ExpenseAdder {
       deleted: true,
       category: current.category,
       note: current.note,
+      date: current.date,
       origin: current.origin,
     );
     // A delete is a signed version too ("deleted by").

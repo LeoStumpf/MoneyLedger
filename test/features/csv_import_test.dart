@@ -521,6 +521,36 @@ void main() {
       expect(csvCategoriesToAdd(parsed, [add.single]), isEmpty);
     });
   });
+
+  group('expense date (G49)', () {
+    ExpenseModel dated(String? date) => ExpenseModel(
+      id: 'e1',
+      roomId: 'g1',
+      description: 'Dinner',
+      amountCents: 4200,
+      currency: 'EUR',
+      paidBy: 'pa',
+      splitsJson: '{"pa":2100,"pb":2100}',
+      createdAt: 1760000000000,
+      updatedAt: 1760000050000,
+      date: date,
+    );
+
+    test('a back-dated expense round-trips through the CSV', () async {
+      await import(buildGroupCsv(grp, members, [dated('2025-10-01')]));
+      final e = await c.read(expensesDaoProvider).getExpenseById('e1');
+      expect(e!.date, '2025-10-01');
+      expect(e.createdAt, 1760000000000);
+    });
+
+    test('an invalid Date cell aborts the import, nothing written', () async {
+      final csv = buildGroupCsv(grp, members, [
+        dated('2025-10-01'),
+      ]).replaceFirst('2025-10-01,Expense', '1999-01-01,Expense');
+      await expectLater(import(csv), throwsA(isA<CsvImportException>()));
+      expect(await c.read(expensesDaoProvider).getExpenseById('e1'), isNull);
+    });
+  });
 }
 
 List<String> _row(String line) => line.split(',');

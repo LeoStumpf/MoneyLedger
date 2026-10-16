@@ -9,6 +9,7 @@ import '../../core/sync/sync_engine.dart';
 import '../../core/sync/sync_health.dart';
 import '../../core/sync/sync_status_provider.dart';
 import '../../models/expense_category.dart';
+import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../backup/csv_export.dart';
@@ -398,28 +399,44 @@ class ExpensesPage extends ConsumerWidget {
     String searchName(String id) =>
         id == myId ? l.you : (names[id] ?? localpartOf(id));
     final f = filter ?? LedgerFilter.none;
-    final entries = <({int createdAt, Object record})>[
-      for (final e in expensesAsync.value!)
-        if (!f.isActive ||
-            expenseMatches(
-              e,
-              f,
-              nameOf: searchName,
-              myId: myId,
-              customCategories: customCategories,
-            ))
-          (createdAt: e.createdAt, record: e),
-      for (final s in settlementsAsync.value!)
-        if (!f.isActive ||
-            settlementMatches(
-              s,
-              f,
-              nameOf: searchName,
-              myId: myId,
-              paymentLabel: l.paymentLabel,
-            ))
-          (createdAt: s.createdAt, record: s),
-    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    // G49: an expense sits under its display day (`date ?? created_at`), so
+    // a back-dated one lands on the day it happened; newest day first, and
+    // within a day newest-created first.
+    int dayOfMs(int ms) {
+      final d = DateTime.fromMillisecondsSinceEpoch(ms);
+      return DateTime(d.year, d.month, d.day).millisecondsSinceEpoch;
+    }
+
+    final entries =
+        <({int day, int createdAt, Object record})>[
+          for (final e in expensesAsync.value!)
+            if (!f.isActive ||
+                expenseMatches(
+                  e,
+                  f,
+                  nameOf: searchName,
+                  myId: myId,
+                  customCategories: customCategories,
+                ))
+              (
+                day: e.displayDay.millisecondsSinceEpoch,
+                createdAt: e.createdAt,
+                record: e,
+              ),
+          for (final s in settlementsAsync.value!)
+            if (!f.isActive ||
+                settlementMatches(
+                  s,
+                  f,
+                  nameOf: searchName,
+                  myId: myId,
+                  paymentLabel: l.paymentLabel,
+                ))
+              (day: dayOfMs(s.createdAt), createdAt: s.createdAt, record: s),
+        ]..sort((a, b) {
+          final byDay = b.day.compareTo(a.day);
+          return byDay != 0 ? byDay : b.createdAt.compareTo(a.createdAt);
+        });
     if (entries.isEmpty && f.isActive) {
       return EmptyState(
         key: const Key('noMatches'),
@@ -520,8 +537,7 @@ class ExpensesPage extends ConsumerWidget {
     // Day sections, newest first.
     final sections = <({int day, List<Object> records})>[];
     for (final e in entries) {
-      final d = DateTime.fromMillisecondsSinceEpoch(e.createdAt);
-      final day = DateTime(d.year, d.month, d.day).millisecondsSinceEpoch;
+      final day = e.day;
       if (sections.isEmpty || sections.last.day != day) {
         sections.add((day: day, records: [e.record]));
       } else {

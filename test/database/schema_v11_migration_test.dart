@@ -103,7 +103,8 @@ void main() {
 
     final signing = SigningDao(db);
     expect(await signing.rejectedClock('g1', 'meta', 'g1'), isNull);
-    expect(await signing.rejectedClock('g1', 'expense', 'e1'), 70);
+    // (The expense refusal is forgotten too — by the v13 step, G49.)
+    expect(await signing.rejectedClock('g1', 'expense', 'e1'), isNull);
 
     // v11 writes with categories work.
     const dog = CustomCategory(id: 'c:dog', name: 'Dog', icon: 'pets');

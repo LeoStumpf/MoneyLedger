@@ -140,7 +140,7 @@ void main() {
       expect(
         lines.first,
         'Date,Type,Description,Category,Category Name,Note,Currency,Amount,'
-        'Paid By,Alex,Sam,Expense ID,Group,Group ID,Updated At',
+        'Paid By,Alex,Sam,Expense ID,Group,Group ID,Updated At,Created At',
       );
       expect(
         lines[1],
@@ -284,6 +284,63 @@ void main() {
       expect((rows[1].category, rows[1].categoryName), ('food', null));
       expect((rows[2].category, rows[2].categoryName), ('c:unknown', null));
       expect(rows[0].sharesByName, {'Alex': 2100, 'Sam': 2100});
+    });
+  });
+
+  group('expense date (G49)', () {
+    final created = DateTime(2026, 10, 17, 9, 30).millisecondsSinceEpoch;
+    ExpenseModel dated(String id, String? date) => ExpenseModel(
+      id: id,
+      roomId: 'g1',
+      description: 'x',
+      amountCents: 4200,
+      currency: 'EUR',
+      paidBy: 'pa',
+      splitsJson: '{"pa":2100,"pb":2100}',
+      createdAt: created,
+      updatedAt: created + 1000,
+      date: date,
+    );
+
+    test('Date is the display day; Created At keeps the exact time', () {
+      final csv = buildGroupCsv(testGroup, members, [
+        dated('e1', '2026-10-10'),
+        dated('e2', null),
+      ]);
+      final lines = csv.split('\r\n');
+      expect(lines.first, endsWith(',Updated At,Created At'));
+      expect(lines[1], startsWith('2026-10-10,Expense,'));
+      expect(lines[1], endsWith(',$created'));
+      expect(lines[2], startsWith('2026-10-17,Expense,'));
+
+      final rows = parseGroupCsv(csv).rows;
+      expect(rows[0].date, '2026-10-10');
+      expect(rows[0].createdAt, created);
+      expect(rows[1].date, isNull); // its own creation day → undated
+      expect(rows[1].createdAt, created);
+    });
+
+    test('an edited Date cell back-dates the expense on import', () {
+      final csv = buildGroupCsv(testGroup, members, [
+        dated('e1', null),
+      ]).replaceFirst('2026-10-17,Expense,', '2026-09-30,Expense,');
+      final r = parseGroupCsv(csv).rows.single;
+      expect(r.date, '2026-09-30');
+      expect(r.createdAt, created);
+    });
+
+    test('a pre-G49 CSV (ISO time in Date, no Created At) is undated', () {
+      const old =
+          'Date,Type,Description,Currency,Amount,Paid By,Alex,Sam,'
+          'Expense ID,Group,Group ID,Updated At\r\n'
+          '2025-10-09T10:00:00.000,Expense,Dinner,EUR,42.00,Alex,21.00,21.00,'
+          'e1,Trip,g1,1760000050000';
+      final r = parseGroupCsv(old).rows.single;
+      expect(r.date, isNull);
+      expect(
+        r.createdAt,
+        DateTime.parse('2025-10-09T10:00:00.000').millisecondsSinceEpoch,
+      );
     });
   });
 }

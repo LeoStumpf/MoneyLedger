@@ -662,6 +662,10 @@ Switching split modes or editing amounts today starts from blanks; make the
       (Exact stays exact with a "doesn't add up" hint + one-tap rescale)
 - [ ] EN+DE, widget tests for each default / auto-fill path
 
+### G60. Expense-date follow-ups (found in G49) 🟢
+- [ ] Payments (settlements) have no date yet
+- [ ] Offline demo seed: a back-dated example
+
 ---
 
 ## Execution queue (conductor process)
@@ -727,6 +731,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G55 — web glyph coverage without Google (found in G43)
 - [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15 (use `pixel-lock` for the Pixel)
 - [ ] G58 — restore-point follow-ups (found in G48)
+- [ ] G60 — expense-date follow-ups (found in G49)
 - [ ] G57 — custom-category follow-ups (found in G47)
 - [ ] G56 — UX follow-ups (found in G46)
 

@@ -208,6 +208,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     deleted: e.deleted,
     category: e.category,
     note: e.note,
+    date: e.expenseDate,
     sig: RecordSignature.decode(e.sig),
     origin: RecordSignature.decode(e.origin),
     pendingSign: e.pendingSign,
@@ -246,6 +247,7 @@ ExpensesCompanion expenseCompanion(ExpenseModel e) => ExpensesCompanion(
   deleted: Value(e.deleted),
   category: Value(e.category),
   note: Value(e.note),
+  expenseDate: Value(e.date),
   sig: Value(e.sig?.encode()),
   origin: Value(e.origin?.encode()),
   pendingSign: Value(e.pendingSign),
@@ -285,6 +287,7 @@ ExpenseModel _expenseFromCompanion(ExpensesCompanion c) => ExpenseModel(
   deleted: _v(c.deleted, false),
   category: _v(c.category, null),
   note: _v(c.note, null),
+  date: _v(c.expenseDate, null),
   sig: RecordSignature.decode(_v(c.sig, null)),
   origin: RecordSignature.decode(_v(c.origin, null)),
   pendingSign: _v(c.pendingSign, false),
@@ -325,7 +328,8 @@ bool _completeExpense(ExpensesCompanion c) =>
     c.createdAt.present &&
     c.deleted.present &&
     c.category.present &&
-    c.note.present;
+    c.note.present &&
+    c.expenseDate.present;
 
 bool _completeSettlement(SettlementsCompanion c) =>
     c.roomId.present &&

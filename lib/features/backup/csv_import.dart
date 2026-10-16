@@ -400,6 +400,7 @@ class CsvImporter extends _$CsvImporter {
         updatedAt: updatedAt,
         category: row.category,
         note: row.note,
+        date: row.date,
       );
       final problem = expenseProblem(draft);
       if (problem != null) throw CsvImportException(i + 2, problem);

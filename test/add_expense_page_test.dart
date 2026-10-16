@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/database/app_database.dart';
+import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
@@ -291,6 +292,7 @@ void main() {
         find.widgetWithText(TextFormField, 'Amount'),
         '20',
       );
+      await tester.ensureVisible(find.text('Exact'));
       await tester.tap(find.text('Exact'));
       await tester.pumpAndSettle();
       await tester.enterText(splitFields().at(0), '15'); // alice
@@ -335,6 +337,7 @@ void main() {
         find.widgetWithText(TextFormField, 'Amount'),
         '20',
       );
+      await tester.ensureVisible(find.text('Shares'));
       await tester.tap(find.text('Shares'));
       await tester.pumpAndSettle();
       await tester.enterText(splitFields().at(0), '3'); // alice : 3
@@ -421,6 +424,7 @@ void main() {
         find.widgetWithText(TextFormField, 'Amount'),
         '20',
       );
+      await tester.ensureVisible(find.text('Exact'));
       await tester.tap(find.text('Exact'));
       await tester.pumpAndSettle();
       await tester.enterText(splitFields().at(0), '5'); // only 5 of 20
@@ -919,6 +923,120 @@ void main() {
             .content['category'],
         created.id,
       );
+    });
+
+    // ── G49: expense date ─────────────────────────────────────────────────
+    String iso(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+    String dateValue(WidgetTester tester) =>
+        tester.widget<Text>(find.byKey(const Key('expenseDateValue'))).data!;
+
+    Future<void> fillPizza(WidgetTester tester) async {
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Pizza',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
+    }
+
+    testWidgets('a new expense is dated today: no date on the wire', (
+      tester,
+    ) async {
+      final received = await pumpForm(tester);
+      expect(dateValue(tester), 'Today');
+      await fillPizza(tester);
+      await submit(tester, 'Add');
+      expect(received.single.content.containsKey('date'), isFalse);
+    });
+
+    testWidgets('picking "Yesterday" back-dates the expense (saved + sent)', (
+      tester,
+    ) async {
+      final (db, _) = await seedGroup();
+      final received = await pumpForm(tester, database: db);
+      await fillPizza(tester);
+      await tester.ensureVisible(find.byKey(const Key('expenseDateYesterday')));
+      await tester.tap(find.byKey(const Key('expenseDateYesterday')));
+      await tester.pump();
+      expect(dateValue(tester), 'Yesterday');
+      await submit(tester, 'Add');
+
+      final now = DateTime.now();
+      final yesterday = iso(DateTime(now.year, now.month, now.day - 1));
+      expect(received.single.content['date'], yesterday);
+      final stored = await tester.runAsync(
+        () => ExpensesDao(db).getExpensesForRoom('g1'),
+      );
+      expect(stored!.single.date, yesterday);
+    });
+
+    testWidgets('the date field opens a date picker', (tester) async {
+      final received = await pumpForm(tester);
+      await fillPizza(tester);
+      await tester.ensureVisible(find.byKey(const Key('expenseDate')));
+      await tester.tap(find.byKey(const Key('expenseDate')));
+      await tester.pumpAndSettle();
+      expect(find.text('When did it happen?'), findsOneWidget);
+      final now = DateTime.now();
+      final dayNum = now.day == 1 ? 2 : 1;
+      await tester.tap(
+        find.descendant(
+          of: find.byType(DatePickerDialog),
+          matching: find.text('$dayNum'),
+        ),
+      );
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await submit(tester, 'Add');
+      expect(
+        received.single.content['date'],
+        iso(DateTime(now.year, now.month, dayNum)),
+      );
+    });
+
+    const datedInitial = ExpenseModel(
+      id: 'e1',
+      roomId: 'g1',
+      description: 'Dinner',
+      amountCents: 4200,
+      currency: 'CHF',
+      paidBy: '@alice:x.org',
+      splitsJson: '{"@alice:x.org":2100,"@bob:x.org":2100}',
+      createdAt: 1000,
+      updatedAt: 1000,
+      date: '2025-10-01',
+    );
+
+    testWidgets('edit: the stored date is shown and kept when unchanged', (
+      tester,
+    ) async {
+      final received = await pumpForm(tester, initial: datedInitial);
+      expect(dateValue(tester), contains('2025'));
+      await submit(tester, 'Save');
+      expect(received.single.content['date'], '2025-10-01');
+    });
+
+    testWidgets('edit: "Today" re-dates the expense', (tester) async {
+      final received = await pumpForm(tester, initial: datedInitial);
+      await tester.ensureVisible(find.byKey(const Key('expenseDateToday')));
+      await tester.tap(find.byKey(const Key('expenseDateToday')));
+      await tester.pump();
+      expect(dateValue(tester), 'Today');
+      await submit(tester, 'Save');
+      // Created in 1970, so "today" is a date of its own.
+      expect(received.single.content['date'], iso(DateTime.now()));
+    });
+
+    testWidgets('German: date label and quick picks', (tester) async {
+      await pumpForm(tester, locale: const Locale('de'));
+      expect(find.text('Datum'), findsOneWidget);
+      expect(find.text('Heute'), findsWidgets);
+      expect(find.text('Gestern'), findsOneWidget);
     });
   });
 }

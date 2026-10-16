@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../models/expense_category.dart';
+import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
@@ -39,8 +40,10 @@ Map<String, int>? tryParseSplit(String splitsJson) {
 
 /// Why [e] is not a valid expense version, or null when it is: the amount is
 /// out of range, there is no payer, or the split isn't a non-empty
-/// `{participant: cents}` map summing exactly to the amount.
-String? expenseProblem(ExpenseModel e) {
+/// `{participant: cents}` map summing exactly to the amount; G49: a `date`
+/// that isn't an acceptable calendar day ([expenseDateProblem]; [now] is
+/// for tests).
+String? expenseProblem(ExpenseModel e, {DateTime? now}) {
   if (!isValidAmountCents(e.amountCents)) return 'amount ${e.amountCents}';
   if (e.paidBy.isEmpty) return 'no payer';
   if (e.currency.isEmpty) return 'no currency';
@@ -48,6 +51,8 @@ String? expenseProblem(ExpenseModel e) {
   if (split == null || split.isEmpty) return 'malformed split';
   final sum = split.values.fold<int>(0, (a, b) => a + b);
   if (sum != e.amountCents) return 'split sums to $sum, not ${e.amountCents}';
+  final date = e.date;
+  if (date != null) return expenseDateProblem(date, now: now);
   return null;
 }
 

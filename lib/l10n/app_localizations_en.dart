@@ -2243,4 +2243,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get privacyRestorePointsBody =>
       'To let you undo mistakes, MoneyLedger keeps earlier versions of your groups\' entries on this device for 90 days, and on Android once a day (when something changed) a copy of all your groups in the app\'s private storage — the last 7 days plus 4 older weeks. These versions and copies are never sent anywhere, are not part of any backup file, and are excluded from Android\'s backups like all app data. Leaving or deleting a group removes its earlier versions at once; the daily copies still contain it until they rotate out (after about five weeks), so that a group deleted by mistake can be restored. Deleting local data, or uninstalling the app, removes all of them.';
+
+  @override
+  String get expenseDateLabel => 'Date';
+
+  @override
+  String get expenseDatePickerHelp => 'When did it happen?';
 }

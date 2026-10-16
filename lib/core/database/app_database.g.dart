@@ -652,6 +652,17 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _expenseDateMeta = const VerificationMeta(
+    'expenseDate',
+  );
+  @override
+  late final GeneratedColumn<String> expenseDate = GeneratedColumn<String>(
+    'expense_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _versionHashMeta = const VerificationMeta(
     'versionHash',
   );
@@ -681,6 +692,7 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     pendingSign,
     category,
     note,
+    expenseDate,
     versionHash,
   ];
   @override
@@ -816,6 +828,15 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('expense_date')) {
+      context.handle(
+        _expenseDateMeta,
+        expenseDate.isAcceptableOrUnknown(
+          data['expense_date']!,
+          _expenseDateMeta,
+        ),
+      );
+    }
     if (data.containsKey('version_hash')) {
       context.handle(
         _versionHashMeta,
@@ -898,6 +919,10 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      expenseDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}expense_date'],
+      ),
       versionHash: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}version_hash'],
@@ -928,6 +953,7 @@ class Expense extends DataClass implements Insertable<Expense> {
   final bool pendingSign;
   final String? category;
   final String? note;
+  final String? expenseDate;
   final String? versionHash;
   const Expense({
     required this.id,
@@ -946,6 +972,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     required this.pendingSign,
     this.category,
     this.note,
+    this.expenseDate,
     this.versionHash,
   });
   @override
@@ -977,6 +1004,9 @@ class Expense extends DataClass implements Insertable<Expense> {
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    if (!nullToAbsent || expenseDate != null) {
+      map['expense_date'] = Variable<String>(expenseDate);
+    }
     if (!nullToAbsent || versionHash != null) {
       map['version_hash'] = Variable<String>(versionHash);
     }
@@ -1007,6 +1037,9 @@ class Expense extends DataClass implements Insertable<Expense> {
           ? const Value.absent()
           : Value(category),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      expenseDate: expenseDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expenseDate),
       versionHash: versionHash == null && nullToAbsent
           ? const Value.absent()
           : Value(versionHash),
@@ -1035,6 +1068,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
       category: serializer.fromJson<String?>(json['category']),
       note: serializer.fromJson<String?>(json['note']),
+      expenseDate: serializer.fromJson<String?>(json['expenseDate']),
       versionHash: serializer.fromJson<String?>(json['versionHash']),
     );
   }
@@ -1058,6 +1092,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       'pendingSign': serializer.toJson<bool>(pendingSign),
       'category': serializer.toJson<String?>(category),
       'note': serializer.toJson<String?>(note),
+      'expenseDate': serializer.toJson<String?>(expenseDate),
       'versionHash': serializer.toJson<String?>(versionHash),
     };
   }
@@ -1079,6 +1114,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     bool? pendingSign,
     Value<String?> category = const Value.absent(),
     Value<String?> note = const Value.absent(),
+    Value<String?> expenseDate = const Value.absent(),
     Value<String?> versionHash = const Value.absent(),
   }) => Expense(
     id: id ?? this.id,
@@ -1099,6 +1135,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     pendingSign: pendingSign ?? this.pendingSign,
     category: category.present ? category.value : this.category,
     note: note.present ? note.value : this.note,
+    expenseDate: expenseDate.present ? expenseDate.value : this.expenseDate,
     versionHash: versionHash.present ? versionHash.value : this.versionHash,
   );
   Expense copyWithCompanion(ExpensesCompanion data) {
@@ -1129,6 +1166,9 @@ class Expense extends DataClass implements Insertable<Expense> {
           : this.pendingSign,
       category: data.category.present ? data.category.value : this.category,
       note: data.note.present ? data.note.value : this.note,
+      expenseDate: data.expenseDate.present
+          ? data.expenseDate.value
+          : this.expenseDate,
       versionHash: data.versionHash.present
           ? data.versionHash.value
           : this.versionHash,
@@ -1154,6 +1194,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('pendingSign: $pendingSign, ')
           ..write('category: $category, ')
           ..write('note: $note, ')
+          ..write('expenseDate: $expenseDate, ')
           ..write('versionHash: $versionHash')
           ..write(')'))
         .toString();
@@ -1177,6 +1218,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     pendingSign,
     category,
     note,
+    expenseDate,
     versionHash,
   );
   @override
@@ -1199,6 +1241,7 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.pendingSign == this.pendingSign &&
           other.category == this.category &&
           other.note == this.note &&
+          other.expenseDate == this.expenseDate &&
           other.versionHash == this.versionHash);
 }
 
@@ -1219,6 +1262,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<bool> pendingSign;
   final Value<String?> category;
   final Value<String?> note;
+  final Value<String?> expenseDate;
   final Value<String?> versionHash;
   final Value<int> rowid;
   const ExpensesCompanion({
@@ -1238,6 +1282,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.pendingSign = const Value.absent(),
     this.category = const Value.absent(),
     this.note = const Value.absent(),
+    this.expenseDate = const Value.absent(),
     this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1258,6 +1303,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.pendingSign = const Value.absent(),
     this.category = const Value.absent(),
     this.note = const Value.absent(),
+    this.expenseDate = const Value.absent(),
     this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -1285,6 +1331,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<bool>? pendingSign,
     Expression<String>? category,
     Expression<String>? note,
+    Expression<String>? expenseDate,
     Expression<String>? versionHash,
     Expression<int>? rowid,
   }) {
@@ -1305,6 +1352,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       if (pendingSign != null) 'pending_sign': pendingSign,
       if (category != null) 'category': category,
       if (note != null) 'note': note,
+      if (expenseDate != null) 'expense_date': expenseDate,
       if (versionHash != null) 'version_hash': versionHash,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1327,6 +1375,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Value<bool>? pendingSign,
     Value<String?>? category,
     Value<String?>? note,
+    Value<String?>? expenseDate,
     Value<String?>? versionHash,
     Value<int>? rowid,
   }) {
@@ -1347,6 +1396,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       pendingSign: pendingSign ?? this.pendingSign,
       category: category ?? this.category,
       note: note ?? this.note,
+      expenseDate: expenseDate ?? this.expenseDate,
       versionHash: versionHash ?? this.versionHash,
       rowid: rowid ?? this.rowid,
     );
@@ -1403,6 +1453,9 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (expenseDate.present) {
+      map['expense_date'] = Variable<String>(expenseDate.value);
+    }
     if (versionHash.present) {
       map['version_hash'] = Variable<String>(versionHash.value);
     }
@@ -1431,6 +1484,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('pendingSign: $pendingSign, ')
           ..write('category: $category, ')
           ..write('note: $note, ')
+          ..write('expenseDate: $expenseDate, ')
           ..write('versionHash: $versionHash, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5229,6 +5283,7 @@ typedef $$ExpensesTableCreateCompanionBuilder =
       Value<bool> pendingSign,
       Value<String?> category,
       Value<String?> note,
+      Value<String?> expenseDate,
       Value<String?> versionHash,
       Value<int> rowid,
     });
@@ -5250,6 +5305,7 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
       Value<bool> pendingSign,
       Value<String?> category,
       Value<String?> note,
+      Value<String?> expenseDate,
       Value<String?> versionHash,
       Value<int> rowid,
     });
@@ -5340,6 +5396,11 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get expenseDate => $composableBuilder(
+    column: $table.expenseDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5438,6 +5499,11 @@ class $$ExpensesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get expenseDate => $composableBuilder(
+    column: $table.expenseDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get versionHash => $composableBuilder(
     column: $table.versionHash,
     builder: (column) => ColumnOrderings(column),
@@ -5511,6 +5577,11 @@ class $$ExpensesTableAnnotationComposer
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
+  GeneratedColumn<String> get expenseDate => $composableBuilder(
+    column: $table.expenseDate,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get versionHash => $composableBuilder(
     column: $table.versionHash,
     builder: (column) => column,
@@ -5561,6 +5632,7 @@ class $$ExpensesTableTableManager
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> category = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> expenseDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion(
@@ -5580,6 +5652,7 @@ class $$ExpensesTableTableManager
                 pendingSign: pendingSign,
                 category: category,
                 note: note,
+                expenseDate: expenseDate,
                 versionHash: versionHash,
                 rowid: rowid,
               ),
@@ -5601,6 +5674,7 @@ class $$ExpensesTableTableManager
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> category = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> expenseDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion.insert(
@@ -5620,6 +5694,7 @@ class $$ExpensesTableTableManager
                 pendingSign: pendingSign,
                 category: category,
                 note: note,
+                expenseDate: expenseDate,
                 versionHash: versionHash,
                 rowid: rowid,
               ),

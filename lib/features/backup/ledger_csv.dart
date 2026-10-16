@@ -16,6 +16,15 @@
 /// (default icon); without a name the id is kept verbatim (shown as
 /// "Other"). Older parsers ignore the extra column (before `Paid By`).
 ///
+/// G49: `Date` is the **display day** (`YYYY-MM-DD`): a back-dated
+/// expense's `date`, else the local day of its creation (payments: their
+/// creation day). The exact creation time moved to a trailing machine column
+/// `Created At` (ms epoch) — it is part of the signed creation statement and
+/// must survive a round trip. Import: `Created At` when present, else the
+/// `Date` cell (a pre-G49 CSV wrote the full ISO creation time there); an
+/// expense whose `Date` is a plain day different from its creation's local
+/// day becomes back-dated (`date`).
+///
 /// The `Type` column says `Expense` or `Payment`. A payment (settlement) row
 /// reads like an expense the payer covered entirely for the recipient:
 /// `Paid By` = who paid, the recipient's share column = the amount — so the
@@ -33,6 +42,7 @@ library;
 import '../../core/l10n/formatting.dart' show parseLocalizedDecimal;
 import '../../core/sync/record_validation.dart';
 import '../../models/expense_category.dart' show normalizeNote;
+import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
@@ -51,6 +61,7 @@ const _expenseId = 'Expense ID';
 const _group = 'Group';
 const _groupId = 'Group ID';
 const _updatedAt = 'Updated At';
+const _createdAt = 'Created At';
 
 String _nameOf(MemberModel m) =>
     m.displayName.isNotEmpty ? m.displayName : (m.matrixId ?? m.userId);
@@ -89,6 +100,7 @@ String buildGroupCsv(
     _group,
     _groupId,
     _updatedAt,
+    _createdAt,
   ];
 
   final rows = <List<String>>[header];
@@ -102,7 +114,7 @@ String buildGroupCsv(
       if (cents != null) shareByColName[_nameOf(m)] = _money(cents);
     }
     rows.add([
-      DateTime.fromMillisecondsSinceEpoch(e.createdAt).toIso8601String(),
+      expenseDateOf(e.displayDay),
       csvTypeExpense,
       e.description,
       e.category ?? '',
@@ -116,13 +128,14 @@ String buildGroupCsv(
       group.name,
       group.roomId,
       '${e.updatedAt}',
+      '${e.createdAt}',
     ]);
   }
   for (final s in settlements) {
     if (s.deleted) continue;
     final toName = nameById[s.toUser] ?? s.toUser;
     rows.add([
-      DateTime.fromMillisecondsSinceEpoch(s.createdAt).toIso8601String(),
+      expenseDateOf(DateTime.fromMillisecondsSinceEpoch(s.createdAt)),
       csvTypePayment,
       csvTypePayment,
       '',
@@ -136,6 +149,7 @@ String buildGroupCsv(
       group.name,
       group.roomId,
       '${s.updatedAt}',
+      '${s.createdAt}',
     ]);
   }
   return rows.map(_encodeRow).join('\r\n');
@@ -158,6 +172,10 @@ class ParsedExpenseRow {
   /// G47: the `Category Name` cell (a custom category's name), or null.
   final String? categoryName;
   final String? note;
+
+  /// G49: the expense's day (`YYYY-MM-DD`) when the row is back-dated (its
+  /// `Date` differs from its creation's local day), else null.
+  final String? date;
 
   /// A `Payment` row (settlement): [paidByName] paid the single recipient in
   /// [sharesByName]. See [paymentRecipient].
@@ -182,6 +200,7 @@ class ParsedExpenseRow {
     this.category,
     this.categoryName,
     this.note,
+    this.date,
   });
 }
 
@@ -235,6 +254,7 @@ ParsedCsv parseGroupCsv(String csv) {
   final iGroup = idx(_group);
   final iGid = idx(_groupId);
   final iUpd = idx(_updatedAt);
+  final iCreated = idx(_createdAt);
 
   // Share columns are those strictly between Paid By and Expense ID.
   final shareCols = <int>[];
@@ -268,13 +288,20 @@ ParsedCsv parseGroupCsv(String csv) {
     }
     final amount = _parseMoney(at(iAmt));
     if (amount == null) problem ??= 'amount "${at(iAmt)}"';
-    final created = DateTime.tryParse(at(iDate))?.millisecondsSinceEpoch;
+    // G49: the exact creation time (`Created At`), else — a pre-G49 CSV —
+    // the `Date` cell's time.
+    final dateCell = at(iDate).trim();
+    final created =
+        int.tryParse(at(iCreated).trim()) ??
+        DateTime.tryParse(dateCell)?.millisecondsSinceEpoch;
     final updated = int.tryParse(at(iUpd).trim());
+    final createdAt = created ?? updated ?? 0;
+    final day = parseExpenseDate(dateCell);
     rows.add(
       ParsedExpenseRow(
         isPayment: at(iType).trim().toLowerCase() == 'payment',
         id: at(iId).isEmpty ? null : at(iId),
-        createdAt: created ?? updated ?? 0,
+        createdAt: createdAt,
         updatedAt: updated ?? created ?? 0,
         description: at(iDesc),
         currency: at(iCur).isEmpty ? 'EUR' : at(iCur),
@@ -285,6 +312,7 @@ ParsedCsv parseGroupCsv(String csv) {
         category: at(iCat).trim().isEmpty ? null : at(iCat).trim(),
         categoryName: at(iCatName).trim().isEmpty ? null : at(iCatName).trim(),
         note: normalizeNote(at(iNote)),
+        date: day == null ? null : storedExpenseDate(day, createdAt),
       ),
     );
   }

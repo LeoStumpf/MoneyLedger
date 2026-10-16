@@ -485,6 +485,7 @@ class LedgerSyncer {
         deleted: Value(content['deleted'] as bool? ?? false),
         category: Value(_optString(content['category'])),
         note: Value(_optString(content['note'])),
+        expenseDate: Value(_optString(content['date'])),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
       ),

@@ -188,6 +188,34 @@ peers'), and SAS works with other members' devices (members page). Open:
 - Duplicate names are prevented in the dialog (case-insensitive) but not by
   the content rules (two peers may create "Dog" concurrently).
 
+### Expense date (G49) — limits
+- **Mixed versions:** a back-dated expense carries the optional signed
+  `date` (ISO `YYYY-MM-DD`, only when it differs from the creation day). A
+  pre-G49 build rebuilds the body without it → bad signature → it refuses
+  that version (and later versions that keep the date) until it is updated.
+  Same fix as G16: the v13 migration forgets refused *expense* versions, so
+  peers re-send them after the update. An expense dated "today" carries no
+  `date` and is accepted by every build. Unreleased app → accepted.
+- **Payments have no date** (scope): a settlement is always shown under the
+  day it was recorded. Back-dating payments would need the same optional
+  signed field on `com.moneyledger.settlement` (+ CSV / form).
+- **Undated expenses follow the device's time zone** (as before): their day
+  is the local day of `created_at`, so two members in very different zones
+  can see an evening expense on adjacent days. A dated expense shows the
+  same day everywhere. Only a picked day that differs from the local
+  creation day is stored, so the creator's zone decides whether a date is
+  written.
+- **Content rule bound:** a date more than 400 days after the verifying
+  device's today is refused (permanently, for that version) — the picker
+  allows one year ahead, so only a peer with a clock off by over a month
+  could trip it.
+- **CSV:** `Date` is now the display day (`YYYY-MM-DD`, was the full ISO
+  creation time); the exact creation time moved to a trailing `Created At`
+  column. An older parser reads `Date` as the creation time → a re-import
+  of a new CSV into a pre-G49 build would change `created_at` (and break
+  the origin of a record it re-signs as creator). Edited `Date` cells
+  back-date expenses on import; payments ignore them.
+
 ### Backups (G5 / G34) — limits
 - **Encrypted backups** (optional passphrase): Argon2id (32 MiB, t = 3,
   p = 1) + AES-256-GCM via the pure-Dart `cryptography` implementations.

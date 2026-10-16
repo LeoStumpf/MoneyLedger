@@ -22,6 +22,12 @@ class ExpenseModel {
   /// G16: optional free-text note, null = none (never an empty string).
   final String? note;
 
+  /// G49: the calendar day the expense happened, ISO `YYYY-MM-DD` (no time,
+  /// no time zone — every device shows the same day), null = the local day
+  /// of [createdAt]. Only set when it differs from that day (a back-dated
+  /// expense); see `expense_date.dart`.
+  final String? date;
+
   /// G6: this version's signature (its editor), null for a grandfathered
   /// pre-G6 row (legacy / unsigned).
   final RecordSignature? sig;
@@ -53,12 +59,14 @@ class ExpenseModel {
     this.deleted = false,
     String? category,
     String? note,
+    String? date,
     this.sig,
     this.origin,
     this.pendingSign = false,
     this.versionHash,
   }) : category = category == '' ? null : category,
-       note = note == '' ? null : note;
+       note = note == '' ? null : note,
+       date = date == '' ? null : date;
 
   /// A copy with the G6 signing fields replaced (content unchanged).
   ExpenseModel withSigning({
@@ -79,6 +87,7 @@ class ExpenseModel {
     deleted: deleted,
     category: category,
     note: note,
+    date: date,
     sig: sig,
     origin: origin,
     pendingSign: pendingSign,

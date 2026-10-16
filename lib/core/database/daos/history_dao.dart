@@ -208,6 +208,7 @@ Future<void> backfillRecordHistory(AppDatabase db) async {
         deleted: r.deleted,
         category: r.category,
         note: r.note,
+        date: r.expenseDate,
         sig: RecordSignature.decode(r.sig),
         origin: RecordSignature.decode(r.origin),
       );

@@ -353,6 +353,7 @@ ExpenseModel _expense(
   deleted: deleted,
   category: content.category,
   note: content.note,
+  date: content.date,
   origin: origin.origin ?? content.origin,
 );
 

@@ -106,6 +106,7 @@ Expected results are in *italics*.
 | 5.12 | Start the app while a background round runs (trigger the job, open the app at once) → *"Finishing background sync…" briefly, then the app; logcat `[bg-gate] background round finished`* (G18) | phone |
 | 5.13 | Category field → *New category…* → name "Dog" + an icon → *selected on the form*; the peer's selector offers "Dog" too (G47) | 2dev |
 | 5.14 | ⋮ → Categories → rename "Dog", hide it → *peer shows the new name; hidden: not offered for new expenses, old expenses keep the label* (G47) | 2dev |
+| 5.15 | Add expense → *Date shows "Today"*; tap *Yesterday* or the field → pick a day last week → Add → *listed under that day on both devices*; edit it → *the date is prefilled* (G49) | 2dev |
 
 ## 6. Settlements & balances
 

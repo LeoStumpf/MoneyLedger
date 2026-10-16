@@ -217,6 +217,7 @@ lib/
     group_model.dart           # Plain Dart model (GroupModel)
     member_model.dart          # MemberModel; sync_state_model.dart (PeerSyncStateModel)
     expense_category.dart      # G16: ExpenseCategory (stable wire ids), suggestCategory heuristic, normalizeNote
+    expense_date.dart          # G49: ISO day helpers, storedExpenseDate, expenseDateProblem, displayDay
                                # G47: CustomCategory, resolveCategory, kCustomCategoryIcons, bounds
     group_archive.dart         # G16: GroupArchive (device-local) + ledgerFingerprint
   features/
@@ -590,8 +591,8 @@ Matrix **Ed25519 fingerprint key** (vodozemac olm account,
 `docs/design/g6-signed-records.md`.
 - **What's signed** (`record_signing.dart`): a body built from the parsed
   *model* (type tag, group, id, all fields — for expenses incl. the optional
-  G16 `category` / `note`, present **only when set** so pre-G16 bodies and
-  hashes are unchanged — `updated_at`, `deleted`, signer
+  G16 `category` / `note` and the G49 `date`, present **only when set** so
+  older bodies and hashes are unchanged — `updated_at`, `deleted`, signer
   {user, device, key}; `v`/`sig` excluded) → Matrix canonical JSON →
   message `mlsig1:` + base64url(SHA-256) (ASCII). Expenses / settlements also
   carry an immutable **`origin`** (creator's signed creation statement →
@@ -1133,10 +1134,10 @@ column per participant** (header = display name), then trailing machine
 columns that drive the merge:
 
 ```
-Date, Type, Description, Category, Category Name, Note, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
-2026-06-13T…, Expense, Dinner, food, , Tip incl., EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
-2026-06-13T…, Expense, Vet, c:<uuid>, Dog, , EUR, 80.00, Sam, 40.00, 40.00, …, <uuid>, Trip, <gid>, 1760000070000
-2026-06-14T…, Payment, Payment, , , , EUR, 21.00, Sam, 21.00, , …, <uuid>, Trip, <gid>, 1760000090000
+Date, Type, Description, Category, Category Name, Note, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At, Created At
+2026-06-13, Expense, Dinner, food, , Tip incl., EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000, 1760000000000
+2026-06-13, Expense, Vet, c:<uuid>, Dog, , EUR, 80.00, Sam, 40.00, 40.00, …, <uuid>, Trip, <gid>, 1760000070000, 1760000060000
+2026-06-14, Payment, Payment, , , , EUR, 21.00, Sam, 21.00, , …, <uuid>, Trip, <gid>, 1760000090000, 1760000080000
 ```
 
 **G16:** `Category` (the stable English wire id) and `Note` follow
@@ -1144,7 +1145,14 @@ Date, Type, Description, Category, Category Name, Note, Currency, Amount, Paid B
 `Category`) holds a custom category's name (empty for built-ins); an import
 recreates `c:` ids the group lacks from it. A CSV without them
 (pre-G16) imports with no category / note; older parsers ignore them (they sit
-before `Paid By`, outside the share columns).
+before `Paid By`, outside the share columns). **G49:** `Date` is the
+**display day** (`YYYY-MM-DD`: the expense's `date`, else the local day of
+`created_at`; payments: their creation day); the exact creation time (part
+of the signed `origin`, must survive a round trip) is the trailing
+`Created At` (ms). Import: `Created At`, else the `Date` cell (pre-G49 CSVs
+wrote the full ISO creation time there); a plain-day `Date` that differs from
+the creation's local day back-dates the expense (`date`); an invalid one
+aborts the import.
 
 A **payment row** reads like an expense the payer covered entirely for the
 recipient: `Paid By` = from, the recipient's share column = the amount (so the
@@ -1282,6 +1290,40 @@ Use the full JSON backup for a lossless copy.
   `signingUiOverrides(archives:)` / `testOverrides(archives:)` (drift stream
   timers would outlive the test tree).
 - **Out of scope:** receipt photos (no media channel — `docs/open-points.md`).
+
+### Expense date (G49)
+
+Expenses can be **back-dated**. `created_at` can't carry it: it is part of
+the creator's signed `origin` statement (and the G27 hash), so changing it
+on edit would break "added by" for every peer. Instead an optional signed
+**`date`** = the **calendar day** as ISO `YYYY-MM-DD` (no time, no time
+zone — a ms timestamp, even local noon, lands on another day for a peer
+12+ h away). Like G16: in the payload, the signed body and the G27 hash
+**only when set** (golden hash pinned in `test/core/expense_date_wire_test.dart`),
+and it's only set when the picked day **differs from the local day of
+`created_at`** (`storedExpenseDate`) — an expense dated today looks exactly
+like a pre-G49 one, so older builds accept it.
+- **Display date** = `date ?? created_at` (`ExpenseModel.displayDay`,
+  `models/expense_date.dart`). The ledger list groups and sorts by it (day
+  desc, then `created_at` desc), so a back-dated expense lands under its
+  day. Balances don't care. Group "last activity" stays `created_at`.
+- **Form:** a *Date* field under *Paid by* ("Today" / "Yesterday" / the
+  date via `context.dayHeader`; tap → `showDatePicker`, year 2000 … a year
+  ahead) + *Today* / *Yesterday* chips. Edit prefills the display day and
+  keeps the stored `date` unless the day was changed
+  (`ExpenseAdder.updateExpense(date:)` takes the resolved ISO string).
+- **Content rule** (`expenseProblem` → `expenseDateProblem`): a real
+  calendar day, year ≥ 2000, ≤ today + 400 days (the picker allows 365).
+- **Storage:** schema **v13** `expenses.expense_date` (nullable). The v12 →
+  v13 step forgets refused **expense** versions (a pre-G49 build refused
+  signed versions carrying `date` — same as G16's v7; mixed old/new
+  devices disagree on back-dated expenses until all are updated, see
+  `docs/open-points.md`). The column is added
+  before the v8 / v12 backfills when an older DB migrates (they select the
+  expenses table with today's columns).
+- Bootstrap, JSON backup, G48 history / reset (they store `expensePayload`)
+  carry it automatically; CSV see above.
+- **Payments have no date** (scope; open point).
 
 ### Settlements / recording payments (G28)
 
@@ -1537,12 +1579,13 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
   "deleted": false,
   "category": "food",
   "note": "Tip included",
+  "date": "2026-06-12",
   "origin": { "user": "@alice:matrix.org", "device": "AAAA", "key": "<b64 ed25519>", "sig": "<b64>" },
   "sig":    { "user": "@bob:matrix.org",   "device": "BBBB", "key": "<b64 ed25519>", "sig": "<b64>" }
 }
 ```
 
-`paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs. `category` (a G16 wire id) and `note` are **optional** — omitted when unset, signed and hashed only when present (see "Categories, notes, search, archive (G16)").
+`paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs. `category` (a G16 wire id) and `note` are **optional** — omitted when unset, signed and hashed only when present (see "Categories, notes, search, archive (G16)"). So is `date` (G49): the ISO calendar day the expense happened, present only when it differs from `created_at`'s day (see "Expense date (G49)").
 
 **`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "origin", "sig" }` (`from`/`to` are participant ids).
 

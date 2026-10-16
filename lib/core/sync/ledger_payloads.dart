@@ -36,6 +36,8 @@ Map<String, dynamic> expensePayload(ExpenseModel e) => {
   // G16: optional — absent when unset (pre-G16 payloads look exactly alike).
   if (e.category != null) 'category': e.category,
   if (e.note != null) 'note': e.note,
+  // G49: optional ISO day (`YYYY-MM-DD`) — absent unless back-dated.
+  if (e.date != null) 'date': e.date,
   if (e.origin != null) 'origin': e.origin!.toJson(),
   if (e.sig != null) 'sig': e.sig!.toJson(),
 };
@@ -264,6 +266,9 @@ ExpenseModel? expenseFromPayload(Map<String, dynamic> c) {
     // G16 (optional; a non-string is ignored, "" normalises to none).
     category: _optString(c['category']),
     note: _optString(c['note']),
+    // G49 (optional; kept verbatim — a malformed one is refused by the
+    // content rules, never silently rewritten: it is signed).
+    date: _optString(c['date']),
     sig: RecordSignature.fromJson(c['sig']),
     origin: RecordSignature.fromJson(c['origin']),
   );
