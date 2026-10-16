@@ -24,6 +24,7 @@ import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
+import 'helpers/l10n.dart';
 
 const alice = '@alice:x.org';
 const bob = '@bob:y.org';
@@ -42,6 +43,8 @@ void main() {
     Future<void> open(WidgetTester tester,
         {String name = 'Trip', String currency = 'EUR'}) async {
       await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
         home: Builder(
           builder: (context) => Scaffold(
             body: TextButton(
@@ -60,6 +63,8 @@ void main() {
         'returns the edited values', (tester) async {
       ({String name, String currency})? result;
       await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
         home: Builder(
           builder: (context) => Scaffold(
             body: TextButton(
@@ -168,7 +173,10 @@ void main() {
           currentParticipantProvider.overrideWith(
               (ref, g) => Future<MemberModel?>.value(members.first)),
         ],
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
+        routerConfig: router),
       );
     }
 
@@ -245,12 +253,12 @@ void main() {
       // History stays readable, but can't be edited / deleted.
       expect(find.text('Dinner'), findsOneWidget);
       expect(find.byTooltip('Expense options'), findsNothing);
-      final addMember = tester.widget<IconButton>(
-          find.widgetWithIcon(IconButton, Icons.person_add_outlined));
-      expect(addMember.onPressed, isNull);
-
       await tester.tap(find.byTooltip('More'));
       await tester.pumpAndSettle();
+      final addMember = tester.widget<PopupMenuItem<Object?>>(find.ancestor(
+          of: find.text('Add member'),
+          matching: find.byWidgetPredicate((w) => w is PopupMenuItem)));
+      expect(addMember.enabled, isFalse);
       final edit = tester.widget<PopupMenuItem<Object?>>(find.ancestor(
           of: find.text('Edit group'),
           matching: find.byWidgetPredicate((w) => w is PopupMenuItem)));

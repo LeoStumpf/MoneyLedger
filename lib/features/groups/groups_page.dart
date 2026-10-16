@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/l10n/l10n.dart';
 import '../auth/auth_provider.dart';
 import '../onboarding/onboarding_provider.dart';
 import '../backup/csv_files.dart';
@@ -20,40 +21,42 @@ class GroupsPage extends ConsumerWidget {
     ref.watch(ledgerSyncerProvider); // keep syncer alive on the main screen
     ref.watch(syncEngineProvider); // run anti-entropy while signed in
     final groupsAsync = ref.watch(ledgerGroupsProvider);
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Groups'),
+        title: Text(l.groupsTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.upload_file),
-            tooltip: 'Import CSV',
+            tooltip: l.importCsvTooltip,
             onPressed: () => _importCsv(context, ref),
           ),
           IconButton(
             icon: const Icon(Icons.devices),
-            tooltip: 'Devices & security',
+            tooltip: l.devicesTooltip,
             onPressed: () => context.push('/devices'),
           ),
           IconButton(
             icon: const Icon(Icons.settings),
-            tooltip: 'Sync settings',
+            tooltip: l.settingsTooltip,
             onPressed: () => showModalBottomSheet<void>(
               context: context,
+              isScrollControlled: true,
               builder: (_) => const SyncSettingsSheet(),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _confirmSignOut(context, ref),
-            tooltip: 'Sign out',
+            tooltip: l.signOut,
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/groups/create'),
         icon: const Icon(Icons.add),
-        label: const Text('New group'),
+        label: Text(l.newGroup),
       ),
       body: _GroupsBody(
         groupsAsync: groupsAsync,
@@ -66,22 +69,19 @@ class GroupsPage extends ConsumerWidget {
   /// account's ledger DB stays on the device (per-account DB, G4) and is
   /// reopened on the next sign-in with the same account.
   Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final l = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text(
-            'Your groups and expenses stay on this device and are back when '
-            'you sign in again with this account. While signed out, this '
-            'device doesn\'t sync — other members\' changes arrive once you '
-            'sign back in.'),
+        title: Text(l.signOutConfirmTitle),
+        content: Text(l.signOutConfirmBody),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
+              child: Text(l.cancel)),
           FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Sign out')),
+              child: Text(l.signOut)),
         ],
       ),
     );
@@ -90,14 +90,15 @@ class GroupsPage extends ConsumerWidget {
 
   Future<void> _importCsv(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final text = await pickCsvText();
     if (text == null) return; // cancelled
     final count = await ref.read(csvImporterProvider.notifier).importCsv(text);
     final error = ref.read(csvImporterProvider).error;
     messenger.showSnackBar(SnackBar(
         content: Text(error != null
-            ? 'Import failed: $error'
-            : 'Imported $count expense(s)')));
+            ? l.importFailed(error.toString())
+            : l.importedExpenses(count))));
   }
 }
 
@@ -111,15 +112,16 @@ class _GroupsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text(l.errorWithDetail(e.toString()))),
         data: (groups) {
           if (groups.isEmpty && restoring) return const _RestoringGroups();
           if (groups.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                'No groups yet.\nCreate one to get started.',
+                l.noGroupsYet,
                 textAlign: TextAlign.center,
               ),
             );
@@ -159,14 +161,13 @@ class _RestoringGroups extends StatelessWidget {
             const CircularProgressIndicator(),
             const SizedBox(height: 24),
             Text(
-              'Restoring your groups from your other devices…',
+              context.l10n.restoringGroupsTitle,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Open MoneyLedger on another device signed in to this account '
-              '— it sends your groups while the app is running there.',
+              context.l10n.restoringGroupsBody,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
@@ -177,50 +178,56 @@ class _RestoringGroups extends StatelessWidget {
   }
 }
 
-/// Sync settings (G31): explains when this device syncs and, on Android,
-/// toggles the periodic background sync for the signed-in account.
+/// Settings sheet (G31 sync settings, G12 about): explains when this device
+/// syncs and, on Android, toggles the periodic background sync for the
+/// signed-in account; links to the About page.
 class SyncSettingsSheet extends ConsumerWidget {
   const SyncSettingsSheet({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final supported = ref.watch(backgroundSyncSupportedProvider);
     final enabled = ref.watch(backgroundSyncEnabledProvider).value ?? true;
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const ListTile(
-              title: Text('Sync'),
-              subtitle: Text(
-                  'Devices exchange changes while MoneyLedger is open. Changes '
-                  'from others wait on your homeserver (encrypted) until this '
-                  'device picks them up.'),
+            ListTile(
+              title: Text(l.syncSettingsTitle),
+              subtitle: Text(l.syncSettingsBody),
             ),
             if (supported)
               SwitchListTile(
                 key: const Key('backgroundSyncSwitch'),
                 secondary: const Icon(Icons.sync),
-                title: const Text('Background sync'),
-                subtitle: const Text(
-                    'Also sync about every 15 minutes while the app is closed '
-                    '(with network, not on low battery).'),
+                title: Text(l.backgroundSyncTitle),
+                subtitle: Text(l.backgroundSyncBody),
                 value: enabled,
                 onChanged: (v) => ref
                     .read(settingsDaoProvider)
                     .setBackgroundSyncEnabled(v),
               )
             else
-              const ListTile(
-                leading: Icon(Icons.sync_disabled),
-                title: Text('No background sync here'),
-                subtitle: Text('In the browser, MoneyLedger syncs only while '
-                    'this tab is open. The Android app also syncs '
-                    'periodically in the background.'),
+              ListTile(
+                leading: const Icon(Icons.sync_disabled),
+                title: Text(l.noBackgroundSyncTitle),
+                subtitle: Text(l.noBackgroundSyncBody),
               ),
+            const Divider(),
+            ListTile(
+              key: const Key('aboutTile'),
+              leading: const Icon(Icons.info_outline),
+              title: Text(l.aboutTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).pop();
+                context.push('/about');
+              },
+            ),
           ],
         ),
       ),

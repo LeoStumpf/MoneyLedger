@@ -101,6 +101,44 @@ void main() {
           {'@alice:x.org': 1000, '@bob:x.org': 1000});
     });
 
+    testWidgets('German locale: comma decimal input, localized form (G12)',
+        (tester) async {
+      final (db, net) = await seedGroup();
+      final bob = net.clientFor('@bob:x.org');
+      final received = <TransportMessage>[];
+      bob.onMessage.listen(received.add);
+
+      await tester.pumpWidget(testRouterApp(
+        const AddExpensePage(roomId: 'g1'),
+        locale: const Locale('de'),
+        overrides: [
+          appDatabaseProvider.overrideWith((ref) => db),
+          ledgerTransportProvider
+              .overrideWith((ref) => net.clientFor('@alice:x.org')),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ausgabe hinzufügen'), findsOneWidget); // app bar
+      expect(find.textContaining('Gleichmäßig auf 2 Personen'), findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Beschreibung'), 'Pizza');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Betrag'), '1.234,50');
+      await tester.pump();
+      // Previews in German currency format.
+      expect(find.text('617,25\u00a0CHF'), findsNWidgets(2));
+      await tester.tap(find.widgetWithText(FilledButton, 'Hinzufügen'));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+
+      expect(received, hasLength(1));
+      expect(received.first.content['amount'], 123450);
+      expect(received.first.content['split'],
+          {'@alice:x.org': 61725, '@bob:x.org': 61725});
+    });
+
     testWidgets('the payer dropdown sets paid_by', (tester) async {
       final (db, net) = await seedGroup();
       final bob = net.clientFor('@bob:x.org');

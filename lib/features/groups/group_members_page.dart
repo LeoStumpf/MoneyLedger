@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/l10n/l10n.dart';
 import '../../models/member_model.dart';
 import 'group_provider.dart';
 
@@ -31,14 +32,15 @@ class GroupMembersPage extends ConsumerWidget {
     final all = membersAsync.value ?? const <MemberModel>[];
     final iAmRemoved = all.any((m) => m.matrixId == myId) &&
         !all.any((m) => m.matrixId == myId && m.isActive);
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Members'),
+        title: Text(l.membersTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined),
-            tooltip: 'Invite by Matrix ID',
+            tooltip: l.inviteByMatrixId,
             onPressed: busy || iAmRemoved
                 ? null
                 : () => _showInviteDialog(context, ref),
@@ -50,18 +52,18 @@ class GroupMembersPage extends ConsumerWidget {
           : FloatingActionButton.extended(
               onPressed: busy ? null : () => _showAddDialog(context, ref),
               icon: const Icon(Icons.person_add_outlined),
-              label: const Text('Add person'),
+              label: Text(l.addPerson),
             ),
       body: Stack(
         children: [
           membersAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
+            error: (e, _) => Center(child: Text(l.errorWithDetail(e.toString()))),
             data: (all) {
               final members = all.where((m) => m.isActive).toList();
               final former = all.where((m) => !m.isActive).toList();
               if (members.isEmpty && former.isEmpty) {
-                return const Center(child: Text('No members.'));
+                return Center(child: Text(l.noMembers));
               }
               return ListView(
                 padding: const EdgeInsets.only(bottom: 88), // clear the FAB
@@ -76,7 +78,7 @@ class GroupMembersPage extends ConsumerWidget {
                     const Divider(),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                      child: Text('Former members',
+                      child: Text(l.formerMembers,
                           style: Theme.of(context).textTheme.titleSmall),
                     ),
                     for (final m in former)
@@ -105,23 +107,24 @@ class GroupMembersPage extends ConsumerWidget {
   Future<void> _showInviteDialog(BuildContext context, WidgetRef ref) async {
     final ctrl = TextEditingController();
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final mxid = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Invite by Matrix ID'),
+        title: Text(l.inviteByMatrixId),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Matrix ID',
+          decoration: InputDecoration(
+            labelText: l.matrixIdLabel,
             hintText: '@user:server',
           ),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel')),
+              child: Text(l.cancel)),
           FilledButton(
             onPressed: () {
               final id = ctrl.text.trim();
@@ -129,7 +132,7 @@ class GroupMembersPage extends ConsumerWidget {
                 Navigator.of(ctx).pop(id);
               }
             },
-            child: const Text('Invite'),
+            child: Text(l.invite),
           ),
         ],
       ),
@@ -139,36 +142,40 @@ class GroupMembersPage extends ConsumerWidget {
     await ref.read(memberAdderProvider.notifier).invite(roomId, mxid);
     final error = ref.read(memberAdderProvider).error;
     messenger.showSnackBar(SnackBar(
-        content: Text(error != null ? 'Failed: $error' : 'Invited $mxid')));
+        content: Text(error != null
+            ? l.failedWithError(error.toString())
+            : l.invitedMember(mxid))));
   }
 
   Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
     final nameCtrl = TextEditingController();
     final idCtrl = TextEditingController();
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
 
     final result = await showDialog<({String name, String matrixId})>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Add person'),
+        title: Text(l.addPerson),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameCtrl,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Alex',
+              decoration: InputDecoration(
+                labelText: l.nameLabel,
+                hintText: l.nameHint,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: idCtrl,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Matrix ID (optional)',
-                hintText: '@user:server — leave blank for a local person',
+              decoration: InputDecoration(
+                labelText: l.matrixIdOptionalLabel,
+                hintText: l.matrixIdOptionalHint,
+                hintMaxLines: 2,
               ),
             ),
           ],
@@ -176,7 +183,7 @@ class GroupMembersPage extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -185,7 +192,7 @@ class GroupMembersPage extends ConsumerWidget {
               Navigator.of(ctx)
                   .pop((name: name, matrixId: idCtrl.text.trim()));
             },
-            child: const Text('Add'),
+            child: Text(l.add),
           ),
         ],
       ),
@@ -202,12 +209,13 @@ class GroupMembersPage extends ConsumerWidget {
       await notifier.add(roomId, mxid, displayName: result.name);
     } else {
       messenger.showSnackBar(
-          const SnackBar(content: Text('Invalid Matrix ID')));
+          SnackBar(content: Text(l.invalidMatrixId)));
       return;
     }
     final error = ref.read(memberAdderProvider).error;
     if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+      messenger.showSnackBar(
+          SnackBar(content: Text(l.failedWithError(error.toString()))));
     }
   }
 }
@@ -235,21 +243,22 @@ class _FormerMemberTile extends ConsumerWidget {
         : (member.matrixId ?? member.userId);
     final isSelf = member.matrixId != null && member.matrixId == myId;
     final mxid = member.matrixId;
+    final l = context.l10n;
     return Opacity(
       opacity: 0.6,
       child: ListTile(
         leading: const CircleAvatar(child: Icon(Icons.person_off_outlined)),
         title: Text(title),
         subtitle: Text(mxid != null
-            ? '$mxid · former member'
-            : 'Local · former member'),
+            ? l.formerMemberClaimed(mxid)
+            : l.formerMemberLocal),
         trailing: isSelf
-            ? const Chip(label: Text('You'))
+            ? Chip(label: Text(l.you))
             : TextButton(
                 onPressed: canReadd
                     ? () => _readd(context, ref, mxid, title)
                     : null,
-                child: const Text('Re-add'),
+                child: Text(l.readd),
               ),
       ),
     );
@@ -258,6 +267,7 @@ class _FormerMemberTile extends ConsumerWidget {
   Future<void> _readd(
       BuildContext context, WidgetRef ref, String? mxid, String name) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final adder = ref.read(memberAdderProvider.notifier);
     // A claimed participant goes through add() (reactivates + bootstraps their
     // account); a local person is just reactivated in place.
@@ -266,7 +276,9 @@ class _FormerMemberTile extends ConsumerWidget {
         : adder.reactivate(roomId, member.userId));
     final error = ref.read(memberAdderProvider).error;
     messenger.showSnackBar(SnackBar(
-        content: Text(error != null ? 'Failed: $error' : 'Re-added $name')));
+        content: Text(error != null
+            ? l.failedWithError(error.toString())
+            : l.readdedMember(name))));
   }
 }
 
@@ -288,6 +300,7 @@ class _MemberTile extends ConsumerWidget {
     final title = member.displayName.isNotEmpty
         ? member.displayName
         : (member.matrixId ?? member.userId);
+    final l = context.l10n;
     return ListTile(
       leading: CircleAvatar(
         child: Icon(member.isClaimed ? Icons.person : Icons.person_outline),
@@ -295,24 +308,24 @@ class _MemberTile extends ConsumerWidget {
       title: Text(title),
       subtitle: member.isClaimed
           ? Text(member.matrixId!)
-          : const Text('Local'),
+          : Text(l.localParticipant),
       trailing: _isSelf
-          ? const Chip(label: Text('You'))
+          ? Chip(label: Text(l.you))
           : readOnly
               ? null
               : PopupMenuButton<String>(
-              tooltip: 'Options',
+              tooltip: l.options,
               onSelected: (a) => _onAction(context, ref, a),
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                PopupMenuItem(value: 'rename', child: Text(l.rename)),
                 if (member.isClaimed)
-                  const PopupMenuItem(
-                      value: 'unclaim', child: Text('Detach Matrix account'))
+                  PopupMenuItem(
+                      value: 'unclaim', child: Text(l.detachMatrixAccount))
                 else
-                  const PopupMenuItem(
-                      value: 'claim', child: Text('Link Matrix account')),
-                const PopupMenuItem(
-                    value: 'remove', child: Text('Remove from group')),
+                  PopupMenuItem(
+                      value: 'claim', child: Text(l.linkMatrixAccount)),
+                PopupMenuItem(
+                    value: 'remove', child: Text(l.removeFromGroup)),
               ],
             ),
     );
@@ -321,22 +334,23 @@ class _MemberTile extends ConsumerWidget {
   Future<void> _onAction(
       BuildContext context, WidgetRef ref, String action) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final adder = ref.read(memberAdderProvider.notifier);
     switch (action) {
       case 'rename':
-        final name = await _prompt(context, 'Rename',
-            label: 'Name', initial: member.displayName);
+        final name = await _prompt(context, l.rename,
+            label: l.nameLabel, initial: member.displayName);
         if (name != null && name.isNotEmpty) {
           await adder.rename(roomId, member.userId, name);
         }
       case 'claim':
-        final mxid = await _prompt(context, 'Link Matrix account',
-            label: 'Matrix ID', hint: '@user:server');
+        final mxid = await _prompt(context, l.linkMatrixAccount,
+            label: l.matrixIdLabel, hint: '@user:server');
         if (mxid != null && mxid.startsWith('@') && mxid.contains(':')) {
           await adder.claim(roomId, member.userId, mxid);
         } else if (mxid != null) {
           messenger.showSnackBar(
-              const SnackBar(content: Text('Invalid Matrix ID')));
+              SnackBar(content: Text(l.invalidMatrixId)));
         }
       case 'unclaim':
         await adder.unclaim(roomId, member.userId);
@@ -354,19 +368,19 @@ class _MemberTile extends ConsumerWidget {
     final name = member.displayName.isNotEmpty
         ? member.displayName
         : (member.matrixId ?? member.userId);
+    final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove from group'),
-        content: Text('Remove $name from this group?\n\n'
-            'Their expense history is kept; only their membership is cleared.'),
+        title: Text(l.removeFromGroup),
+        content: Text(l.removeMemberBody(name)),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
+              child: Text(l.cancel)),
           FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Remove')),
+              child: Text(l.remove)),
         ],
       ),
     );
@@ -376,6 +390,7 @@ class _MemberTile extends ConsumerWidget {
   Future<String?> _prompt(BuildContext context, String title,
       {required String label, String? hint, String initial = ''}) async {
     final ctrl = TextEditingController(text: initial);
+    final l = context.l10n;
     final value = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -388,10 +403,10 @@ class _MemberTile extends ConsumerWidget {
         actions: [
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel')),
+              child: Text(l.cancel)),
           FilledButton(
               onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
-              child: const Text('OK')),
+              child: Text(l.ok)),
         ],
       ),
     );

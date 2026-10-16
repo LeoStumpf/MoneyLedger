@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/l10n/l10n.dart';
 import '../../models/member_model.dart';
 import 'split_calculator.dart';
 
@@ -107,9 +108,9 @@ class _SplitEditorState extends State<SplitEditor> {
       if (isEqualSplit(initial)) {
         _mode = SplitMode.equal;
       } else {
-        // Any other distribution reopens as editable exact amounts.
+        // Any other distribution reopens as editable exact amounts
+        // (prefilled in didChangeDependencies, in the locale's format).
         _mode = SplitMode.exact;
-        initial.forEach((id, cents) => _exactCtrl[id]?.text = _money(cents));
       }
     } else {
       _mode = SplitMode.equal;
@@ -121,6 +122,22 @@ class _SplitEditorState extends State<SplitEditor> {
       if (mounted) widget.onPlanChanged(_plan());
     });
   }
+
+  bool _exactPrefilled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final initial = widget.initialSplit;
+    if (!_exactPrefilled && _mode == SplitMode.exact && initial != null) {
+      _exactPrefilled = true;
+      final locale = context.localeName;
+      initial.forEach(
+          (id, cents) => _exactCtrl[id]?.text = formatAmountInput(cents, locale));
+    }
+  }
+
+  String _money(int cents) => context.money(cents, widget.currency);
 
   @override
   void dispose() {
@@ -150,7 +167,7 @@ class _SplitEditorState extends State<SplitEditor> {
       case SplitMode.exact:
         final exact = <String, int>{};
         for (final m in widget.members) {
-          final cents = _parseMoney(_exactCtrl[m.userId]!.text);
+          final cents = parseAmountCents(_exactCtrl[m.userId]!.text);
           if (cents != null && cents > 0) exact[m.userId] = cents;
         }
         return SplitPlan(mode: _mode, exact: exact);
@@ -164,8 +181,7 @@ class _SplitEditorState extends State<SplitEditor> {
       case SplitMode.percent:
         final percents = <String, num>{};
         for (final m in widget.members) {
-          final p = double.tryParse(
-              _percentCtrl[m.userId]!.text.trim().replaceAll(',', '.'));
+          final p = parseLocalizedDecimal(_percentCtrl[m.userId]!.text);
           if (p != null && p > 0) percents[m.userId] = p;
         }
         return SplitPlan(mode: _mode, percents: percents);
@@ -176,17 +192,18 @@ class _SplitEditorState extends State<SplitEditor> {
   Widget build(BuildContext context) {
     final result = _plan().resolve(widget.totalCents);
     final small = Theme.of(context).textTheme.bodySmall;
+    final l = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SegmentedButton<SplitMode>(
           showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(value: SplitMode.equal, label: Text('Equal')),
-            ButtonSegment(value: SplitMode.exact, label: Text('Exact')),
-            ButtonSegment(value: SplitMode.shares, label: Text('Shares')),
-            ButtonSegment(value: SplitMode.percent, label: Text('%')),
+          segments: [
+            ButtonSegment(value: SplitMode.equal, label: Text(l.splitEqual)),
+            ButtonSegment(value: SplitMode.exact, label: Text(l.splitExact)),
+            ButtonSegment(value: SplitMode.shares, label: Text(l.splitShares)),
+            const ButtonSegment(value: SplitMode.percent, label: Text('%')),
           ],
           selected: {_mode},
           onSelectionChanged: (s) {
@@ -206,8 +223,7 @@ class _SplitEditorState extends State<SplitEditor> {
     final name = Expanded(child: Text(_nameOf(m)));
     final preview = SizedBox(
       width: 96,
-      child: Text('${widget.currency} ${_money(cents)}',
-          textAlign: TextAlign.right),
+      child: Text(_money(cents), textAlign: TextAlign.right),
     );
     switch (_mode) {
       case SplitMode.equal:
@@ -284,38 +300,32 @@ class _SplitEditorState extends State<SplitEditor> {
   Widget _statusLine(SplitResult result, TextStyle? small) {
     final ok = Theme.of(context).colorScheme.primary;
     final bad = Theme.of(context).colorScheme.error;
+    final l = context.l10n;
     switch (_mode) {
       case SplitMode.equal:
         final n = _included.length;
         return Text(
-          n == 0 ? 'Select at least one participant' : 'Split equally among $n',
+          n == 0 ? l.splitSelectAtLeastOne : l.splitEquallyAmong(n),
           style: small?.copyWith(color: n == 0 ? bad : null),
         );
       case SplitMode.exact:
         final remaining = remainingForExact(widget.totalCents, result.shares);
         return Text(
           remaining == 0 && result.isValid
-              ? 'Adds up to the total'
-              : 'Remaining: ${widget.currency} ${_money(remaining)}',
+              ? l.splitAddsUpToTotal
+              : l.splitRemaining(_money(remaining)),
           style: small?.copyWith(color: result.isValid ? ok : bad),
         );
       case SplitMode.shares:
         return Text(
-          result.isValid ? 'Split by weight' : 'Enter at least one weight',
+          result.isValid ? l.splitByWeight : l.splitEnterWeight,
           style: small?.copyWith(color: result.isValid ? null : bad),
         );
       case SplitMode.percent:
         return Text(
-          result.isValid ? 'Adds up to 100%' : 'Percentages must total 100%',
+          result.isValid ? l.splitAddsUpTo100 : l.splitPercentMustTotal100,
           style: small?.copyWith(color: result.isValid ? ok : bad),
         );
     }
   }
-}
-
-String _money(int cents) => (cents / 100).toStringAsFixed(2);
-
-int? _parseMoney(String s) {
-  final d = double.tryParse(s.trim().replaceAll(',', '.'));
-  return d == null ? null : (d * 100).round();
 }

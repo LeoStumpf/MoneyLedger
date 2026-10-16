@@ -1,0 +1,907 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for English (`en`).
+class AppLocalizationsEn extends AppLocalizations {
+  AppLocalizationsEn([String locale = 'en']) : super(locale);
+
+  @override
+  String get appTitle => 'MoneyLedger';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get required => 'Required';
+
+  @override
+  String failedWithError(Object error) {
+    return 'Failed: $error';
+  }
+
+  @override
+  String errorWithDetail(Object error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String get groupsTitle => 'Groups';
+
+  @override
+  String get importCsvTooltip => 'Import CSV';
+
+  @override
+  String get devicesTooltip => 'Devices & security';
+
+  @override
+  String get settingsTooltip => 'Settings';
+
+  @override
+  String get signOut => 'Sign out';
+
+  @override
+  String get newGroup => 'New group';
+
+  @override
+  String get signOutConfirmTitle => 'Sign out?';
+
+  @override
+  String get signOutConfirmBody =>
+      'Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn\'t sync — other members\' changes arrive once you sign back in.';
+
+  @override
+  String importFailed(Object error) {
+    return 'Import failed: $error';
+  }
+
+  @override
+  String importedExpenses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Imported $count expenses',
+      one: 'Imported 1 expense',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noGroupsYet => 'No groups yet.\nCreate one to get started.';
+
+  @override
+  String get restoringGroupsTitle =>
+      'Restoring your groups from your other devices…';
+
+  @override
+  String get restoringGroupsBody =>
+      'Open MoneyLedger on another device signed in to this account — it sends your groups while the app is running there.';
+
+  @override
+  String get syncSettingsTitle => 'Sync';
+
+  @override
+  String get syncSettingsBody =>
+      'Devices exchange changes while MoneyLedger is open. Changes from others wait on your homeserver (encrypted) until this device picks them up.';
+
+  @override
+  String get backgroundSyncTitle => 'Background sync';
+
+  @override
+  String get backgroundSyncBody =>
+      'Also sync about every 15 minutes while the app is closed (with network, not on low battery).';
+
+  @override
+  String get noBackgroundSyncTitle => 'No background sync here';
+
+  @override
+  String get noBackgroundSyncBody =>
+      'In the browser, MoneyLedger syncs only while this tab is open. The Android app also syncs periodically in the background.';
+
+  @override
+  String get aboutTitle => 'About MoneyLedger';
+
+  @override
+  String get somethingWentWrong => 'Something went wrong';
+
+  @override
+  String get signOutAndRestart => 'Sign out and restart';
+
+  @override
+  String get expensesTitle => 'Expenses';
+
+  @override
+  String get addMember => 'Add member';
+
+  @override
+  String get membersTitle => 'Members';
+
+  @override
+  String get balanceTitle => 'Balance';
+
+  @override
+  String get moreTooltip => 'More';
+
+  @override
+  String get editGroup => 'Edit group';
+
+  @override
+  String get exportCsv => 'Export CSV';
+
+  @override
+  String get leaveGroup => 'Leave group';
+
+  @override
+  String get deleteGroup => 'Delete group';
+
+  @override
+  String get addExpense => 'Add expense';
+
+  @override
+  String get removedFromGroupBanner =>
+      'You were removed from this group. Its history stays readable here.';
+
+  @override
+  String get deleteFromThisDevice => 'Delete from this device';
+
+  @override
+  String get addedToGroupBanner =>
+      'You\'ve been added to this group. Which participant are you?';
+
+  @override
+  String get choose => 'Choose';
+
+  @override
+  String get noExpensesYet => 'No expenses yet.';
+
+  @override
+  String get thisGroup => 'This group';
+
+  @override
+  String youLeftGroup(Object group) {
+    return 'You left \"$group\"';
+  }
+
+  @override
+  String deletedGroup(Object group) {
+    return 'Deleted \"$group\"';
+  }
+
+  @override
+  String exportedFile(Object fileName) {
+    return 'Exported $fileName';
+  }
+
+  @override
+  String get whichParticipantAreYou => 'Which participant are you?';
+
+  @override
+  String get imSomeoneNew => 'I\'m someone new';
+
+  @override
+  String get yourName => 'Your name';
+
+  @override
+  String get nameLabel => 'Name';
+
+  @override
+  String get join => 'Join';
+
+  @override
+  String get deleteExpenseTitle => 'Delete expense?';
+
+  @override
+  String deleteExpenseBody(Object description) {
+    return '\"$description\" will be removed for all members.';
+  }
+
+  @override
+  String get deleteSettlementTitle => 'Delete settlement?';
+
+  @override
+  String deleteSettlementBody(Object from, Object to, Object amount) {
+    return '\"$from paid $to $amount\" will be removed for all members and the balance restored.';
+  }
+
+  @override
+  String get matrixIdLabel => 'Matrix ID';
+
+  @override
+  String addedMember(Object userId) {
+    return 'Added $userId';
+  }
+
+  @override
+  String get syncProblemTooltip => 'Sync problem — tap for details';
+
+  @override
+  String get syncedWithAll => 'Synced with all members';
+
+  @override
+  String peerHasNoDevice(Object peer) {
+    return '$peer has no active device — will sync when they sign in';
+  }
+
+  @override
+  String waitingForPeer(Object peer) {
+    return 'Waiting for $peer…';
+  }
+
+  @override
+  String get syncProblemTitle => 'Sync problem';
+
+  @override
+  String get syncProblemBody =>
+      'Could not reach other members. Your changes are saved on this device and will sync once the connection recovers.';
+
+  @override
+  String lastSynced(Object ago) {
+    return 'Last synced $ago';
+  }
+
+  @override
+  String lastError(Object error) {
+    return 'Last error: $error';
+  }
+
+  @override
+  String get retryingSync => 'Retrying sync…';
+
+  @override
+  String get retryNow => 'Retry now';
+
+  @override
+  String get agoJustNow => 'just now';
+
+  @override
+  String agoMinutes(int n) {
+    return '$n min ago';
+  }
+
+  @override
+  String agoHours(int n) {
+    return '$n h ago';
+  }
+
+  @override
+  String agoDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days ago',
+      one: '1 day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String paidByName(Object name) {
+    return 'Paid by $name';
+  }
+
+  @override
+  String get expenseOptions => 'Expense options';
+
+  @override
+  String settlementTitle(Object from, Object to) {
+    return '$from paid $to';
+  }
+
+  @override
+  String settlementSubtitle(Object date) {
+    return 'Settlement · $date';
+  }
+
+  @override
+  String get settlementOptions => 'Settlement options';
+
+  @override
+  String get editExpense => 'Edit expense';
+
+  @override
+  String get descriptionLabel => 'Description';
+
+  @override
+  String get amountLabel => 'Amount';
+
+  @override
+  String get invalidNumber => 'Invalid number';
+
+  @override
+  String get currencyLabel => 'Currency';
+
+  @override
+  String get paidByLabel => 'Paid by';
+
+  @override
+  String get splitEqual => 'Equal';
+
+  @override
+  String get splitExact => 'Exact';
+
+  @override
+  String get splitShares => 'Shares';
+
+  @override
+  String get splitSelectAtLeastOne => 'Select at least one participant';
+
+  @override
+  String splitEquallyAmong(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Split equally among $n',
+      one: 'Split equally among 1',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get splitAddsUpToTotal => 'Adds up to the total';
+
+  @override
+  String splitRemaining(Object amount) {
+    return 'Remaining: $amount';
+  }
+
+  @override
+  String get splitByWeight => 'Split by weight';
+
+  @override
+  String get splitEnterWeight => 'Enter at least one weight';
+
+  @override
+  String get splitAddsUpTo100 => 'Adds up to 100%';
+
+  @override
+  String get splitPercentMustTotal100 => 'Percentages must total 100%';
+
+  @override
+  String get recordPayment => 'Record payment';
+
+  @override
+  String get allSettledUp => 'All settled up!';
+
+  @override
+  String owesName(Object name) {
+    return 'owes $name';
+  }
+
+  @override
+  String get paymentRecorded => 'Payment recorded';
+
+  @override
+  String get paymentFromLabel => 'From (paid)';
+
+  @override
+  String get paymentToLabel => 'To (received)';
+
+  @override
+  String paymentExceedsDebt(Object amount) {
+    return 'More than the $amount owed';
+  }
+
+  @override
+  String get record => 'Record';
+
+  @override
+  String unsettledYouOwe(Object amount) {
+    return 'You still owe $amount.';
+  }
+
+  @override
+  String unsettledYouAreOwed(Object amount) {
+    return 'You are still owed $amount.';
+  }
+
+  @override
+  String get leaveGroupTitle => 'Leave group?';
+
+  @override
+  String get deleteGroupTitle => 'Delete group?';
+
+  @override
+  String leaveGroupBody(Object group) {
+    return '\"$group\" will be removed from this device and the other members will see that you left. Your expenses stay in their ledger.';
+  }
+
+  @override
+  String deleteGroupBody(Object group) {
+    return '\"$group\" and all its expenses will be permanently removed from this device.';
+  }
+
+  @override
+  String get exportBackupTip => 'Tip: export a CSV backup first.';
+
+  @override
+  String get exportBackupFirst => 'Export a CSV backup first';
+
+  @override
+  String get leave => 'Leave';
+
+  @override
+  String get groupNameLabel => 'Group name';
+
+  @override
+  String get defaultCurrencyLabel => 'Default currency';
+
+  @override
+  String get defaultCurrencyHelper =>
+      'Only applies to new expenses — existing expenses keep their currency.';
+
+  @override
+  String get create => 'Create';
+
+  @override
+  String get inviteByMatrixId => 'Invite by Matrix ID';
+
+  @override
+  String get addPerson => 'Add person';
+
+  @override
+  String get noMembers => 'No members.';
+
+  @override
+  String get formerMembers => 'Former members';
+
+  @override
+  String get invite => 'Invite';
+
+  @override
+  String invitedMember(Object userId) {
+    return 'Invited $userId';
+  }
+
+  @override
+  String get nameHint => 'e.g. Alex';
+
+  @override
+  String get matrixIdOptionalLabel => 'Matrix ID (optional)';
+
+  @override
+  String get matrixIdOptionalHint =>
+      '@user:server — leave blank for a local person';
+
+  @override
+  String get invalidMatrixId => 'Invalid Matrix ID';
+
+  @override
+  String formerMemberClaimed(Object matrixId) {
+    return '$matrixId · former member';
+  }
+
+  @override
+  String get formerMemberLocal => 'Local · former member';
+
+  @override
+  String get you => 'You';
+
+  @override
+  String get readd => 'Re-add';
+
+  @override
+  String readdedMember(Object name) {
+    return 'Re-added $name';
+  }
+
+  @override
+  String get localParticipant => 'Local';
+
+  @override
+  String get options => 'Options';
+
+  @override
+  String get rename => 'Rename';
+
+  @override
+  String get detachMatrixAccount => 'Detach Matrix account';
+
+  @override
+  String get linkMatrixAccount => 'Link Matrix account';
+
+  @override
+  String get removeFromGroup => 'Remove from group';
+
+  @override
+  String removeMemberBody(Object name) {
+    return 'Remove $name from this group?\n\nTheir expense history is kept; only their membership is cleared.';
+  }
+
+  @override
+  String get remove => 'Remove';
+
+  @override
+  String get onboardingWelcome => 'Welcome to MoneyLedger';
+
+  @override
+  String get onboardingTagline => 'Split expenses without a middleman.';
+
+  @override
+  String get onboardingLocalTitle => 'Your data lives on your device';
+
+  @override
+  String get onboardingLocalBody =>
+      'Groups, expenses and balances are stored locally — there is no central MoneyLedger server holding your finances.';
+
+  @override
+  String get onboardingSyncTitle => 'Members sync peer-to-peer';
+
+  @override
+  String get onboardingSyncBody =>
+      'Changes are shared directly between members over end-to-end-encrypted Matrix messages. The homeserver only relays ciphertext. Devices sync while the app runs and, on Android, periodically in the background.';
+
+  @override
+  String get onboardingAddTitle => 'Add anyone — Matrix or not';
+
+  @override
+  String get onboardingAddBody =>
+      'Invite people by their Matrix ID, or add local participants by name and link an account later.';
+
+  @override
+  String get getStarted => 'Get started';
+
+  @override
+  String get devicesTitle => 'Devices';
+
+  @override
+  String couldNotLoadDevices(Object error) {
+    return 'Could not load devices: $error';
+  }
+
+  @override
+  String get thisDevice => 'This device';
+
+  @override
+  String get verified => 'Verified';
+
+  @override
+  String get notVerified => 'Not verified';
+
+  @override
+  String get verify => 'Verify';
+
+  @override
+  String verifyDeviceTitle(Object device) {
+    return 'Verify $device';
+  }
+
+  @override
+  String get verifyCompareEmoji =>
+      'Confirm these emoji appear in the same order on the other device.';
+
+  @override
+  String get deviceVerified => 'Device verified.';
+
+  @override
+  String get verificationFailed => 'Verification failed.';
+
+  @override
+  String verificationFailedWithError(Object error) {
+    return 'Verification failed: $error.';
+  }
+
+  @override
+  String get emojiNoMatch => 'They don\'t match';
+
+  @override
+  String get emojiMatch => 'They match';
+
+  @override
+  String get onlyDevice => 'This is your only device.';
+
+  @override
+  String get allDevicesVerified => 'All your devices are verified.';
+
+  @override
+  String devicesNeedVerification(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices need verification.',
+      one: '1 device needs verification.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get authOfflineTitle => 'No internet connection';
+
+  @override
+  String get authOfflineHint => 'Check your connection and try again.';
+
+  @override
+  String authUnreachableTitle(Object host) {
+    return 'Can\'t reach $host';
+  }
+
+  @override
+  String get authUnreachableHint =>
+      'Check the homeserver address and your internet connection.';
+
+  @override
+  String get authTimeoutTitle => 'The server took too long to respond';
+
+  @override
+  String get authTimeoutHint => 'Check your connection and try again.';
+
+  @override
+  String authNotAHomeserverTitle(Object host) {
+    return '$host doesn\'t look like a Matrix homeserver';
+  }
+
+  @override
+  String get authNotAHomeserverHint =>
+      'Check the address — for example matrix.org.';
+
+  @override
+  String get authWrongCredentialsTitle => 'Wrong username or password';
+
+  @override
+  String get authWrongCredentialsHint => 'Check both and try again.';
+
+  @override
+  String get authDeactivatedTitle => 'This account has been deactivated';
+
+  @override
+  String get authDeactivatedHint =>
+      'Contact your homeserver administrator, or use another account.';
+
+  @override
+  String get authRateLimitedTitle => 'Too many attempts';
+
+  @override
+  String authRateLimitedRetry(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Please wait $seconds seconds and try again.',
+      one: 'Please wait 1 second and try again.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get authRateLimitedHint => 'Please wait a moment and try again.';
+
+  @override
+  String get authSsoTokenTitle => 'Sign-in link expired or invalid';
+
+  @override
+  String get authSsoTokenHint => 'Please start the sign-in again.';
+
+  @override
+  String get authUsernameTakenTitle => 'That username is already taken';
+
+  @override
+  String get authUsernameTakenHint => 'Choose a different username.';
+
+  @override
+  String get authInvalidUsernameTitle => 'That username isn\'t allowed';
+
+  @override
+  String get authInvalidUsernameHint =>
+      'Use only lowercase letters, digits and . _ = - /';
+
+  @override
+  String get authWeakPasswordTitle => 'Password is too weak';
+
+  @override
+  String get authWeakPasswordHint =>
+      'Use a longer password with a mix of letters, digits and symbols.';
+
+  @override
+  String get authRegistrationDisabledTitle =>
+      'This homeserver doesn\'t allow sign-up here';
+
+  @override
+  String get authRegistrationDisabledHint =>
+      'Create your account on its website, then sign in.';
+
+  @override
+  String get authUnknownTitle => 'Something went wrong';
+
+  @override
+  String get authUnknownHint => 'Please try again. The details below may help.';
+
+  @override
+  String get authErrorDetails => 'Details';
+
+  @override
+  String get signInSubtitle => 'Sign in with your Matrix account';
+
+  @override
+  String get homeserverLabel => 'Homeserver';
+
+  @override
+  String get homeserverHint => 'matrix.org or mozilla.modular.im';
+
+  @override
+  String resolvedTo(Object url) {
+    return 'Resolved to $url';
+  }
+
+  @override
+  String continueWith(Object provider) {
+    return 'Continue with $provider';
+  }
+
+  @override
+  String get orDivider => 'or';
+
+  @override
+  String get matrixIdOrUsernameLabel => 'Matrix ID or username';
+
+  @override
+  String get passwordLabel => 'Password';
+
+  @override
+  String get signIn => 'Sign in';
+
+  @override
+  String get createAccountLink => 'New here? Create an account';
+
+  @override
+  String get createAccount => 'Create account';
+
+  @override
+  String get usernameLabel => 'Username';
+
+  @override
+  String get passwordMinLength => 'At least 8 characters';
+
+  @override
+  String get alreadyHaveAccount => 'Already have an account? Sign in';
+
+  @override
+  String get registerOnWebTitle => 'Register on the web';
+
+  @override
+  String registerOnWebBody(Object requirements) {
+    return 'This homeserver requires $requirements, which MoneyLedger can\'t do in-app yet. Create your account on its website, then come back and sign in.';
+  }
+
+  @override
+  String get openHomeserverWebsite => 'Open homeserver website';
+
+  @override
+  String listAnd(Object first, Object last) {
+    return '$first and $last';
+  }
+
+  @override
+  String get regReqExtraVerification => 'extra verification';
+
+  @override
+  String get regReqCaptcha => 'a CAPTCHA';
+
+  @override
+  String get regReqEmail => 'email verification';
+
+  @override
+  String get regReqPhone => 'phone verification';
+
+  @override
+  String get regReqTerms => 'accepting the terms of service';
+
+  @override
+  String get regReqToken => 'a registration token';
+
+  @override
+  String get regReqWebSignup => 'signing up on its own website';
+
+  @override
+  String get aboutAndPrivacy => 'About & privacy';
+
+  @override
+  String aboutVersion(Object version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get aboutDescription =>
+      'Split expenses with friends — decentralized and end-to-end encrypted over Matrix. Your ledger stays on your devices; there is no MoneyLedger server.';
+
+  @override
+  String get aboutSourceCode => 'Source code';
+
+  @override
+  String get aboutLicense => 'License';
+
+  @override
+  String aboutLicenseValue(Object license) {
+    return '$license — free software: you may use, study, share and modify it.';
+  }
+
+  @override
+  String aboutLegalese(Object license) {
+    return '© Leo Stumpf. Licensed under the $license.';
+  }
+
+  @override
+  String get aboutOpenSourceLicenses => 'Open-source licenses';
+
+  @override
+  String get privacyPolicyTitle => 'Privacy policy';
+
+  @override
+  String privacyLastUpdated(Object date) {
+    return 'Last updated: $date';
+  }
+
+  @override
+  String get privacyIntro =>
+      'MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.';
+
+  @override
+  String get privacyLedgerTitle => 'Your ledger stays on your devices';
+
+  @override
+  String get privacyLedgerBody =>
+      'Groups, participants, expenses and payments are stored only in a local database on each device signed in to a member\'s account. Every member of a group has a copy of that group\'s ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to all of its members.';
+
+  @override
+  String get privacyHomeserverTitle => 'What your Matrix homeserver sees';
+
+  @override
+  String get privacyHomeserverBody =>
+      'To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the other members\' devices. Your homeserver (and the homeservers of the other members) relay these messages and queue them until they are delivered, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.';
+
+  @override
+  String get privacyNoTrackingTitle => 'No analytics, no servers of ours';
+
+  @override
+  String get privacyNoTrackingBody =>
+      'The app only talks to your homeserver — and, if you use single sign-on or sign up on the web, to the pages your homeserver sends you to in your browser. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.';
+
+  @override
+  String get privacyBackgroundTitle => 'Background sync on Android';
+
+  @override
+  String get privacyBackgroundBody =>
+      'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.';
+
+  @override
+  String get privacyCsvTitle => 'CSV export and import';
+
+  @override
+  String get privacyCsvBody =>
+      'Exporting a group writes a CSV file with its expenses, the participants\' names and the amounts — only when you ask for it. Where that file goes is your choice; it is not encrypted, and MoneyLedger has no visibility into it afterwards. Importing reads only the file you pick.';
+
+  @override
+  String get privacyBackupTitle => 'Device backups';
+
+  @override
+  String get privacyBackupBody =>
+      'Android\'s automatic app backup is not switched off. If backup is enabled on your phone, the app\'s local data (your ledger and your Matrix session) may be included in your device backup to your Google account, under Android\'s backup rules.';
+
+  @override
+  String get privacyDeleteTitle => 'Deleting your data';
+
+  @override
+  String get privacyDeleteBody =>
+      '• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
+
+  @override
+  String get privacyContactTitle => 'Contact';
+
+  @override
+  String get privacyContactBody =>
+      'Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.';
+}

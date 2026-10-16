@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/matrix/auth_gateway.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/platform/url_helper.dart';
 import 'auth_error_card.dart';
 import 'auth_errors.dart';
 import 'auth_provider.dart';
+import 'register_flows.dart';
 
 /// In-app account creation (Phase F). Works against homeservers that allow open
 /// / `m.login.dummy` registration; servers requiring a CAPTCHA, email/phone
@@ -72,9 +74,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     final busy = ref.watch(authProvider).isLoading;
+    final l = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
+      appBar: AppBar(title: Text(l.createAccount)),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -89,10 +92,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     TextFormField(
                       key: const Key('serverField'),
                       controller: _serverCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Homeserver',
+                      decoration: InputDecoration(
+                        labelText: l.homeserverLabel,
                         hintText: 'matrix.org',
-                        prefixIcon: Icon(Icons.dns),
+                        prefixIcon: const Icon(Icons.dns),
                       ),
                       keyboardType: TextInputType.url,
                     ),
@@ -100,20 +103,20 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     TextFormField(
                       key: const Key('usernameField'),
                       controller: _usernameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
+                      decoration: InputDecoration(
+                        labelText: l.usernameLabel,
                         hintText: 'alice',
-                        prefixIcon: Icon(Icons.person),
+                        prefixIcon: const Icon(Icons.person),
                       ),
                       validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          (v == null || v.trim().isEmpty) ? l.required : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       key: const Key('passwordField'),
                       controller: _passwordCtrl,
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: l.passwordLabel,
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(_obscurePassword
@@ -125,7 +128,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       ),
                       obscureText: _obscurePassword,
                       validator: (v) => (v == null || v.length < 8)
-                          ? 'At least 8 characters'
+                          ? l.passwordMinLength
                           : null,
                     ),
                     const SizedBox(height: 20),
@@ -139,7 +142,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Create account'),
+                          : Text(l.createAccount),
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 20),
@@ -152,7 +155,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => context.go('/login'),
-                      child: const Text('Already have an account? Sign in'),
+                      child: Text(l.alreadyHaveAccount),
                     ),
                   ],
                 ),
@@ -173,9 +176,16 @@ class _WebFallbackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reqs = info.requirements.isEmpty
-        ? 'extra verification'
-        : info.requirements.join(' and ');
+    final l = context.l10n;
+    final labels = [
+      for (final s in info.stages) registrationRequirementLabel(s, l)
+    ];
+    final reqs = labels.isEmpty
+        ? l.regReqExtraVerification
+        : labels.length == 1
+            ? labels.single
+            : l.listAnd(labels.sublist(0, labels.length - 1).join(', '),
+                labels.last);
     return Card(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Padding(
@@ -183,18 +193,16 @@ class _WebFallbackCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Register on the web',
+            Text(l.registerOnWebTitle,
                 style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
-            Text('This homeserver requires $reqs, which MoneyLedger can\'t do '
-                'in-app yet. Create your account on its website, then come back '
-                'and sign in.'),
+            Text(l.registerOnWebBody(reqs)),
             const SizedBox(height: 12),
             FilledButton.tonalIcon(
               key: const Key('openSignUpWebsiteBtn'),
               onPressed: () => launchExternalUrl(info.webUrl),
               icon: const Icon(Icons.open_in_new),
-              label: const Text('Open homeserver website'),
+              label: Text(l.openHomeserverWebsite),
             ),
           ],
         ),

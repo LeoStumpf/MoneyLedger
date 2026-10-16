@@ -24,6 +24,7 @@ import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
 import 'package:money_ledger/models/login_flows_result.dart';
 
 import '../helpers/fake_auth_gateway.dart';
+import '../helpers/l10n.dart';
 
 /// Per-account controllable onboarding flag: the test decides when (and
 /// whether) each account's flag "loads".
@@ -167,7 +168,10 @@ void main() {
       final router = c.read(routerProvider);
       await tester.pumpWidget(UncontrolledProviderScope(
         container: c,
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
+        routerConfig: router),
       ));
       await tester.pumpAndSettle();
       return router;

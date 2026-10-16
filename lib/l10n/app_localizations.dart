@@ -1,0 +1,1616 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations_de.dart';
+import 'app_localizations_en.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
+
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('de'),
+  ];
+
+  /// App name — not translated
+  ///
+  /// In en, this message translates to:
+  /// **'MoneyLedger'**
+  String get appTitle;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @required.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get required;
+
+  /// Snackbar after a failed action; error is technical text
+  ///
+  /// In en, this message translates to:
+  /// **'Failed: {error}'**
+  String failedWithError(Object error);
+
+  /// No description provided for @errorWithDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String errorWithDetail(Object error);
+
+  /// No description provided for @groupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get groupsTitle;
+
+  /// No description provided for @importCsvTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Import CSV'**
+  String get importCsvTooltip;
+
+  /// No description provided for @devicesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices & security'**
+  String get devicesTooltip;
+
+  /// No description provided for @settingsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTooltip;
+
+  /// No description provided for @signOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get signOut;
+
+  /// No description provided for @newGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get newGroup;
+
+  /// No description provided for @signOutConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out?'**
+  String get signOutConfirmTitle;
+
+  /// No description provided for @signOutConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn\'t sync — other members\' changes arrive once you sign back in.'**
+  String get signOutConfirmBody;
+
+  /// No description provided for @importFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed: {error}'**
+  String importFailed(Object error);
+
+  /// No description provided for @importedExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Imported 1 expense} other{Imported {count} expenses}}'**
+  String importedExpenses(int count);
+
+  /// No description provided for @noGroupsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No groups yet.\nCreate one to get started.'**
+  String get noGroupsYet;
+
+  /// No description provided for @restoringGroupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring your groups from your other devices…'**
+  String get restoringGroupsTitle;
+
+  /// No description provided for @restoringGroupsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open MoneyLedger on another device signed in to this account — it sends your groups while the app is running there.'**
+  String get restoringGroupsBody;
+
+  /// No description provided for @syncSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get syncSettingsTitle;
+
+  /// No description provided for @syncSettingsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices exchange changes while MoneyLedger is open. Changes from others wait on your homeserver (encrypted) until this device picks them up.'**
+  String get syncSettingsBody;
+
+  /// No description provided for @backgroundSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background sync'**
+  String get backgroundSyncTitle;
+
+  /// No description provided for @backgroundSyncBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Also sync about every 15 minutes while the app is closed (with network, not on low battery).'**
+  String get backgroundSyncBody;
+
+  /// No description provided for @noBackgroundSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No background sync here'**
+  String get noBackgroundSyncTitle;
+
+  /// No description provided for @noBackgroundSyncBody.
+  ///
+  /// In en, this message translates to:
+  /// **'In the browser, MoneyLedger syncs only while this tab is open. The Android app also syncs periodically in the background.'**
+  String get noBackgroundSyncBody;
+
+  /// No description provided for @aboutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'About MoneyLedger'**
+  String get aboutTitle;
+
+  /// No description provided for @somethingWentWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get somethingWentWrong;
+
+  /// No description provided for @signOutAndRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and restart'**
+  String get signOutAndRestart;
+
+  /// No description provided for @expensesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses'**
+  String get expensesTitle;
+
+  /// No description provided for @addMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Add member'**
+  String get addMember;
+
+  /// No description provided for @membersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get membersTitle;
+
+  /// No description provided for @balanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get balanceTitle;
+
+  /// No description provided for @moreTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get moreTooltip;
+
+  /// No description provided for @editGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit group'**
+  String get editGroup;
+
+  /// No description provided for @exportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Export CSV'**
+  String get exportCsv;
+
+  /// No description provided for @leaveGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave group'**
+  String get leaveGroup;
+
+  /// No description provided for @deleteGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group'**
+  String get deleteGroup;
+
+  /// No description provided for @addExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Add expense'**
+  String get addExpense;
+
+  /// No description provided for @removedFromGroupBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'You were removed from this group. Its history stays readable here.'**
+  String get removedFromGroupBanner;
+
+  /// No description provided for @deleteFromThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete from this device'**
+  String get deleteFromThisDevice;
+
+  /// No description provided for @addedToGroupBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been added to this group. Which participant are you?'**
+  String get addedToGroupBanner;
+
+  /// No description provided for @choose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose'**
+  String get choose;
+
+  /// No description provided for @noExpensesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses yet.'**
+  String get noExpensesYet;
+
+  /// No description provided for @thisGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'This group'**
+  String get thisGroup;
+
+  /// No description provided for @youLeftGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'You left \"{group}\"'**
+  String youLeftGroup(Object group);
+
+  /// No description provided for @deletedGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted \"{group}\"'**
+  String deletedGroup(Object group);
+
+  /// No description provided for @exportedFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported {fileName}'**
+  String exportedFile(Object fileName);
+
+  /// No description provided for @whichParticipantAreYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Which participant are you?'**
+  String get whichParticipantAreYou;
+
+  /// No description provided for @imSomeoneNew.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m someone new'**
+  String get imSomeoneNew;
+
+  /// No description provided for @yourName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get yourName;
+
+  /// No description provided for @nameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get nameLabel;
+
+  /// No description provided for @join.
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get join;
+
+  /// No description provided for @deleteExpenseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete expense?'**
+  String get deleteExpenseTitle;
+
+  /// No description provided for @deleteExpenseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{description}\" will be removed for all members.'**
+  String deleteExpenseBody(Object description);
+
+  /// No description provided for @deleteSettlementTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete settlement?'**
+  String get deleteSettlementTitle;
+
+  /// No description provided for @deleteSettlementBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{from} paid {to} {amount}\" will be removed for all members and the balance restored.'**
+  String deleteSettlementBody(Object from, Object to, Object amount);
+
+  /// No description provided for @matrixIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix ID'**
+  String get matrixIdLabel;
+
+  /// No description provided for @addedMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {userId}'**
+  String addedMember(Object userId);
+
+  /// No description provided for @syncProblemTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync problem — tap for details'**
+  String get syncProblemTooltip;
+
+  /// No description provided for @syncedWithAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced with all members'**
+  String get syncedWithAll;
+
+  /// No description provided for @peerHasNoDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'{peer} has no active device — will sync when they sign in'**
+  String peerHasNoDevice(Object peer);
+
+  /// No description provided for @waitingForPeer.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {peer}…'**
+  String waitingForPeer(Object peer);
+
+  /// No description provided for @syncProblemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync problem'**
+  String get syncProblemTitle;
+
+  /// No description provided for @syncProblemBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach other members. Your changes are saved on this device and will sync once the connection recovers.'**
+  String get syncProblemBody;
+
+  /// No description provided for @lastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced {ago}'**
+  String lastSynced(Object ago);
+
+  /// No description provided for @lastError.
+  ///
+  /// In en, this message translates to:
+  /// **'Last error: {error}'**
+  String lastError(Object error);
+
+  /// No description provided for @retryingSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrying sync…'**
+  String get retryingSync;
+
+  /// No description provided for @retryNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry now'**
+  String get retryNow;
+
+  /// No description provided for @agoJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get agoJustNow;
+
+  /// No description provided for @agoMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min ago'**
+  String agoMinutes(int n);
+
+  /// No description provided for @agoHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} h ago'**
+  String agoHours(int n);
+
+  /// No description provided for @agoDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 day ago} other{{n} days ago}}'**
+  String agoDays(int n);
+
+  /// No description provided for @paidByName.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by {name}'**
+  String paidByName(Object name);
+
+  /// No description provided for @expenseOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense options'**
+  String get expenseOptions;
+
+  /// No description provided for @settlementTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} paid {to}'**
+  String settlementTitle(Object from, Object to);
+
+  /// No description provided for @settlementSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settlement · {date}'**
+  String settlementSubtitle(Object date);
+
+  /// No description provided for @settlementOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Settlement options'**
+  String get settlementOptions;
+
+  /// No description provided for @editExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit expense'**
+  String get editExpense;
+
+  /// No description provided for @descriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get descriptionLabel;
+
+  /// No description provided for @amountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get amountLabel;
+
+  /// No description provided for @invalidNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid number'**
+  String get invalidNumber;
+
+  /// No description provided for @currencyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get currencyLabel;
+
+  /// No description provided for @paidByLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by'**
+  String get paidByLabel;
+
+  /// No description provided for @splitEqual.
+  ///
+  /// In en, this message translates to:
+  /// **'Equal'**
+  String get splitEqual;
+
+  /// No description provided for @splitExact.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact'**
+  String get splitExact;
+
+  /// No description provided for @splitShares.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares'**
+  String get splitShares;
+
+  /// No description provided for @splitSelectAtLeastOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one participant'**
+  String get splitSelectAtLeastOne;
+
+  /// No description provided for @splitEquallyAmong.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{Split equally among 1} other{Split equally among {n}}}'**
+  String splitEquallyAmong(int n);
+
+  /// No description provided for @splitAddsUpToTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds up to the total'**
+  String get splitAddsUpToTotal;
+
+  /// No description provided for @splitRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining: {amount}'**
+  String splitRemaining(Object amount);
+
+  /// No description provided for @splitByWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Split by weight'**
+  String get splitByWeight;
+
+  /// No description provided for @splitEnterWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter at least one weight'**
+  String get splitEnterWeight;
+
+  /// No description provided for @splitAddsUpTo100.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds up to 100%'**
+  String get splitAddsUpTo100;
+
+  /// No description provided for @splitPercentMustTotal100.
+  ///
+  /// In en, this message translates to:
+  /// **'Percentages must total 100%'**
+  String get splitPercentMustTotal100;
+
+  /// No description provided for @recordPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Record payment'**
+  String get recordPayment;
+
+  /// No description provided for @allSettledUp.
+  ///
+  /// In en, this message translates to:
+  /// **'All settled up!'**
+  String get allSettledUp;
+
+  /// No description provided for @owesName.
+  ///
+  /// In en, this message translates to:
+  /// **'owes {name}'**
+  String owesName(Object name);
+
+  /// No description provided for @paymentRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment recorded'**
+  String get paymentRecorded;
+
+  /// No description provided for @paymentFromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'From (paid)'**
+  String get paymentFromLabel;
+
+  /// No description provided for @paymentToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'To (received)'**
+  String get paymentToLabel;
+
+  /// No description provided for @paymentExceedsDebt.
+  ///
+  /// In en, this message translates to:
+  /// **'More than the {amount} owed'**
+  String paymentExceedsDebt(Object amount);
+
+  /// No description provided for @record.
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get record;
+
+  /// No description provided for @unsettledYouOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'You still owe {amount}.'**
+  String unsettledYouOwe(Object amount);
+
+  /// No description provided for @unsettledYouAreOwed.
+  ///
+  /// In en, this message translates to:
+  /// **'You are still owed {amount}.'**
+  String unsettledYouAreOwed(Object amount);
+
+  /// No description provided for @leaveGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave group?'**
+  String get leaveGroupTitle;
+
+  /// No description provided for @deleteGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group?'**
+  String get deleteGroupTitle;
+
+  /// No description provided for @leaveGroupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{group}\" will be removed from this device and the other members will see that you left. Your expenses stay in their ledger.'**
+  String leaveGroupBody(Object group);
+
+  /// No description provided for @deleteGroupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{group}\" and all its expenses will be permanently removed from this device.'**
+  String deleteGroupBody(Object group);
+
+  /// No description provided for @exportBackupTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: export a CSV backup first.'**
+  String get exportBackupTip;
+
+  /// No description provided for @exportBackupFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Export a CSV backup first'**
+  String get exportBackupFirst;
+
+  /// No description provided for @leave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get leave;
+
+  /// No description provided for @groupNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Group name'**
+  String get groupNameLabel;
+
+  /// No description provided for @defaultCurrencyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Default currency'**
+  String get defaultCurrencyLabel;
+
+  /// No description provided for @defaultCurrencyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Only applies to new expenses — existing expenses keep their currency.'**
+  String get defaultCurrencyHelper;
+
+  /// No description provided for @create.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get create;
+
+  /// No description provided for @inviteByMatrixId.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite by Matrix ID'**
+  String get inviteByMatrixId;
+
+  /// No description provided for @addPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Add person'**
+  String get addPerson;
+
+  /// No description provided for @noMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'No members.'**
+  String get noMembers;
+
+  /// No description provided for @formerMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Former members'**
+  String get formerMembers;
+
+  /// No description provided for @invite.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get invite;
+
+  /// No description provided for @invitedMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited {userId}'**
+  String invitedMember(Object userId);
+
+  /// No description provided for @nameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Alex'**
+  String get nameHint;
+
+  /// No description provided for @matrixIdOptionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix ID (optional)'**
+  String get matrixIdOptionalLabel;
+
+  /// No description provided for @matrixIdOptionalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'@user:server — leave blank for a local person'**
+  String get matrixIdOptionalHint;
+
+  /// No description provided for @invalidMatrixId.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid Matrix ID'**
+  String get invalidMatrixId;
+
+  /// No description provided for @formerMemberClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'{matrixId} · former member'**
+  String formerMemberClaimed(Object matrixId);
+
+  /// No description provided for @formerMemberLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local · former member'**
+  String get formerMemberLocal;
+
+  /// No description provided for @you.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get you;
+
+  /// No description provided for @readd.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-add'**
+  String get readd;
+
+  /// No description provided for @readdedMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-added {name}'**
+  String readdedMember(Object name);
+
+  /// No description provided for @localParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
+  String get localParticipant;
+
+  /// No description provided for @options.
+  ///
+  /// In en, this message translates to:
+  /// **'Options'**
+  String get options;
+
+  /// No description provided for @rename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get rename;
+
+  /// No description provided for @detachMatrixAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Detach Matrix account'**
+  String get detachMatrixAccount;
+
+  /// No description provided for @linkMatrixAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Link Matrix account'**
+  String get linkMatrixAccount;
+
+  /// No description provided for @removeFromGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from group'**
+  String get removeFromGroup;
+
+  /// No description provided for @removeMemberBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from this group?\n\nTheir expense history is kept; only their membership is cleared.'**
+  String removeMemberBody(Object name);
+
+  /// No description provided for @remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
+
+  /// No description provided for @onboardingWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to MoneyLedger'**
+  String get onboardingWelcome;
+
+  /// No description provided for @onboardingTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Split expenses without a middleman.'**
+  String get onboardingTagline;
+
+  /// No description provided for @onboardingLocalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data lives on your device'**
+  String get onboardingLocalTitle;
+
+  /// No description provided for @onboardingLocalBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups, expenses and balances are stored locally — there is no central MoneyLedger server holding your finances.'**
+  String get onboardingLocalBody;
+
+  /// No description provided for @onboardingSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Members sync peer-to-peer'**
+  String get onboardingSyncTitle;
+
+  /// No description provided for @onboardingSyncBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes are shared directly between members over end-to-end-encrypted Matrix messages. The homeserver only relays ciphertext. Devices sync while the app runs and, on Android, periodically in the background.'**
+  String get onboardingSyncBody;
+
+  /// No description provided for @onboardingAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add anyone — Matrix or not'**
+  String get onboardingAddTitle;
+
+  /// No description provided for @onboardingAddBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite people by their Matrix ID, or add local participants by name and link an account later.'**
+  String get onboardingAddBody;
+
+  /// No description provided for @getStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Get started'**
+  String get getStarted;
+
+  /// No description provided for @devicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get devicesTitle;
+
+  /// No description provided for @couldNotLoadDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load devices: {error}'**
+  String couldNotLoadDevices(Object error);
+
+  /// No description provided for @thisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get thisDevice;
+
+  /// No description provided for @verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get verified;
+
+  /// No description provided for @notVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Not verified'**
+  String get notVerified;
+
+  /// No description provided for @verify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get verify;
+
+  /// No description provided for @verifyDeviceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify {device}'**
+  String verifyDeviceTitle(Object device);
+
+  /// No description provided for @verifyCompareEmoji.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm these emoji appear in the same order on the other device.'**
+  String get verifyCompareEmoji;
+
+  /// No description provided for @deviceVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Device verified.'**
+  String get deviceVerified;
+
+  /// No description provided for @verificationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification failed.'**
+  String get verificationFailed;
+
+  /// No description provided for @verificationFailedWithError.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification failed: {error}.'**
+  String verificationFailedWithError(Object error);
+
+  /// No description provided for @emojiNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'They don\'t match'**
+  String get emojiNoMatch;
+
+  /// No description provided for @emojiMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'They match'**
+  String get emojiMatch;
+
+  /// No description provided for @onlyDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This is your only device.'**
+  String get onlyDevice;
+
+  /// No description provided for @allDevicesVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'All your devices are verified.'**
+  String get allDevicesVerified;
+
+  /// No description provided for @devicesNeedVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 device needs verification.} other{{count} devices need verification.}}'**
+  String devicesNeedVerification(int count);
+
+  /// No description provided for @authOfflineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection'**
+  String get authOfflineTitle;
+
+  /// No description provided for @authOfflineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get authOfflineHint;
+
+  /// No description provided for @authUnreachableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach {host}'**
+  String authUnreachableTitle(Object host);
+
+  /// No description provided for @authUnreachableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the homeserver address and your internet connection.'**
+  String get authUnreachableHint;
+
+  /// No description provided for @authTimeoutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The server took too long to respond'**
+  String get authTimeoutTitle;
+
+  /// No description provided for @authTimeoutHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get authTimeoutHint;
+
+  /// No description provided for @authNotAHomeserverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} doesn\'t look like a Matrix homeserver'**
+  String authNotAHomeserverTitle(Object host);
+
+  /// No description provided for @authNotAHomeserverHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the address — for example matrix.org.'**
+  String get authNotAHomeserverHint;
+
+  /// No description provided for @authWrongCredentialsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong username or password'**
+  String get authWrongCredentialsTitle;
+
+  /// No description provided for @authWrongCredentialsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check both and try again.'**
+  String get authWrongCredentialsHint;
+
+  /// No description provided for @authDeactivatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has been deactivated'**
+  String get authDeactivatedTitle;
+
+  /// No description provided for @authDeactivatedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact your homeserver administrator, or use another account.'**
+  String get authDeactivatedHint;
+
+  /// No description provided for @authRateLimitedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts'**
+  String get authRateLimitedTitle;
+
+  /// No description provided for @authRateLimitedRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds, plural, =1{Please wait 1 second and try again.} other{Please wait {seconds} seconds and try again.}}'**
+  String authRateLimitedRetry(int seconds);
+
+  /// No description provided for @authRateLimitedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait a moment and try again.'**
+  String get authRateLimitedHint;
+
+  /// No description provided for @authSsoTokenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in link expired or invalid'**
+  String get authSsoTokenTitle;
+
+  /// No description provided for @authSsoTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please start the sign-in again.'**
+  String get authSsoTokenHint;
+
+  /// No description provided for @authUsernameTakenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'That username is already taken'**
+  String get authUsernameTakenTitle;
+
+  /// No description provided for @authUsernameTakenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a different username.'**
+  String get authUsernameTakenHint;
+
+  /// No description provided for @authInvalidUsernameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'That username isn\'t allowed'**
+  String get authInvalidUsernameTitle;
+
+  /// No description provided for @authInvalidUsernameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use only lowercase letters, digits and . _ = - /'**
+  String get authInvalidUsernameHint;
+
+  /// No description provided for @authWeakPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is too weak'**
+  String get authWeakPasswordTitle;
+
+  /// No description provided for @authWeakPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a longer password with a mix of letters, digits and symbols.'**
+  String get authWeakPasswordHint;
+
+  /// No description provided for @authRegistrationDisabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This homeserver doesn\'t allow sign-up here'**
+  String get authRegistrationDisabledTitle;
+
+  /// No description provided for @authRegistrationDisabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your account on its website, then sign in.'**
+  String get authRegistrationDisabledHint;
+
+  /// No description provided for @authUnknownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get authUnknownTitle;
+
+  /// No description provided for @authUnknownHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please try again. The details below may help.'**
+  String get authUnknownHint;
+
+  /// No description provided for @authErrorDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get authErrorDetails;
+
+  /// No description provided for @signInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with your Matrix account'**
+  String get signInSubtitle;
+
+  /// No description provided for @homeserverLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Homeserver'**
+  String get homeserverLabel;
+
+  /// No description provided for @homeserverHint.
+  ///
+  /// In en, this message translates to:
+  /// **'matrix.org or mozilla.modular.im'**
+  String get homeserverHint;
+
+  /// No description provided for @resolvedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved to {url}'**
+  String resolvedTo(Object url);
+
+  /// No description provided for @continueWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with {provider}'**
+  String continueWith(Object provider);
+
+  /// No description provided for @orDivider.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get orDivider;
+
+  /// No description provided for @matrixIdOrUsernameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix ID or username'**
+  String get matrixIdOrUsernameLabel;
+
+  /// No description provided for @passwordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get passwordLabel;
+
+  /// No description provided for @signIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get signIn;
+
+  /// No description provided for @createAccountLink.
+  ///
+  /// In en, this message translates to:
+  /// **'New here? Create an account'**
+  String get createAccountLink;
+
+  /// No description provided for @createAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get createAccount;
+
+  /// No description provided for @usernameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get usernameLabel;
+
+  /// No description provided for @passwordMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 8 characters'**
+  String get passwordMinLength;
+
+  /// No description provided for @alreadyHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? Sign in'**
+  String get alreadyHaveAccount;
+
+  /// No description provided for @registerOnWebTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Register on the web'**
+  String get registerOnWebTitle;
+
+  /// No description provided for @registerOnWebBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This homeserver requires {requirements}, which MoneyLedger can\'t do in-app yet. Create your account on its website, then come back and sign in.'**
+  String registerOnWebBody(Object requirements);
+
+  /// No description provided for @openHomeserverWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Open homeserver website'**
+  String get openHomeserverWebsite;
+
+  /// Joins the last item of a list
+  ///
+  /// In en, this message translates to:
+  /// **'{first} and {last}'**
+  String listAnd(Object first, Object last);
+
+  /// No description provided for @regReqExtraVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'extra verification'**
+  String get regReqExtraVerification;
+
+  /// No description provided for @regReqCaptcha.
+  ///
+  /// In en, this message translates to:
+  /// **'a CAPTCHA'**
+  String get regReqCaptcha;
+
+  /// No description provided for @regReqEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'email verification'**
+  String get regReqEmail;
+
+  /// No description provided for @regReqPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'phone verification'**
+  String get regReqPhone;
+
+  /// No description provided for @regReqTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'accepting the terms of service'**
+  String get regReqTerms;
+
+  /// No description provided for @regReqToken.
+  ///
+  /// In en, this message translates to:
+  /// **'a registration token'**
+  String get regReqToken;
+
+  /// No description provided for @regReqWebSignup.
+  ///
+  /// In en, this message translates to:
+  /// **'signing up on its own website'**
+  String get regReqWebSignup;
+
+  /// No description provided for @aboutAndPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'About & privacy'**
+  String get aboutAndPrivacy;
+
+  /// No description provided for @aboutVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version}'**
+  String aboutVersion(Object version);
+
+  /// No description provided for @aboutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Split expenses with friends — decentralized and end-to-end encrypted over Matrix. Your ledger stays on your devices; there is no MoneyLedger server.'**
+  String get aboutDescription;
+
+  /// No description provided for @aboutSourceCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Source code'**
+  String get aboutSourceCode;
+
+  /// No description provided for @aboutLicense.
+  ///
+  /// In en, this message translates to:
+  /// **'License'**
+  String get aboutLicense;
+
+  /// No description provided for @aboutLicenseValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{license} — free software: you may use, study, share and modify it.'**
+  String aboutLicenseValue(Object license);
+
+  /// No description provided for @aboutLegalese.
+  ///
+  /// In en, this message translates to:
+  /// **'© Leo Stumpf. Licensed under the {license}.'**
+  String aboutLegalese(Object license);
+
+  /// No description provided for @aboutOpenSourceLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source licenses'**
+  String get aboutOpenSourceLicenses;
+
+  /// No description provided for @privacyPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get privacyPolicyTitle;
+
+  /// No description provided for @privacyLastUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated: {date}'**
+  String privacyLastUpdated(Object date);
+
+  /// No description provided for @privacyIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.'**
+  String get privacyIntro;
+
+  /// No description provided for @privacyLedgerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your ledger stays on your devices'**
+  String get privacyLedgerTitle;
+
+  /// No description provided for @privacyLedgerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups, participants, expenses and payments are stored only in a local database on each device signed in to a member\'s account. Every member of a group has a copy of that group\'s ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to all of its members.'**
+  String get privacyLedgerBody;
+
+  /// No description provided for @privacyHomeserverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What your Matrix homeserver sees'**
+  String get privacyHomeserverTitle;
+
+  /// No description provided for @privacyHomeserverBody.
+  ///
+  /// In en, this message translates to:
+  /// **'To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the other members\' devices. Your homeserver (and the homeservers of the other members) relay these messages and queue them until they are delivered, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.'**
+  String get privacyHomeserverBody;
+
+  /// No description provided for @privacyNoTrackingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No analytics, no servers of ours'**
+  String get privacyNoTrackingTitle;
+
+  /// No description provided for @privacyNoTrackingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The app only talks to your homeserver — and, if you use single sign-on or sign up on the web, to the pages your homeserver sends you to in your browser. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.'**
+  String get privacyNoTrackingBody;
+
+  /// No description provided for @privacyBackgroundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background sync on Android'**
+  String get privacyBackgroundTitle;
+
+  /// No description provided for @privacyBackgroundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.'**
+  String get privacyBackgroundBody;
+
+  /// No description provided for @privacyCsvTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV export and import'**
+  String get privacyCsvTitle;
+
+  /// No description provided for @privacyCsvBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting a group writes a CSV file with its expenses, the participants\' names and the amounts — only when you ask for it. Where that file goes is your choice; it is not encrypted, and MoneyLedger has no visibility into it afterwards. Importing reads only the file you pick.'**
+  String get privacyCsvBody;
+
+  /// No description provided for @privacyBackupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Device backups'**
+  String get privacyBackupTitle;
+
+  /// No description provided for @privacyBackupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Android\'s automatic app backup is not switched off. If backup is enabled on your phone, the app\'s local data (your ledger and your Matrix session) may be included in your device backup to your Google account, under Android\'s backup rules.'**
+  String get privacyBackupBody;
+
+  /// No description provided for @privacyDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your data'**
+  String get privacyDeleteTitle;
+
+  /// No description provided for @privacyDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
+  String get privacyDeleteBody;
+
+  /// No description provided for @privacyContactTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get privacyContactTitle;
+
+  /// No description provided for @privacyContactBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.'**
+  String get privacyContactBody;
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
+
+  @override
+  bool isSupported(Locale locale) =>
+      <String>['de', 'en'].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'de':
+      return AppLocalizationsDe();
+    case 'en':
+      return AppLocalizationsEn();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
+}

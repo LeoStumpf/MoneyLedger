@@ -11,6 +11,7 @@ import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/auth/register_page.dart';
 
 import 'helpers/fake_auth_gateway.dart';
+import 'helpers/l10n.dart';
 
 Widget _app(FakeAuthGateway gateway) {
   final router = GoRouter(
@@ -29,7 +30,10 @@ Widget _app(FakeAuthGateway gateway) {
   );
   return ProviderScope(
     overrides: [authGatewayProvider.overrideWith((ref) => gateway)],
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
+        routerConfig: router),
   );
 }
 
@@ -62,7 +66,7 @@ void main() {
 
   testWidgets('a captcha/terms server shows the web fallback', (tester) async {
     final gateway = FakeAuthGateway()
-      ..registerRequiresWeb = ['a CAPTCHA', 'accepting the terms of service'];
+      ..registerRequiresWeb = ['m.login.recaptcha', 'm.login.terms'];
     await tester.pumpWidget(_app(gateway));
     await tester.pumpAndSettle();
 
@@ -71,7 +75,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Register on the web'), findsOneWidget);
-    expect(find.textContaining('a CAPTCHA'), findsOneWidget);
+    expect(
+        find.textContaining(
+            'requires a CAPTCHA and accepting the terms of service,'),
+        findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Open homeserver website'),
         findsOneWidget);
     // Stayed on the register page.

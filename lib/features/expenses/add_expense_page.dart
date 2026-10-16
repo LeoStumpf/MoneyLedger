@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/l10n/l10n.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../groups/create_group_page.dart' show kGroupCurrencies;
@@ -38,10 +39,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   // The SplitEditor's current mode + inputs; resolved against the live amount.
   SplitPlan? _plan;
 
-  int get _amountCents {
-    final v = double.tryParse(_amountCtrl.text.replaceAll(',', '.'));
-    return v == null ? 0 : (v * 100).round();
-  }
+  /// Accepts `,` and `.` as decimal separator (G12) — see
+  /// [parseAmountCents].
+  int get _amountCents => parseAmountCents(_amountCtrl.text) ?? 0;
 
   Map<String, int>? get _initialSplit {
     final json = widget.initial?.splitsJson;
@@ -54,11 +54,22 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   void initState() {
     super.initState();
     final initial = widget.initial;
-    if (initial != null) {
-      _descCtrl.text = initial.description;
-      _amountCtrl.text = (initial.amountCents / 100).toStringAsFixed(2);
-    }
+    if (initial != null) _descCtrl.text = initial.description;
     _loadData();
+  }
+
+  bool _amountPrefilled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Prefill the edited amount once, with the locale's decimal separator.
+    final initial = widget.initial;
+    if (initial != null && !_amountPrefilled) {
+      _amountPrefilled = true;
+      _amountCtrl.text =
+          formatAmountInput(initial.amountCents, context.localeName);
+    }
   }
 
   Future<void> _loadData() async {
@@ -136,9 +147,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   Widget build(BuildContext context) {
     final adderState = ref.watch(expenseAdderProvider);
     final members = _members;
+    final l = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Edit expense' : 'Add expense')),
+      appBar: AppBar(title: Text(_isEdit ? l.editExpense : l.addExpense)),
       body: members == null
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -151,9 +163,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     TextFormField(
                       controller: _descCtrl,
                       decoration:
-                          const InputDecoration(labelText: 'Description'),
+                          InputDecoration(labelText: l.descriptionLabel),
                       validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Required' : null,
+                          (v == null || v.isEmpty) ? l.required : null,
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -163,16 +175,15 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                           child: TextFormField(
                             controller: _amountCtrl,
                             decoration:
-                                const InputDecoration(labelText: 'Amount'),
+                                InputDecoration(labelText: l.amountLabel),
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
                             // re-split on amount edit
                             onChanged: (_) => setState(() {}),
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'Required';
-                              if (double.tryParse(v.replaceAll(',', '.')) ==
-                                  null) {
-                                return 'Invalid number';
+                              if (v == null || v.isEmpty) return l.required;
+                              if (parseAmountCents(v) == null) {
+                                return l.invalidNumber;
                               }
                               return null;
                             },
@@ -185,7 +196,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                             key: const Key('expenseCurrency'),
                             initialValue: _currency,
                             decoration:
-                                const InputDecoration(labelText: 'Currency'),
+                                InputDecoration(labelText: l.currencyLabel),
                             items: [
                               for (final c in [
                                 ...kGroupCurrencies,
@@ -204,7 +215,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: _paidBy,
-                      decoration: const InputDecoration(labelText: 'Paid by'),
+                      decoration: InputDecoration(labelText: l.paidByLabel),
                       items: [
                         for (final m in members)
                           DropdownMenuItem(
@@ -237,7 +248,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(_isEdit ? 'Save' : 'Add'),
+                          : Text(_isEdit ? l.save : l.add),
                     ),
                   ],
                 ),

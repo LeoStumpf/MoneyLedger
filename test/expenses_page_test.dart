@@ -57,6 +57,34 @@ void main() {
       expect(find.byIcon(Icons.balance), findsOneWidget);
     });
 
+    testWidgets('German locale: amounts and labels are localized (G12)',
+        (tester) async {
+      final expenses = [
+        ExpenseModel(
+          id: 'uuid-1',
+          roomId: _roomId,
+          description: 'Hotel',
+          amountCents: 123450,
+          currency: 'EUR',
+          paidBy: '@alice:matrix.org',
+          splitsJson: '{"@alice:matrix.org":123450}',
+          createdAt: 0,
+        ),
+      ];
+      await tester.pumpWidget(testApp(
+        const ExpensesPage(roomId: _roomId),
+        locale: const Locale('de'),
+        overrides: testOverrides(isLoggedIn: true, expenses: expenses),
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Ausgaben'), findsOneWidget);
+      expect(find.text('1.234,50\u00a0€'), findsOneWidget);
+      expect(find.textContaining('Bezahlt von'), findsOneWidget);
+      expect(find.text('Ausgabe hinzufügen'), findsOneWidget);
+    });
+
     testWidgets('renders expense list tiles when expenses exist',
         (tester) async {
       final expenses = [
@@ -91,8 +119,8 @@ void main() {
 
       expect(find.text("Dinner at Luigi's"), findsOneWidget);
       expect(find.text('Taxi home'), findsOneWidget);
-      expect(find.text('42.00 EUR'), findsOneWidget);
-      expect(find.text('15.00 EUR'), findsOneWidget);
+      expect(find.text('€42.00'), findsOneWidget);
+      expect(find.text('€15.00'), findsOneWidget);
     });
 
     testWidgets('shows "Expenses" in the app bar', (tester) async {
@@ -395,8 +423,8 @@ void main() {
         // Only a settlement — the empty state must not show.
         expect(find.textContaining('No expenses'), findsNothing);
         expect(find.text('Alex paid Sam'), findsOneWidget);
-        expect(find.text('12.50 EUR'), findsOneWidget);
-        expect(find.text('Settlement · 2026-06-13'), findsOneWidget);
+        expect(find.text('€12.50'), findsOneWidget);
+        expect(find.text('Settlement · Jun 13, 2026'), findsOneWidget);
         expect(find.byIcon(Icons.handshake_outlined), findsOneWidget);
       });
 

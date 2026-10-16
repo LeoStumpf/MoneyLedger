@@ -147,14 +147,14 @@ SAS exists for visibility only; replication still reaches unverified devices.
 - [ ] Warn in the members page when a peer has unverified devices
 
 ### G12. Polish & app identity 🟡
-- [ ] App name is `money_ledger` on Android (`android:label`) and web
+- [x] App name is `money_ledger` on Android (`android:label`) and web
       (`<title>`, `apple-mobile-web-app-title`, `manifest.json`) → "MoneyLedger"
 - [ ] Custom launcher icons + web favicon (currently Flutter defaults)
-- [ ] Localization: all UI strings are hard-coded English `Text('…')` — add
-      `flutter_localizations` + ARB files (at least EN + DE)
-- [ ] Amount/date formatting per locale (`intl`), currency symbols
-- [ ] Privacy policy / about page (needed for store listing)
-- [ ] Manifest: `android:enableOnBackInvokedCallback="true"` (predictive back; logcat warning)
+- [x] Localization EN + DE (~250 ARB keys, informal "du"; EN fallback)
+- [x] Amount/date formatting per locale (`formatting.dart`); input accepts `,` and `.`
+- [x] About page (version, source link, AGPL, licenses) + PRIVACY.md / in-app policy
+- [x] Manifest: `android:enableOnBackInvokedCallback="true"` (predictive back)
+- [ ] Launcher icons + favicon → G17
 
 ### G13. CSV backup limitations 🟡
 Documented in CLAUDE.md: no settlements / tombstones, participant identity by
@@ -175,6 +175,8 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
 - [ ] Offline demo mode `--dart-define=OFFLINE_DEMO=true` (override transport +
       auth gateway with seeded fakes) for screenshots / manual multi-user checks
 - [ ] CI (GitHub Actions): `./build.sh` on push — needs G2 first for Android
+- [ ] `first_login_recovery_test` "restoring falls back after the timeout" (40 ms
+      timeouts) failed once under load → make deterministic (fake clock)
 - [ ] `dart format` the whole repo once (files are unformatted; agents avoid it to keep diffs small)
 - [ ] Regenerate stale `.g.dart` files (build_runner changes hashes in 4 untouched files)
 - [ ] Audit the ~30 `debugPrint` / swallowed `catch` sites in `lib/` — route
@@ -218,8 +220,10 @@ LICENSE file**. Distributing the APK (Play Store) almost certainly requires the 
 to be AGPL-compatible: publish the source, ship the license, list third-party
 notices. **Decision for Leo.**
 - [x] Leo decided (2026-10-15): license the app **AGPL-3.0**
-- [ ] Add `LICENSE`, `THIRD_PARTY_NOTICES.md` (cf. ZoneCraft/PositioningInfo), in-app
-      licenses page (`showLicensePage`) + source link in About (G12)
+- [x] `LICENSE` (FSF AGPL-3.0 text, "or later" notice), `THIRD_PARTY_NOTICES.md`
+      (no incompatible deps), licenses page + source link in About
+- [ ] **Leo:** AGPL-3.0-or-later (current) vs. -only; contact e-mail in PRIVACY.md;
+      make the GitHub repo public before distributing (G18)
 
 ### G22. Dependency upgrades (matrix 7 → 10+, file_picker 8 → 10) 🟡
 `flutter_vodozemac` is pinned at 0.6.x by `matrix` 7.2.2 (`vodozemac ^0.5.0`); 0.7+/0.8
@@ -328,6 +332,13 @@ needs a gateway, privacy trade-offs). Web: only while the tab is open.
 - [ ] Debug-only one-off trigger for manual testing (periodic jobs can't be forced)
 - [ ] Push (Matrix pusher → FCM) — out of v1 scope
 
+### G32. Android auto-backup includes ledger + Matrix crypto keys 🟠
+No `allowBackup` setting → Google backup may contain the ledger DBs and the
+Matrix session incl. Olm keys; a restore onto a new phone would resurrect a
+stale crypto identity (broken sessions) and is a privacy concern.
+- [ ] `android:allowBackup="false"` + `dataExtractionRules`/`fullBackupContent`
+      excluding everything (cf. ZoneCraft); update PRIVACY.md + in-app policy
+
 ### G17. Design pass — a polished, consistent look 🟡
 - [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
 - [ ] Empty states, spacing, list/card styling for groups, expenses, balances
@@ -372,8 +383,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G20+G25 — friendly login errors, matrix.org sign-up link, late onboarding
 - [x] G30 — first-login recovery + auth timeouts
 - [x] G31 — background sync on Android (feature before i18n)
-- [~] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
-- [ ] G17 — design pass
+- [x] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
+- [~] G32+G17 — disable Android auto-backup; design pass (icons, theme, polish)
 - [ ] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup
 - [ ] G13 — CSV improvements

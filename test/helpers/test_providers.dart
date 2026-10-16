@@ -17,22 +17,29 @@ import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/login_flows_result.dart';
+import 'l10n.dart';
 
 // ── Test app wrapper ─────────────────────────────────────────────────────────
 
 /// Wraps [child] in a ProviderScope + MaterialApp with the given overrides.
-Widget testApp(Widget child, {List overrides = const []}) =>
+/// Localized (G12) — English unless [locale] is given (e.g. `Locale('de')`).
+Widget testApp(Widget child, {List overrides = const [], Locale? locale}) =>
     ProviderScope(
       // Spread into a list literal — Dart infers List<Override> from the
       // ProviderScope parameter type, and each element IS an Override at runtime.
       overrides: [...overrides],
-      child: MaterialApp(home: child),
+      child: MaterialApp(
+          locale: locale ?? const Locale('en'),
+          localizationsDelegates: testLocalizationsDelegates,
+          supportedLocales: testSupportedLocales,
+          home: child),
     );
 
 /// Like [testApp] but mounts [page] under a GoRouter (pushed onto a host route)
 /// so pages that call `context.pop()` on success have somewhere to pop back to.
 /// After a pop, the "host" text is visible — assert on it to confirm navigation.
-Widget testRouterApp(Widget page, {List overrides = const []}) {
+Widget testRouterApp(Widget page,
+    {List overrides = const [], Locale? locale}) {
   final router = GoRouter(
     initialLocation: '/host',
     routes: [
@@ -46,7 +53,11 @@ Widget testRouterApp(Widget page, {List overrides = const []}) {
   WidgetsBinding.instance.addPostFrameCallback((_) => router.push('/page'));
   return ProviderScope(
     overrides: [...overrides],
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(
+        locale: locale ?? const Locale('en'),
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
+        routerConfig: router),
   );
 }
 

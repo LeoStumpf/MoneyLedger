@@ -16,7 +16,7 @@ class FakeAuthGateway implements AuthGateway {
   Object? failWith;
 
   /// If set, [register] throws [RegistrationRequiresWebException] with these
-  /// requirements — simulates a CAPTCHA/email/terms homeserver.
+  /// blocking UIA stage ids — simulates a CAPTCHA/email/terms homeserver.
   List<String>? registerRequiresWeb;
 
   /// The sign-up page carried by that [RegistrationRequiresWebException].

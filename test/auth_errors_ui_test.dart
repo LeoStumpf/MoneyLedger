@@ -9,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/matrix/auth_gateway.dart';
-import 'package:money_ledger/features/auth/auth_errors.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/auth/login_page.dart';
 import 'package:money_ledger/features/auth/register_page.dart';
@@ -17,6 +16,8 @@ import 'package:money_ledger/features/auth/sso_provider.dart';
 import 'package:money_ledger/models/login_flows_result.dart';
 
 import 'helpers/fake_auth_gateway.dart';
+import 'helpers/l10n.dart';
+import 'package:money_ledger/features/auth/register_flows.dart';
 
 Widget _app(FakeAuthGateway gateway, String initial,
     {Stream<Uri>? ssoLinks}) {
@@ -43,7 +44,10 @@ Widget _app(FakeAuthGateway gateway, String initial,
       ssoCallbackProvider
           .overrideWith((_) => ssoLinks ?? const Stream<Uri>.empty()),
     ],
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
+        routerConfig: router),
   );
 }
 
@@ -77,10 +81,10 @@ void main() {
       await _signIn(tester);
 
       expect(find.byKey(const Key('authErrorCard')), findsOneWidget);
-      expect(find.text(AuthErrorStrings.wrongCredentialsTitle), findsOneWidget);
+      expect(find.text(en.authWrongCredentialsTitle), findsOneWidget);
       // Raw server text hidden until "Details" is expanded.
       expect(find.textContaining('M_FORBIDDEN'), findsNothing);
-      await tester.tap(find.text(AuthErrorStrings.detailsLabel));
+      await tester.tap(find.text(en.authErrorDetails));
       await tester.pumpAndSettle();
       expect(find.textContaining('M_FORBIDDEN'), findsOneWidget);
       expect(find.text('groups-home'), findsNothing);
@@ -96,7 +100,7 @@ void main() {
 
       await _signIn(tester);
 
-      expect(find.text(AuthErrorStrings.offlineTitle), findsOneWidget);
+      expect(find.text(en.authOfflineTitle), findsOneWidget);
       expect(find.textContaining('SocketException'), findsNothing);
     });
 
@@ -107,8 +111,8 @@ void main() {
       await tester.pumpWidget(_app(gateway, '/login'));
       await tester.pumpAndSettle();
       await _signIn(tester);
-      expect(find.text(AuthErrorStrings.rateLimitedTitle), findsOneWidget);
-      expect(find.text(AuthErrorStrings.rateLimitedRetry(5)), findsOneWidget);
+      expect(find.text(en.authRateLimitedTitle), findsOneWidget);
+      expect(find.text(en.authRateLimitedRetry(5)), findsOneWidget);
 
       gateway.failWith = null;
       await _signIn(tester);
@@ -125,7 +129,7 @@ void main() {
               'moneyledger://sso-callback/?loginToken=t1&hs=https%3A%2F%2Fmatrix.org'))));
       await tester.pumpAndSettle();
 
-      expect(find.text(AuthErrorStrings.ssoTokenTitle), findsOneWidget);
+      expect(find.text(en.authSsoTokenTitle), findsOneWidget);
       expect(find.textContaining('SSO login failed'), findsNothing);
       expect(find.textContaining('Invalid login token'), findsNothing);
     });
@@ -141,7 +145,7 @@ void main() {
 
       await _register(tester);
 
-      expect(find.text(AuthErrorStrings.usernameTakenTitle), findsOneWidget);
+      expect(find.text(en.authUsernameTakenTitle), findsOneWidget);
       expect(find.textContaining('Registration failed'), findsNothing);
       expect(find.textContaining('M_USER_IN_USE'), findsNothing);
     });
@@ -159,7 +163,7 @@ void main() {
               const MethodChannel('plugins.flutter.io/url_launcher'), null));
 
       final gateway = FakeAuthGateway()
-        ..registerRequiresWeb = ['signing up on its own website']
+        ..registerRequiresWeb = [kWebSignupStage]
         ..registerSignUpUrl = 'https://account.matrix.org/register';
       await tester.pumpWidget(_app(gateway, '/register'));
       await tester.pumpAndSettle();

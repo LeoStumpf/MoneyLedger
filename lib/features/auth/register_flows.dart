@@ -3,6 +3,8 @@
 /// No platform/Matrix imports, so it is unit-testable (mirrors `sso_url.dart`).
 library;
 
+import '../../l10n/app_localizations.dart';
+
 /// Stages the app can satisfy on its own, with no extra user interaction beyond
 /// the username/password already collected. (`m.login.dummy` is a no-op stage
 /// that open-registration servers offer.)
@@ -14,14 +16,15 @@ class RegistrationPlan {
   /// auto-satisfiable — i.e. we can register the user in-app.
   final bool canRegisterInApp;
 
-  /// When [canRegisterInApp] is false, the human-readable requirements of the
-  /// *easiest* flow the server offers (e.g. `['a CAPTCHA', 'accepting the terms
-  /// of service']`) — used to tell the user why they must register on the web.
-  final List<String> blockingRequirements;
+  /// When [canRegisterInApp] is false, the blocking stage ids of the
+  /// *easiest* flow the server offers (e.g. `['m.login.recaptcha',
+  /// 'm.login.terms']`) — the UI labels them via [registrationRequirementLabel]
+  /// to tell the user why they must register on the web.
+  final List<String> blockingStages;
 
   const RegistrationPlan({
     required this.canRegisterInApp,
-    this.blockingRequirements = const [],
+    this.blockingStages = const [],
   });
 }
 
@@ -42,15 +45,14 @@ RegistrationPlan classifyRegistrationFlows(List<List<String>> flows) {
   }
   return RegistrationPlan(
     canRegisterInApp: false,
-    blockingRequirements: [
-      for (final s in easiest ?? const <String>[]) registrationRequirementLabel(s)
-    ],
+    blockingStages: easiest ?? const <String>[],
   );
 }
 
-/// Requirement label shown when the server refuses client registration
-/// outright (see [isClientRegistrationDisabled]).
-const kWebSignupRequirement = 'signing up on its own website';
+/// Pseudo stage id used when the server refuses client registration outright
+/// (see [isClientRegistrationDisabled]) — labelled "signing up on its own
+/// website".
+const kWebSignupStage = 'moneyledger.web_signup';
 
 /// True when a `/register` attempt was refused without a UIA challenge because
 /// the server disabled client-side registration (`M_FORBIDDEN`, no flows) —
@@ -60,19 +62,22 @@ const kWebSignupRequirement = 'signing up on its own website';
 bool isClientRegistrationDisabled(String? errcode, {required bool hasFlows}) =>
     !hasFlows && errcode == 'M_FORBIDDEN';
 
-/// A friendly label for a registration UIA stage id.
-String registrationRequirementLabel(String stage) {
+/// A friendly, localized label for a registration UIA stage id (unknown
+/// stages fall back to their raw id).
+String registrationRequirementLabel(String stage, AppLocalizations l) {
   switch (stage) {
     case 'm.login.recaptcha':
-      return 'a CAPTCHA';
+      return l.regReqCaptcha;
     case 'm.login.email.identity':
-      return 'email verification';
+      return l.regReqEmail;
     case 'm.login.msisdn':
-      return 'phone verification';
+      return l.regReqPhone;
     case 'm.login.terms':
-      return 'accepting the terms of service';
+      return l.regReqTerms;
     case 'm.login.registration_token':
-      return 'a registration token';
+      return l.regReqToken;
+    case kWebSignupStage:
+      return l.regReqWebSignup;
     default:
       return stage;
   }

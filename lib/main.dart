@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
@@ -6,6 +7,15 @@ import 'core/background/background_sync.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // G21: MoneyLedger's own license on the in-app licenses page, above the
+  // automatically collected package licenses.
+  LicenseRegistry.addLicense(() => Stream.value(const LicenseEntryWithLineBreaks(
+      ['MoneyLedger'],
+      'MoneyLedger is free software: you can redistribute it and/or modify it '
+      'under the terms of the GNU Affero General Public License as published '
+      'by the Free Software Foundation, either version 3 of the License, or '
+      '(at your option) any later version.\n\n'
+      'Source code: https://github.com/LeoStumpf/MoneyLedger')));
   // G31: take the app's slot before the Matrix store / ledger DB are opened —
   // a periodic background sync round running in this process (Android
   // WorkManager) is asked to stop and close its stores first, so the two

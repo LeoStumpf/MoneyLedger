@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../features/about/about_page.dart';
 import '../features/auth/auth_provider.dart';
 import '../models/expense_model.dart';
 import 'error_page.dart';
@@ -23,6 +24,10 @@ part 'router.g.dart';
 /// Pages reachable while signed out (login + in-app registration).
 const _authPages = {'/login', '/register'};
 
+/// Informational pages reachable signed in **and** signed out (About +
+/// privacy policy, G12) — never redirected away from once onboarding is done.
+const _publicPages = {'/about', '/about/privacy'};
+
 /// Neutral loading route shown while signed in but the per-account onboarding
 /// flag is still unknown (G25).
 const kSplashLocation = '/splash';
@@ -34,7 +39,9 @@ const kSplashLocation = '/splash';
 String? routerRedirect(
     bool isLoggedIn, OnboardingStatus onboarding, String location) {
   if (!isLoggedIn) {
-    return _authPages.contains(location) ? null : '/login';
+    return _authPages.contains(location) || _publicPages.contains(location)
+        ? null
+        : '/login';
   }
   switch (onboarding) {
     case OnboardingStatus.unknown:
@@ -81,6 +88,10 @@ GoRouter router(Ref ref) {
           path: '/onboarding', builder: (_, _) => const OnboardingPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
       GoRoute(path: '/devices', builder: (_, _) => const DevicesPage()),
+      GoRoute(path: '/about', builder: (_, _) => const AboutPage()),
+      GoRoute(
+          path: '/about/privacy',
+          builder: (_, _) => const PrivacyPolicyPage()),
       GoRoute(
           path: '/groups/create',
           builder: (_, _) => const CreateGroupPage()),

@@ -1,0 +1,508 @@
+{
+  "@@locale": "en",
+  "appTitle": "MoneyLedger",
+  "@appTitle": {
+    "description": "App name — not translated"
+  },
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "save": "Save",
+  "add": "Add",
+  "ok": "OK",
+  "done": "Done",
+  "required": "Required",
+  "failedWithError": "Failed: {error}",
+  "@failedWithError": {
+    "description": "Snackbar after a failed action; error is technical text",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorWithDetail": "Error: {error}",
+  "@errorWithDetail": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "groupsTitle": "Groups",
+  "importCsvTooltip": "Import CSV",
+  "devicesTooltip": "Devices & security",
+  "settingsTooltip": "Settings",
+  "signOut": "Sign out",
+  "newGroup": "New group",
+  "signOutConfirmTitle": "Sign out?",
+  "signOutConfirmBody": "Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn't sync — other members' changes arrive once you sign back in.",
+  "importFailed": "Import failed: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "importedExpenses": "{count, plural, =1{Imported 1 expense} other{Imported {count} expenses}}",
+  "@importedExpenses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noGroupsYet": "No groups yet.\nCreate one to get started.",
+  "restoringGroupsTitle": "Restoring your groups from your other devices…",
+  "restoringGroupsBody": "Open MoneyLedger on another device signed in to this account — it sends your groups while the app is running there.",
+  "syncSettingsTitle": "Sync",
+  "syncSettingsBody": "Devices exchange changes while MoneyLedger is open. Changes from others wait on your homeserver (encrypted) until this device picks them up.",
+  "backgroundSyncTitle": "Background sync",
+  "backgroundSyncBody": "Also sync about every 15 minutes while the app is closed (with network, not on low battery).",
+  "noBackgroundSyncTitle": "No background sync here",
+  "noBackgroundSyncBody": "In the browser, MoneyLedger syncs only while this tab is open. The Android app also syncs periodically in the background.",
+  "aboutTitle": "About MoneyLedger",
+  "somethingWentWrong": "Something went wrong",
+  "signOutAndRestart": "Sign out and restart",
+  "expensesTitle": "Expenses",
+  "addMember": "Add member",
+  "membersTitle": "Members",
+  "balanceTitle": "Balance",
+  "moreTooltip": "More",
+  "editGroup": "Edit group",
+  "exportCsv": "Export CSV",
+  "leaveGroup": "Leave group",
+  "deleteGroup": "Delete group",
+  "addExpense": "Add expense",
+  "removedFromGroupBanner": "You were removed from this group. Its history stays readable here.",
+  "deleteFromThisDevice": "Delete from this device",
+  "addedToGroupBanner": "You've been added to this group. Which participant are you?",
+  "choose": "Choose",
+  "noExpensesYet": "No expenses yet.",
+  "thisGroup": "This group",
+  "youLeftGroup": "You left \"{group}\"",
+  "@youLeftGroup": {
+    "placeholders": {
+      "group": {}
+    }
+  },
+  "deletedGroup": "Deleted \"{group}\"",
+  "@deletedGroup": {
+    "placeholders": {
+      "group": {}
+    }
+  },
+  "exportedFile": "Exported {fileName}",
+  "@exportedFile": {
+    "placeholders": {
+      "fileName": {}
+    }
+  },
+  "whichParticipantAreYou": "Which participant are you?",
+  "imSomeoneNew": "I'm someone new",
+  "yourName": "Your name",
+  "nameLabel": "Name",
+  "join": "Join",
+  "deleteExpenseTitle": "Delete expense?",
+  "deleteExpenseBody": "\"{description}\" will be removed for all members.",
+  "@deleteExpenseBody": {
+    "placeholders": {
+      "description": {}
+    }
+  },
+  "deleteSettlementTitle": "Delete settlement?",
+  "deleteSettlementBody": "\"{from} paid {to} {amount}\" will be removed for all members and the balance restored.",
+  "@deleteSettlementBody": {
+    "placeholders": {
+      "from": {},
+      "to": {},
+      "amount": {}
+    }
+  },
+  "matrixIdLabel": "Matrix ID",
+  "addedMember": "Added {userId}",
+  "@addedMember": {
+    "placeholders": {
+      "userId": {}
+    }
+  },
+  "syncProblemTooltip": "Sync problem — tap for details",
+  "syncedWithAll": "Synced with all members",
+  "peerHasNoDevice": "{peer} has no active device — will sync when they sign in",
+  "@peerHasNoDevice": {
+    "placeholders": {
+      "peer": {}
+    }
+  },
+  "waitingForPeer": "Waiting for {peer}…",
+  "@waitingForPeer": {
+    "placeholders": {
+      "peer": {}
+    }
+  },
+  "syncProblemTitle": "Sync problem",
+  "syncProblemBody": "Could not reach other members. Your changes are saved on this device and will sync once the connection recovers.",
+  "lastSynced": "Last synced {ago}",
+  "@lastSynced": {
+    "placeholders": {
+      "ago": {}
+    }
+  },
+  "lastError": "Last error: {error}",
+  "@lastError": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "retryingSync": "Retrying sync…",
+  "retryNow": "Retry now",
+  "agoJustNow": "just now",
+  "agoMinutes": "{n} min ago",
+  "@agoMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoHours": "{n} h ago",
+  "@agoHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoDays": "{n, plural, =1{1 day ago} other{{n} days ago}}",
+  "@agoDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "paidByName": "Paid by {name}",
+  "@paidByName": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "expenseOptions": "Expense options",
+  "settlementTitle": "{from} paid {to}",
+  "@settlementTitle": {
+    "placeholders": {
+      "from": {},
+      "to": {}
+    }
+  },
+  "settlementSubtitle": "Settlement · {date}",
+  "@settlementSubtitle": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "settlementOptions": "Settlement options",
+  "editExpense": "Edit expense",
+  "descriptionLabel": "Description",
+  "amountLabel": "Amount",
+  "invalidNumber": "Invalid number",
+  "currencyLabel": "Currency",
+  "paidByLabel": "Paid by",
+  "splitEqual": "Equal",
+  "splitExact": "Exact",
+  "splitShares": "Shares",
+  "splitSelectAtLeastOne": "Select at least one participant",
+  "splitEquallyAmong": "{n, plural, =1{Split equally among 1} other{Split equally among {n}}}",
+  "@splitEquallyAmong": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitAddsUpToTotal": "Adds up to the total",
+  "splitRemaining": "Remaining: {amount}",
+  "@splitRemaining": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "splitByWeight": "Split by weight",
+  "splitEnterWeight": "Enter at least one weight",
+  "splitAddsUpTo100": "Adds up to 100%",
+  "splitPercentMustTotal100": "Percentages must total 100%",
+  "recordPayment": "Record payment",
+  "allSettledUp": "All settled up!",
+  "owesName": "owes {name}",
+  "@owesName": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "paymentRecorded": "Payment recorded",
+  "paymentFromLabel": "From (paid)",
+  "paymentToLabel": "To (received)",
+  "paymentExceedsDebt": "More than the {amount} owed",
+  "@paymentExceedsDebt": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "record": "Record",
+  "unsettledYouOwe": "You still owe {amount}.",
+  "@unsettledYouOwe": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "unsettledYouAreOwed": "You are still owed {amount}.",
+  "@unsettledYouAreOwed": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "leaveGroupTitle": "Leave group?",
+  "deleteGroupTitle": "Delete group?",
+  "leaveGroupBody": "\"{group}\" will be removed from this device and the other members will see that you left. Your expenses stay in their ledger.",
+  "@leaveGroupBody": {
+    "placeholders": {
+      "group": {}
+    }
+  },
+  "deleteGroupBody": "\"{group}\" and all its expenses will be permanently removed from this device.",
+  "@deleteGroupBody": {
+    "placeholders": {
+      "group": {}
+    }
+  },
+  "exportBackupTip": "Tip: export a CSV backup first.",
+  "exportBackupFirst": "Export a CSV backup first",
+  "leave": "Leave",
+  "groupNameLabel": "Group name",
+  "defaultCurrencyLabel": "Default currency",
+  "defaultCurrencyHelper": "Only applies to new expenses — existing expenses keep their currency.",
+  "create": "Create",
+  "inviteByMatrixId": "Invite by Matrix ID",
+  "addPerson": "Add person",
+  "noMembers": "No members.",
+  "formerMembers": "Former members",
+  "invite": "Invite",
+  "invitedMember": "Invited {userId}",
+  "@invitedMember": {
+    "placeholders": {
+      "userId": {}
+    }
+  },
+  "nameHint": "e.g. Alex",
+  "matrixIdOptionalLabel": "Matrix ID (optional)",
+  "matrixIdOptionalHint": "@user:server — leave blank for a local person",
+  "invalidMatrixId": "Invalid Matrix ID",
+  "formerMemberClaimed": "{matrixId} · former member",
+  "@formerMemberClaimed": {
+    "placeholders": {
+      "matrixId": {}
+    }
+  },
+  "formerMemberLocal": "Local · former member",
+  "you": "You",
+  "readd": "Re-add",
+  "readdedMember": "Re-added {name}",
+  "@readdedMember": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "localParticipant": "Local",
+  "options": "Options",
+  "rename": "Rename",
+  "detachMatrixAccount": "Detach Matrix account",
+  "linkMatrixAccount": "Link Matrix account",
+  "removeFromGroup": "Remove from group",
+  "removeMemberBody": "Remove {name} from this group?\n\nTheir expense history is kept; only their membership is cleared.",
+  "@removeMemberBody": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "remove": "Remove",
+  "onboardingWelcome": "Welcome to MoneyLedger",
+  "onboardingTagline": "Split expenses without a middleman.",
+  "onboardingLocalTitle": "Your data lives on your device",
+  "onboardingLocalBody": "Groups, expenses and balances are stored locally — there is no central MoneyLedger server holding your finances.",
+  "onboardingSyncTitle": "Members sync peer-to-peer",
+  "onboardingSyncBody": "Changes are shared directly between members over end-to-end-encrypted Matrix messages. The homeserver only relays ciphertext. Devices sync while the app runs and, on Android, periodically in the background.",
+  "onboardingAddTitle": "Add anyone — Matrix or not",
+  "onboardingAddBody": "Invite people by their Matrix ID, or add local participants by name and link an account later.",
+  "getStarted": "Get started",
+  "devicesTitle": "Devices",
+  "couldNotLoadDevices": "Could not load devices: {error}",
+  "@couldNotLoadDevices": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "thisDevice": "This device",
+  "verified": "Verified",
+  "notVerified": "Not verified",
+  "verify": "Verify",
+  "verifyDeviceTitle": "Verify {device}",
+  "@verifyDeviceTitle": {
+    "placeholders": {
+      "device": {}
+    }
+  },
+  "verifyCompareEmoji": "Confirm these emoji appear in the same order on the other device.",
+  "deviceVerified": "Device verified.",
+  "verificationFailed": "Verification failed.",
+  "verificationFailedWithError": "Verification failed: {error}.",
+  "@verificationFailedWithError": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "emojiNoMatch": "They don't match",
+  "emojiMatch": "They match",
+  "onlyDevice": "This is your only device.",
+  "allDevicesVerified": "All your devices are verified.",
+  "devicesNeedVerification": "{count, plural, =1{1 device needs verification.} other{{count} devices need verification.}}",
+  "@devicesNeedVerification": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "authOfflineTitle": "No internet connection",
+  "authOfflineHint": "Check your connection and try again.",
+  "authUnreachableTitle": "Can't reach {host}",
+  "@authUnreachableTitle": {
+    "placeholders": {
+      "host": {}
+    }
+  },
+  "authUnreachableHint": "Check the homeserver address and your internet connection.",
+  "authTimeoutTitle": "The server took too long to respond",
+  "authTimeoutHint": "Check your connection and try again.",
+  "authNotAHomeserverTitle": "{host} doesn't look like a Matrix homeserver",
+  "@authNotAHomeserverTitle": {
+    "placeholders": {
+      "host": {}
+    }
+  },
+  "authNotAHomeserverHint": "Check the address — for example matrix.org.",
+  "authWrongCredentialsTitle": "Wrong username or password",
+  "authWrongCredentialsHint": "Check both and try again.",
+  "authDeactivatedTitle": "This account has been deactivated",
+  "authDeactivatedHint": "Contact your homeserver administrator, or use another account.",
+  "authRateLimitedTitle": "Too many attempts",
+  "authRateLimitedRetry": "{seconds, plural, =1{Please wait 1 second and try again.} other{Please wait {seconds} seconds and try again.}}",
+  "@authRateLimitedRetry": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "authRateLimitedHint": "Please wait a moment and try again.",
+  "authSsoTokenTitle": "Sign-in link expired or invalid",
+  "authSsoTokenHint": "Please start the sign-in again.",
+  "authUsernameTakenTitle": "That username is already taken",
+  "authUsernameTakenHint": "Choose a different username.",
+  "authInvalidUsernameTitle": "That username isn't allowed",
+  "authInvalidUsernameHint": "Use only lowercase letters, digits and . _ = - /",
+  "authWeakPasswordTitle": "Password is too weak",
+  "authWeakPasswordHint": "Use a longer password with a mix of letters, digits and symbols.",
+  "authRegistrationDisabledTitle": "This homeserver doesn't allow sign-up here",
+  "authRegistrationDisabledHint": "Create your account on its website, then sign in.",
+  "authUnknownTitle": "Something went wrong",
+  "authUnknownHint": "Please try again. The details below may help.",
+  "authErrorDetails": "Details",
+  "signInSubtitle": "Sign in with your Matrix account",
+  "homeserverLabel": "Homeserver",
+  "homeserverHint": "matrix.org or mozilla.modular.im",
+  "resolvedTo": "Resolved to {url}",
+  "@resolvedTo": {
+    "placeholders": {
+      "url": {}
+    }
+  },
+  "continueWith": "Continue with {provider}",
+  "@continueWith": {
+    "placeholders": {
+      "provider": {}
+    }
+  },
+  "orDivider": "or",
+  "matrixIdOrUsernameLabel": "Matrix ID or username",
+  "passwordLabel": "Password",
+  "signIn": "Sign in",
+  "createAccountLink": "New here? Create an account",
+  "createAccount": "Create account",
+  "usernameLabel": "Username",
+  "passwordMinLength": "At least 8 characters",
+  "alreadyHaveAccount": "Already have an account? Sign in",
+  "registerOnWebTitle": "Register on the web",
+  "registerOnWebBody": "This homeserver requires {requirements}, which MoneyLedger can't do in-app yet. Create your account on its website, then come back and sign in.",
+  "@registerOnWebBody": {
+    "placeholders": {
+      "requirements": {}
+    }
+  },
+  "openHomeserverWebsite": "Open homeserver website",
+  "listAnd": "{first} and {last}",
+  "@listAnd": {
+    "description": "Joins the last item of a list",
+    "placeholders": {
+      "first": {},
+      "last": {}
+    }
+  },
+  "regReqExtraVerification": "extra verification",
+  "regReqCaptcha": "a CAPTCHA",
+  "regReqEmail": "email verification",
+  "regReqPhone": "phone verification",
+  "regReqTerms": "accepting the terms of service",
+  "regReqToken": "a registration token",
+  "regReqWebSignup": "signing up on its own website",
+  "aboutAndPrivacy": "About & privacy",
+  "aboutVersion": "Version {version}",
+  "@aboutVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "aboutDescription": "Split expenses with friends — decentralized and end-to-end encrypted over Matrix. Your ledger stays on your devices; there is no MoneyLedger server.",
+  "aboutSourceCode": "Source code",
+  "aboutLicense": "License",
+  "aboutLicenseValue": "{license} — free software: you may use, study, share and modify it.",
+  "@aboutLicenseValue": {
+    "placeholders": {
+      "license": {}
+    }
+  },
+  "aboutLegalese": "© Leo Stumpf. Licensed under the {license}.",
+  "@aboutLegalese": {
+    "placeholders": {
+      "license": {}
+    }
+  },
+  "aboutOpenSourceLicenses": "Open-source licenses",
+  "privacyPolicyTitle": "Privacy policy",
+  "privacyLastUpdated": "Last updated: {date}",
+  "@privacyLastUpdated": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "privacyIntro": "MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.",
+  "privacyLedgerTitle": "Your ledger stays on your devices",
+  "privacyLedgerBody": "Groups, participants, expenses and payments are stored only in a local database on each device signed in to a member's account. Every member of a group has a copy of that group's ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to all of its members.",
+  "privacyHomeserverTitle": "What your Matrix homeserver sees",
+  "privacyHomeserverBody": "To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the other members' devices. Your homeserver (and the homeservers of the other members) relay these messages and queue them until they are delivered, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.",
+  "privacyNoTrackingTitle": "No analytics, no servers of ours",
+  "privacyNoTrackingBody": "The app only talks to your homeserver — and, if you use single sign-on or sign up on the web, to the pages your homeserver sends you to in your browser. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
+  "privacyBackgroundTitle": "Background sync on Android",
+  "privacyBackgroundBody": "On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.",
+  "privacyCsvTitle": "CSV export and import",
+  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, the participants' names and the amounts — only when you ask for it. Where that file goes is your choice; it is not encrypted, and MoneyLedger has no visibility into it afterwards. Importing reads only the file you pick.",
+  "privacyBackupTitle": "Device backups",
+  "privacyBackupBody": "Android's automatic app backup is not switched off. If backup is enabled on your phone, the app's local data (your ledger and your Matrix session) may be included in your device backup to your Google account, under Android's backup rules.",
+  "privacyDeleteTitle": "Deleting your data",
+  "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members' devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
+  "privacyContactTitle": "Contact",
+  "privacyContactBody": "Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com."
+}

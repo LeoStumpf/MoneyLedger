@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/l10n/l10n.dart';
 import 'auth_errors.dart';
 
 /// Inline, friendly auth error (G20): a title + hint, with the raw technical
@@ -13,6 +14,8 @@ class AuthErrorCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final detail = message.detail;
+    final l = context.l10n;
+    final hint = message.hint(l);
     return Card(
       key: const Key('authErrorCard'),
       color: scheme.errorContainer,
@@ -30,12 +33,12 @@ class AuthErrorCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(message.title,
+                      Text(message.title(l),
                           style: text.titleSmall
                               ?.copyWith(color: scheme.onErrorContainer)),
-                      if (message.hint != null) ...[
+                      if (hint != null) ...[
                         const SizedBox(height: 4),
-                        Text(message.hint!,
+                        Text(hint,
                             style: text.bodyMedium
                                 ?.copyWith(color: scheme.onErrorContainer)),
                       ],
@@ -56,7 +59,7 @@ class AuthErrorCard extends StatelessWidget {
                       const EdgeInsets.only(left: 36, right: 8, bottom: 8),
                   dense: true,
                   expandedAlignment: Alignment.centerLeft,
-                  title: Text(AuthErrorStrings.detailsLabel,
+                  title: Text(l.authErrorDetails,
                       style: text.labelLarge
                           ?.copyWith(color: scheme.onErrorContainer)),
                   iconColor: scheme.onErrorContainer,

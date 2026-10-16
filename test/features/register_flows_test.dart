@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/auth/register_flows.dart';
+import '../helpers/l10n.dart';
 
 void main() {
   group('classifyRegistrationFlows', () {
@@ -12,7 +13,7 @@ void main() {
         ['m.login.dummy']
       ]);
       expect(p.canRegisterInApp, isTrue);
-      expect(p.blockingRequirements, isEmpty);
+      expect(p.blockingStages, isEmpty);
     });
 
     test('an open server offering a dummy flow alongside others is in-app', () {
@@ -23,12 +24,13 @@ void main() {
       expect(p.canRegisterInApp, isTrue);
     });
 
-    test('a captcha + terms flow defers to the web with friendly labels', () {
+    test('a captcha + terms flow defers to the web (stages labelled in the UI)', () {
       final p = classifyRegistrationFlows([
         ['m.login.recaptcha', 'm.login.terms', 'm.login.dummy']
       ]);
       expect(p.canRegisterInApp, isFalse);
-      expect(p.blockingRequirements,
+      expect(p.blockingStages, ['m.login.recaptcha', 'm.login.terms']);
+      expect([for (final s in p.blockingStages) registrationRequirementLabel(s, en)],
           ['a CAPTCHA', 'accepting the terms of service']);
     });
 
@@ -37,7 +39,7 @@ void main() {
         ['m.login.email.identity']
       ]);
       expect(p.canRegisterInApp, isFalse);
-      expect(p.blockingRequirements, ['email verification']);
+      expect(p.blockingStages, ['m.login.email.identity']);
     });
 
     test('picks the easiest (fewest blocking stages) flow to report', () {
@@ -46,27 +48,33 @@ void main() {
         ['m.login.recaptcha'],
       ]);
       expect(p.canRegisterInApp, isFalse);
-      expect(p.blockingRequirements, ['a CAPTCHA']);
+      expect(p.blockingStages, ['m.login.recaptcha']);
     });
 
     test('no advertised flows means web fallback with no specifics', () {
       final p = classifyRegistrationFlows([]);
       expect(p.canRegisterInApp, isFalse);
-      expect(p.blockingRequirements, isEmpty);
+      expect(p.blockingStages, isEmpty);
     });
 
     test('an unknown stage falls back to its raw id', () {
       final p = classifyRegistrationFlows([
         ['m.login.sms.custom']
       ]);
-      expect(p.blockingRequirements, ['m.login.sms.custom']);
+      expect(p.blockingStages, ['m.login.sms.custom']);
     });
   });
 
   test('registrationRequirementLabel maps known stages', () {
-    expect(registrationRequirementLabel('m.login.msisdn'), 'phone verification');
-    expect(registrationRequirementLabel('m.login.registration_token'),
+    expect(registrationRequirementLabel('m.login.msisdn', en),
+        'phone verification');
+    expect(registrationRequirementLabel('m.login.registration_token', en),
         'a registration token');
+    expect(registrationRequirementLabel(kWebSignupStage, en),
+        'signing up on its own website');
+    expect(registrationRequirementLabel('m.login.recaptcha', de), 'ein CAPTCHA');
+    expect(registrationRequirementLabel('m.login.sms.custom', en),
+        'm.login.sms.custom');
   });
 
   group('isClientRegistrationDisabled', () {

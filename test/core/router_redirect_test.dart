@@ -36,6 +36,12 @@ void main() {
       expect(redirect(false, '/register'), isNull);
     });
 
+    test('About + privacy policy are reachable signed out (G12)', () {
+      expect(redirect(false, '/about'), isNull);
+      expect(redirect(false, '/about/privacy'), isNull);
+      expect(redirect(true, '/about'), isNull);
+    });
+
     test('redirects /onboarding to /login (not an auth page when signed out)',
         () {
       expect(redirect(false, '/onboarding'), '/login');

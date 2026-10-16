@@ -10,12 +10,16 @@ import 'package:money_ledger/features/devices/device_provider.dart';
 import 'package:money_ledger/features/devices/devices_page.dart';
 
 import 'helpers/fake_device_gateway.dart';
+import 'helpers/l10n.dart';
 
 Widget _app(FakeDeviceGateway gateway) => ProviderScope(
       overrides: [
         deviceGatewayProvider.overrideWith((ref) async => gateway),
       ],
-      child: const MaterialApp(home: DevicesPage()),
+      child: MaterialApp(
+          localizationsDelegates: testLocalizationsDelegates,
+          supportedLocales: testSupportedLocales,
+          home: const DevicesPage()),
     );
 
 void main() {

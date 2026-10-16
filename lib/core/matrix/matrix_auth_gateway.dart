@@ -137,7 +137,7 @@ class MatrixAuthGateway implements AuthGateway {
       if (isClientRegistrationDisabled(e.errcode, hasFlows: flows != null)) {
         // e.g. matrix.org (MAS/OIDC): sign-up only on the website.
         throw RegistrationRequiresWebException(
-            homeserver, const [kWebSignupRequirement],
+            homeserver, const [kWebSignupStage],
             signUpUrl: await _signUpUrl(homeserver));
       }
       if (flows == null) rethrow; // not a UIA challenge (e.g. username taken)
@@ -146,7 +146,7 @@ class MatrixAuthGateway implements AuthGateway {
       final session = e.session;
       if (!plan.canRegisterInApp || session == null) {
         throw RegistrationRequiresWebException(
-            homeserver, plan.blockingRequirements,
+            homeserver, plan.blockingStages,
             signUpUrl: await _signUpUrl(homeserver));
       }
       // Complete the no-op dummy stage to finish sign-up.

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/l10n/l10n.dart';
 import '../groups/create_group_page.dart' show kGroupCurrencies;
 
 /// What the user confirmed in [RecordPaymentDialog].
@@ -50,10 +51,19 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
   late String? _from = widget.initialFrom;
   late String? _to = widget.initialTo;
   late String _currency = widget.currency;
-  late final TextEditingController _amount = TextEditingController(
-      text: widget.initialCents == null
-          ? ''
-          : (widget.initialCents! / 100).toStringAsFixed(2));
+  final TextEditingController _amount = TextEditingController();
+  bool _amountPrefilled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Prefill once, with the locale's decimal separator (G12).
+    final initial = widget.initialCents;
+    if (!_amountPrefilled && initial != null) {
+      _amountPrefilled = true;
+      _amount.text = formatAmountInput(initial, context.localeName);
+    }
+  }
 
   @override
   void dispose() {
@@ -61,19 +71,15 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
     super.dispose();
   }
 
+  /// Accepts `,` and `.` as decimal separator (G12).
   int? get _cents {
-    final v = double.tryParse(_amount.text.trim().replaceAll(',', '.'));
-    if (v == null) return null;
-    final c = (v * 100).round();
-    return c > 0 ? c : null;
+    final c = parseAmountCents(_amount.text);
+    return c != null && c > 0 ? c : null;
   }
 
-  String? get _problem {
-    if (_from == null || _to == null) return 'Choose who paid whom';
-    if (_from == _to) return 'Payer and recipient must differ';
-    if (_cents == null) return 'Enter an amount';
-    return null;
-  }
+  /// Why "Record" is disabled, or null when the draft is complete.
+  bool get _hasProblem =>
+      _from == null || _to == null || _from == _to || _cents == null;
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +94,8 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
         cents != null &&
         _currency == widget.currency &&
         cents > debt;
-    final problem = _problem;
+    final problem = _hasProblem;
+    final l = context.l10n;
 
     DropdownMenuItem<String> item(String id) => DropdownMenuItem(
           value: id,
@@ -97,7 +104,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
         );
 
     return AlertDialog(
-      title: const Text('Record payment'),
+      title: Text(l.recordPayment),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -107,7 +114,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
               key: const Key('paymentFrom'),
               initialValue: _from,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'From (paid)'),
+              decoration: InputDecoration(labelText: l.paymentFromLabel),
               items: [for (final id in ids) item(id)],
               onChanged: (v) => setState(() => _from = v),
             ),
@@ -116,7 +123,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
               key: const Key('paymentTo'),
               initialValue: _to,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'To (received)'),
+              decoration: InputDecoration(labelText: l.paymentToLabel),
               items: [for (final id in ids) item(id)],
               onChanged: (v) => setState(() => _to = v),
             ),
@@ -128,7 +135,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                   child: TextField(
                     key: const Key('paymentAmount'),
                     controller: _amount,
-                    decoration: const InputDecoration(labelText: 'Amount'),
+                    decoration: InputDecoration(labelText: l.amountLabel),
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     onChanged: (_) => setState(() {}),
@@ -140,7 +147,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                   child: DropdownButtonFormField<String>(
                     key: const Key('paymentCurrency'),
                     initialValue: _currency,
-                    decoration: const InputDecoration(labelText: 'Currency'),
+                    decoration: InputDecoration(labelText: l.currencyLabel),
                     items: [
                       for (final c in currencies)
                         DropdownMenuItem(value: c, child: Text(c)),
@@ -154,8 +161,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
             if (exceeds) ...[
               const SizedBox(height: 12),
               Text(
-                'More than the ${(debt / 100).toStringAsFixed(2)} '
-                '${widget.currency} owed',
+                l.paymentExceedsDebt(context.money(debt, widget.currency)),
                 key: const Key('paymentExceedsWarning'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
@@ -166,10 +172,10 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l.cancel),
         ),
         FilledButton(
-          onPressed: problem != null
+          onPressed: problem
               ? null
               : () => Navigator.of(context).pop(PaymentDraft(
                     from: _from!,
@@ -177,7 +183,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                     cents: cents!,
                     currency: _currency,
                   )),
-          child: const Text('Record'),
+          child: Text(l.record),
         ),
       ],
     );

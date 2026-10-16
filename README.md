@@ -1,5 +1,9 @@
 # MoneyLedger
 
+**License: AGPL-3.0** (or later) — see [`LICENSE`](LICENSE) and
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Privacy policy:
+[`PRIVACY.md`](PRIVACY.md).
+
 A decentralized expense-sharing app (a Splitwise / Tricount alternative) with
 **no central server**. You sign in with your [Matrix](https://matrix.org)
 account, and all ledger data — groups, members, expenses, settlements — lives
@@ -26,10 +30,13 @@ and sees only ciphertext.
 - **CSV export/import** for backup and sharing (idempotent merge-by-id).
 - **In-app registration** (open / dummy-UIA homeservers) and **SSO** login.
 - **Device verification** (SAS emoji) and a sync-health indicator.
+- **English + German** UI (follows the device language, English fallback),
+  locale-aware amounts/dates; amount fields accept `,` or `.` as decimal
+  separator. About page with version, source link, licenses and privacy policy.
 - **Background sync (Android):** devices sync while the app runs and, on
   Android, about every 15 min in the background (WorkManager; network
   connected, battery not low) — so a closed phone still answers its peers and
-  new devices. Toggle per account under *Sync settings* on the groups screen.
+  new devices. Toggle per account under *Settings* (gear) on the groups screen.
   The web app syncs only while its tab is open.
 
 ## Platform support
@@ -53,6 +60,8 @@ smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
   `riverpod_annotation` — code-gen state management
 - [`drift`](https://pub.dev/packages/drift) 2.x — local SQLite ORM
 - [`go_router`](https://pub.dev/packages/go_router) — navigation
+- `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE
+  strings from ARB files (`lib/l10n/`), number/date/currency formatting
 
 ## Prerequisites
 
@@ -161,6 +170,15 @@ Store updates become impossible and sideloaded users would have to uninstall
 If `android/key.properties` is absent (dev machines, CI without secrets), the
 release build falls back to the **debug key** so `flutter build apk --release`
 still works — such APKs are for testing only, never for distribution.
+
+## Localization
+
+UI strings live in `lib/l10n/app_en.arb` (template) and `lib/l10n/app_de.arb`.
+To add or change a string, edit **both** ARB files and run `flutter gen-l10n`
+(also run automatically by `flutter pub get` / `flutter run` / `flutter build`);
+the generated `lib/l10n/app_localizations*.dart` files are committed. Use it in
+widgets as `context.l10n.myKey` (`import 'core/l10n/l10n.dart'`). The CSV
+export stays machine format (dot decimals, ISO dates) in every language.
 
 ## Architecture & contributing
 

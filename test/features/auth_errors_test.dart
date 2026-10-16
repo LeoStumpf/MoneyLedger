@@ -9,6 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/matrix/auth_gateway.dart';
 import 'package:money_ledger/features/auth/auth_errors.dart';
 
+import '../helpers/l10n.dart';
+
 AuthErrorKind kindOf(Object e, [AuthAction action = AuthAction.login]) =>
     describeAuthError(e, action: action).kind;
 
@@ -19,7 +21,7 @@ void main() {
           deviceOffline: true,
           cause: Exception("Failed host lookup: 'matrix.org'")));
       expect(m.kind, AuthErrorKind.offline);
-      expect(m.title, AuthErrorStrings.offlineTitle);
+      expect(m.title(en), en.authOfflineTitle);
       expect(m.detail, contains('Failed host lookup'));
     });
 
@@ -27,7 +29,7 @@ void main() {
       final m = describeAuthError(AuthNetworkException('nope.example',
           deviceOffline: false, cause: Exception('Connection refused')));
       expect(m.kind, AuthErrorKind.serverUnreachable);
-      expect(m.title, contains('nope.example'));
+      expect(m.title(en), contains('nope.example'));
     });
 
     test('timeout (wrapped or raw)', () {
@@ -45,7 +47,7 @@ void main() {
       expect(isNetworkError(e), isTrue);
       final m = describeAuthError(e);
       expect(m.kind, AuthErrorKind.offline);
-      expect(m.title, isNot(contains('ClientException')));
+      expect(m.title(en), isNot(contains('ClientException')));
       expect(m.detail, contains('ClientException'));
     });
 
@@ -59,7 +61,7 @@ void main() {
     final m = describeAuthError(
         NotAHomeserverException('example.com', const FormatException('<html')));
     expect(m.kind, AuthErrorKind.notAHomeserver);
-    expect(m.title, contains('example.com'));
+    expect(m.title(en), contains('example.com'));
   });
 
   group('errcodes', () {
@@ -67,7 +69,7 @@ void main() {
       final m = describeAuthError(const AuthServerException('M_FORBIDDEN',
           serverMessage: 'Invalid username or password'));
       expect(m.kind, AuthErrorKind.wrongCredentials);
-      expect(m.title, AuthErrorStrings.wrongCredentialsTitle);
+      expect(m.title(en), en.authWrongCredentialsTitle);
       expect(m.detail, 'M_FORBIDDEN: Invalid username or password');
     });
 
@@ -94,15 +96,15 @@ void main() {
       final m = describeAuthError(
           const AuthServerException('M_LIMIT_EXCEEDED', retryAfterMs: 12300));
       expect(m.kind, AuthErrorKind.rateLimited);
-      expect(m.hint, contains('13 seconds'));
+      expect(m.hint(en), contains('13 seconds'));
       expect(
           describeAuthError(const AuthServerException('M_LIMIT_EXCEEDED'))
-              .hint,
-          AuthErrorStrings.rateLimitedHint);
+              .hint(en),
+          en.authRateLimitedHint);
       expect(
           describeAuthError(const AuthServerException('M_LIMIT_EXCEEDED',
                   retryAfterMs: 400))
-              .hint,
+              .hint(en),
           contains('1 second '));
     });
 
@@ -143,7 +145,7 @@ void main() {
   test('anything else: generic title + the raw text as detail', () {
     final m = describeAuthError(StateError('boom'));
     expect(m.kind, AuthErrorKind.unknown);
-    expect(m.title, AuthErrorStrings.unknownTitle);
+    expect(m.title(en), en.authUnknownTitle);
     expect(m.detail, contains('boom'));
   });
 
@@ -185,8 +187,8 @@ void main() {
       for (final action in AuthAction.values) {
         final m = describeAuthError(timeout, action: action);
         expect(m.kind, AuthErrorKind.timeout);
-        expect(m.title, AuthErrorStrings.timeoutTitle);
-        expect(m.hint, AuthErrorStrings.timeoutHint);
+        expect(m.title(en), en.authTimeoutTitle);
+        expect(m.hint(en), en.authTimeoutHint);
         expect(m.detail, contains('checkHomeserver timed out after 10s'));
       }
       // As the gateway wraps it (no offline probe for a timeout).
@@ -195,6 +197,26 @@ void main() {
           cause: AuthTimeoutException('login', kAuthRequestTimeout));
       expect(kindOf(wrapped), AuthErrorKind.timeout);
       expect(kindOf(wrapped, AuthAction.register), AuthErrorKind.timeout);
+    });
+  });
+
+  group('localized (G12)', () {
+    test('German title + plural retry hint', () {
+      final m = describeAuthError(
+          const AuthServerException('M_LIMIT_EXCEEDED', retryAfterMs: 2000));
+      expect(m.title(de), 'Zu viele Versuche');
+      expect(m.hint(de), 'Bitte warte 2 Sekunden und versuche es erneut.');
+    });
+    test('host placeholder in both languages', () {
+      final m = describeAuthError(AuthNetworkException('nope.example',
+          deviceOffline: false, cause: Exception('Connection refused')));
+      expect(m.title(en), "Can't reach nope.example");
+      expect(m.title(de), 'nope.example ist nicht erreichbar');
+    });
+    test('raw network error: offline title, broader hint', () {
+      final m = describeAuthError(Exception('SocketException: boom'));
+      expect(m.title(en), en.authOfflineTitle);
+      expect(m.hint(en), en.authUnreachableHint);
     });
   });
 }

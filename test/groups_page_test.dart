@@ -27,6 +27,35 @@ void main() {
       expect(find.textContaining('No groups yet'), findsOneWidget);
     });
 
+    testWidgets('German locale: title, empty state and FAB (G12)',
+        (tester) async {
+      await tester.pumpWidget(testApp(
+        const GroupsPage(),
+        locale: const Locale('de'),
+        overrides: testOverrides(isLoggedIn: true),
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Gruppen'), findsOneWidget);
+      expect(find.textContaining('Noch keine Gruppen'), findsOneWidget);
+      expect(find.text('Neue Gruppe'), findsOneWidget);
+      expect(find.byTooltip('Einstellungen'), findsOneWidget);
+    });
+
+    testWidgets('settings sheet links to the About page', (tester) async {
+      await tester.pumpWidget(testApp(
+        const GroupsPage(),
+        overrides: testOverrides(isLoggedIn: true),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('aboutTile')), findsOneWidget);
+      expect(find.text('About MoneyLedger'), findsOneWidget);
+    });
+
     testWidgets('shows FAB to create a new group', (tester) async {
       await tester.pumpWidget(testApp(
         const GroupsPage(),
@@ -50,7 +79,7 @@ void main() {
         ],
       ));
       await tester.pump();
-      await tester.tap(find.byTooltip('Sync settings'));
+      await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
 
       expect(find.text('Background sync'), findsOneWidget);
@@ -70,7 +99,7 @@ void main() {
         ],
       ));
       await tester.pump();
-      await tester.tap(find.byTooltip('Sync settings'));
+      await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
 
       expect(find.text('No background sync here'), findsOneWidget);

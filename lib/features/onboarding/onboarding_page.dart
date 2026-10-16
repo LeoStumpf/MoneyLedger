@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/l10n/l10n.dart';
 import 'onboarding_provider.dart';
 
 /// One-time, first-run intro to MoneyLedger's decentralized model. Shown once
@@ -10,28 +11,11 @@ import 'onboarding_provider.dart';
 class OnboardingPage extends ConsumerWidget {
   const OnboardingPage({super.key});
 
-  static const _points = [
-    (
-      Icons.devices,
-      'Your data lives on your device',
-      'Groups, expenses and balances are stored locally — there is no central '
-          'MoneyLedger server holding your finances.'
-    ),
-    (
-      Icons.sync,
-      'Members sync peer-to-peer',
-      'Changes are shared directly between members over end-to-end-encrypted '
-          'Matrix messages. The homeserver only relays ciphertext. Devices '
-          'sync while the app runs and, on Android, periodically in the '
-          'background.'
-    ),
-    (
-      Icons.group_add,
-      'Add anyone — Matrix or not',
-      'Invite people by their Matrix ID, or add local participants by name and '
-          'link an account later.'
-    ),
-  ];
+  static List<(IconData, String, String)> _points(AppLocalizations l) => [
+        (Icons.devices, l.onboardingLocalTitle, l.onboardingLocalBody),
+        (Icons.sync, l.onboardingSyncTitle, l.onboardingSyncBody),
+        (Icons.group_add, l.onboardingAddTitle, l.onboardingAddBody),
+      ];
 
   Future<void> _getStarted(BuildContext context, WidgetRef ref) async {
     await ref.read(onboardingControllerProvider.notifier).markSeen();
@@ -40,6 +24,7 @@ class OnboardingPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -54,18 +39,18 @@ class OnboardingPage extends ConsumerWidget {
                   const Icon(Icons.account_balance_wallet,
                       size: 56, color: Colors.teal),
                   const SizedBox(height: 16),
-                  Text('Welcome to MoneyLedger',
+                  Text(l.onboardingWelcome,
                       style: Theme.of(context).textTheme.headlineSmall,
                       textAlign: TextAlign.center),
                   const SizedBox(height: 8),
-                  Text('Split expenses without a middleman.',
+                  Text(l.onboardingTagline,
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
                           ?.copyWith(color: Colors.grey),
                       textAlign: TextAlign.center),
                   const SizedBox(height: 32),
-                  for (final (icon, title, body) in _points)
+                  for (final (icon, title, body) in _points(l))
                     Padding(
                       padding: const EdgeInsets.only(bottom: 20),
                       child: Row(
@@ -96,7 +81,7 @@ class OnboardingPage extends ConsumerWidget {
                   FilledButton(
                     key: const Key('getStartedBtn'),
                     onPressed: () => _getStarted(context, ref),
-                    child: const Text('Get started'),
+                    child: Text(l.getStarted),
                   ),
                 ],
               ),

@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/matrix/device_gateway.dart';
+import '../helpers/l10n.dart';
 
 DeviceInfo _d(String id,
         {String? name, bool thisDevice = false, bool verified = false}) =>
@@ -48,7 +49,7 @@ void main() {
 
   group('deviceTrustSummary', () {
     test('only device', () {
-      expect(deviceTrustSummary([_d('me', thisDevice: true)]),
+      expect(deviceTrustSummary([_d('me', thisDevice: true)], en),
           'This is your only device.');
     });
 
@@ -57,7 +58,7 @@ void main() {
           deviceTrustSummary([
             _d('me', thisDevice: true),
             _d('a', verified: true),
-          ]),
+          ], en),
           'All your devices are verified.');
     });
 
@@ -67,14 +68,24 @@ void main() {
             _d('me', thisDevice: true),
             _d('a'),
             _d('b'),
-          ]),
+          ], en),
           '2 devices need verification.');
       expect(
           deviceTrustSummary([
             _d('me', thisDevice: true),
             _d('a'),
-          ]),
+          ], en),
           '1 device needs verification.');
+    });
+
+    test('German plural', () {
+      expect(
+          deviceTrustSummary([
+            _d('me', thisDevice: true),
+            _d('a'),
+            _d('b'),
+          ], de),
+          '2 Geräte müssen verifiziert werden.');
     });
   });
 }

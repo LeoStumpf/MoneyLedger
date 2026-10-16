@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/l10n/l10n.dart';
 import 'create_group_page.dart' show kGroupCurrencies;
 
 /// The "Edit group" dialog (G10): name + default currency. Returns the new
@@ -48,8 +49,9 @@ class _EditGroupDialogState extends State<_EditGroupDialog> {
       ...kGroupCurrencies,
       if (!kGroupCurrencies.contains(widget.currency)) widget.currency,
     ];
+    final l = context.l10n;
     return AlertDialog(
-      title: const Text('Edit group'),
+      title: Text(l.editGroup),
       content: Form(
         key: _formKey,
         child: Column(
@@ -58,17 +60,16 @@ class _EditGroupDialogState extends State<_EditGroupDialog> {
             TextFormField(
               controller: _nameCtrl,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Group name'),
+              decoration: InputDecoration(labelText: l.groupNameLabel),
               validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  (v == null || v.trim().isEmpty) ? l.required : null,
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _currency,
-              decoration: const InputDecoration(
-                labelText: 'Default currency',
-                helperText: 'Only applies to new expenses — existing '
-                    'expenses keep their currency.',
+              decoration: InputDecoration(
+                labelText: l.defaultCurrencyLabel,
+                helperText: l.defaultCurrencyHelper,
                 helperMaxLines: 3,
               ),
               items: currencies
@@ -82,9 +83,9 @@ class _EditGroupDialogState extends State<_EditGroupDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l.cancel),
         ),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        FilledButton(onPressed: _save, child: Text(l.save)),
       ],
     );
   }

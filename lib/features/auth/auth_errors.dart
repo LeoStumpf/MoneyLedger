@@ -6,13 +6,14 @@
 /// [NotAHomeserverException]); anything else is classified by its text as a
 /// fallback (e.g. a raw `ClientException with SocketException: …`).
 ///
-/// All user-facing English strings live in [AuthErrorStrings] so G12 can
-/// localize them in one place.
+/// The text is localized at the widget layer: [AuthErrorMessage.title] /
+/// [AuthErrorMessage.hint] take an [AppLocalizations] (G12).
 library;
 
 import 'dart:async';
 
 import '../../core/matrix/auth_gateway.dart';
+import '../../l10n/app_localizations.dart';
 
 /// What the user was doing when the error happened — the same `errcode` means
 /// different things (e.g. `M_FORBIDDEN` = wrong password on login, but an
@@ -21,16 +22,65 @@ enum AuthAction { login, sso, register }
 
 /// A classified error, ready to show: a short [title], an optional friendly
 /// [hint] (what to do), and the raw technical [detail] (behind "Details").
+/// Title and hint are localized on demand from the structured fields.
 class AuthErrorMessage {
   final AuthErrorKind kind;
-  final String title;
-  final String? hint;
+
+  /// The homeserver host, for [AuthErrorKind.serverUnreachable] /
+  /// [AuthErrorKind.notAHomeserver].
+  final String? host;
+
+  /// Server-provided wait for [AuthErrorKind.rateLimited], if any.
+  final int? retryAfterSeconds;
+
+  /// A raw transport error the gateway didn't wrap: "offline" title, but the
+  /// hint covers both "offline" and "bad server".
+  final bool ambiguousNetwork;
   final String? detail;
 
-  const AuthErrorMessage(this.kind, this.title, {this.hint, this.detail});
+  const AuthErrorMessage(this.kind,
+      {this.host,
+      this.retryAfterSeconds,
+      this.ambiguousNetwork = false,
+      this.detail});
+
+  String title(AppLocalizations l) => switch (kind) {
+        AuthErrorKind.offline => l.authOfflineTitle,
+        AuthErrorKind.serverUnreachable => l.authUnreachableTitle(host ?? ''),
+        AuthErrorKind.timeout => l.authTimeoutTitle,
+        AuthErrorKind.notAHomeserver => l.authNotAHomeserverTitle(host ?? ''),
+        AuthErrorKind.wrongCredentials => l.authWrongCredentialsTitle,
+        AuthErrorKind.userDeactivated => l.authDeactivatedTitle,
+        AuthErrorKind.rateLimited => l.authRateLimitedTitle,
+        AuthErrorKind.ssoTokenInvalid => l.authSsoTokenTitle,
+        AuthErrorKind.usernameTaken => l.authUsernameTakenTitle,
+        AuthErrorKind.invalidUsername => l.authInvalidUsernameTitle,
+        AuthErrorKind.weakPassword => l.authWeakPasswordTitle,
+        AuthErrorKind.registrationDisabled => l.authRegistrationDisabledTitle,
+        AuthErrorKind.unknown => l.authUnknownTitle,
+      };
+
+  String? hint(AppLocalizations l) => switch (kind) {
+        AuthErrorKind.offline =>
+          ambiguousNetwork ? l.authUnreachableHint : l.authOfflineHint,
+        AuthErrorKind.serverUnreachable => l.authUnreachableHint,
+        AuthErrorKind.timeout => l.authTimeoutHint,
+        AuthErrorKind.notAHomeserver => l.authNotAHomeserverHint,
+        AuthErrorKind.wrongCredentials => l.authWrongCredentialsHint,
+        AuthErrorKind.userDeactivated => l.authDeactivatedHint,
+        AuthErrorKind.rateLimited => retryAfterSeconds == null
+            ? l.authRateLimitedHint
+            : l.authRateLimitedRetry(retryAfterSeconds!),
+        AuthErrorKind.ssoTokenInvalid => l.authSsoTokenHint,
+        AuthErrorKind.usernameTaken => l.authUsernameTakenHint,
+        AuthErrorKind.invalidUsername => l.authInvalidUsernameHint,
+        AuthErrorKind.weakPassword => l.authWeakPasswordHint,
+        AuthErrorKind.registrationDisabled => l.authRegistrationDisabledHint,
+        AuthErrorKind.unknown => l.authUnknownHint,
+      };
 
   @override
-  String toString() => 'AuthErrorMessage($kind, $title)';
+  String toString() => 'AuthErrorMessage($kind)';
 }
 
 enum AuthErrorKind {
@@ -47,48 +97,6 @@ enum AuthErrorKind {
   weakPassword,
   registrationDisabled,
   unknown,
-}
-
-/// The single home of every English auth-error string (localized in G12).
-abstract final class AuthErrorStrings {
-  static const offlineTitle = 'No internet connection';
-  static const offlineHint = 'Check your connection and try again.';
-  static String unreachableTitle(String host) => "Can't reach $host";
-  static const unreachableHint =
-      'Check the homeserver address and your internet connection.';
-  static const timeoutTitle = 'The server took too long to respond';
-  static const timeoutHint = 'Check your connection and try again.';
-  static String notAHomeserverTitle(String host) =>
-      "$host doesn't look like a Matrix homeserver";
-  static const notAHomeserverHint =
-      'Check the address — for example matrix.org.';
-  static const wrongCredentialsTitle = 'Wrong username or password';
-  static const wrongCredentialsHint = 'Check both and try again.';
-  static const deactivatedTitle = 'This account has been deactivated';
-  static const deactivatedHint =
-      'Contact your homeserver administrator, or use another account.';
-  static const rateLimitedTitle = 'Too many attempts';
-  static String rateLimitedRetry(int seconds) =>
-      'Please wait $seconds ${seconds == 1 ? 'second' : 'seconds'} '
-      'and try again.';
-  static const rateLimitedHint = 'Please wait a moment and try again.';
-  static const ssoTokenTitle = 'Sign-in link expired or invalid';
-  static const ssoTokenHint = 'Please start the sign-in again.';
-  static const usernameTakenTitle = 'That username is already taken';
-  static const usernameTakenHint = 'Choose a different username.';
-  static const invalidUsernameTitle = "That username isn't allowed";
-  static const invalidUsernameHint =
-      'Use only lowercase letters, digits and . _ = - /';
-  static const weakPasswordTitle = 'Password is too weak';
-  static const weakPasswordHint =
-      'Use a longer password with a mix of letters, digits and symbols.';
-  static const registrationDisabledTitle =
-      "This homeserver doesn't allow sign-up here";
-  static const registrationDisabledHint =
-      'Create your account on its website, then sign in.';
-  static const unknownTitle = 'Something went wrong';
-  static const unknownHint = 'Please try again. The details below may help.';
-  static const detailsLabel = 'Details';
 }
 
 /// Cap on the homeserver check (`/versions` + login types) before a login or
@@ -126,31 +134,23 @@ final _errcodePattern = RegExp(r'\bM_[A-Z_]+\b');
 AuthErrorMessage describeAuthError(Object error,
     {AuthAction action = AuthAction.login}) {
   final detail = error.toString();
-  AuthErrorMessage msg(AuthErrorKind k, String title, String? hint) =>
-      AuthErrorMessage(k, title, hint: hint, detail: detail);
+  AuthErrorMessage msg(AuthErrorKind k,
+          {String? host, bool ambiguousNetwork = false}) =>
+      AuthErrorMessage(k,
+          host: host, ambiguousNetwork: ambiguousNetwork, detail: detail);
 
   if (error is AuthNetworkException) {
     return error.deviceOffline
-        ? msg(AuthErrorKind.offline, AuthErrorStrings.offlineTitle,
-            AuthErrorStrings.offlineHint)
+        ? msg(AuthErrorKind.offline)
         : _isTimeout(error.cause)
-            ? msg(AuthErrorKind.timeout, AuthErrorStrings.timeoutTitle,
-                AuthErrorStrings.timeoutHint)
-            : msg(
-                AuthErrorKind.serverUnreachable,
-                AuthErrorStrings.unreachableTitle(error.host),
-                AuthErrorStrings.unreachableHint);
+            ? msg(AuthErrorKind.timeout)
+            : msg(AuthErrorKind.serverUnreachable, host: error.host);
   }
   if (error is NotAHomeserverException) {
-    return msg(
-        AuthErrorKind.notAHomeserver,
-        AuthErrorStrings.notAHomeserverTitle(error.host),
-        AuthErrorStrings.notAHomeserverHint);
+    return msg(AuthErrorKind.notAHomeserver, host: error.host);
   }
   if (error is RegistrationRequiresWebException) {
-    return msg(AuthErrorKind.registrationDisabled,
-        AuthErrorStrings.registrationDisabledTitle,
-        AuthErrorStrings.registrationDisabledHint);
+    return msg(AuthErrorKind.registrationDisabled);
   }
 
   final String? errcode;
@@ -166,65 +166,42 @@ AuthErrorMessage describeAuthError(Object error,
     if (m != null) return m;
   }
 
-  if (_isTimeout(error)) {
-    return msg(AuthErrorKind.timeout, AuthErrorStrings.timeoutTitle,
-        AuthErrorStrings.timeoutHint);
-  }
+  if (_isTimeout(error)) return msg(AuthErrorKind.timeout);
   if (isNetworkError(error)) {
     // Raw network error the gateway didn't wrap: we can't tell "offline"
     // from "bad server", so give the advice covering both.
-    return msg(AuthErrorKind.offline, AuthErrorStrings.offlineTitle,
-        AuthErrorStrings.unreachableHint);
+    return msg(AuthErrorKind.offline, ambiguousNetwork: true);
   }
-  return msg(AuthErrorKind.unknown, AuthErrorStrings.unknownTitle,
-      AuthErrorStrings.unknownHint);
+  return msg(AuthErrorKind.unknown);
 }
 
 AuthErrorMessage? _describeErrcode(
     String errcode, AuthAction action, int? retryAfterMs, String detail) {
-  AuthErrorMessage msg(AuthErrorKind k, String title, String? hint) =>
-      AuthErrorMessage(k, title, hint: hint, detail: detail);
+  AuthErrorMessage msg(AuthErrorKind k, {int? retryAfterSeconds}) =>
+      AuthErrorMessage(k, retryAfterSeconds: retryAfterSeconds, detail: detail);
   switch (errcode) {
     case 'M_FORBIDDEN':
       return switch (action) {
-        AuthAction.login => msg(AuthErrorKind.wrongCredentials,
-            AuthErrorStrings.wrongCredentialsTitle,
-            AuthErrorStrings.wrongCredentialsHint),
-        AuthAction.sso => msg(AuthErrorKind.ssoTokenInvalid,
-            AuthErrorStrings.ssoTokenTitle, AuthErrorStrings.ssoTokenHint),
-        AuthAction.register => msg(AuthErrorKind.registrationDisabled,
-            AuthErrorStrings.registrationDisabledTitle,
-            AuthErrorStrings.registrationDisabledHint),
+        AuthAction.login => msg(AuthErrorKind.wrongCredentials),
+        AuthAction.sso => msg(AuthErrorKind.ssoTokenInvalid),
+        AuthAction.register => msg(AuthErrorKind.registrationDisabled),
       };
     case 'M_UNKNOWN_TOKEN':
     case 'M_MISSING_TOKEN':
-      if (action == AuthAction.sso) {
-        return msg(AuthErrorKind.ssoTokenInvalid,
-            AuthErrorStrings.ssoTokenTitle, AuthErrorStrings.ssoTokenHint);
-      }
+      if (action == AuthAction.sso) return msg(AuthErrorKind.ssoTokenInvalid);
       return null;
     case 'M_USER_DEACTIVATED':
-      return msg(AuthErrorKind.userDeactivated,
-          AuthErrorStrings.deactivatedTitle, AuthErrorStrings.deactivatedHint);
+      return msg(AuthErrorKind.userDeactivated);
     case 'M_LIMIT_EXCEEDED':
       final secs = retryAfterMs == null || retryAfterMs <= 0
           ? null
           : (retryAfterMs / 1000).ceil();
-      return msg(
-          AuthErrorKind.rateLimited,
-          AuthErrorStrings.rateLimitedTitle,
-          secs == null
-              ? AuthErrorStrings.rateLimitedHint
-              : AuthErrorStrings.rateLimitedRetry(secs));
+      return msg(AuthErrorKind.rateLimited, retryAfterSeconds: secs);
     case 'M_USER_IN_USE':
     case 'M_EXCLUSIVE':
-      return msg(AuthErrorKind.usernameTaken,
-          AuthErrorStrings.usernameTakenTitle,
-          AuthErrorStrings.usernameTakenHint);
+      return msg(AuthErrorKind.usernameTaken);
     case 'M_INVALID_USERNAME':
-      return msg(AuthErrorKind.invalidUsername,
-          AuthErrorStrings.invalidUsernameTitle,
-          AuthErrorStrings.invalidUsernameHint);
+      return msg(AuthErrorKind.invalidUsername);
     case 'M_WEAK_PASSWORD':
     case 'M_PASSWORD_TOO_SHORT':
     case 'M_PASSWORD_NO_DIGIT':
@@ -232,8 +209,7 @@ AuthErrorMessage? _describeErrcode(
     case 'M_PASSWORD_NO_LOWERCASE':
     case 'M_PASSWORD_NO_SYMBOL':
     case 'M_PASSWORD_IN_DICTIONARY':
-      return msg(AuthErrorKind.weakPassword, AuthErrorStrings.weakPasswordTitle,
-          AuthErrorStrings.weakPasswordHint);
+      return msg(AuthErrorKind.weakPassword);
     case 'M_UNRECOGNIZED':
     case 'M_NOT_FOUND':
       return null; // ambiguous — fall through to the generic message

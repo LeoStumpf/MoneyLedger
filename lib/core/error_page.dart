@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_provider.dart';
+import 'l10n/l10n.dart';
 
 class ErrorPage extends ConsumerWidget {
   final Exception? error;
@@ -9,7 +10,7 @@ class ErrorPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Something went wrong')),
+      appBar: AppBar(title: Text(context.l10n.somethingWentWrong)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -29,7 +30,7 @@ class ErrorPage extends ConsumerWidget {
                 onPressed: () =>
                     ref.read(authProvider.notifier).logout(),
                 icon: const Icon(Icons.logout),
-                label: const Text('Sign out and restart'),
+                label: Text(context.l10n.signOutAndRestart),
               ),
             ],
           ),

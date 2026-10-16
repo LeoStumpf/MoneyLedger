@@ -7,6 +7,8 @@
 /// device list + verification view-model simulatable without a real homeserver.
 library;
 
+import '../../l10n/app_localizations.dart';
+
 /// One of the user's own Matrix devices/sessions.
 class DeviceInfo {
   final String deviceId;
@@ -101,12 +103,11 @@ List<DeviceInfo> sortDevices(List<DeviceInfo> devices) {
   return sorted;
 }
 
-/// A one-line trust summary for the device list header. Pure; unit-tested.
-String deviceTrustSummary(List<DeviceInfo> devices) {
+/// A one-line trust summary for the device list header, localized through
+/// [l]. Pure; unit-tested.
+String deviceTrustSummary(List<DeviceInfo> devices, AppLocalizations l) {
   final pending = devices.where((d) => d.needsVerification).length;
-  if (devices.length <= 1) return 'This is your only device.';
-  if (pending == 0) return 'All your devices are verified.';
-  return pending == 1
-      ? '1 device needs verification.'
-      : '$pending devices need verification.';
+  if (devices.length <= 1) return l.onlyDevice;
+  if (pending == 0) return l.allDevicesVerified;
+  return l.devicesNeedVerification(pending);
 }

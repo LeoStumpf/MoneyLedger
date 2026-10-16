@@ -53,24 +53,25 @@ class RegistrationRequiresWebException implements Exception {
   /// The resolved homeserver the user was trying to register on.
   final String homeserverUrl;
 
-  /// Human-readable requirements of the easiest flow (e.g. `['a CAPTCHA']`).
-  final List<String> requirements;
+  /// Blocking UIA stage ids of the easiest flow (e.g. `['m.login.recaptcha']`;
+  /// `kWebSignupStage` when sign-up is website-only) — labelled in the UI.
+  final List<String> stages;
 
   /// Where the user can create an account: the server's advertised sign-up /
   /// account-management page when known (see `sign_up_url.dart`), else null —
   /// then the UI falls back to [homeserverUrl].
   final String? signUpUrl;
 
-  const RegistrationRequiresWebException(this.homeserverUrl, this.requirements,
+  const RegistrationRequiresWebException(this.homeserverUrl, this.stages,
       {this.signUpUrl});
 
   /// The page "Open homeserver website" opens.
   String get webUrl => signUpUrl ?? homeserverUrl;
 
   @override
-  String toString() => requirements.isEmpty
+  String toString() => stages.isEmpty
       ? 'This homeserver requires registering on its website.'
-      : 'This homeserver requires ${requirements.join(' and ')} — '
+      : 'This homeserver requires ${stages.join(', ')} — '
           'please register on its website.';
 }
 

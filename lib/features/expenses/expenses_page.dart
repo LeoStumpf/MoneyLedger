@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/sync/sync_health.dart';
 import '../../core/sync/sync_status_provider.dart';
@@ -15,7 +16,7 @@ import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 import 'ledger_syncer.dart';
 
-enum _GroupMenuAction { edit, export, exit }
+enum _GroupMenuAction { addMember, edit, export, exit }
 
 class ExpensesPage extends ConsumerWidget {
   final String roomId;
@@ -50,53 +51,58 @@ class ExpensesPage extends ConsumerWidget {
     ref.watch(groupEditorProvider);
     final exitKind =
         groupExitKind(members, ref.watch(currentUserIdProvider));
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Expenses'),
+        title: Text(l.expensesTitle),
         actions: [
           _SyncStatusIcon(status: syncStatus),
           IconButton(
-            icon: const Icon(Icons.person_add_outlined),
-            tooltip: 'Add member',
-            onPressed: adderState.isLoading || removed
-                ? null
-                : () => _showAddMemberDialog(context, ref),
-          ),
-          IconButton(
             icon: const Icon(Icons.group_outlined),
-            tooltip: 'Members',
+            tooltip: l.membersTitle,
             onPressed: () => context.push('/groups/$roomId/members'),
           ),
           IconButton(
             icon: const Icon(Icons.balance),
-            tooltip: 'Balance',
+            tooltip: l.balanceTitle,
             onPressed: () => context.push('/groups/$roomId/balance'),
           ),
           // Less frequent group actions live in an overflow menu so the app
-          // bar stays uncluttered on phones.
+          // bar stays uncluttered on phones (and the title isn't truncated —
+          // G12, "Ausgaben").
           PopupMenuButton<_GroupMenuAction>(
-            tooltip: 'More',
+            tooltip: l.moreTooltip,
             onSelected: (action) => switch (action) {
+              _GroupMenuAction.addMember => _showAddMemberDialog(context, ref),
               _GroupMenuAction.edit => _editGroup(context, ref),
               _GroupMenuAction.export => _exportCsv(context, ref),
               _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
             },
             itemBuilder: (_) => [
               PopupMenuItem(
-                value: _GroupMenuAction.edit,
-                enabled: canEdit,
-                child: const ListTile(
-                  leading: Icon(Icons.edit_outlined),
-                  title: Text('Edit group'),
+                value: _GroupMenuAction.addMember,
+                enabled: !adderState.isLoading && !removed,
+                child: ListTile(
+                  leading: const Icon(Icons.person_add_outlined),
+                  title: Text(l.addMember),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
+                value: _GroupMenuAction.edit,
+                enabled: canEdit,
+                child: ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: Text(l.editGroup),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
                 value: _GroupMenuAction.export,
                 child: ListTile(
-                  leading: Icon(Icons.save_alt),
-                  title: Text('Export CSV'),
+                  leading: const Icon(Icons.save_alt),
+                  title: Text(l.exportCsv),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -107,8 +113,8 @@ class ExpensesPage extends ConsumerWidget {
                       ? Icons.logout
                       : Icons.delete_outline),
                   title: Text(exitKind == GroupExitKind.leave
-                      ? 'Leave group'
-                      : 'Delete group'),
+                      ? l.leaveGroup
+                      : l.deleteGroup),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -121,32 +127,30 @@ class ExpensesPage extends ConsumerWidget {
           : FloatingActionButton.extended(
               onPressed: () => context.push('/groups/$roomId/expenses/add'),
               icon: const Icon(Icons.add),
-              label: const Text('Add expense'),
+              label: Text(l.addExpense),
             ),
       body: Column(
         children: [
           if (removed)
             MaterialBanner(
-              content: const Text('You were removed from this group. '
-                  'Its history stays readable here.'),
+              content: Text(l.removedFromGroupBanner),
               leading: const Icon(Icons.person_off_outlined),
               actions: [
                 TextButton(
                   onPressed: () =>
                       _exitGroup(context, ref, GroupExitKind.delete),
-                  child: const Text('Delete from this device'),
+                  child: Text(l.deleteFromThisDevice),
                 ),
               ],
             ),
           if (needsClaim)
             MaterialBanner(
-              content: const Text("You've been added to this group. "
-                  'Which participant are you?'),
+              content: Text(l.addedToGroupBanner),
               leading: const Icon(Icons.person_pin_circle_outlined),
               actions: [
                 TextButton(
                   onPressed: () => _showClaimPicker(context, ref, members),
-                  child: const Text('Choose'),
+                  child: Text(l.choose),
                 ),
               ],
             ),
@@ -179,11 +183,14 @@ class ExpensesPage extends ConsumerWidget {
     GroupSyncStatus syncStatus, {
     required bool readOnly,
   }) {
+    final l = context.l10n;
     if (expensesAsync.hasError) {
-      return Center(child: Text('Error: ${expensesAsync.error}'));
+      return Center(
+          child: Text(l.errorWithDetail(expensesAsync.error.toString())));
     }
     if (settlementsAsync.hasError) {
-      return Center(child: Text('Error: ${settlementsAsync.error}'));
+      return Center(
+          child: Text(l.errorWithDetail(settlementsAsync.error.toString())));
     }
     if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
       return const Center(child: CircularProgressIndicator());
@@ -194,7 +201,7 @@ class ExpensesPage extends ConsumerWidget {
         (createdAt: s.createdAt, record: s),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     if (entries.isEmpty) {
-      return const Center(child: Text('No expenses yet.'));
+      return Center(child: Text(l.noExpensesYet));
     }
     String nameOf(String id) => names[id] ?? id;
     return ListView.builder(
@@ -234,15 +241,16 @@ class ExpensesPage extends ConsumerWidget {
   Future<void> _exitGroup(
       BuildContext context, WidgetRef ref, GroupExitKind kind) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final group = await ref.read(groupsDaoProvider).getGroup(roomId);
     if (!context.mounted) return;
     final me = ref.read(currentParticipantProvider(roomId)).value;
-    final warning =
-        unsettledWarning(ref.read(balanceForRoomProvider(roomId)), me?.userId);
+    final warning = unsettledWarning(
+        ref.read(balanceForRoomProvider(roomId)), me?.userId, l);
     final confirmed = await confirmGroupExit(
       context,
       kind: kind,
-      groupName: group?.name ?? 'This group',
+      groupName: group?.name ?? l.thisGroup,
       warning: warning,
       onExport: () => _exportCsv(context, ref),
     );
@@ -253,19 +261,21 @@ class ExpensesPage extends ConsumerWidget {
         : exiter.delete(roomId));
     final error = ref.read(groupExiterProvider).error;
     if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+      messenger.showSnackBar(
+          SnackBar(content: Text(l.failedWithError(error.toString()))));
       return;
     }
     messenger.showSnackBar(SnackBar(
         content: Text(kind == GroupExitKind.leave
-            ? 'You left "${group?.name ?? ''}"'
-            : 'Deleted "${group?.name ?? ''}"')));
+            ? l.youLeftGroup(group?.name ?? '')
+            : l.deletedGroup(group?.name ?? ''))));
     if (context.mounted) context.go('/groups');
   }
 
   /// Rename the group / change its default currency (G10).
   Future<void> _editGroup(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final group = await ref.read(groupsDaoProvider).getGroup(roomId);
     if (group == null || !context.mounted) return;
     final result = await showEditGroupDialog(context,
@@ -276,12 +286,14 @@ class ExpensesPage extends ConsumerWidget {
         .edit(roomId, name: result.name, currency: result.currency);
     final error = ref.read(groupEditorProvider).error;
     if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+      messenger.showSnackBar(
+          SnackBar(content: Text(l.failedWithError(error.toString()))));
     }
   }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final group = await ref.read(groupsDaoProvider).getGroup(roomId);
     if (group == null) return;
     final csv = await buildGroupCsvForExport(
@@ -292,7 +304,7 @@ class ExpensesPage extends ConsumerWidget {
     );
     await saveCsvFile(csvFileName(group.name), csv);
     messenger.showSnackBar(
-        SnackBar(content: Text('Exported ${csvFileName(group.name)}')));
+        SnackBar(content: Text(l.exportedFile(csvFileName(group.name)))));
   }
 
   /// Lets a just-invited user say which participant they are: pick an existing
@@ -302,10 +314,11 @@ class ExpensesPage extends ConsumerWidget {
     final unclaimed =
         members.where((m) => m.isActive && m.matrixId == null).toList();
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final choice = await showDialog<MemberModel?>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Which participant are you?'),
+        title: Text(l.whichParticipantAreYou),
         children: [
           for (final m in unclaimed)
             SimpleDialogOption(
@@ -314,7 +327,7 @@ class ExpensesPage extends ConsumerWidget {
             ),
           SimpleDialogOption(
             onPressed: () => Navigator.of(ctx).pop(null),
-            child: const Text("I'm someone new"),
+            child: Text(l.imSomeoneNew),
           ),
         ],
       ),
@@ -332,28 +345,30 @@ class ExpensesPage extends ConsumerWidget {
     }
     final error = ref.read(memberAdderProvider).error;
     if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+      messenger.showSnackBar(
+          SnackBar(content: Text(l.failedWithError(error.toString()))));
     }
   }
 
   Future<String?> _promptName(BuildContext context) {
     final ctrl = TextEditingController();
+    final l = context.l10n;
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Your name'),
+        title: Text(l.yourName),
         content: TextField(
           controller: ctrl,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
+          decoration: InputDecoration(labelText: l.nameLabel),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel')),
+              child: Text(l.cancel)),
           FilledButton(
               onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
-              child: const Text('Join')),
+              child: Text(l.join)),
         ],
       ),
     ).whenComplete(ctrl.dispose);
@@ -362,20 +377,20 @@ class ExpensesPage extends ConsumerWidget {
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, ExpenseModel expense) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete expense?'),
-        content: Text(
-            '"${expense.description}" will be removed for all members.'),
+        title: Text(l.deleteExpenseTitle),
+        content: Text(l.deleteExpenseBody(expense.description)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
+            child: Text(l.delete),
           ),
         ],
       ),
@@ -387,28 +402,29 @@ class ExpensesPage extends ConsumerWidget {
         .deleteExpense(expense.id, roomId);
     final error = ref.read(expenseAdderProvider).error;
     if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+      messenger.showSnackBar(
+          SnackBar(content: Text(l.failedWithError(error.toString()))));
     }
   }
 
   Future<void> _confirmDeleteSettlement(BuildContext context, WidgetRef ref,
       SettlementModel settlement, String fromName, String toName) async {
     final messenger = ScaffoldMessenger.of(context);
-    final amount = (settlement.amountCents / 100).toStringAsFixed(2);
+    final l = context.l10n;
+    final amount = context.money(settlement.amountCents, settlement.currency);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete settlement?'),
-        content: Text('"$fromName paid $toName $amount ${settlement.currency}" '
-            'will be removed for all members and the balance restored.'),
+        title: Text(l.deleteSettlementTitle),
+        content: Text(l.deleteSettlementBody(fromName, toName, amount)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
+            child: Text(l.delete),
           ),
         ],
       ),
@@ -420,7 +436,8 @@ class ExpensesPage extends ConsumerWidget {
         .deleteSettlement(settlement.id, roomId);
     final error = ref.read(expenseAdderProvider).error;
     if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $error')));
+      messenger.showSnackBar(
+          SnackBar(content: Text(l.failedWithError(error.toString()))));
     }
   }
 
@@ -428,15 +445,16 @@ class ExpensesPage extends ConsumerWidget {
       BuildContext context, WidgetRef ref) async {
     final ctrl = TextEditingController();
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
 
     final userId = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Add member'),
+        title: Text(l.addMember),
         content: TextField(
           controller: ctrl,
-          decoration: const InputDecoration(
-            labelText: 'Matrix ID',
+          decoration: InputDecoration(
+            labelText: l.matrixIdLabel,
             hintText: '@user:matrix.org',
           ),
           autofocus: true,
@@ -445,7 +463,7 @@ class ExpensesPage extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -454,7 +472,7 @@ class ExpensesPage extends ConsumerWidget {
                 Navigator.of(ctx).pop(id);
               }
             },
-            child: const Text('Add'),
+            child: Text(l.add),
           ),
         ],
       ),
@@ -467,8 +485,9 @@ class ExpensesPage extends ConsumerWidget {
 
     final error = ref.read(memberAdderProvider).error;
     messenger.showSnackBar(SnackBar(
-        content:
-            Text(error != null ? 'Failed: $error' : 'Added $userId')));
+        content: Text(error != null
+            ? l.failedWithError(error.toString())
+            : l.addedMember(userId))));
   }
 }
 
@@ -484,17 +503,18 @@ class _SyncStatusIcon extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final health = ref.watch(syncHealthProvider);
+    final l = context.l10n;
     if (health.failing) {
       return IconButton(
         icon: Icon(Icons.cloud_off, color: Theme.of(context).colorScheme.error),
-        tooltip: 'Sync problem — tap for details',
+        tooltip: l.syncProblemTooltip,
         onPressed: () => _showHealthSheet(context, ref, health),
       );
     }
     if (status.synced) {
-      return const IconButton(
-        icon: Icon(Icons.cloud_done_outlined),
-        tooltip: 'Synced with all members',
+      return IconButton(
+        icon: const Icon(Icons.cloud_done_outlined),
+        tooltip: l.syncedWithAll,
         onPressed: null,
       );
     }
@@ -506,14 +526,15 @@ class _SyncStatusIcon extends ConsumerWidget {
     return IconButton(
       icon: const Icon(Icons.cloud_queue),
       tooltip: noDevice != null
-          ? '$noDevice has no active device — will sync when they sign in'
-          : 'Waiting for $waitingFor…',
+          ? l.peerHasNoDevice(noDevice)
+          : l.waitingForPeer(waitingFor),
       onPressed: null,
     );
   }
 
   void _showHealthSheet(
       BuildContext context, WidgetRef ref, SyncHealthState health) {
+    final l = context.l10n;
     showModalBottomSheet<void>(
       context: context,
       builder: (sheetCtx) => SafeArea(
@@ -523,18 +544,16 @@ class _SyncStatusIcon extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Sync problem',
+              Text(l.syncProblemTitle,
                   style: Theme.of(sheetCtx).textTheme.titleMedium),
               const SizedBox(height: 8),
-              const Text(
-                  'Could not reach other members. Your changes are saved on '
-                  'this device and will sync once the connection recovers.'),
+              Text(l.syncProblemBody),
               const SizedBox(height: 12),
               if (health.lastSuccessAt != null)
-                Text('Last synced ${_ago(health.lastSuccessAt!)}',
+                Text(l.lastSynced(_ago(l, health.lastSuccessAt!)),
                     style: Theme.of(sheetCtx).textTheme.bodySmall),
               if (health.lastError != null)
-                Text('Last error: ${health.lastError}',
+                Text(l.lastError(health.lastError.toString()),
                     style: Theme.of(sheetCtx).textTheme.bodySmall),
               const SizedBox(height: 16),
               FilledButton.icon(
@@ -542,10 +561,10 @@ class _SyncStatusIcon extends ConsumerWidget {
                   ref.read(syncEngineProvider).broadcastDigests();
                   Navigator.pop(sheetCtx);
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Retrying sync…')));
+                      SnackBar(content: Text(l.retryingSync)));
                 },
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry now'),
+                label: Text(l.retryNow),
               ),
             ],
           ),
@@ -556,12 +575,12 @@ class _SyncStatusIcon extends ConsumerWidget {
 }
 
 /// A coarse "x ago" for the last-synced line (minutes / hours / days).
-String _ago(int msEpoch) {
+String _ago(AppLocalizations l, int msEpoch) {
   final d = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(msEpoch));
-  if (d.inMinutes < 1) return 'just now';
-  if (d.inHours < 1) return '${d.inMinutes} min ago';
-  if (d.inDays < 1) return '${d.inHours} h ago';
-  return '${d.inDays} d ago';
+  if (d.inMinutes < 1) return l.agoJustNow;
+  if (d.inHours < 1) return l.agoMinutes(d.inMinutes);
+  if (d.inDays < 1) return l.agoHours(d.inHours);
+  return l.agoDays(d.inDays);
 }
 
 class _ExpenseTile extends StatelessWidget {
@@ -579,11 +598,12 @@ class _ExpenseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final amount = (expense.amountCents / 100).toStringAsFixed(2);
+    final l = context.l10n;
+    final amount = context.money(expense.amountCents, expense.currency);
     return ListTile(
       leading: const CircleAvatar(child: Icon(Icons.receipt)),
       title: Text(expense.description),
-      subtitle: Text('Paid by $paidByName'),
+      subtitle: Text(l.paidByName(paidByName)),
       onTap: onTap,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -598,30 +618,23 @@ class _ExpenseTile extends StatelessWidget {
               ),
             ),
           Text(
-            '$amount ${expense.currency}',
+            amount,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           if (onDelete != null)
           PopupMenuButton<String>(
-            tooltip: 'Expense options',
+            tooltip: l.expenseOptions,
             onSelected: (action) {
               if (action == 'delete') onDelete!();
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'delete', child: Text(l.delete)),
             ],
           ),
         ],
       ),
     );
   }
-}
-
-/// `YYYY-MM-DD` in local time (no intl dependency yet — see G12).
-String _date(int msEpoch) {
-  final d = DateTime.fromMillisecondsSinceEpoch(msEpoch);
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${d.year}-${two(d.month)}-${two(d.day)}';
 }
 
 /// A recorded payment between two participants ("Alex paid Sam"). No edit —
@@ -643,11 +656,12 @@ class _SettlementTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final amount = (settlement.amountCents / 100).toStringAsFixed(2);
+    final l = context.l10n;
+    final amount = context.money(settlement.amountCents, settlement.currency);
     return ListTile(
       leading: const CircleAvatar(child: Icon(Icons.handshake_outlined)),
-      title: Text('$fromName paid $toName'),
-      subtitle: Text('Settlement · ${_date(settlement.createdAt)}'),
+      title: Text(l.settlementTitle(fromName, toName)),
+      subtitle: Text(l.settlementSubtitle(context.date(settlement.createdAt))),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -661,17 +675,17 @@ class _SettlementTile extends StatelessWidget {
               ),
             ),
           Text(
-            '$amount ${settlement.currency}',
+            amount,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           if (onDelete != null)
           PopupMenuButton<String>(
-            tooltip: 'Settlement options',
+            tooltip: l.settlementOptions,
             onSelected: (action) {
               if (action == 'delete') onDelete!();
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'delete', child: Text(l.delete)),
             ],
           ),
         ],

@@ -130,7 +130,7 @@ void main() {
   });
 
   test('register surfaces a web-fallback error and stays logged out', () async {
-    final gateway = FakeAuthGateway()..registerRequiresWeb = ['a CAPTCHA'];
+    final gateway = FakeAuthGateway()..registerRequiresWeb = ['m.login.recaptcha'];
     final container = makeContainer(gateway);
     await container.read(loginStateProvider.future);
 

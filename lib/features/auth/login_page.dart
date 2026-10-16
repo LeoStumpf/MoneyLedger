@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/platform/url_helper.dart';
 import '../../models/login_flows_result.dart';
 import 'auth_error_card.dart';
@@ -235,6 +236,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // that network round-trip made the screen feel frozen for seconds after
     // launch. Discovery shows as the subtle spinner on the homeserver field.
     final authBusy = authState.isLoading;
+    final l = context.l10n;
 
     return Scaffold(
       body: SafeArea(
@@ -249,11 +251,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   const Icon(Icons.account_balance_wallet,
                       size: 64, color: Colors.teal),
                   const SizedBox(height: 16),
-                  Text('MoneyLedger',
+                  Text(l.appTitle,
                       style: Theme.of(context).textTheme.headlineMedium,
                       textAlign: TextAlign.center),
                   const SizedBox(height: 8),
-                  Text('Sign in with your Matrix account',
+                  Text(l.signInSubtitle,
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
@@ -271,11 +273,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     key: const Key('serverField'),
                     controller: _serverCtrl,
                     decoration: InputDecoration(
-                      labelText: 'Homeserver',
-                      hintText: 'matrix.org or mozilla.modular.im',
+                      labelText: l.homeserverLabel,
+                      hintText: l.homeserverHint,
                       prefixIcon: const Icon(Icons.dns),
                       helperText: resolvedLabel != null
-                          ? 'Resolved to $resolvedLabel'
+                          ? l.resolvedTo(resolvedLabel)
                           : null,
                       suffix: flowsAsync.isLoading
                           ? const SizedBox(
@@ -300,7 +302,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             padding: const EdgeInsets.only(bottom: 10),
                             child: _SsoButton(
                               key: Key('ssoBtn_${p.id}'),
-                              label: 'Continue with ${p.name}',
+                              label: l.continueWith(p.name),
                               brand: p.brand,
                               onTap: authBusy
                                   ? null
@@ -314,7 +316,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           key: const Key('ssoBtn'),
                           // The entered server name, stable while discovery
                           // resolves it (G29); providers above use their names.
-                          label: 'Continue with ${ssoServerLabel(_lookupInput)}',
+                          label: l.continueWith(ssoServerLabel(_lookupInput)),
                           onTap: authBusy ? null : () => _startSso(),
                         ),
                       ),
@@ -324,7 +326,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         Padding(
                           padding:
                               const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('or',
+                          child: Text(l.orDivider,
                               style:
                                   Theme.of(context).textTheme.bodySmall),
                         ),
@@ -343,14 +345,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           TextFormField(
                             key: const Key('usernameField'),
                             controller: _usernameCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Matrix ID or username',
+                            decoration: InputDecoration(
+                              labelText: l.matrixIdOrUsernameLabel,
                               hintText: '@user:matrix.org',
-                              prefixIcon: Icon(Icons.person),
+                              prefixIcon: const Icon(Icons.person),
                             ),
                             onChanged: _onUsernameChanged,
                             validator: (v) => (v == null || v.isEmpty)
-                                ? 'Required'
+                                ? l.required
                                 : null,
                           ),
                           const SizedBox(height: 16),
@@ -358,7 +360,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             key: const Key('passwordField'),
                             controller: _passwordCtrl,
                             decoration: InputDecoration(
-                              labelText: 'Password',
+                              labelText: l.passwordLabel,
                               prefixIcon: const Icon(Icons.lock),
                               suffixIcon: IconButton(
                                 icon: Icon(_obscurePassword
@@ -376,7 +378,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         ? result.resolvedUrl
                                         : 'https://$_lookupInput'),
                             validator: (v) => (v == null || v.isEmpty)
-                                ? 'Required'
+                                ? l.required
                                 : null,
                           ),
                           const SizedBox(height: 20),
@@ -396,7 +398,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         strokeWidth: 2,
                                         color: Colors.white),
                                   )
-                                : const Text('Sign in'),
+                                : Text(l.signIn),
                           ),
                         ],
                       ),
@@ -407,7 +409,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   TextButton(
                     key: const Key('createAccountLink'),
                     onPressed: () => context.push('/register'),
-                    child: const Text("New here? Create an account"),
+                    child: Text(l.createAccountLink),
+                  ),
+                  TextButton(
+                    key: const Key('aboutLink'),
+                    onPressed: () => context.push('/about'),
+                    child: Text(l.aboutAndPrivacy),
                   ),
                 ],
               ),

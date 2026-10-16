@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/l10n/l10n.dart';
 import 'group_provider.dart';
 
 /// Currencies offered for a group's default currency (create + edit).
@@ -42,8 +43,9 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(groupCreatorProvider);
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('New group')),
+      appBar: AppBar(title: Text(l.newGroup)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -53,14 +55,14 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
             children: [
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Group name'),
+                decoration: InputDecoration(labelText: l.groupNameLabel),
                 validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Required' : null,
+                    (v == null || v.isEmpty) ? l.required : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _currency,
-                decoration: const InputDecoration(labelText: 'Currency'),
+                decoration: InputDecoration(labelText: l.currencyLabel),
                 items: kGroupCurrencies
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
@@ -75,7 +77,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Create'),
+                    : Text(l.create),
               ),
             ],
           ),

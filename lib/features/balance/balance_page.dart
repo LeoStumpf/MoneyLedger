@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../expenses/expenses_provider.dart';
 import '../groups/group_provider.dart';
@@ -34,16 +35,17 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     ref.watch(groupMembersProvider(widget.roomId));
     ref.watch(ledgerGroupsProvider);
     String nameOf(String id) => names[id] ?? id;
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Balance'),
+        title: Text(l.balanceTitle),
         actions: [
           if (canRecord)
             IconButton(
               key: const Key('recordPayment'),
               icon: const Icon(Icons.payments_outlined),
-              tooltip: 'Record payment',
+              tooltip: l.recordPayment,
               onPressed: busy ? null : () => _recordPayment(context, myId),
             ),
         ],
@@ -51,14 +53,13 @@ class _BalancePageState extends ConsumerState<BalancePage> {
       body: Stack(
         children: [
           debts.isEmpty
-              ? const Center(child: Text('All settled up!'))
+              ? Center(child: Text(l.allSettledUp))
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: debts.length,
                   itemBuilder: (context, i) {
                     final d = debts[i];
-                    final amount = (d.cents / 100).toStringAsFixed(2);
-                    final currency = d.currency;
+                    final amount = context.money(d.cents, d.currency);
                     final isMine = d.from == myId;
                     return Card(
                       child: ListTile(
@@ -74,9 +75,9 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                                 : FontWeight.normal,
                           ),
                         ),
-                        subtitle: Text('owes ${nameOf(d.to)}'),
+                        subtitle: Text(l.owesName(nameOf(d.to))),
                         trailing: Text(
-                          '$amount $currency',
+                          amount,
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium
@@ -111,6 +112,7 @@ class _BalancePageState extends ConsumerState<BalancePage> {
   Future<void> _recordPayment(BuildContext context, String myId,
       {DebtEntry? debt}) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final members =
         ref.read(groupMembersProvider(widget.roomId)).value ?? const [];
     final names = ref.read(participantNamesProvider(widget.roomId));
@@ -156,6 +158,8 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     if (!mounted) return;
     final error = ref.read(expenseAdderProvider).error;
     messenger.showSnackBar(SnackBar(
-        content: Text(error != null ? 'Failed: $error' : 'Payment recorded')));
+        content: Text(error != null
+            ? l.failedWithError(error.toString())
+            : l.paymentRecorded)));
   }
 }

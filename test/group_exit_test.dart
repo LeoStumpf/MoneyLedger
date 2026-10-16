@@ -23,6 +23,7 @@ import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
+import 'helpers/l10n.dart';
 
 const alice = '@alice:x.org';
 const bob = '@bob:y.org';
@@ -69,12 +70,17 @@ void main() {
       DebtEntry(from: 'x', to: 'y', cents: 999, currency: 'EUR'),
     ];
     test('per-currency owe / owed', () {
-      expect(unsettledWarning(debts, 'me'),
-          'You still owe 12.50 EUR. You are still owed 3.00 CHF.');
+      expect(unsettledWarning(debts, 'me', en),
+          'You still owe €12.50. You are still owed CHF\u00a03.00.');
+    });
+    test('German wording and number format', () {
+      expect(unsettledWarning(debts, 'me', de),
+          'Du schuldest noch 12,50\u00a0€. '
+          'Dir werden noch 3,00\u00a0CHF geschuldet.');
     });
     test('null when settled or unknown participant', () {
-      expect(unsettledWarning(debts.sublist(2), 'me'), isNull);
-      expect(unsettledWarning(debts, null), isNull);
+      expect(unsettledWarning(debts.sublist(2), 'me', en), isNull);
+      expect(unsettledWarning(debts, null, en), isNull);
     });
   });
 
@@ -128,7 +134,10 @@ void main() {
         currentParticipantProvider.overrideWith(
             (ref, g) => Future<MemberModel?>.value(members.first)),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
+        routerConfig: router),
     );
   }
 
@@ -156,7 +165,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Leave group?'), findsOneWidget);
-    expect(find.text('You still owe 12.50 EUR.'), findsOneWidget);
+    expect(find.text('You still owe €12.50.'), findsOneWidget);
     expect(find.text('Export a CSV backup first'), findsOneWidget);
 
     await tester.tap(find.text('Cancel'));

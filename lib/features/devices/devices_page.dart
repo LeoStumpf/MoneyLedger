@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/l10n/l10n.dart';
 import '../../core/matrix/device_gateway.dart';
 import 'device_provider.dart';
 
@@ -14,17 +15,19 @@ class DevicesPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final devicesAsync = ref.watch(myDevicesProvider);
+    final l = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Devices')),
+      appBar: AppBar(title: Text(l.devicesTitle)),
       body: devicesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load devices: $e')),
+        error: (e, _) =>
+            Center(child: Text(l.couldNotLoadDevices(e.toString()))),
         data: (devices) => ListView(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(deviceTrustSummary(devices),
+              child: Text(deviceTrustSummary(devices, l),
                   style: Theme.of(context).textTheme.bodyMedium),
             ),
             for (final d in devices) _DeviceTile(device: d),
@@ -48,11 +51,12 @@ class _DeviceTile extends ConsumerWidget {
             ? (Icons.verified_user, scheme.primary)
             : (Icons.gpp_maybe, scheme.error);
 
+    final l = context.l10n;
     final status = device.isThisDevice
-        ? 'This device'
+        ? l.thisDevice
         : device.verified
-            ? 'Verified'
-            : 'Not verified';
+            ? l.verified
+            : l.notVerified;
 
     return ListTile(
       leading: Icon(icon, color: color),
@@ -61,7 +65,7 @@ class _DeviceTile extends ConsumerWidget {
       trailing: device.needsVerification
           ? TextButton(
               onPressed: () => _startVerification(context, ref),
-              child: const Text('Verify'),
+              child: Text(l.verify),
             )
           : null,
     );
@@ -95,7 +99,7 @@ class _VerificationDialog extends StatelessWidget {
         final state = snapshot.data ??
             const VerificationState(VerificationPhase.starting);
         return AlertDialog(
-          title: Text('Verify ${device.label}'),
+          title: Text(context.l10n.verifyDeviceTitle(device.label)),
           content: _content(context, state),
           actions: _actions(context, state),
         );
@@ -104,6 +108,7 @@ class _VerificationDialog extends StatelessWidget {
   }
 
   Widget _content(BuildContext context, VerificationState state) {
+    final l = context.l10n;
     switch (state.phase) {
       case VerificationPhase.starting:
         return const SizedBox(
@@ -114,8 +119,7 @@ class _VerificationDialog extends StatelessWidget {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Confirm these emoji appear in the same order on the '
-                'other device.'),
+            Text(l.verifyCompareEmoji),
             const SizedBox(height: 16),
             Wrap(
               spacing: 16,
@@ -136,13 +140,16 @@ class _VerificationDialog extends StatelessWidget {
           ],
         );
       case VerificationPhase.success:
-        return const Text('Device verified.');
+        return Text(l.deviceVerified);
       case VerificationPhase.failed:
-        return Text('Verification failed${state.error != null ? ': ${state.error}' : ''}.');
+        return Text(state.error != null
+            ? l.verificationFailedWithError(state.error.toString())
+            : l.verificationFailed);
     }
   }
 
   List<Widget> _actions(BuildContext context, VerificationState state) {
+    final l = context.l10n;
     switch (state.phase) {
       case VerificationPhase.compareEmojis:
         return [
@@ -151,11 +158,11 @@ class _VerificationDialog extends StatelessWidget {
               session.cancel();
               Navigator.pop(context);
             },
-            child: const Text("They don't match"),
+            child: Text(l.emojiNoMatch),
           ),
           FilledButton(
             onPressed: () => session.confirmMatch(),
-            child: const Text('They match'),
+            child: Text(l.emojiMatch),
           ),
         ];
       case VerificationPhase.success:
@@ -163,7 +170,7 @@ class _VerificationDialog extends StatelessWidget {
         return [
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
+            child: Text(l.done),
           ),
         ];
       case VerificationPhase.starting:
@@ -173,7 +180,7 @@ class _VerificationDialog extends StatelessWidget {
               session.cancel();
               Navigator.pop(context);
             },
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
         ];
     }

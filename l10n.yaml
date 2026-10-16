@@ -1,0 +1,10 @@
+# Localization (G12). Strings live in lib/l10n/app_<locale>.arb; English is the
+# template. `flutter gen-l10n` (also run by `flutter pub get` because of
+# `generate: true` in pubspec.yaml) writes AppLocalizations into lib/l10n/.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+# English first = the fallback for device locales we don't translate.
+preferred-supported-locales: [en]

@@ -12,6 +12,7 @@ import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/onboarding/onboarding_page.dart';
 
 import 'helpers/in_memory_database.dart';
+import 'helpers/l10n.dart';
 
 void main() {
   testWidgets('renders the decentralized-model intro', (tester) async {
@@ -61,6 +62,9 @@ Widget _app(AppDatabase db) {
   );
   return ProviderScope(
     overrides: [appDatabaseProvider.overrideWithValue(db)],
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(
+        localizationsDelegates: testLocalizationsDelegates,
+        supportedLocales: testSupportedLocales,
+        routerConfig: router),
   );
 }

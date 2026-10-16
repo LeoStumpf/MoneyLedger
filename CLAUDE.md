@@ -22,6 +22,14 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 - [`go_router`](https://pub.dev/packages/go_router) — navigation
 - [`uuid`](https://pub.dev/packages/uuid) — UUIDv7 generation for expense IDs
 - [`sqflite`](https://pub.dev/packages/sqflite) — required by the matrix SDK's internal SQLite store
+- `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE UI strings (ARB) + locale formatting (G12)
+- [`package_info_plus`](https://pub.dev/packages/package_info_plus) — app version on the About page
+
+**License: AGPL-3.0-or-later** (`LICENSE`; `matrix` + `flutter_vodozemac` are
+AGPL). Dependency licenses: `THIRD_PARTY_NOTICES.md` — update it when adding a
+dependency (and check the license is AGPL-compatible). Privacy policy:
+`PRIVACY.md`, mirrored in-app (About → Privacy policy, `privacy*` ARB keys) —
+keep both in sync.
 
 ## Building
 
@@ -71,10 +79,14 @@ User-facing build/run/test instructions also live in [`README.md`](README.md); k
 ```
 lib/
   main.dart          # entry point — ProviderScope(App)
+  l10n/              # app_en.arb (template) + app_de.arb → generated app_localizations*.dart (committed)
   app.dart           # MaterialApp.router
   core/
     background/      # G31 Android periodic background sync (round, gate, WorkManager glue)
     router.dart      # go_router + routerRedirect() pure function (generated: router.g.dart)
+    l10n/
+      l10n.dart        # context.l10n / context.money() / context.date() + re-exports
+      formatting.dart  # pure intl helpers: formatMoney, formatDate, parseAmountCents (`,`/`.`)
     splash_page.dart # neutral loading route while the onboarding flag is unknown (G25)
     database/
       app_database.dart        # Drift DB + table definitions (AppDatabase.named / .forTesting())
@@ -124,6 +136,7 @@ lib/
       csv_files.dart           # file_picker glue (web download / native save+pick)
     onboarding/                # First-run intro (OnboardingPage) + onboarding_seen flag
     devices/                   # Device list + SAS verification UI (DevicesPage)
+    about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
 test/
   flutter_test_config.dart     # Loads bundled sqlite3 FFI before every test file
   helpers/
@@ -339,7 +352,7 @@ connected + battery not low; `lib/core/background/`) fixes that:
   touch the stores: it asks the app to `sync` (one `oneShotSync` in the app's
   client) and keeps the process awake meanwhile.
 - Setting: per account, device-local `AppSettings` `background_sync_enabled`
-  (default on), *Sync settings* sheet on the groups page;
+  (default on), *Settings* sheet (gear) on the groups page;
   `backgroundSyncSchedulingProvider` (watched by `LedgerSyncHost`) registers /
   cancels the OS task (cancel on sign-out). The round re-checks the flag.
 - The app manifest removes the plugin's `POST_NOTIFICATIONS` permission (no
@@ -460,6 +473,36 @@ change.** Only the add/edit form changed.
   (not stored as `0`); the editor's included set on edit = the map's keys.
 - **Out of scope:** itemised receipts, per-item assignment, tax/tip lines,
   saving a default split per group; settlements remain split-free.
+
+### Localization (G12)
+
+The UI is **English + German**, following the device locale with English as the
+fallback (`preferred-supported-locales: [en]` in `l10n.yaml`). Strings live in
+`lib/l10n/app_en.arb` (template, with `@key` descriptions/placeholders) and
+`lib/l10n/app_de.arb`; `flutter gen-l10n` (also run by `pub get`/`run`/`build`
+via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
+**committed** (no synthetic package) so analyze/test need no extra step.
+
+- **Never hard-code a user-visible string** (Text, tooltip, label, hint,
+  snackbar, dialog, error message) — add a key to **both** ARB files, run
+  `flutter gen-l10n`, use `context.l10n.key` (`import '…/core/l10n/l10n.dart'`).
+  Plurals/placeholders use ICU syntax (`{count, plural, =1{…} other{…}}`) with
+  an explicit `placeholders` type. German: informal "du", terms *Gruppe,
+  Ausgabe, Zahlung, Saldo, Mitglied, ehemalige Mitglieder, Synchronisiert*.
+  `test/about_page_test.dart` checks both ARBs have the same keys/placeholders.
+- **Pure helpers return structure, not text**, or take an `AppLocalizations`
+  parameter (`describeAuthError` → `AuthErrorMessage.title(l)/hint(l)`,
+  `unsettledWarning(debts, me, l)`, `deviceTrustSummary(devices, l)`,
+  `registrationRequirementLabel(stage, l)`). Unit tests use `en`/`de` from
+  `test/helpers/l10n.dart` (`lookupAppLocalizations`).
+- **Amounts/dates:** `context.money(cents, currency)` (`€1,234.50` /
+  `1.234,50 €`, always 2 decimals) and `context.date(ms)`; editable amount
+  fields prefill with `formatAmountInput` and parse with `parseAmountCents`,
+  which accepts `,` **and** `.` as decimal separator. The **CSV stays machine
+  format** (dot decimals, ISO dates, English headers) in every language.
+- **Widget tests:** `testApp`/`testRouterApp` add the localization delegates
+  (English by default, `locale: Locale('de')` for German tests); any other
+  test `MaterialApp` needs `localizationsDelegates: testLocalizationsDelegates`.
 
 ### Key Implementation Notes
 
