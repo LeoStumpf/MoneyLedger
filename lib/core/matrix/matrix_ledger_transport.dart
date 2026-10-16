@@ -106,6 +106,18 @@ class MatrixLedgerTransport implements LedgerTransport {
     );
   }
 
+  @override
+  Future<String?> profileName(String matrixId) async {
+    try {
+      final profile = await _client.getUserProfile(matrixId,
+          timeout: const Duration(seconds: 5));
+      return normalizeProfileName(profile.displayname);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[transport] profile of $matrixId: $e');
+      return null;
+    }
+  }
+
   /// Stops listening (the client is app-lifetime, so this is rarely needed).
   Future<void> dispose() async {
     await _sub?.cancel();

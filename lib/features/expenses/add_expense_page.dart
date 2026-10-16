@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/content_width.dart';
+import '../../core/widgets/person_avatar.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../groups/create_group_page.dart' show kGroupCurrencies;
@@ -148,111 +151,173 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final adderState = ref.watch(expenseAdderProvider);
     final members = _members;
     final l = context.l10n;
+    final theme = Theme.of(context);
+    final canSubmit = members != null &&
+        !adderState.isLoading &&
+        members.isNotEmpty &&
+        (_plan?.resolve(_amountCents).isValid ?? false);
+    final currencies = [
+      ...kGroupCurrencies,
+      // Keep an unlisted currency (edit / group).
+      if (!kGroupCurrencies.contains(_initialCurrency)) _initialCurrency,
+    ];
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? l.editExpense : l.addExpense)),
+      // G17: the form scrolls and the submit button sits below it — the body
+      // shrinks with the keyboard, so the button always stays visible above
+      // it (it used to be covered at the end of the form).
       body: members == null
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextFormField(
-                      controller: _descCtrl,
-                      decoration:
-                          InputDecoration(labelText: l.descriptionLabel),
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? l.required : null,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _amountCtrl,
-                            decoration:
-                                InputDecoration(labelText: l.amountLabel),
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            // re-split on amount edit
-                            onChanged: (_) => setState(() {}),
-                            validator: (v) {
-                              if (v == null || v.isEmpty) return l.required;
-                              if (parseAmountCents(v) == null) {
-                                return l.invalidNumber;
-                              }
-                              return null;
-                            },
-                          ),
+          : Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(
+                        Insets.page, Insets.s, Insets.page, Insets.xl),
+                    child: ContentWidth(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextFormField(
+                              controller: _descCtrl,
+                              textCapitalization:
+                                  TextCapitalization.sentences,
+                              decoration: InputDecoration(
+                                labelText: l.descriptionLabel,
+                                prefixIcon:
+                                    const Icon(Icons.receipt_long_outlined),
+                              ),
+                              validator: (v) =>
+                                  (v == null || v.isEmpty) ? l.required : null,
+                            ),
+                            const SizedBox(height: Insets.l),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  width: 108,
+                                  child: DropdownButtonFormField<String>(
+                                    key: const Key('expenseCurrency'),
+                                    initialValue: _currency,
+                                    decoration: InputDecoration(
+                                        labelText: l.currencyLabel),
+                                    items: [
+                                      for (final c in currencies)
+                                        DropdownMenuItem(
+                                            value: c, child: Text(c)),
+                                    ],
+                                    onChanged: (v) => setState(
+                                        () => _currency = v ?? _currency),
+                                  ),
+                                ),
+                                const SizedBox(width: Insets.m),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _amountCtrl,
+                                    style: theme.textTheme.titleLarge
+                                        ?.copyWith(
+                                            fontFeatures: kTabularFigures),
+                                    decoration: InputDecoration(
+                                      labelText: l.amountLabel,
+                                      hintText: formatAmountInput(
+                                          0, context.localeName),
+                                    ),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    // re-split on amount edit
+                                    onChanged: (_) => setState(() {}),
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) {
+                                        return l.required;
+                                      }
+                                      if (parseAmountCents(v) == null) {
+                                        return l.invalidNumber;
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: Insets.l),
+                            DropdownButtonFormField<String>(
+                              key: const Key('expensePayer'),
+                              initialValue: _paidBy,
+                              isExpanded: true,
+                              decoration:
+                                  InputDecoration(labelText: l.paidByLabel),
+                              items: [
+                                for (final m in members)
+                                  DropdownMenuItem(
+                                    value: m.userId,
+                                    child: Row(
+                                      children: [
+                                        PersonAvatar(
+                                            id: m.userId,
+                                            name: m.label,
+                                            size: 26),
+                                        const SizedBox(width: Insets.m),
+                                        Expanded(
+                                          child: Text(m.label,
+                                              overflow: TextOverflow.ellipsis),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                              onChanged: (v) => setState(() => _paidBy = v),
+                            ),
+                            const SizedBox(height: Insets.xl),
+                            Text(l.splitSection,
+                                style: theme.textTheme.titleSmall),
+                            const SizedBox(height: Insets.s),
+                            SplitEditor(
+                              members: members,
+                              totalCents: _amountCents,
+                              currency: _currency,
+                              initialSplit: _initialSplit,
+                              onPlanChanged: (p) => setState(() => _plan = p),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 100,
-                          child: DropdownButtonFormField<String>(
-                            key: const Key('expenseCurrency'),
-                            initialValue: _currency,
-                            decoration:
-                                InputDecoration(labelText: l.currencyLabel),
-                            items: [
-                              for (final c in [
-                                ...kGroupCurrencies,
-                                // Keep an unlisted currency (edit / group).
-                                if (!kGroupCurrencies.contains(_initialCurrency))
-                                  _initialCurrency,
-                              ])
-                                DropdownMenuItem(value: c, child: Text(c)),
-                            ],
-                            onChanged: (v) =>
-                                setState(() => _currency = v ?? _currency),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: _paidBy,
-                      decoration: InputDecoration(labelText: l.paidByLabel),
-                      items: [
-                        for (final m in members)
-                          DropdownMenuItem(
-                            value: m.userId,
-                            child: Text(m.displayName.isNotEmpty
-                                ? m.displayName
-                                : (m.matrixId ?? m.userId)),
-                          ),
-                      ],
-                      onChanged: (v) => setState(() => _paidBy = v),
-                    ),
-                    const SizedBox(height: 16),
-                    SplitEditor(
-                      members: members,
-                      totalCents: _amountCents,
-                      currency: _currency,
-                      initialSplit: _initialSplit,
-                      onPlanChanged: (p) => setState(() => _plan = p),
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: adderState.isLoading ||
-                              members.isEmpty ||
-                              !(_plan?.resolve(_amountCents).isValid ?? false)
-                          ? null
-                          : () => _submit(members),
-                      child: adderState.isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(_isEdit ? l.save : l.add),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                Material(
+                  color: theme.colorScheme.surface,
+                  elevation: 3,
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                          Insets.page, Insets.m, Insets.page, Insets.m),
+                      child: ContentWidth(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            key: const Key('submitExpense'),
+                            onPressed:
+                                canSubmit ? () => _submit(members) : null,
+                            child: adderState.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : Text(_isEdit ? l.save : l.add),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }

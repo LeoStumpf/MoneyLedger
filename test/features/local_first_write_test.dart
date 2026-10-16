@@ -20,6 +20,8 @@ class _OfflineTransport implements LedgerTransport {
   Future<SendResult> sendToUsers(
           Set<String> userIds, String type, Map<String, dynamic> content) async =>
       throw Exception('offline');
+  @override
+  Future<String?> profileName(String matrixId) async => null;
 }
 
 void main() {

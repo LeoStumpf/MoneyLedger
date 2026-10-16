@@ -34,6 +34,22 @@ The version-exact list of all packages (direct and transitive) is in
   [`web/sqlite3.wasm`](web/sqlite3.wasm) with Drift's
   [`web/drift_worker.js`](web/drift_worker.js) (MIT) on the web.
 
+### Fonts
+
+- **Manrope** (`assets/fonts/manrope/`, static instances of the variable
+  font from [google/fonts](https://github.com/google/fonts/tree/main/ofl/manrope))
+  — Copyright 2018 The Manrope Project Authors, **SIL Open Font License 1.1**
+  ([`OFL.txt`](assets/fonts/manrope/OFL.txt)). Bundled with the app (never
+  downloaded at runtime) and listed on the in-app licenses page.
+
+### Logo and icons
+
+The MoneyLedger logo, launcher icons, favicon and splash logo are MoneyLedger's
+own artwork ([`assets/brand/`](assets/brand), rendered by
+[`tool/brand/render_icons.py`](tool/brand/render_icons.py)), under the same
+license as the app. The in-app icons are Flutter's bundled Material Icons
+(Apache-2.0).
+
 ## Transitive and build-only dependencies
 
 Build/dev-only tools (`build_runner`, `drift_dev`, `riverpod_generator`,

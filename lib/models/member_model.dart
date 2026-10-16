@@ -28,6 +28,12 @@ class MemberModel {
   /// Whether this participant is linked to a Matrix account (and thus a
   /// reachable sync target).
   bool get isClaimed => matrixId != null;
+
+  /// The name to show for this participant (G17): its display name, else the
+  /// claimed account's localpart, else the raw participant id.
+  String get label => displayName.isNotEmpty
+      ? displayName
+      : localpartOf(matrixId ?? userId);
 }
 
 /// A friendly default display name for a Matrix ID — its localpart

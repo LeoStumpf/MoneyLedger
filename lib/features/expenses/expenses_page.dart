@@ -9,7 +9,15 @@ import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../backup/csv_export.dart';
 import '../backup/csv_files.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/content_width.dart';
+import '../../core/widgets/empty_state.dart';
+import '../balance/balance_calculator.dart';
 import '../balance/balance_provider.dart';
+import '../balance/settle_up.dart';
+import '../groups/add_person_dialog.dart';
+import '../groups/group_overview_provider.dart';
+import '../groups/groups_page.dart' show BalanceSummaryText;
 import '../groups/group_edit_dialog.dart';
 import '../groups/group_exit_dialog.dart';
 import '../groups/group_provider.dart';
@@ -33,6 +41,10 @@ class ExpensesPage extends ConsumerWidget {
     final meAsync = ref.watch(currentParticipantProvider(roomId));
     final members =
         ref.watch(groupMembersProvider(roomId)).value ?? const <MemberModel>[];
+    final group = (ref.watch(ledgerGroupsProvider).value ?? const [])
+        .where((g) => g.roomId == roomId)
+        .firstOrNull;
+    final overview = ref.watch(groupOverviewProvider(roomId));
     // Invited but not yet linked to anyone in this group → offer self-claim.
     final needsClaim = meAsync.hasValue &&
         meAsync.value == null &&
@@ -43,19 +55,36 @@ class ExpensesPage extends ConsumerWidget {
     final canEdit = meAsync.value?.isActive ?? false;
     final adderState = ref.watch(memberAdderProvider);
     // Keep the (auto-dispose) expense notifier alive while this page can
-    // trigger deletes — a bare `read` in the dialog callback would let it be
-    // disposed mid-delete.
-    ref.watch(expenseAdderProvider);
+    // trigger deletes / settle-ups — a bare `read` in the dialog callback
+    // would let it be disposed mid-write.
+    final expenseState = ref.watch(expenseAdderProvider);
     // Same for the leave/delete (G9) and edit-group (G10) notifiers.
     ref.watch(groupExiterProvider);
     ref.watch(groupEditorProvider);
     final exitKind =
         groupExitKind(members, ref.watch(currentUserIdProvider));
     final l = context.l10n;
+    final theme = Theme.of(context);
+    final activeCount = members.where((m) => m.isActive).length;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.expensesTitle),
+        // G17: the group's name (not just "Expenses"), members as subtitle.
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(group?.name ?? l.expensesTitle,
+                key: const Key('groupTitle'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            if (members.isNotEmpty)
+              Text(l.membersCount(activeCount),
+                  maxLines: 1,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        ),
         actions: [
           _SyncStatusIcon(status: syncStatus),
           IconButton(
@@ -63,18 +92,14 @@ class ExpensesPage extends ConsumerWidget {
             tooltip: l.membersTitle,
             onPressed: () => context.push('/groups/$roomId/members'),
           ),
-          IconButton(
-            icon: const Icon(Icons.balance),
-            tooltip: l.balanceTitle,
-            onPressed: () => context.push('/groups/$roomId/balance'),
-          ),
           // Less frequent group actions live in an overflow menu so the app
           // bar stays uncluttered on phones (and the title isn't truncated —
           // G12, "Ausgaben").
           PopupMenuButton<_GroupMenuAction>(
             tooltip: l.moreTooltip,
             onSelected: (action) => switch (action) {
-              _GroupMenuAction.addMember => _showAddMemberDialog(context, ref),
+              _GroupMenuAction.addMember =>
+                showAddPersonDialog(context, ref, roomId),
               _GroupMenuAction.edit => _editGroup(context, ref),
               _GroupMenuAction.export => _exportCsv(context, ref),
               _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
@@ -157,13 +182,16 @@ class ExpensesPage extends ConsumerWidget {
           Expanded(
             child: Stack(
               children: [
-          _ledgerList(context, ref, expensesAsync, settlementsAsync, names,
-              syncStatus, readOnly: removed),
-          if (adderState.isLoading)
-            const ColoredBox(
-              color: Colors.black26,
-              child: Center(child: CircularProgressIndicator()),
-            ),
+                _ledgerList(context, ref, expensesAsync, settlementsAsync,
+                    names, syncStatus, overview,
+                    readOnly: removed,
+                    busy: expenseState.isLoading,
+                    myId: meAsync.value?.userId),
+                if (adderState.isLoading)
+                  ColoredBox(
+                    color: theme.colorScheme.scrim.withValues(alpha: 0.2),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
               ],
             ),
           ),
@@ -172,7 +200,8 @@ class ExpensesPage extends ConsumerWidget {
     );
   }
 
-  /// Expenses and settlements merged into one newest-first list. Both DAO
+  /// Expenses and settlements merged into one newest-first list, grouped
+  /// under day headers (G17), below the group's balance summary. Both DAO
   /// streams already drop tombstones, so deleted records never show.
   Widget _ledgerList(
     BuildContext context,
@@ -180,8 +209,11 @@ class ExpensesPage extends ConsumerWidget {
     AsyncValue<List<ExpenseModel>> expensesAsync,
     AsyncValue<List<SettlementModel>> settlementsAsync,
     Map<String, String> names,
-    GroupSyncStatus syncStatus, {
+    GroupSyncStatus syncStatus,
+    GroupOverview overview, {
     required bool readOnly,
+    required bool busy,
+    required String? myId,
   }) {
     final l = context.l10n;
     if (expensesAsync.hasError) {
@@ -201,38 +233,100 @@ class ExpensesPage extends ConsumerWidget {
         (createdAt: s.createdAt, record: s),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     if (entries.isEmpty) {
-      return Center(child: Text(l.noExpensesYet));
+      return EmptyState(
+        key: const Key('expensesEmpty'),
+        icon: Icons.receipt_long_outlined,
+        title: l.expensesEmptyTitle,
+        body: readOnly ? null : l.expensesEmptyBody,
+      );
     }
-    String nameOf(String id) => names[id] ?? id;
-    return ListView.builder(
-      itemCount: entries.length,
-      itemBuilder: (context, i) {
-        final record = entries[i].record;
-        if (record is SettlementModel) {
-          final from = nameOf(record.fromUser);
-          final to = nameOf(record.toUser);
-          return _SettlementTile(
-            settlement: record,
-            fromName: from,
-            toName: to,
-            pending: syncStatus.isRecordPending(record.updatedAt),
-            onDelete: readOnly
-                ? null
-                : () => _confirmDeleteSettlement(context, ref, record, from, to),
-          );
-        }
-        final expense = record as ExpenseModel;
-        return _ExpenseTile(
-          expense: expense,
-          paidByName: nameOf(expense.paidBy),
-          pending: syncStatus.isRecordPending(expense.updatedAt),
-          onTap: readOnly
+    String nameOf(String id) =>
+        id == myId ? l.you : (names[id] ?? localpartOf(id));
+
+    Widget tileFor(Object record) {
+      if (record is SettlementModel) {
+        final from = names[record.fromUser] ?? localpartOf(record.fromUser);
+        final to = names[record.toUser] ?? localpartOf(record.toUser);
+        return _SettlementTile(
+          settlement: record,
+          title: record.fromUser == myId
+              ? l.settlementYouPaid(to)
+              : record.toUser == myId
+                  ? l.settlementPaidYou(from)
+                  : l.settlementTitle(from, to),
+          pending: syncStatus.isRecordPending(record.updatedAt),
+          onDelete: readOnly
               ? null
-              : () => context.push('/groups/$roomId/expenses/edit',
-                  extra: expense),
-          onDelete: readOnly ? null : () => _confirmDelete(context, ref, expense),
+              : () => _confirmDeleteSettlement(context, ref, record, from, to),
         );
-      },
+      }
+      final expense = record as ExpenseModel;
+      return _ExpenseTile(
+        expense: expense,
+        payerLine: expense.paidBy == myId
+            ? l.youPaid
+            : l.paidByName(nameOf(expense.paidBy)),
+        effect: myId == null ? null : expenseEffectFor(expense, myId),
+        pending: syncStatus.isRecordPending(expense.updatedAt),
+        onTap: readOnly
+            ? null
+            : () => context.push('/groups/$roomId/expenses/edit',
+                extra: expense),
+        onDelete: readOnly ? null : () => _confirmDelete(context, ref, expense),
+      );
+    }
+
+    // Day sections, newest first.
+    final sections = <({int day, List<Object> records})>[];
+    for (final e in entries) {
+      final d = DateTime.fromMillisecondsSinceEpoch(e.createdAt);
+      final day = DateTime(d.year, d.month, d.day).millisecondsSinceEpoch;
+      if (sections.isEmpty || sections.last.day != day) {
+        sections.add((day: day, records: [e.record]));
+      } else {
+        sections.last.records.add(e.record);
+      }
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(Insets.page, Insets.s, Insets.page,
+          96), // clear the FAB
+      children: [
+        ContentWidth(
+          child: _GroupSummaryCard(
+            overview: overview,
+            readOnly: readOnly,
+            busy: busy,
+            onSettleUp: () {
+              final String my = myId ?? ref.read(currentUserIdProvider);
+              recordPaymentFlow(context, ref, roomId,
+                  myId: my,
+                  debt: settleUpSuggestion(
+                      ref.read(balanceForRoomProvider(roomId)), my));
+            },
+            onBalances: () => context.push('/groups/$roomId/balance'),
+          ),
+        ),
+        for (final section in sections)
+          ContentWidth(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DayHeader(text: context.dayHeader(section.day)),
+                Card(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < section.records.length; i++) ...[
+                        if (i > 0) const Divider(indent: 72),
+                        tileFor(section.records[i]),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -441,54 +535,6 @@ class ExpensesPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _showAddMemberDialog(
-      BuildContext context, WidgetRef ref) async {
-    final ctrl = TextEditingController();
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-
-    final userId = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.addMember),
-        content: TextField(
-          controller: ctrl,
-          decoration: InputDecoration(
-            labelText: l.matrixIdLabel,
-            hintText: '@user:matrix.org',
-          ),
-          autofocus: true,
-          keyboardType: TextInputType.emailAddress,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final id = ctrl.text.trim();
-              if (id.startsWith('@') && id.contains(':')) {
-                Navigator.of(ctx).pop(id);
-              }
-            },
-            child: Text(l.add),
-          ),
-        ],
-      ),
-    );
-
-    ctrl.dispose();
-    if (userId == null) return;
-
-    await ref.read(memberAdderProvider.notifier).add(roomId, userId);
-
-    final error = ref.read(memberAdderProvider).error;
-    messenger.showSnackBar(SnackBar(
-        content: Text(error != null
-            ? l.failedWithError(error.toString())
-            : l.addedMember(userId))));
-  }
 }
 
 /// App-bar indicator. **Error** (tappable) when background sync has failed
@@ -583,15 +629,243 @@ String _ago(AppLocalizations l, int msEpoch) {
   return l.agoDays(d.inDays);
 }
 
+/// A date section header in the ledger list (G17).
+class _DayHeader extends StatelessWidget {
+  final String text;
+  const _DayHeader({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Insets.xs, Insets.xl, Insets.xs, Insets.s),
+      child: Text(
+        text,
+        key: const Key('dayHeader'),
+        style: theme.textTheme.labelLarge
+            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+/// The group's header card (G17): my balance in this group and the two
+/// money actions — *Settle up* (record a payment, prefilled with what I owe
+/// or am owed) and *Balances* (everyone's balances + suggested payments).
+class _GroupSummaryCard extends StatelessWidget {
+  final GroupOverview overview;
+  final bool readOnly;
+  final bool busy;
+  final VoidCallback onSettleUp;
+  final VoidCallback onBalances;
+  const _GroupSummaryCard({
+    required this.overview,
+    required this.readOnly,
+    required this.busy,
+    required this.onSettleUp,
+    required this.onBalances,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    // Tighter than the default so "Begleichen" fits two-up on a phone.
+    final compact = FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: Insets.m));
+    return Card(
+      key: const Key('groupSummaryCard'),
+      color: scheme.primaryContainer.withValues(alpha: 0.55),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.l)),
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.l + Insets.xs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l.yourBalance,
+                style: theme.textTheme.labelLarge
+                    ?.copyWith(color: scheme.onPrimaryContainer)),
+            const SizedBox(height: Insets.xs),
+            BalanceSummaryText(
+              overview: overview,
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(height: Insets.l),
+            Row(
+              children: [
+                if (!readOnly) ...[
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const Key('settleUpButton'),
+                      style: compact,
+                      onPressed: busy ? null : onSettleUp,
+                      icon: const Icon(Icons.payments_outlined, size: 20),
+                      label: Text(l.settleUp,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                  const SizedBox(width: Insets.m),
+                ],
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('balancesButton'),
+                    onPressed: onBalances,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.m),
+                      backgroundColor: AppTheme.cardColor(scheme),
+                    ),
+                    icon: const Icon(Icons.balance, size: 20),
+                    label: Text(l.balancesButton,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The square icon tile at the start of a ledger row.
+class _LeadingTile extends StatelessWidget {
+  final IconData icon;
+  final Color background;
+  final Color foreground;
+  const _LeadingTile(
+      {required this.icon, required this.background, required this.foreground});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(Radii.m),
+        ),
+        child: Icon(icon, color: foreground, size: 22),
+      );
+}
+
+/// Shared row layout for expenses and settlements: icon tile, two text
+/// lines (never more — long names ellipsize), the amount column and an
+/// options menu.
+class _LedgerRow extends StatelessWidget {
+  final Widget leading;
+  final String title;
+  final String subtitle;
+  final String amount;
+  final Widget? amountNote;
+  final bool pending;
+  final String menuTooltip;
+  final VoidCallback? onTap;
+  final VoidCallback? onDelete;
+  const _LedgerRow({
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.menuTooltip,
+    this.amountNote,
+    this.pending = false,
+    this.onTap,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+            Insets.l, Insets.m, onDelete == null ? Insets.l : 0, Insets.m),
+        child: Row(
+          children: [
+            leading,
+            const SizedBox(width: Insets.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            const SizedBox(width: Insets.s),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (pending)
+                      Padding(
+                        padding: const EdgeInsets.only(right: Insets.xs),
+                        child: Icon(Icons.cloud_queue,
+                            size: 16, color: scheme.outline),
+                      ),
+                    Text(amount,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: kTabularFigures)),
+                  ],
+                ),
+                if (amountNote != null) ...[
+                  const SizedBox(height: 2),
+                  amountNote!,
+                ],
+              ],
+            ),
+            if (onDelete != null)
+              PopupMenuButton<String>(
+                tooltip: menuTooltip,
+                icon: Icon(Icons.more_vert,
+                    size: 20, color: scheme.onSurfaceVariant),
+                padding: EdgeInsets.zero,
+                onSelected: (action) {
+                  if (action == 'delete') onDelete!();
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(value: 'delete', child: Text(l.delete)),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ExpenseTile extends StatelessWidget {
   final ExpenseModel expense;
-  final String paidByName;
+  final String payerLine;
+
+  /// What this expense means for me — null when I'm not a participant.
+  final ({int net, bool involved})? effect;
   final bool pending;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   const _ExpenseTile(
       {required this.expense,
-      required this.paidByName,
+      required this.payerLine,
+      required this.effect,
       required this.pending,
       this.onTap,
       this.onDelete});
@@ -599,57 +873,57 @@ class _ExpenseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final amount = context.money(expense.amountCents, expense.currency);
-    return ListTile(
-      leading: const CircleAvatar(child: Icon(Icons.receipt)),
-      title: Text(expense.description),
-      subtitle: Text(l.paidByName(paidByName)),
-      onTap: onTap,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (pending)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Icon(
-                Icons.cloud_queue,
-                size: 18,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ),
-          Text(
-            amount,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (onDelete != null)
-          PopupMenuButton<String>(
-            tooltip: l.expenseOptions,
-            onSelected: (action) {
-              if (action == 'delete') onDelete!();
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'delete', child: Text(l.delete)),
-            ],
-          ),
-        ],
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final colors = context.ledgerColors;
+    final effect = this.effect;
+    Widget? note;
+    if (effect != null) {
+      final small = theme.textTheme.labelMedium
+          ?.copyWith(fontFeatures: kTabularFigures);
+      final (text, color) = !effect.involved
+          ? (l.notInvolved, scheme.onSurfaceVariant)
+          : effect.net > 0
+              ? (l.youLentAmount(context.money(effect.net, expense.currency)),
+                  colors.positive)
+              : effect.net < 0
+                  ? (l.youBorrowedAmount(
+                          context.money(-effect.net, expense.currency)),
+                      colors.negative)
+                  : (l.settledUp, scheme.onSurfaceVariant);
+      note = Text(text,
+          key: const Key('expenseEffect'),
+          style: small?.copyWith(color: color));
+    }
+    return _LedgerRow(
+      leading: _LeadingTile(
+        icon: Icons.receipt_long_outlined,
+        background: scheme.secondaryContainer,
+        foreground: scheme.onSecondaryContainer,
       ),
+      title: expense.description,
+      subtitle: payerLine,
+      amount: context.money(expense.amountCents, expense.currency),
+      amountNote: note,
+      pending: pending,
+      menuTooltip: l.expenseOptions,
+      onTap: onTap,
+      onDelete: onDelete,
     );
   }
 }
 
-/// A recorded payment between two participants ("Alex paid Sam"). No edit —
-/// a wrong settlement is deleted (tombstoned) and re-recorded from the balance
-/// page.
+/// A recorded payment between two participants ("Alex paid Sam") — visually
+/// distinct (handshake on green). No edit — a wrong settlement is deleted
+/// (tombstoned) and re-recorded from the balance page.
 class _SettlementTile extends StatelessWidget {
   final SettlementModel settlement;
-  final String fromName;
-  final String toName;
+  final String title;
   final bool pending;
   final VoidCallback? onDelete;
   const _SettlementTile({
     required this.settlement,
-    required this.fromName,
-    required this.toName,
+    required this.title,
     required this.pending,
     this.onDelete,
   });
@@ -657,39 +931,19 @@ class _SettlementTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final amount = context.money(settlement.amountCents, settlement.currency);
-    return ListTile(
-      leading: const CircleAvatar(child: Icon(Icons.handshake_outlined)),
-      title: Text(l.settlementTitle(fromName, toName)),
-      subtitle: Text(l.settlementSubtitle(context.date(settlement.createdAt))),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (pending)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Icon(
-                Icons.cloud_queue,
-                size: 18,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ),
-          Text(
-            amount,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (onDelete != null)
-          PopupMenuButton<String>(
-            tooltip: l.settlementOptions,
-            onSelected: (action) {
-              if (action == 'delete') onDelete!();
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'delete', child: Text(l.delete)),
-            ],
-          ),
-        ],
+    final colors = context.ledgerColors;
+    return _LedgerRow(
+      leading: _LeadingTile(
+        icon: Icons.handshake_outlined,
+        background: colors.positiveContainer,
+        foreground: colors.onPositiveContainer,
       ),
+      title: title,
+      subtitle: l.paymentLabel,
+      amount: context.money(settlement.amountCents, settlement.currency),
+      pending: pending,
+      menuTooltip: l.settlementOptions,
+      onDelete: onDelete,
     );
   }
 }

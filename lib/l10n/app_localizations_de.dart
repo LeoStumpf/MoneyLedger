@@ -901,7 +901,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyBackupBody =>
-      'Die automatische App-Sicherung von Android ist nicht abgeschaltet. Wenn Sicherungen auf deinem Telefon aktiviert sind, können die lokalen Daten der App (dein Kassenbuch und deine Matrix-Sitzung) nach den Regeln von Android in der Gerätesicherung in deinem Google-Konto landen.';
+      'MoneyLedger nimmt nicht an der automatischen App-Sicherung und Geräteübertragung von Android teil. Dein Kassenbuch und deine Matrix-Sitzung (inklusive ihrer Schlüssel) werden von Android nie in eine Google-Sicherung oder auf ein anderes Telefon kopiert. Auf einem neuen Gerät meldest du dich an und deine Gruppen werden von deinen anderen Geräten und den anderen Mitgliedern wiederhergestellt; ein CSV-Export ist deine eigene Offline-Sicherung.';
 
   @override
   String get privacyDeleteTitle => 'Deine Daten löschen';
@@ -916,4 +916,179 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get privacyContactBody =>
       'Fragen oder etwas, das hier nicht stimmt: Eröffne ein Issue unter https://github.com/LeoStumpf/MoneyLedger oder schreib an leo.m.stumpf@gmail.com.';
+
+  @override
+  String youAreOwedAmount(String amount) {
+    return 'Du bekommst $amount';
+  }
+
+  @override
+  String youOweAmount(String amount) {
+    return 'Du schuldest $amount';
+  }
+
+  @override
+  String get settledUp => 'Ausgeglichen';
+
+  @override
+  String get notParticipating => 'Nicht beteiligt';
+
+  @override
+  String lastActivity(String date) {
+    return 'Zuletzt aktiv: $date';
+  }
+
+  @override
+  String get totalOwedLabel => 'Du bekommst';
+
+  @override
+  String get totalOwingLabel => 'Du schuldest';
+
+  @override
+  String get totalNothing => 'Nichts';
+
+  @override
+  String get overallSettledUp => 'Alles ausgeglichen';
+
+  @override
+  String get overviewTitle => 'Über alle Gruppen';
+
+  @override
+  String get groupsEmptyTitle => 'Noch keine Gruppen';
+
+  @override
+  String get groupsEmptyBody =>
+      'Lege eine Gruppe für eine Reise, deine WG oder ein Abendessen an – und füge die Leute hinzu, mit denen du Kosten teilst.';
+
+  @override
+  String get createGroup => 'Gruppe erstellen';
+
+  @override
+  String get importCsv => 'CSV importieren';
+
+  @override
+  String membersCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Mitglieder',
+      one: '1 Mitglied',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get today => 'Heute';
+
+  @override
+  String get yesterday => 'Gestern';
+
+  @override
+  String get youPaid => 'Du hast bezahlt';
+
+  @override
+  String youLentAmount(String amount) {
+    return 'du bekommst $amount';
+  }
+
+  @override
+  String youBorrowedAmount(String amount) {
+    return 'du schuldest $amount';
+  }
+
+  @override
+  String get notInvolved => 'nicht beteiligt';
+
+  @override
+  String settlementYouPaid(String to) {
+    return 'Du hast $to bezahlt';
+  }
+
+  @override
+  String settlementPaidYou(String from) {
+    return '$from hat dich bezahlt';
+  }
+
+  @override
+  String get paymentLabel => 'Zahlung';
+
+  @override
+  String get yourBalance => 'Dein Saldo';
+
+  @override
+  String get settleUp => 'Begleichen';
+
+  @override
+  String get balancesButton => 'Salden';
+
+  @override
+  String get balancesSection => 'Salden';
+
+  @override
+  String get suggestedPayments => 'Vorgeschlagene Zahlungen';
+
+  @override
+  String get suggestedPaymentsHint =>
+      'Tippe auf eine Zahlung, sobald sie erfolgt ist, um sie zu erfassen.';
+
+  @override
+  String get balanceGetsBack => 'bekommt';
+
+  @override
+  String get balanceOwes => 'schuldet';
+
+  @override
+  String get balanceYouGetBack => 'du bekommst';
+
+  @override
+  String get balanceYouOwe => 'du schuldest';
+
+  @override
+  String get balanceSettled => 'ausgeglichen';
+
+  @override
+  String debtPays(String from, String to) {
+    return '$from zahlt an $to';
+  }
+
+  @override
+  String get allSettledUpBody =>
+      'In dieser Gruppe schuldet niemand jemandem etwas.';
+
+  @override
+  String get expensesEmptyTitle => 'Noch keine Ausgaben';
+
+  @override
+  String get expensesEmptyBody =>
+      'Füge die erste Ausgabe hinzu – MoneyLedger rechnet aus, wer wem was schuldet.';
+
+  @override
+  String get splitSection => 'Aufteilung';
+
+  @override
+  String get nameOptionalHelper =>
+      'Mit Matrix-ID optional – dann wird ihr Profilname verwendet';
+
+  @override
+  String get nameOrMatrixIdRequired =>
+      'Gib einen Namen oder eine Matrix-ID ein';
+
+  @override
+  String get next => 'Weiter';
+
+  @override
+  String get skip => 'Überspringen';
+
+  @override
+  String get localPerson => 'Lokale Person';
+
+  @override
+  String debtYouPay(String to) {
+    return 'Du zahlst an $to';
+  }
+
+  @override
+  String debtPaysYou(String from) {
+    return '$from zahlt an dich';
+  }
 }

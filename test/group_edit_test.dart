@@ -20,6 +20,7 @@ import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_edit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/expense_model.dart';
+import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
@@ -167,6 +168,9 @@ void main() {
           groupSyncStatusProvider.overrideWith((ref, g) =>
               const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null)),
           appDatabaseProvider.overrideWithValue(db),
+          ledgerGroupsProvider.overrideWith((ref) => Stream.value(const [
+                GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
+              ])),
           ledgerTransportProvider.overrideWith((ref) => net.clientFor(alice)),
           currentUserIdProvider.overrideWith((ref) => alice),
           groupMembersProvider.overrideWith((ref, g) => Stream.value(members)),

@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/brand_logo.dart';
+import '../../core/widgets/content_width.dart';
 import 'onboarding_provider.dart';
 
 /// One-time, first-run intro to MoneyLedger's decentralized model. Shown once
@@ -12,9 +15,9 @@ class OnboardingPage extends ConsumerWidget {
   const OnboardingPage({super.key});
 
   static List<(IconData, String, String)> _points(AppLocalizations l) => [
-        (Icons.devices, l.onboardingLocalTitle, l.onboardingLocalBody),
-        (Icons.sync, l.onboardingSyncTitle, l.onboardingSyncBody),
-        (Icons.group_add, l.onboardingAddTitle, l.onboardingAddBody),
+        (Icons.phone_android_outlined, l.onboardingLocalTitle, l.onboardingLocalBody),
+        (Icons.lock_outline, l.onboardingSyncTitle, l.onboardingSyncBody),
+        (Icons.group_add_outlined, l.onboardingAddTitle, l.onboardingAddBody),
       ];
 
   Future<void> _getStarted(BuildContext context, WidgetRef ref) async {
@@ -25,68 +28,101 @@ class OnboardingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    // G17: one designed page — logo hero, three feature cards, and the
+    // button pinned below the scrollable content.
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 8),
-                  const Icon(Icons.account_balance_wallet,
-                      size: 56, color: Colors.teal),
-                  const SizedBox(height: 16),
-                  Text(l.onboardingWelcome,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 8),
-                  Text(l.onboardingTagline,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: Colors.grey),
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 32),
-                  for (final (icon, title, body) in _points(l))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(icon, color: Colors.teal),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(title,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium),
-                                const SizedBox(height: 4),
-                                Text(body,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium),
-                              ],
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                    Insets.xl, Insets.xxl, Insets.xl, Insets.l),
+                child: ContentWidth(
+                  maxWidth: 520,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Center(child: BrandLogo(size: 96)),
+                      const SizedBox(height: Insets.xl),
+                      Text(l.onboardingWelcome,
+                          style: theme.textTheme.headlineMedium,
+                          textAlign: TextAlign.center),
+                      const SizedBox(height: Insets.s),
+                      Text(l.onboardingTagline,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500),
+                          textAlign: TextAlign.center),
+                      const SizedBox(height: Insets.xxl),
+                      for (final (icon, title, body) in _points(l))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: Insets.m),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(Insets.l),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: scheme.primaryContainer,
+                                      borderRadius:
+                                          BorderRadius.circular(Radii.m),
+                                    ),
+                                    child: Icon(icon,
+                                        color: scheme.onPrimaryContainer),
+                                  ),
+                                  const SizedBox(width: Insets.l),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(title,
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                                    fontWeight:
+                                                        FontWeight.w700)),
+                                        const SizedBox(height: Insets.xs),
+                                        Text(body,
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                    color: scheme
+                                                        .onSurfaceVariant)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  FilledButton(
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  Insets.xl, Insets.s, Insets.xl, Insets.l),
+              child: ContentWidth(
+                maxWidth: 520,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
                     key: const Key('getStartedBtn'),
                     onPressed: () => _getStarted(context, ref),
                     child: Text(l.getStarted),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

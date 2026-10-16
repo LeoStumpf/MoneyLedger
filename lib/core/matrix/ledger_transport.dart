@@ -143,4 +143,17 @@ abstract interface class LedgerTransport {
     String type,
     Map<String, dynamic> content,
   );
+
+  /// The public Matrix profile display name of [matrixId] (G17) — used as a
+  /// participant's name when they are added by MXID. Null when the account
+  /// has no display name or the lookup fails (offline, unknown user); never
+  /// throws.
+  Future<String?> profileName(String matrixId);
+}
+
+/// [name] trimmed, or null when it is empty / null — the profile-name
+/// normalisation shared by every [LedgerTransport.profileName].
+String? normalizeProfileName(String? name) {
+  final t = name?.trim();
+  return (t == null || t.isEmpty) ? null : t;
 }

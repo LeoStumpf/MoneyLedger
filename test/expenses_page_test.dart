@@ -6,9 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
+import 'package:money_ledger/core/l10n/formatting.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/core/sync/sync_health.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
+import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
@@ -46,15 +48,76 @@ void main() {
       expect(find.byType(FloatingActionButton), findsOneWidget);
     });
 
-    testWidgets('shows balance icon button in app bar', (tester) async {
+    testWidgets('summary card links to the balances (G17)', (tester) async {
       await tester.pumpWidget(testApp(
         const ExpensesPage(roomId: _roomId),
-        overrides: testOverrides(isLoggedIn: true),
+        overrides: testOverrides(isLoggedIn: true, expenses: const [
+          ExpenseModel(
+            id: 'e1',
+            roomId: _roomId,
+            description: 'Dinner',
+            amountCents: 4000,
+            currency: 'EUR',
+            paidBy: '@alice:matrix.org',
+            splitsJson: '{"@alice:matrix.org":4000}',
+            createdAt: 5000,
+          ),
+        ]),
       ));
       await tester.pump();
       await tester.pump();
 
+      expect(find.byKey(const Key('groupSummaryCard')), findsOneWidget);
+      expect(find.byKey(const Key('balancesButton')), findsOneWidget);
       expect(find.byIcon(Icons.balance), findsOneWidget);
+    });
+
+    testWidgets('Settle up opens the payment dialog prefilled with my debt '
+        '(G17)', (tester) async {
+      const me = '@bob:matrix.org';
+      const alice = '@alice:matrix.org';
+      MemberModel m(String id, String name) => MemberModel(
+          groupId: _roomId,
+          userId: id,
+          displayName: name,
+          matrixId: id,
+          status: 'active',
+          updatedAt: 1);
+      await tester.pumpWidget(testApp(
+        const ExpensesPage(roomId: _roomId),
+        overrides: [
+          ...testOverrides(isLoggedIn: true, expenses: const [
+            ExpenseModel(
+              id: 'e1',
+              roomId: _roomId,
+              description: 'Dinner',
+              amountCents: 2000,
+              currency: 'EUR',
+              paidBy: alice,
+              splitsJson: '{"$alice":1000,"$me":1000}',
+              createdAt: 5000,
+            ),
+          ], debts: const [
+            DebtEntry(from: me, to: alice, cents: 1000, currency: 'EUR'),
+          ], members: [
+            m(alice, 'Alice'),
+            m(me, 'Bob')
+          ]),
+          currentParticipantProvider.overrideWith(
+              (ref, g) => Future<MemberModel?>.value(m(me, 'Bob'))),
+        ],
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      // The tile says what the expense means for me.
+      expect(find.text('Paid by Alice'), findsOneWidget);
+      expect(find.text('you borrowed €10.00'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('settleUpButton')));
+      await tester.pumpAndSettle();
+      expect(find.text('Record payment'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '10.00'), findsOneWidget);
     });
 
     testWidgets('German locale: amounts and labels are localized (G12)',
@@ -194,6 +257,7 @@ void main() {
               .overrideWith((ref, roomId) => Stream.value(const [])),
           groupMembersProvider
               .overrideWith((ref, groupId) => Stream.value(const [])),
+          ledgerGroupsProvider.overrideWith((ref) => Stream.value(const [])),
           groupSyncStatusProvider.overrideWith(
             (ref, groupId) => const GroupSyncStatus(
                 pendingPeers: {'@bob:y.org'}, minPeerInSyncAt: 0),
@@ -221,6 +285,7 @@ void main() {
               .overrideWith((ref, roomId) => Stream.value(const [])),
           groupMembersProvider
               .overrideWith((ref, groupId) => Stream.value(const [])),
+          ledgerGroupsProvider.overrideWith((ref) => Stream.value(const [])),
           groupSyncStatusProvider.overrideWith(
             (ref, groupId) => const GroupSyncStatus(
                 pendingPeers: {'@bob:y.org'}, minPeerInSyncAt: 0),
@@ -249,6 +314,7 @@ void main() {
               .overrideWith((ref, roomId) => Stream.value(const [])),
           groupSyncStatusProvider.overrideWith((ref, g) =>
               const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null)),
+          ledgerGroupsProvider.overrideWith((ref) => Stream.value(const [])),
           // A local participant exists, but this device claims nobody.
           groupMembersProvider.overrideWith((ref, g) => Stream.value(const [
                 MemberModel(
@@ -424,7 +490,9 @@ void main() {
         expect(find.textContaining('No expenses'), findsNothing);
         expect(find.text('Alex paid Sam'), findsOneWidget);
         expect(find.text('€12.50'), findsOneWidget);
-        expect(find.text('Settlement · Jun 13, 2026'), findsOneWidget);
+        // G17: the date moved into the day header above the row.
+        expect(find.text('Payment'), findsOneWidget);
+        expect(find.text(formatDayHeader(t1, 'en')), findsOneWidget);
         expect(find.byIcon(Icons.handshake_outlined), findsOneWidget);
       });
 
@@ -499,7 +567,8 @@ void main() {
             () async => ctrl.add(await dao.getSettlementsForRoom('g1')));
         await tester.pump();
         await tester.pump();
-        expect(find.text('Alex paid Sam'), findsOneWidget);
+        // This device (@alice:x.org) is Alex → "You paid Sam" (G17).
+        expect(find.text('You paid Sam'), findsOneWidget);
 
         await tester.tap(find.byTooltip('Settlement options'));
         await tester.pumpAndSettle();
@@ -518,7 +587,7 @@ void main() {
         await tester.pump();
         await tester.pump();
 
-        expect(find.text('Alex paid Sam'), findsNothing);
+        expect(find.text('You paid Sam'), findsNothing);
         expect(find.textContaining('No expenses'), findsOneWidget);
       });
 

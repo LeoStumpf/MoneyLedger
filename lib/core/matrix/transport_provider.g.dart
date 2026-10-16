@@ -56,4 +56,4 @@ final class LedgerTransportProvider
   }
 }
 
-String _$ledgerTransportHash() => r'16716f94ebb3fa79729540c4f1c7c120b1ac2f80';
+String _$ledgerTransportHash() => r'd45c210662d283d21db9edaafea9cea0a344fda8';

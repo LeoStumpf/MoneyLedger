@@ -19,6 +19,7 @@ import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_exit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
@@ -126,6 +127,11 @@ void main() {
         balanceForRoomProvider.overrideWith((ref, roomId) => debts),
         groupSyncStatusProvider.overrideWith((ref, g) =>
             const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null)),
+        // The page title reads the group list; Drift watch streams don't mix
+        // with the widget-test fake clock (G17).
+        ledgerGroupsProvider.overrideWith((ref) => Stream.value(const [
+              GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
+            ])),
         appDatabaseProvider.overrideWithValue(db),
         ledgerTransportProvider.overrideWith((ref) => net.clientFor(alice)),
         currentUserIdProvider.overrideWith((ref) => alice),

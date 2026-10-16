@@ -286,16 +286,16 @@ final class CurrentParticipantFamily extends $Family
   String toString() => r'currentParticipantProvider';
 }
 
-/// participant id → display label for [groupId]. Falls back to the Matrix id
-/// (or the raw participant id) when a participant has no name yet, so the UI
+/// participant id → display label for [groupId]. Falls back to the Matrix
+/// id's localpart (or the raw participant id, [MemberModel.label]) when a participant has no name yet, so the UI
 /// never shows a blank. Watches the members stream, so renames/claims reflect
 /// live.
 
 @ProviderFor(participantNames)
 final participantNamesProvider = ParticipantNamesFamily._();
 
-/// participant id → display label for [groupId]. Falls back to the Matrix id
-/// (or the raw participant id) when a participant has no name yet, so the UI
+/// participant id → display label for [groupId]. Falls back to the Matrix
+/// id's localpart (or the raw participant id, [MemberModel.label]) when a participant has no name yet, so the UI
 /// never shows a blank. Watches the members stream, so renames/claims reflect
 /// live.
 
@@ -307,8 +307,8 @@ final class ParticipantNamesProvider
           Map<String, String>
         >
     with $Provider<Map<String, String>> {
-  /// participant id → display label for [groupId]. Falls back to the Matrix id
-  /// (or the raw participant id) when a participant has no name yet, so the UI
+  /// participant id → display label for [groupId]. Falls back to the Matrix
+  /// id's localpart (or the raw participant id, [MemberModel.label]) when a participant has no name yet, so the UI
   /// never shows a blank. Watches the members stream, so renames/claims reflect
   /// live.
   ParticipantNamesProvider._({
@@ -363,10 +363,10 @@ final class ParticipantNamesProvider
   }
 }
 
-String _$participantNamesHash() => r'e7a6f8c47f19349a1283ee23a45e47ce20218643';
+String _$participantNamesHash() => r'228ff448c3330ca6b6e43a508c2e8cc987523d55';
 
-/// participant id → display label for [groupId]. Falls back to the Matrix id
-/// (or the raw participant id) when a participant has no name yet, so the UI
+/// participant id → display label for [groupId]. Falls back to the Matrix
+/// id's localpart (or the raw participant id, [MemberModel.label]) when a participant has no name yet, so the UI
 /// never shows a blank. Watches the members stream, so renames/claims reflect
 /// live.
 
@@ -381,8 +381,8 @@ final class ParticipantNamesFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// participant id → display label for [groupId]. Falls back to the Matrix id
-  /// (or the raw participant id) when a participant has no name yet, so the UI
+  /// participant id → display label for [groupId]. Falls back to the Matrix
+  /// id's localpart (or the raw participant id, [MemberModel.label]) when a participant has no name yet, so the UI
   /// never shows a blank. Watches the members stream, so renames/claims reflect
   /// live.
 
@@ -425,7 +425,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'39cb0461a53b0ec34b84827f8118743a96ac4685';
+String _$groupCreatorHash() => r'c38387545aac89f527557a1021aef3dd1f403c89';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -477,7 +477,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'211b32b22916295638ac3213c8bae474ada3f78e';
+String _$memberAdderHash() => r'0a0cf281e92945c8e584bfc3c2608be125771d16';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -548,6 +548,75 @@ abstract class _$MemberRemover extends $Notifier<AsyncValue<void>> {
     element.handleCreate(ref, build);
   }
 }
+
+/// One-off name upgrade (G17): participants whose stored name is just their
+/// account's MXID localpart — the default before profile names were fetched —
+/// are renamed to that account's Matrix profile display name, if it has a
+/// different one. Runs once per signed-in account (keepAlive; rebuilt on an
+/// account switch with the DB), only in groups where this account is an
+/// active participant (others would reject our edits), and only for active
+/// claimed participants. Each rename is an ordinary LWW edit relayed to the
+/// group like a manual rename. Returns the number of renamed participants.
+///
+/// G19: everything is captured before the first await; it bails silently
+/// once the DB closed (account switch / sign-out).
+
+@ProviderFor(profileNameRefresh)
+final profileNameRefreshProvider = ProfileNameRefreshProvider._();
+
+/// One-off name upgrade (G17): participants whose stored name is just their
+/// account's MXID localpart — the default before profile names were fetched —
+/// are renamed to that account's Matrix profile display name, if it has a
+/// different one. Runs once per signed-in account (keepAlive; rebuilt on an
+/// account switch with the DB), only in groups where this account is an
+/// active participant (others would reject our edits), and only for active
+/// claimed participants. Each rename is an ordinary LWW edit relayed to the
+/// group like a manual rename. Returns the number of renamed participants.
+///
+/// G19: everything is captured before the first await; it bails silently
+/// once the DB closed (account switch / sign-out).
+
+final class ProfileNameRefreshProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  /// One-off name upgrade (G17): participants whose stored name is just their
+  /// account's MXID localpart — the default before profile names were fetched —
+  /// are renamed to that account's Matrix profile display name, if it has a
+  /// different one. Runs once per signed-in account (keepAlive; rebuilt on an
+  /// account switch with the DB), only in groups where this account is an
+  /// active participant (others would reject our edits), and only for active
+  /// claimed participants. Each rename is an ordinary LWW edit relayed to the
+  /// group like a manual rename. Returns the number of renamed participants.
+  ///
+  /// G19: everything is captured before the first await; it bails silently
+  /// once the DB closed (account switch / sign-out).
+  ProfileNameRefreshProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'profileNameRefreshProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$profileNameRefreshHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return profileNameRefresh(ref);
+  }
+}
+
+String _$profileNameRefreshHash() =>
+    r'd7e2205372bf2adc7b63aea6383a5a767de446e8';
 
 /// Leave / delete a group (G9). Both end with the group **purged** from the
 /// local DB and a device-local [LeftGroupTombstone], so a late digest or

@@ -54,6 +54,12 @@ update its "Last run" table after a device pass.
 
 Android release signing: `android/app/build.gradle.kts` signs `release` with the upload keystore (`~/moneyledger-upload-keystore.jks`) configured via the gitignored `android/key.properties`; without that file it falls back to the debug key. Never commit `key.properties` or keystores — see README "Release signing".
 
+Android backup (G32): `android:allowBackup="false"`, `fullBackupContent="false"` and
+`res/xml/data_extraction_rules.xml` (cloud backup + device transfer exclude every
+domain) — the app data holds the ledger DBs and the Matrix session incl. crypto
+keys. Pinned by `test/core/android_manifest_test.dart`; PRIVACY.md + the in-app
+privacy text say so.
+
 ## Commands
 
 ```bash
@@ -83,6 +89,8 @@ lib/
   app.dart           # MaterialApp.router
   core/
     background/      # G31 Android periodic background sync (round, gate, WorkManager glue)
+    theme/           # G17 design tokens: app_theme.dart, app_colors.dart (LedgerColors)
+    widgets/         # G17 PersonAvatar/AvatarStack, ContentWidth, EmptyState, BrandLogo
     router.dart      # go_router + routerRedirect() pure function (generated: router.g.dart)
     l10n/
       l10n.dart        # context.l10n / context.money() / context.date() + re-exports
@@ -503,6 +511,51 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
 - **Widget tests:** `testApp`/`testRouterApp` add the localization delegates
   (English by default, `locale: Locale('de')` for German tests); any other
   test `MaterialApp` needs `localizationsDelegates: testLocalizationsDelegates`.
+
+### Design system (G17)
+
+- **Tokens** live in `lib/core/theme/`: `app_theme.dart` (`AppTheme.light()` /
+  `.dark()`, `ThemeMode.system`; component themes for cards, list tiles, FAB,
+  inputs, buttons, segmented buttons, dialogs, sheets, snackbars; spacing
+  `Insets`, radii `Radii`, `kContentMaxWidth` = 680, `kTabularFigures` for
+  amounts; `AppTheme.cardColor`) and `app_colors.dart` (`BrandColors` — the
+  teal seed `#0E7D6C`, logo gradient, launch backgrounds — and the
+  **`LedgerColors` ThemeExtension**, read via `context.ledgerColors`).
+  **Never hard-code `Colors.*`** in widgets — use the scheme or LedgerColors.
+- **Semantic money colours:** `positive` (green — "you are owed", "you lent",
+  "gets back") and `negative` (warm red-orange — "you owe", "you borrowed"),
+  plus `*Container` variants; light and dark values are pinned to WCAG-AA
+  contrast by `test/core/design_system_test.dart`.
+- **Font:** Manrope (SIL OFL), bundled in `assets/fonts/manrope/` — never
+  fetched at runtime (privacy); its license is registered in `main.dart`.
+- **People:** always shown by `MemberModel.label` (display name → MXID
+  localpart → raw id; `participantNamesProvider` uses it) with a
+  `PersonAvatar` (`lib/core/widgets/person_avatar.dart`): colour from the
+  **participant id** (FNV-1a, stable across renames/platforms), initials from
+  the name (`initialsOf`; digit words of MXID localparts skipped). Lists use
+  `AvatarStack`. A participant added by MXID (or a new group's creator) is
+  named by the account's **Matrix profile display name**
+  (`LedgerTransport.profileName`, never throws; fake: `FakeMatrixNetwork.profiles`),
+  falling back to the localpart; `profileNameRefreshProvider` (watched by the
+  groups page, once per account session) upgrades stored names that are still
+  the bare localpart (LWW rename + relay, only in groups where we're active).
+- **Shared widgets** (`lib/core/widgets/`): `ContentWidth` (centre + cap width
+  on wide screens — wrap page content in it), `EmptyState`, `BrandLogo`.
+- **Screens:** groups page = totals card (`balanceTotals`, owed and owing kept
+  apart per currency) + `GroupCard`s (`groupOverviewProvider`: members, my
+  balance via `netBalanceOf`, last activity); group page = summary card
+  (*Settle up* → `recordPaymentFlow` from `features/balance/settle_up.dart`,
+  prefilled by `settleUpSuggestion`; *Balances*) + day-grouped ledger
+  (`context.dayHeader`: Today / Yesterday / weekday date) whose expense rows
+  show `expenseEffectFor` ("you lent / you borrowed / not involved"); balance
+  page = per-person nets (`netsFromDebts`) + tappable suggested payments; add
+  expense keeps the submit button in a bar below the scrolling form (stays
+  above the keyboard).
+- **Brand assets:** `tool/brand/render_icons.py` (cairosvg) renders the split
+  coin logo from one geometry into `assets/brand/*.svg`, the in-app
+  `logo_512.png`, Android launcher icons (adaptive + monochrome), the pre-12
+  splash logo, web favicon / PWA (+ maskable) icons and the iOS set. Launch
+  backgrounds: `res/values{,-night}/colors.xml`, `values{,-night}-v31` styles.
 
 ### Key Implementation Notes
 

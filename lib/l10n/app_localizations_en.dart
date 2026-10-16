@@ -889,7 +889,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyBackupBody =>
-      'Android\'s automatic app backup is not switched off. If backup is enabled on your phone, the app\'s local data (your ledger and your Matrix session) may be included in your device backup to your Google account, under Android\'s backup rules.';
+      'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; a CSV export is your own offline backup.';
 
   @override
   String get privacyDeleteTitle => 'Deleting your data';
@@ -904,4 +904,177 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get privacyContactBody =>
       'Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.';
+
+  @override
+  String youAreOwedAmount(String amount) {
+    return 'You are owed $amount';
+  }
+
+  @override
+  String youOweAmount(String amount) {
+    return 'You owe $amount';
+  }
+
+  @override
+  String get settledUp => 'Settled up';
+
+  @override
+  String get notParticipating => 'Not a participant';
+
+  @override
+  String lastActivity(String date) {
+    return 'Last activity $date';
+  }
+
+  @override
+  String get totalOwedLabel => 'You are owed';
+
+  @override
+  String get totalOwingLabel => 'You owe';
+
+  @override
+  String get totalNothing => 'Nothing';
+
+  @override
+  String get overallSettledUp => 'You\'re all settled up';
+
+  @override
+  String get overviewTitle => 'Across all groups';
+
+  @override
+  String get groupsEmptyTitle => 'No groups yet';
+
+  @override
+  String get groupsEmptyBody =>
+      'Create a group for a trip, your flat or a dinner out — then add the people you share costs with.';
+
+  @override
+  String get createGroup => 'Create group';
+
+  @override
+  String get importCsv => 'Import CSV';
+
+  @override
+  String membersCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n members',
+      one: '1 member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get yesterday => 'Yesterday';
+
+  @override
+  String get youPaid => 'You paid';
+
+  @override
+  String youLentAmount(String amount) {
+    return 'you lent $amount';
+  }
+
+  @override
+  String youBorrowedAmount(String amount) {
+    return 'you borrowed $amount';
+  }
+
+  @override
+  String get notInvolved => 'not involved';
+
+  @override
+  String settlementYouPaid(String to) {
+    return 'You paid $to';
+  }
+
+  @override
+  String settlementPaidYou(String from) {
+    return '$from paid you';
+  }
+
+  @override
+  String get paymentLabel => 'Payment';
+
+  @override
+  String get yourBalance => 'Your balance';
+
+  @override
+  String get settleUp => 'Settle up';
+
+  @override
+  String get balancesButton => 'Balances';
+
+  @override
+  String get balancesSection => 'Balances';
+
+  @override
+  String get suggestedPayments => 'Suggested payments';
+
+  @override
+  String get suggestedPaymentsHint =>
+      'Tap a payment once it has been made to record it.';
+
+  @override
+  String get balanceGetsBack => 'gets back';
+
+  @override
+  String get balanceOwes => 'owes';
+
+  @override
+  String get balanceYouGetBack => 'you get back';
+
+  @override
+  String get balanceYouOwe => 'you owe';
+
+  @override
+  String get balanceSettled => 'settled up';
+
+  @override
+  String debtPays(String from, String to) {
+    return '$from pays $to';
+  }
+
+  @override
+  String get allSettledUpBody => 'Nobody in this group owes anybody anything.';
+
+  @override
+  String get expensesEmptyTitle => 'No expenses yet';
+
+  @override
+  String get expensesEmptyBody =>
+      'Add the first expense — MoneyLedger works out who owes whom.';
+
+  @override
+  String get splitSection => 'Split';
+
+  @override
+  String get nameOptionalHelper =>
+      'Optional with a Matrix ID — their profile name is used';
+
+  @override
+  String get nameOrMatrixIdRequired => 'Enter a name or a Matrix ID';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get skip => 'Skip';
+
+  @override
+  String get localPerson => 'Local person';
+
+  @override
+  String debtYouPay(String to) {
+    return 'You pay $to';
+  }
+
+  @override
+  String debtPaysYou(String from) {
+    return '$from pays you';
+  }
 }

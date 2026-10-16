@@ -36,6 +36,26 @@ String formatDecimal(num value, String locale) =>
 String formatDate(int msEpoch, String locale) =>
     DateFormat.yMMMd(locale).format(DateTime.fromMillisecondsSinceEpoch(msEpoch));
 
+/// A day header for a dated list (G17): `Wed, Oct 15` (en) / `Mi., 15. Okt.`
+/// (de) within [now]'s year, with the year otherwise. "Today" / "Yesterday"
+/// are decided by the caller ([calendarDaysAgo]).
+String formatDayHeader(int msEpoch, String locale, {DateTime? now}) {
+  final d = DateTime.fromMillisecondsSinceEpoch(msEpoch);
+  final n = now ?? DateTime.now();
+  return (d.year == n.year ? DateFormat.MMMEd(locale) : DateFormat.yMMMEd(locale))
+      .format(d);
+}
+
+/// Whole calendar days between [msEpoch]'s local date and [now]'s (0 = same
+/// day, 1 = yesterday; negative for the future). DST-safe.
+int calendarDaysAgo(int msEpoch, {DateTime? now}) {
+  final d = DateTime.fromMillisecondsSinceEpoch(msEpoch);
+  final n = now ?? DateTime.now();
+  return DateTime.utc(n.year, n.month, n.day)
+      .difference(DateTime.utc(d.year, d.month, d.day))
+      .inDays;
+}
+
 /// Parses a user-typed decimal number, accepting both `,` and `.` as the
 /// decimal separator regardless of locale:
 ///  * `12.5`, `12,5` → 12.5

@@ -222,7 +222,7 @@ void main() {
       await c.read(groupMembersProvider(groupId).future);
       final names = c.read(participantNamesProvider(groupId));
       expect(names['@alice:x.org'], 'alice'); // creator's localpart
-      expect(names['p1'], '@x:y.org'); // empty name → matrixId fallback
+      expect(names['p1'], 'x'); // empty name → matrixId localpart (G17)
       sub.close();
     });
 

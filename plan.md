@@ -149,12 +149,12 @@ SAS exists for visibility only; replication still reaches unverified devices.
 ### G12. Polish & app identity 🟡
 - [x] App name is `money_ledger` on Android (`android:label`) and web
       (`<title>`, `apple-mobile-web-app-title`, `manifest.json`) → "MoneyLedger"
-- [ ] Custom launcher icons + web favicon (currently Flutter defaults)
+- [x] Custom launcher icons + web favicon (G17)
 - [x] Localization EN + DE (~250 ARB keys, informal "du"; EN fallback)
 - [x] Amount/date formatting per locale (`formatting.dart`); input accepts `,` and `.`
 - [x] About page (version, source link, AGPL, licenses) + PRIVACY.md / in-app policy
 - [x] Manifest: `android:enableOnBackInvokedCallback="true"` (predictive back)
-- [ ] Launcher icons + favicon → G17
+- [x] Launcher icons + favicon → G17
 
 ### G13. CSV backup limitations 🟡
 Documented in CLAUDE.md: no settlements / tombstones, participant identity by
@@ -336,18 +336,33 @@ needs a gateway, privacy trade-offs). Web: only while the tab is open.
 No `allowBackup` setting → Google backup may contain the ledger DBs and the
 Matrix session incl. Olm keys; a restore onto a new phone would resurrect a
 stale crypto identity (broken sessions) and is a privacy concern.
-- [ ] `android:allowBackup="false"` + `dataExtractionRules`/`fullBackupContent`
+- [x] `android:allowBackup="false"` + `dataExtractionRules`/`fullBackupContent`
       excluding everything (cf. ZoneCraft); update PRIVACY.md + in-app policy
+      (pinned by `test/core/android_manifest_test.dart`)
 
 ### G17. Design pass — a polished, consistent look 🟡
-- [ ] Coherent Material 3 theme (seeded color scheme, typography, dark mode)
-- [ ] Empty states, spacing, list/card styling for groups, expenses, balances
-- [ ] Iterate against emulator screenshots of every main screen
-- [ ] Real-device findings (G7a): expenses title says only "Expenses" (truncated
+- [x] Coherent Material 3 theme (teal seed, `LedgerColors`, bundled Manrope, dark mode; WCAG-AA tested)
+- [x] Empty states, spacing, list/card styling for groups, expenses, balances
+      (groups totals card + per-group balance, group summary + Settle up, date
+      headers, lent/borrowed, per-person nets on the balance page)
+- [x] Iterate against emulator screenshots of every main screen (EN/DE, light/dark)
+- [x] Logo + launcher (adaptive, monochrome), Android 12 splash, favicon/PWA icons
+- [x] Matrix profile display names (`LedgerTransport.profileName`) + initials avatars
+- [x] Real-device findings (G7a): expenses title says only "Expenses" (truncated
       "Expe…") — show the group name; keyboard covers the "Add" button on the
       expense form; members shown by Matrix localpart (wraps) — prefer the
       Matrix display name; add-member dialog can't add a local person by name;
       long names wrap the settlement title over 4 lines; expense tiles show no date
+
+### G33. Design follow-ups (found in G17) 🟡
+- [ ] Settlement row title shows only the payer's (truncated) name — show
+      "A → B" / "A paid B" with both names compact
+- [ ] Test accounts' Matrix profile names equal their localparts, so devices
+      still show `moneyledger-test-a-c725` — optionally set display names
+      ("Anna"/"Ben") on the test accounts to exercise the profile-name path
+- [ ] Widget tests with a real in-memory DB must override `ledgerGroupsProvider`
+      (Drift watch stream hangs under the widget-test clock) — document in
+      CLAUDE.md testing notes / provide a helper
 
 ### G18. Final release review 🟡
 - [ ] `/code-review` over all of Phase G; fix findings
@@ -384,7 +399,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G30 — first-login recovery + auth timeouts
 - [x] G31 — background sync on Android (feature before i18n)
 - [x] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
-- [~] G32+G17 — disable Android auto-backup; design pass (icons, theme, polish)
+- [x] G32+G17 — disable Android auto-backup; design pass (icons, theme, polish)
 - [ ] G15 — test/tooling debt, offline demo, CI
 - [ ] G5 — full-fidelity backup
 - [ ] G13 — CSV improvements
@@ -394,6 +409,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G16 — nice-to-haves
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G27 — LWW tie-break
+- [ ] G33 — design follow-ups (settlement title, test display names)
 - [ ] *(G32+ — newly discovered points)*
 - [ ] G18 — final release review
 

@@ -16,6 +16,7 @@ import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/expense_model.dart';
+import 'package:money_ledger/models/member_model.dart';
 import 'package:money_ledger/models/login_flows_result.dart';
 import 'l10n.dart';
 
@@ -74,6 +75,7 @@ List<dynamic> testOverrides({
   // Overrides [settlements] — for tests that push updates over time.
   Stream<List<SettlementModel>>? settlementsStream,
   List<DebtEntry> debts = const [],
+  List<MemberModel> members = const [],
 }) =>
     [
       isLoggedInProvider.overrideWith((ref) => isLoggedIn),
@@ -91,7 +93,7 @@ List<dynamic> testOverrides({
       ledgerGroupsProvider.overrideWith((_) => Stream.value([])),
       // The participant-name resolver and members page read the members stream
       // off the DB; default it to empty so unrelated widget tests stay offline.
-      groupMembersProvider.overrideWith((ref, groupId) => Stream.value(const [])),
+      groupMembersProvider.overrideWith((ref, groupId) => Stream.value(members)),
       // Sync-status reads several DB-backed streams; widget tests that don't
       // exercise it default to "synced" so they never open a real database.
       groupSyncStatusProvider.overrideWith((ref, groupId) =>

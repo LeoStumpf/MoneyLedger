@@ -11,18 +11,34 @@ List<DebtEntry> calculateDebts(
   List<ExpenseModel> expenses,
   List<SettlementModel> settlements,
 ) {
-  // currency -> (person -> balance cents); positive = creditor, negative = debtor
+  final byCurrency = netBalances(expenses, settlements);
+  final debts = <DebtEntry>[];
+  for (final currency in byCurrency.keys.toList()..sort()) {
+    debts.addAll(_simplify(byCurrency[currency]!, currency));
+  }
+  return debts;
+}
+
+/// Every participant's **net balance** per currency (G17):
+/// `currency → participant id → cents`, positive = gets money back (a
+/// creditor), negative = owes. Participants who net to zero in a currency
+/// are kept with 0 (they took part), so callers can tell "settled" from
+/// "never involved". Per currency, the values sum to zero.
+Map<String, Map<String, int>> netBalances(
+  List<ExpenseModel> expenses,
+  List<SettlementModel> settlements,
+) {
   final byCurrency = <String, Map<String, int>>{};
   Map<String, int> ledgerFor(String currency) =>
       byCurrency.putIfAbsent(currency, () => <String, int>{});
 
   for (final e in expenses) {
     final balance = ledgerFor(e.currency);
-    final splits = (jsonDecode(e.splitsJson) as Map).cast<String, dynamic>();
-    for (final entry in splits.entries) {
-      final debtor = entry.key;
-      final share = (entry.value as num).toInt();
-      if (debtor == e.paidBy) continue;
+    for (final MapEntry(key: debtor, value: share) in splitsOf(e).entries) {
+      if (debtor == e.paidBy) {
+        balance[debtor] = balance[debtor] ?? 0;
+        continue;
+      }
       balance[e.paidBy] = (balance[e.paidBy] ?? 0) + share;
       balance[debtor] = (balance[debtor] ?? 0) - share;
     }
@@ -34,12 +50,43 @@ List<DebtEntry> calculateDebts(
     balance[s.fromUser] = (balance[s.fromUser] ?? 0) + s.amountCents;
     balance[s.toUser] = (balance[s.toUser] ?? 0) - s.amountCents;
   }
+  return byCurrency;
+}
 
-  final debts = <DebtEntry>[];
-  for (final currency in byCurrency.keys.toList()..sort()) {
-    debts.addAll(_simplify(byCurrency[currency]!, currency));
+/// [participant]'s non-zero net balance per currency (sorted by currency) —
+/// e.g. `{EUR: 1250}` = "you are owed €12.50". Empty = settled up.
+Map<String, int> netBalanceOf(
+  String participant,
+  List<ExpenseModel> expenses,
+  List<SettlementModel> settlements,
+) {
+  final all = netBalances(expenses, settlements);
+  return {
+    for (final currency in all.keys.toList()..sort())
+      if ((all[currency]![participant] ?? 0) != 0)
+        currency: all[currency]![participant]!,
+  };
+}
+
+/// The `{participantId: cents}` split of [e].
+Map<String, int> splitsOf(ExpenseModel e) =>
+    (jsonDecode(e.splitsJson) as Map)
+        .map((k, v) => MapEntry(k as String, (v as num).toInt()));
+
+/// What one expense means for [participant] (G17, the "you lent / you
+/// borrowed" line): [net] > 0 = lent (others owe them that much from this
+/// expense), < 0 = borrowed (their share of someone else's payment).
+/// [involved] is false when they neither paid nor share in it.
+({int net, bool involved}) expenseEffectFor(
+    ExpenseModel e, String? participant) {
+  if (participant == null) return (net: 0, involved: false);
+  final splits = splitsOf(e);
+  final paid = e.paidBy == participant;
+  final share = splits[participant] ?? 0;
+  if (!paid && !splits.containsKey(participant)) {
+    return (net: 0, involved: false);
   }
-  return debts;
+  return (net: (paid ? e.amountCents : 0) - share, involved: true);
 }
 
 /// Greedy debt simplification for a single currency: match the biggest creditor

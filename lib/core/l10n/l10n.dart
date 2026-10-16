@@ -21,4 +21,21 @@ extension AppLocalizationsX on BuildContext {
       formatMoney(cents, currency, localeName);
 
   String date(int msEpoch) => formatDate(msEpoch, localeName);
+
+  /// "Today" / "Yesterday" / a short weekday date — list section headers
+  /// (G17).
+  String dayHeader(int msEpoch, {DateTime? now}) =>
+      switch (calendarDaysAgo(msEpoch, now: now)) {
+        0 => l10n.today,
+        1 => l10n.yesterday,
+        _ => formatDayHeader(msEpoch, localeName, now: now),
+      };
+
+  /// Like [dayHeader] but lower-key for inline text: "today", or a date.
+  String relativeDate(int msEpoch, {DateTime? now}) =>
+      switch (calendarDaysAgo(msEpoch, now: now)) {
+        0 => l10n.today,
+        1 => l10n.yesterday,
+        _ => formatDate(msEpoch, localeName),
+      };
 }

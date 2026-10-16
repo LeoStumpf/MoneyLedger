@@ -500,9 +500,136 @@
   "privacyCsvTitle": "CSV export and import",
   "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, the participants' names and the amounts — only when you ask for it. Where that file goes is your choice; it is not encrypted, and MoneyLedger has no visibility into it afterwards. Importing reads only the file you pick.",
   "privacyBackupTitle": "Device backups",
-  "privacyBackupBody": "Android's automatic app backup is not switched off. If backup is enabled on your phone, the app's local data (your ledger and your Matrix session) may be included in your device backup to your Google account, under Android's backup rules.",
+  "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; a CSV export is your own offline backup.",
   "privacyDeleteTitle": "Deleting your data",
   "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members' devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
   "privacyContactTitle": "Contact",
-  "privacyContactBody": "Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com."
+  "privacyContactBody": "Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.",
+  "youAreOwedAmount": "You are owed {amount}",
+  "@youAreOwedAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "youOweAmount": "You owe {amount}",
+  "@youOweAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "settledUp": "Settled up",
+  "notParticipating": "Not a participant",
+  "lastActivity": "Last activity {date}",
+  "@lastActivity": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "totalOwedLabel": "You are owed",
+  "totalOwingLabel": "You owe",
+  "totalNothing": "Nothing",
+  "overallSettledUp": "You're all settled up",
+  "overviewTitle": "Across all groups",
+  "groupsEmptyTitle": "No groups yet",
+  "groupsEmptyBody": "Create a group for a trip, your flat or a dinner out — then add the people you share costs with.",
+  "createGroup": "Create group",
+  "importCsv": "Import CSV",
+  "membersCount": "{n, plural, =1{1 member} other{{n} members}}",
+  "@membersCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "youPaid": "You paid",
+  "youLentAmount": "you lent {amount}",
+  "@youLentAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "youBorrowedAmount": "you borrowed {amount}",
+  "@youBorrowedAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "notInvolved": "not involved",
+  "settlementYouPaid": "You paid {to}",
+  "@settlementYouPaid": {
+    "placeholders": {
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "settlementPaidYou": "{from} paid you",
+  "@settlementPaidYou": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentLabel": "Payment",
+  "yourBalance": "Your balance",
+  "settleUp": "Settle up",
+  "balancesButton": "Balances",
+  "balancesSection": "Balances",
+  "suggestedPayments": "Suggested payments",
+  "suggestedPaymentsHint": "Tap a payment once it has been made to record it.",
+  "balanceGetsBack": "gets back",
+  "balanceOwes": "owes",
+  "balanceYouGetBack": "you get back",
+  "balanceYouOwe": "you owe",
+  "balanceSettled": "settled up",
+  "debtPays": "{from} pays {to}",
+  "@debtPays": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "allSettledUpBody": "Nobody in this group owes anybody anything.",
+  "expensesEmptyTitle": "No expenses yet",
+  "expensesEmptyBody": "Add the first expense — MoneyLedger works out who owes whom.",
+  "splitSection": "Split",
+  "nameOptionalHelper": "Optional with a Matrix ID — their profile name is used",
+  "nameOrMatrixIdRequired": "Enter a name or a Matrix ID",
+  "next": "Next",
+  "skip": "Skip",
+  "localPerson": "Local person",
+  "debtYouPay": "You pay {to}",
+  "@debtYouPay": {
+    "placeholders": {
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "debtPaysYou": "{from} pays you",
+  "@debtPaysYou": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      }
+    }
+  }
 }

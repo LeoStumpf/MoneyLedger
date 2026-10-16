@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/widgets/brand_logo.dart';
 import '../../core/l10n/l10n.dart';
 
 part 'about_page.g.dart';
@@ -40,8 +41,7 @@ class AboutPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16),
         children: [
-          const Icon(Icons.account_balance_wallet,
-              size: 56, color: Colors.teal),
+          const Center(child: BrandLogo(size: 80)),
           const SizedBox(height: 12),
           Text(l.appTitle,
               textAlign: TextAlign.center,
@@ -83,8 +83,7 @@ class AboutPage extends ConsumerWidget {
               applicationVersion: version,
               applicationIcon: const Padding(
                 padding: EdgeInsets.all(8),
-                child: Icon(Icons.account_balance_wallet,
-                    size: 48, color: Colors.teal),
+                child: BrandLogo(size: 56),
               ),
               applicationLegalese: l.aboutLegalese(kAppLicense),
             ),

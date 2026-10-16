@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/person_avatar.dart';
 import '../../models/member_model.dart';
 import 'split_calculator.dart';
 
@@ -41,8 +43,7 @@ class SplitPlan {
       case SplitMode.equal:
         return SplitResult(splitEqually(total, included), included.isNotEmpty);
       case SplitMode.exact:
-        final valid =
-            exact.isNotEmpty && remainingForExact(total, exact) == 0;
+        final valid = exact.isNotEmpty && remainingForExact(total, exact) == 0;
         return SplitResult(Map.of(exact), valid);
       case SplitMode.shares:
         return SplitResult(splitByShares(total, weights), weights.isNotEmpty);
@@ -90,9 +91,6 @@ class _SplitEditorState extends State<SplitEditor> {
   final _shareCtrl = <String, TextEditingController>{};
   final _percentCtrl = <String, TextEditingController>{};
 
-  String _nameOf(MemberModel m) =>
-      m.displayName.isNotEmpty ? m.displayName : (m.matrixId ?? m.userId);
-
   @override
   void initState() {
     super.initState();
@@ -133,7 +131,8 @@ class _SplitEditorState extends State<SplitEditor> {
       _exactPrefilled = true;
       final locale = context.localeName;
       initial.forEach(
-          (id, cents) => _exactCtrl[id]?.text = formatAmountInput(cents, locale));
+        (id, cents) => _exactCtrl[id]?.text = formatAmountInput(cents, locale),
+      );
     }
   }
 
@@ -141,7 +140,11 @@ class _SplitEditorState extends State<SplitEditor> {
 
   @override
   void dispose() {
-    for (final c in [..._exactCtrl.values, ..._shareCtrl.values, ..._percentCtrl.values]) {
+    for (final c in [
+      ..._exactCtrl.values,
+      ..._shareCtrl.values,
+      ..._percentCtrl.values,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -161,7 +164,7 @@ class _SplitEditorState extends State<SplitEditor> {
           mode: _mode,
           included: [
             for (final m in widget.members)
-              if (_included.contains(m.userId)) m.userId
+              if (_included.contains(m.userId)) m.userId,
           ],
         );
       case SplitMode.exact:
@@ -211,88 +214,155 @@ class _SplitEditorState extends State<SplitEditor> {
             _update();
           },
         ),
-        const SizedBox(height: 8),
-        for (final m in widget.members) _row(m, result.shares[m.userId] ?? 0),
-        const SizedBox(height: 8),
-        _statusLine(result, small),
+        const SizedBox(height: Insets.s),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Insets.m,
+              vertical: Insets.s,
+            ),
+            child: Column(
+              children: [
+                for (final m in widget.members)
+                  _row(m, result.shares[m.userId] ?? 0),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: Insets.s),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Insets.xs),
+          child: _statusLine(result, small),
+        ),
       ],
     );
   }
 
   Widget _row(MemberModel m, int cents) {
-    final name = Expanded(child: Text(_nameOf(m)));
+    // G17: avatar + name (one line, ellipsized) on every row.
+    final name = Expanded(
+      child: Row(
+        children: [
+          PersonAvatar(id: m.userId, name: m.label, size: 30),
+          const SizedBox(width: Insets.m),
+          Expanded(
+            child: Text(
+              m.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
+        ],
+      ),
+    );
     final preview = SizedBox(
       width: 96,
-      child: Text(_money(cents), textAlign: TextAlign.right),
+      child: Text(
+        _money(cents),
+        textAlign: TextAlign.right,
+        style: TextStyle(
+          fontFeatures: kTabularFigures,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
     switch (_mode) {
       case SplitMode.equal:
-        return Row(children: [
-          Checkbox(
-            value: _included.contains(m.userId),
-            onChanged: (v) {
-              if (v == true) {
-                _included.add(m.userId);
-              } else {
-                _included.remove(m.userId);
-              }
-              _update();
-            },
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              Checkbox(
+                value: _included.contains(m.userId),
+                onChanged: (v) {
+                  if (v == true) {
+                    _included.add(m.userId);
+                  } else {
+                    _included.remove(m.userId);
+                  }
+                  _update();
+                },
+              ),
+              name,
+              preview,
+            ],
           ),
-          name,
-          preview,
-        ]);
+        );
       case SplitMode.exact:
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(children: [
-            name,
-            SizedBox(
-              width: 96,
-              child: _numField(_exactCtrl[m.userId]!,
-                  suffix: widget.currency, decimal: true),
-            ),
-          ]),
+          child: Row(
+            children: [
+              name,
+              SizedBox(
+                width: 96,
+                child: _numField(
+                  _exactCtrl[m.userId]!,
+                  suffix: widget.currency,
+                  decimal: true,
+                ),
+              ),
+            ],
+          ),
         );
       case SplitMode.shares:
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(children: [
-            name,
-            SizedBox(
-              width: 64,
-              child: _numField(_shareCtrl[m.userId]!, decimal: false),
-            ),
-            preview,
-          ]),
+          child: Row(
+            children: [
+              name,
+              SizedBox(
+                width: 64,
+                child: _numField(_shareCtrl[m.userId]!, decimal: false),
+              ),
+              preview,
+            ],
+          ),
         );
       case SplitMode.percent:
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(children: [
-            name,
-            SizedBox(
-              width: 64,
-              child: _numField(_percentCtrl[m.userId]!,
-                  suffix: '%', decimal: true),
-            ),
-            preview,
-          ]),
+          child: Row(
+            children: [
+              name,
+              SizedBox(
+                width: 64,
+                child: _numField(
+                  _percentCtrl[m.userId]!,
+                  suffix: '%',
+                  decimal: true,
+                ),
+              ),
+              preview,
+            ],
+          ),
         );
     }
   }
 
-  Widget _numField(TextEditingController c,
-      {String? suffix, required bool decimal}) {
+  Widget _numField(
+    TextEditingController c, {
+    String? suffix,
+    required bool decimal,
+  }) {
     return TextField(
       controller: c,
       textAlign: TextAlign.right,
       keyboardType: TextInputType.numberWithOptions(decimal: decimal),
       inputFormatters: [
         FilteringTextInputFormatter.allow(
-            decimal ? RegExp(r'[0-9.,]') : RegExp(r'[0-9]')),
+          decimal ? RegExp(r'[0-9.,]') : RegExp(r'[0-9]'),
+        ),
       ],
-      decoration: InputDecoration(isDense: true, suffixText: suffix),
+      decoration: InputDecoration(
+        isDense: true,
+        suffixText: suffix,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: Insets.s,
+          vertical: Insets.s + 2,
+        ),
+      ),
       onChanged: (_) => _update(),
     );
   }

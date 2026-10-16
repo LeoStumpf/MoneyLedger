@@ -1553,7 +1553,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyBackupBody.
   ///
   /// In en, this message translates to:
-  /// **'Android\'s automatic app backup is not switched off. If backup is enabled on your phone, the app\'s local data (your ledger and your Matrix session) may be included in your device backup to your Google account, under Android\'s backup rules.'**
+  /// **'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; a CSV export is your own offline backup.'**
   String get privacyBackupBody;
 
   /// No description provided for @privacyDeleteTitle.
@@ -1579,6 +1579,288 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.'**
   String get privacyContactBody;
+
+  /// No description provided for @youAreOwedAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'You are owed {amount}'**
+  String youAreOwedAmount(String amount);
+
+  /// No description provided for @youOweAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'You owe {amount}'**
+  String youOweAmount(String amount);
+
+  /// No description provided for @settledUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Settled up'**
+  String get settledUp;
+
+  /// No description provided for @notParticipating.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a participant'**
+  String get notParticipating;
+
+  /// No description provided for @lastActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Last activity {date}'**
+  String lastActivity(String date);
+
+  /// No description provided for @totalOwedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'You are owed'**
+  String get totalOwedLabel;
+
+  /// No description provided for @totalOwingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'You owe'**
+  String get totalOwingLabel;
+
+  /// No description provided for @totalNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing'**
+  String get totalNothing;
+
+  /// No description provided for @overallSettledUp.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all settled up'**
+  String get overallSettledUp;
+
+  /// No description provided for @overviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Across all groups'**
+  String get overviewTitle;
+
+  /// No description provided for @groupsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No groups yet'**
+  String get groupsEmptyTitle;
+
+  /// No description provided for @groupsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a group for a trip, your flat or a dinner out — then add the people you share costs with.'**
+  String get groupsEmptyBody;
+
+  /// No description provided for @createGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Create group'**
+  String get createGroup;
+
+  /// No description provided for @importCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Import CSV'**
+  String get importCsv;
+
+  /// No description provided for @membersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 member} other{{n} members}}'**
+  String membersCount(int n);
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get yesterday;
+
+  /// No description provided for @youPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'You paid'**
+  String get youPaid;
+
+  /// No description provided for @youLentAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'you lent {amount}'**
+  String youLentAmount(String amount);
+
+  /// No description provided for @youBorrowedAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'you borrowed {amount}'**
+  String youBorrowedAmount(String amount);
+
+  /// No description provided for @notInvolved.
+  ///
+  /// In en, this message translates to:
+  /// **'not involved'**
+  String get notInvolved;
+
+  /// No description provided for @settlementYouPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'You paid {to}'**
+  String settlementYouPaid(String to);
+
+  /// No description provided for @settlementPaidYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} paid you'**
+  String settlementPaidYou(String from);
+
+  /// No description provided for @paymentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment'**
+  String get paymentLabel;
+
+  /// No description provided for @yourBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Your balance'**
+  String get yourBalance;
+
+  /// No description provided for @settleUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle up'**
+  String get settleUp;
+
+  /// No description provided for @balancesButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Balances'**
+  String get balancesButton;
+
+  /// No description provided for @balancesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Balances'**
+  String get balancesSection;
+
+  /// No description provided for @suggestedPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested payments'**
+  String get suggestedPayments;
+
+  /// No description provided for @suggestedPaymentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a payment once it has been made to record it.'**
+  String get suggestedPaymentsHint;
+
+  /// No description provided for @balanceGetsBack.
+  ///
+  /// In en, this message translates to:
+  /// **'gets back'**
+  String get balanceGetsBack;
+
+  /// No description provided for @balanceOwes.
+  ///
+  /// In en, this message translates to:
+  /// **'owes'**
+  String get balanceOwes;
+
+  /// No description provided for @balanceYouGetBack.
+  ///
+  /// In en, this message translates to:
+  /// **'you get back'**
+  String get balanceYouGetBack;
+
+  /// No description provided for @balanceYouOwe.
+  ///
+  /// In en, this message translates to:
+  /// **'you owe'**
+  String get balanceYouOwe;
+
+  /// No description provided for @balanceSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'settled up'**
+  String get balanceSettled;
+
+  /// No description provided for @debtPays.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} pays {to}'**
+  String debtPays(String from, String to);
+
+  /// No description provided for @allSettledUpBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody in this group owes anybody anything.'**
+  String get allSettledUpBody;
+
+  /// No description provided for @expensesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses yet'**
+  String get expensesEmptyTitle;
+
+  /// No description provided for @expensesEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the first expense — MoneyLedger works out who owes whom.'**
+  String get expensesEmptyBody;
+
+  /// No description provided for @splitSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Split'**
+  String get splitSection;
+
+  /// No description provided for @nameOptionalHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional with a Matrix ID — their profile name is used'**
+  String get nameOptionalHelper;
+
+  /// No description provided for @nameOrMatrixIdRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name or a Matrix ID'**
+  String get nameOrMatrixIdRequired;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @skip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get skip;
+
+  /// No description provided for @localPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Local person'**
+  String get localPerson;
+
+  /// No description provided for @debtYouPay.
+  ///
+  /// In en, this message translates to:
+  /// **'You pay {to}'**
+  String debtYouPay(String to);
+
+  /// No description provided for @debtPaysYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} pays you'**
+  String debtPaysYou(String from);
 }
 
 class _AppLocalizationsDelegate

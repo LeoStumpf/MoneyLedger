@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/content_width.dart';
 import 'group_provider.dart';
 
 /// Currencies offered for a group's default currency (create + edit).
@@ -32,9 +34,9 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
         .create(_nameCtrl.text.trim(), _currency);
     final error = ref.read(groupCreatorProvider).error;
     if (error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } else if (mounted) {
       context.pop();
     }
@@ -46,40 +48,50 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     final l = context.l10n;
     return Scaffold(
       appBar: AppBar(title: Text(l.newGroup)),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: InputDecoration(labelText: l.groupNameLabel),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? l.required : null,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _currency,
-                decoration: InputDecoration(labelText: l.currencyLabel),
-                items: kGroupCurrencies
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _currency = v ?? 'EUR'),
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: state.isLoading ? null : _submit,
-                child: state.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(l.create),
-              ),
-            ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(Insets.page),
+        child: ContentWidth(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _nameCtrl,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    labelText: l.groupNameLabel,
+                    prefixIcon: const Icon(Icons.groups_2_outlined),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? l.required : null,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: _currency,
+                  decoration: InputDecoration(
+                    labelText: l.currencyLabel,
+                    prefixIcon: const Icon(Icons.payments_outlined),
+                  ),
+                  items: kGroupCurrencies
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _currency = v ?? 'EUR'),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: state.isLoading ? null : _submit,
+                  child: state.isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(l.create),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/content_width.dart';
+import '../../core/widgets/person_avatar.dart';
+import 'add_person_dialog.dart';
 import '../../models/member_model.dart';
 import 'group_provider.dart';
 
@@ -50,7 +54,7 @@ class GroupMembersPage extends ConsumerWidget {
       floatingActionButton: iAmRemoved
           ? null
           : FloatingActionButton.extended(
-              onPressed: busy ? null : () => _showAddDialog(context, ref),
+              onPressed: busy ? null : () => showAddPersonDialog(context, ref, roomId),
               icon: const Icon(Icons.person_add_outlined),
               label: Text(l.addPerson),
             ),
@@ -65,37 +69,63 @@ class GroupMembersPage extends ConsumerWidget {
               if (members.isEmpty && former.isEmpty) {
                 return Center(child: Text(l.noMembers));
               }
+              final headerStyle = Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant);
+              Widget section(List<Widget> tiles) => Card(
+                    child: Column(children: [
+                      for (var i = 0; i < tiles.length; i++) ...[
+                        if (i > 0) const Divider(indent: 72),
+                        tiles[i],
+                      ],
+                    ]),
+                  );
               return ListView(
-                padding: const EdgeInsets.only(bottom: 88), // clear the FAB
+                padding: const EdgeInsets.fromLTRB(
+                    Insets.page, Insets.s, Insets.page, 96), // clear the FAB
                 children: [
-                  for (final m in members)
-                    _MemberTile(
-                        member: m,
-                        myId: myId,
-                        roomId: roomId,
-                        readOnly: iAmRemoved),
-                  if (former.isNotEmpty) ...[
-                    const Divider(),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                      child: Text(l.formerMembers,
-                          style: Theme.of(context).textTheme.titleSmall),
+                  if (members.isNotEmpty)
+                    ContentWidth(
+                      child: section([
+                        for (final m in members)
+                          _MemberTile(
+                              member: m,
+                              myId: myId,
+                              roomId: roomId,
+                              readOnly: iAmRemoved),
+                      ]),
                     ),
-                    for (final m in former)
-                      _FormerMemberTile(
-                          member: m,
-                          myId: myId,
-                          roomId: roomId,
-                          canReadd: !iAmRemoved && !busy),
-                  ],
+                  if (former.isNotEmpty)
+                    ContentWidth(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                                Insets.xs, Insets.xl, Insets.xs, Insets.s),
+                            child: Text(l.formerMembers, style: headerStyle),
+                          ),
+                          section([
+                            for (final m in former)
+                              _FormerMemberTile(
+                                  member: m,
+                                  myId: myId,
+                                  roomId: roomId,
+                                  canReadd: !iAmRemoved && !busy),
+                          ]),
+                        ],
+                      ),
+                    ),
                 ],
               );
             },
           ),
           if (busy)
-            const ColoredBox(
-              color: Colors.black26,
-              child: Center(child: CircularProgressIndicator()),
+            ColoredBox(
+              color: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.2),
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
@@ -147,77 +177,6 @@ class GroupMembersPage extends ConsumerWidget {
             : l.invitedMember(mxid))));
   }
 
-  Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
-    final nameCtrl = TextEditingController();
-    final idCtrl = TextEditingController();
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-
-    final result = await showDialog<({String name, String matrixId})>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.addPerson),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: l.nameLabel,
-                hintText: l.nameHint,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: idCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: l.matrixIdOptionalLabel,
-                hintText: l.matrixIdOptionalHint,
-                hintMaxLines: 2,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              if (name.isEmpty) return;
-              Navigator.of(ctx)
-                  .pop((name: name, matrixId: idCtrl.text.trim()));
-            },
-            child: Text(l.add),
-          ),
-        ],
-      ),
-    );
-    nameCtrl.dispose();
-    idCtrl.dispose();
-    if (result == null) return;
-
-    final notifier = ref.read(memberAdderProvider.notifier);
-    final mxid = result.matrixId;
-    if (mxid.isEmpty) {
-      await notifier.addLocal(roomId, result.name);
-    } else if (mxid.startsWith('@') && mxid.contains(':')) {
-      await notifier.add(roomId, mxid, displayName: result.name);
-    } else {
-      messenger.showSnackBar(
-          SnackBar(content: Text(l.invalidMatrixId)));
-      return;
-    }
-    final error = ref.read(memberAdderProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-          SnackBar(content: Text(l.failedWithError(error.toString()))));
-    }
-  }
 }
 
 /// A removed / left participant (G26), greyed. Leaving and being removed both
@@ -238,20 +197,19 @@ class _FormerMemberTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final title = member.displayName.isNotEmpty
-        ? member.displayName
-        : (member.matrixId ?? member.userId);
+    final title = member.label;
     final isSelf = member.matrixId != null && member.matrixId == myId;
     final mxid = member.matrixId;
     final l = context.l10n;
     return Opacity(
       opacity: 0.6,
       child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.person_off_outlined)),
-        title: Text(title),
-        subtitle: Text(mxid != null
-            ? l.formerMemberClaimed(mxid)
-            : l.formerMemberLocal),
+        leading: PersonAvatar(id: member.userId, name: title, dimmed: true),
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+            mxid != null ? l.formerMemberClaimed(mxid) : l.formerMemberLocal,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis),
         trailing: isSelf
             ? Chip(label: Text(l.you))
             : TextButton(
@@ -297,17 +255,13 @@ class _MemberTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final title = member.displayName.isNotEmpty
-        ? member.displayName
-        : (member.matrixId ?? member.userId);
+    final title = member.label;
     final l = context.l10n;
     return ListTile(
-      leading: CircleAvatar(
-        child: Icon(member.isClaimed ? Icons.person : Icons.person_outline),
-      ),
-      title: Text(title),
+      leading: PersonAvatar(id: member.userId, name: title),
+      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: member.isClaimed
-          ? Text(member.matrixId!)
+          ? Text(member.matrixId!, maxLines: 1, overflow: TextOverflow.ellipsis)
           : Text(l.localParticipant),
       trailing: _isSelf
           ? Chip(label: Text(l.you))
@@ -365,9 +319,7 @@ class _MemberTile extends ConsumerWidget {
   }
 
   Future<bool> _confirmRemove(BuildContext context) async {
-    final name = member.displayName.isNotEmpty
-        ? member.displayName
-        : (member.matrixId ?? member.userId);
+    final name = member.label;
     final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,

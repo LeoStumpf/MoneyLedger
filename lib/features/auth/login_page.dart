@@ -12,6 +12,7 @@ import 'auth_errors.dart';
 import 'auth_provider.dart';
 import 'sso_callback.dart';
 import 'sso_provider.dart';
+import '../../core/widgets/brand_logo.dart';
 import 'sso_url.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -248,9 +249,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.account_balance_wallet,
-                      size: 64, color: Colors.teal),
-                  const SizedBox(height: 16),
+                  const Center(child: BrandLogo(size: 88)),
+                  const SizedBox(height: 20),
                   Text(l.appTitle,
                       style: Theme.of(context).textTheme.headlineMedium,
                       textAlign: TextAlign.center),
@@ -259,7 +259,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
-                          ?.copyWith(color: Colors.grey),
+                          ?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
                       textAlign: TextAlign.center),
                   const SizedBox(height: 32),
 
@@ -341,6 +344,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     Form(
                       key: _formKey,
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           TextFormField(
                             key: const Key('usernameField'),
@@ -395,8 +399,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     height: 20,
                                     width: 20,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white),
+                                        strokeWidth: 2),
                                   )
                                 : Text(l.signIn),
                           ),

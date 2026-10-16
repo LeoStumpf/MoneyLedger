@@ -49,20 +49,15 @@ Future<MemberModel?> currentParticipant(Ref ref, String groupId) {
   return ref.watch(membersDaoProvider).memberByMatrixId(groupId, myId);
 }
 
-/// participant id → display label for [groupId]. Falls back to the Matrix id
-/// (or the raw participant id) when a participant has no name yet, so the UI
+/// participant id → display label for [groupId]. Falls back to the Matrix
+/// id's localpart (or the raw participant id, [MemberModel.label]) when a participant has no name yet, so the UI
 /// never shows a blank. Watches the members stream, so renames/claims reflect
 /// live.
 @riverpod
 Map<String, String> participantNames(Ref ref, String groupId) {
   final members =
       ref.watch(groupMembersProvider(groupId)).value ?? const <MemberModel>[];
-  return {
-    for (final m in members)
-      m.userId: m.displayName.isNotEmpty
-          ? m.displayName
-          : (m.matrixId ?? m.userId)
-  };
+  return {for (final m in members) m.userId: m.label};
 }
 
 /// Everything one group/member mutation needs, captured **before the first
@@ -94,6 +89,11 @@ class _GroupWriteContext {
   final Future<LedgerTransport> transport;
 
   Future<String> myMxid() async => (await transport).userId;
+
+  /// The name for a participant claimed by [matrixId] (G17): the account's
+  /// Matrix profile display name, else its localpart.
+  Future<String> profileNameOrLocalpart(String matrixId) async =>
+      await (await transport).profileName(matrixId) ?? localpartOf(matrixId);
 
   /// Best-effort relay of [content] to the group's active claimed members
   /// (self included — our other devices). The change is already saved
@@ -150,6 +150,8 @@ class GroupCreator extends _$GroupCreator {
         final groupId = const Uuid().v7();
         final now = DateTime.now().millisecondsSinceEpoch;
         final me = await w.myMxid();
+        final myName = await w.profileNameOrLocalpart(me);
+        if (w.db.isClosed) return;
         await w.groups.upsertGroupLww(GroupsCompanion(
               roomId: Value(groupId),
               name: Value(name),
@@ -162,7 +164,7 @@ class GroupCreator extends _$GroupCreator {
               MemberModel(
                 groupId: groupId,
                 userId: me,
-                displayName: localpartOf(me),
+                displayName: myName,
                 matrixId: me,
                 status: 'active',
                 updatedAt: now,
@@ -196,6 +198,14 @@ class MemberAdder extends _$MemberAdder {
     // re-add wins LWW everywhere and the re-added device's tombstone check
     // (`updated_at > left_at`) passes even if our clock lags theirs.
     final existing = claimedBy(await w.members.getMembers(groupId), userId);
+    // A new participant is named by the caller, else by the account's Matrix
+    // profile display name (G17), else by the MXID's localpart.
+    final name = existing != null
+        ? existing.displayName
+        : (displayName != null && displayName.isNotEmpty)
+            ? displayName
+            : await w.profileNameOrLocalpart(userId);
+    if (w.db.isClosed) return;
     final member = existing != null
         ? MemberModel(
             groupId: groupId,
@@ -209,9 +219,7 @@ class MemberAdder extends _$MemberAdder {
         : MemberModel(
             groupId: groupId,
             userId: userId,
-            displayName: (displayName != null && displayName.isNotEmpty)
-                ? displayName
-                : localpartOf(userId),
+            displayName: name,
             matrixId: userId,
             status: 'active',
             updatedAt: DateTime.now().millisecondsSinceEpoch,
@@ -411,6 +419,64 @@ class MemberRemover extends _$MemberRemover {
         await transport.sendToUsers(
             targets, memberEventType, memberPayload(updated));
       });
+}
+
+/// One-off name upgrade (G17): participants whose stored name is just their
+/// account's MXID localpart — the default before profile names were fetched —
+/// are renamed to that account's Matrix profile display name, if it has a
+/// different one. Runs once per signed-in account (keepAlive; rebuilt on an
+/// account switch with the DB), only in groups where this account is an
+/// active participant (others would reject our edits), and only for active
+/// claimed participants. Each rename is an ordinary LWW edit relayed to the
+/// group like a manual rename. Returns the number of renamed participants.
+///
+/// G19: everything is captured before the first await; it bails silently
+/// once the DB closed (account switch / sign-out).
+@Riverpod(keepAlive: true)
+Future<int> profileNameRefresh(Ref ref) async {
+  final db = ref.watch(appDatabaseProvider);
+  if (db.isSignedOutPlaceholder) return 0;
+  final w = _GroupWriteContext(ref);
+  try {
+    final transport = await w.transport;
+    final me = transport.userId;
+    if (me.isEmpty || db.isClosed) return 0;
+    final names = <String, String?>{}; // MXID → profile name (one lookup each)
+    var renamed = 0;
+    for (final group in await w.groups.getAllGroups()) {
+      if (db.isClosed) return renamed;
+      final members = await w.members.getMembers(group.roomId);
+      if (!(claimedBy(members, me)?.isActive ?? false)) continue;
+      for (final m in members) {
+        final mxid = m.matrixId;
+        if (mxid == null || !m.isActive) continue;
+        if (m.displayName.isNotEmpty && m.displayName != localpartOf(mxid)) {
+          continue; // a chosen name — never overwrite it
+        }
+        final name = names.containsKey(mxid)
+            ? names[mxid]
+            : (names[mxid] = await transport.profileName(mxid));
+        if (db.isClosed) return renamed;
+        if (name == null || name == m.displayName) continue;
+        final updated = MemberModel(
+          groupId: m.groupId,
+          userId: m.userId,
+          displayName: name,
+          matrixId: m.matrixId,
+          status: m.status,
+          updatedAt: nextLwwClock(m.updatedAt),
+        );
+        await w.members.upsertMemberLww(memberCompanion(updated));
+        await w.replicate(group.roomId, memberEventType, memberPayload(updated));
+        renamed++;
+      }
+    }
+    return renamed;
+  } catch (e) {
+    // Best effort: a failed lookup / closed DB just leaves the names as they
+    // are until the next start.
+    return 0;
+  }
 }
 
 /// What the group menu offers for a group (G9) — see [groupExitKind].

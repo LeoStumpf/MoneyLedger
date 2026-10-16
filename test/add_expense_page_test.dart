@@ -163,7 +163,8 @@ void main() {
       await tester.ensureVisible(find.text('Paid by'));
       await tester.tap(find.text('Paid by'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('@bob:x.org').last);
+      // G17: names fall back to the MXID localpart.
+      await tester.tap(find.text('bob').last);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
       for (var i = 0; i < 20; i++) {

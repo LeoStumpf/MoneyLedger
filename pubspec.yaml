@@ -60,3 +60,18 @@ flutter:
   # Generates lib/l10n/app_localizations*.dart from the ARB files on
   # `flutter pub get` / build (the generated files are also committed).
   generate: true
+  # G17: brand assets (logo PNG rendered by tool/brand/render_icons.py).
+  assets:
+    - assets/brand/logo_512.png
+    - assets/fonts/manrope/OFL.txt
+  # G17: Manrope (SIL OFL 1.1), bundled — never downloaded at runtime.
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/manrope/Manrope-Regular.ttf
+        - asset: assets/fonts/manrope/Manrope-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/manrope/Manrope-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/manrope/Manrope-Bold.ttf
+          weight: 700

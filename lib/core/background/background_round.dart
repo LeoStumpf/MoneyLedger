@@ -342,6 +342,9 @@ class _TrackingTransport implements LedgerTransport {
     }
   }
 
+  @override
+  Future<String?> profileName(String matrixId) => _inner.profileName(matrixId);
+
   /// Completes once no send is in flight and nothing happened for [period]
   /// (or at [deadline]).
   Future<void> quiet(Duration period, {required DateTime deadline}) async {

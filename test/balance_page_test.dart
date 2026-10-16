@@ -48,8 +48,15 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.text('@bob:matrix.org'), findsOneWidget);
-      expect(find.text('@carol:matrix.org'), findsOneWidget);
+      // G17: per-person balances (names fall back to the MXID localpart)…
+      expect(find.text('bob'), findsOneWidget);
+      expect(find.text('carol'), findsOneWidget);
+      expect(find.text('alice'), findsOneWidget);
+      expect(find.text('gets back'), findsOneWidget);
+      expect(find.text('owes'), findsNWidgets(2));
+      // …and the suggested payments.
+      expect(find.text('bob pays alice'), findsOneWidget);
+      expect(find.text('carol pays alice'), findsOneWidget);
     });
 
     testWidgets('shows "Balance" AppBar title', (tester) async {
@@ -197,7 +204,7 @@ void main() {
       });
       await pumpPage(tester, db, net);
 
-      await tester.tap(find.text('Carl'));
+      await tester.tap(find.text('Carl pays you'));
       await tester.pumpAndSettle();
       expect(find.text('Record payment'), findsOneWidget);
       // Prefilled with the debt's amount; no "exceeds" warning.
@@ -220,7 +227,7 @@ void main() {
       addTearDown(db.close);
       await pumpPage(tester, db, FakeMatrixNetwork());
 
-      await tester.tap(find.text('Bob'));
+      await tester.tap(find.text('Bob pays you'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byKey(const Key('paymentAmount')), '12');
       await tester.pump();

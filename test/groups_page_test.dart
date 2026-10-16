@@ -209,6 +209,11 @@ void main() {
                 GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
               ])),
           selfRecoveryProvider.overrideWith(_Restoring.new),
+          // The group card's overview reads these (G17).
+          groupMembersProvider.overrideWith((ref, g) => Stream.value(const [])),
+          expensesForRoomProvider.overrideWith((ref, g) => Stream.value([])),
+          settlementsForRoomProvider
+              .overrideWith((ref, g) => Stream.value([])),
         ],
       ));
       await tester.pump();

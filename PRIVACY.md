@@ -63,10 +63,11 @@ afterwards. Importing reads only the file you pick.
 
 ## Device backups
 
-Android's automatic app backup is not switched off. If backup is enabled on
-your phone, the app's local data (your ledger and your Matrix session) may be
-included in your device backup to your Google account, under Android's backup
-rules.
+MoneyLedger opts out of Android's automatic app backup and device-to-device
+transfer. Your ledger and your Matrix session (including its encryption keys)
+are never copied into a Google backup or onto another phone by Android. On a
+new device, sign in and MoneyLedger restores your groups from your other
+devices and the other members; a CSV export is your own offline backup.
 
 ## Deleting your data
 

@@ -34,6 +34,10 @@ class FakeMatrixNetwork {
   /// Whether devices buffer inbound payloads while nobody listens.
   final bool bufferInbound;
 
+  /// Public profile display names by MXID (G17) — what
+  /// [FakeTransport.profileName] returns; absent → null (no display name).
+  final Map<String, String> profiles = {};
+
   // userId → (deviceId → transport)
   final Map<String, Map<String, FakeTransport>> _clients = {};
 
@@ -183,4 +187,8 @@ class FakeTransport implements LedgerTransport {
     }
     return _net._send(this, userIds, type, content);
   }
+
+  @override
+  Future<String?> profileName(String matrixId) async =>
+      normalizeProfileName(_net.profiles[matrixId]);
 }

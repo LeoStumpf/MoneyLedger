@@ -8,9 +8,18 @@
          app never shows notifications, so drop it from the merged manifest. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"
         tools:node="remove"/>
+    <!-- G32: no Android auto-backup / device transfer. The app data holds the
+         ledger databases and the Matrix session incl. its crypto keys; a
+         restore onto a new phone would resurrect a stale crypto identity.
+         android:allowBackup covers Android <= 11, fullBackupContent="false"
+         the legacy full-backup path, dataExtractionRules Android 12+.
+         test/android_manifest_test.dart pins this. -->
     <application
         android:label="MoneyLedger"
         android:name="${applicationName}"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
         <activity
