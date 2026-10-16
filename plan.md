@@ -90,13 +90,13 @@ Membership gating authenticates the *relaying sender*, not the *author*: any
 active member can create/edit/delete an expense or settlement "as" another
 member (e.g. delete someone else's expense, record a fake settlement from them).
 Digest membership gossip is likewise gated only by sender membership.
-- [ ] Design doc: sign each record (author MXID + device Ed25519 key, the
+- [x] Design doc: sign each record (author MXID + device Ed25519 key, the
       vodozemac identity key is already there) over a canonical payload encoding;
       record `author` field; protocol `v: 2` with v1 read-compat
-- [ ] Policy: who may edit/delete what (author-only? any member + audit trail?)
-- [ ] Implement signing + verification in `ledger_payloads.dart` / `LedgerSyncer`
-- [ ] Key distribution/rotation: handle device changes, logged-out devices
-- [ ] Tests: forged record from another member is rejected; legit edit accepted
+- [x] Policy: who may edit/delete what (author-only? any member + audit trail?)
+- [x] Implement signing + verification in `ledger_payloads.dart` / `LedgerSyncer`
+- [x] Key distribution/rotation: handle device changes, logged-out devices
+- [x] Tests: forged record from another member is rejected; legit edit accepted
 
 ### G7. Never verified on real devices: SSO, registration, SAS, iOS 🟠
 Covered only by unit/widget tests against fakes:
@@ -382,6 +382,20 @@ stale crypto identity (broken sessions) and is a privacy concern.
 - [ ] Optional per-group JSON backup in the group ⋮ menu
 - [ ] Optional: encrypted backup (passphrase) — file is plaintext JSON today
 
+### G35. Signed-records follow-ups (found in G6) 🟡
+See `docs/design/g6-signed-records.md` + `docs/open-points.md`.
+- [ ] Pre-G6 (legacy, unsigned) rows are refused when relayed, so an old group
+      can't onboard a new member/device until its meta + member rows are
+      re-saved. Unreleased app → only the test groups are affected; decide:
+      re-create test groups before release, or a "re-sign legacy rows as
+      migrated-by-this-device" step
+- [ ] Residual risks: invented device ids (flagged "unverified"; needs
+      cross-signing — with G11), malicious inviter vouching fake keys,
+      divergence by disagreement (not auto-resolved)
+- [ ] Restore is no longer one transaction per group (verification may hit
+      the server mid-merge)
+- [ ] Footer wraps long MXIDs ("…test-a-\nc725") — use display label / ellipsis
+
 ### G18. Final release review 🟡
 - [ ] `/code-review` over all of Phase G; fix findings
 - [ ] `./build.sh` green; release APK on emulator + phone
@@ -421,7 +435,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G15 — test/tooling debt, offline demo, CI
 - [x] G5 — full-fidelity backup
 - [x] G13 — CSV improvements (with G5)
-- [ ] G6 — signed records (any member may edit; every version signed by its editor)
+- [x] G6 — signed records (any member may edit; every version signed by its editor)
 - [ ] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [ ] G14 — digest size measurement
 - [ ] G16 — nice-to-haves
@@ -429,6 +443,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G27 — LWW tie-break
 - [ ] G33 — design follow-ups (settlement title, test display names)
 - [ ] G34 — backup follow-ups
+- [ ] G35 — signed-records follow-ups
 - [ ] *(G32+ — newly discovered points)*
 - [ ] G18 — final release review
 

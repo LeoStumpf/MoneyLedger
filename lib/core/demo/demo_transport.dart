@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../matrix/hmac_record_crypto.dart';
 import '../matrix/ledger_transport.dart';
 
 /// Offline [LedgerTransport] for the demo: every send "succeeds" (each target
@@ -12,6 +13,15 @@ class DemoTransport implements LedgerTransport {
   final _inbound = StreamController<TransportMessage>.broadcast();
 
   DemoTransport(this.userId);
+
+  /// Fake device keys (G6) — the demo never leaves the device.
+  final HmacKeyRegistry _keys = HmacKeyRegistry();
+
+  @override
+  late final RecordCrypto crypto = _keys.deviceCrypto(userId, 'DEMO');
+
+  @override
+  DeviceKeyDirectory get deviceKeys => _keys;
 
   @override
   Stream<TransportMessage> get onMessage => _inbound.stream;

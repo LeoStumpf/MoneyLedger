@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/member_model.dart';
+import '../../../models/record_signature.dart';
 
 part 'members_dao.g.dart';
 
@@ -74,5 +75,20 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
     matrixId: m.matrixId,
     status: m.status,
     updatedAt: m.updatedAt,
+    sig: RecordSignature.decode(m.sig),
+    pendingSign: m.pendingSign,
   );
 }
+
+/// Maps a [MemberModel] to a fully-populated companion (all columns set) for an
+/// LWW upsert.
+MembersCompanion memberCompanion(MemberModel m) => MembersCompanion(
+  groupId: Value(m.groupId),
+  userId: Value(m.userId),
+  displayName: Value(m.displayName),
+  matrixId: Value(m.matrixId),
+  status: Value(m.status),
+  updatedAt: Value(m.updatedAt),
+  sig: Value(m.sig?.encode()),
+  pendingSign: Value(m.pendingSign),
+);

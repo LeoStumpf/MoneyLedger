@@ -815,5 +815,102 @@
         "type": "String"
       }
     }
+  },
+  "recordAddedBy": "Added by {name}",
+  "@recordAddedBy": {
+    "description": "G6: who created an expense/payment (signed origin)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "recordEditedBy": "Last edited by {name}",
+  "@recordEditedBy": {
+    "description": "G6: who signed the current version",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "recordRecordedBy": "Recorded by {name}",
+  "@recordRecordedBy": {
+    "description": "G6: who recorded a payment",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "recordYou": "you",
+  "@recordYou": {
+    "description": "G6: the current user as editor, e.g. 'Added by you'"
+  },
+  "recordUnsigned": "Saved by an older app version (unsigned)",
+  "@recordUnsigned": {
+    "description": "G6: a pre-G6 record without signature"
+  },
+  "recordSigUnverified": "Signature not verifiable — the signing device may have signed out",
+  "@recordSigUnverified": {
+    "description": "G6"
+  },
+  "recordSigVerified": "Verified on receipt against the device's key",
+  "@recordSigVerified": {
+    "description": "G6: details sheet"
+  },
+  "recordSigVouched": "Device confirmed by {name}",
+  "@recordSigVouched": {
+    "description": "G6: key vouched for by a snapshot sender",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "recordSigConflict": "Signature doesn't match {name}'s device",
+  "@recordSigConflict": {
+    "description": "G6: key conflict",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "recordNotYourDevice": "Claims to be from you, but not from one of your devices",
+  "@recordNotYourDevice": {
+    "description": "G6: impersonation warning"
+  },
+  "recordVersionRejected": "A newer version relayed by {relay} was refused: it claims to be from {name} but isn't validly signed by their device.",
+  "@recordVersionRejected": {
+    "description": "G6: notice on the edit page",
+    "placeholders": {
+      "relay": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "recordSignedByDevice": "Signed by device {device} · {date}",
+  "@recordSignedByDevice": {
+    "description": "G6: details sheet",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "recordSignatureDetails": "Signature details",
+  "@recordSignatureDetails": {
+    "description": "G6: details sheet title / tooltip"
+  },
+  "recordSignatureWarning": "Signature problem",
+  "@recordSignatureWarning": {
+    "description": "G6: list icon tooltip"
   }
 }

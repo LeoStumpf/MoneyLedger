@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/expense_model.dart';
+import '../../../models/record_signature.dart';
 
 part 'expenses_dao.g.dart';
 
@@ -107,6 +108,9 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
     deleted: e.deleted,
+    sig: RecordSignature.decode(e.sig),
+    origin: RecordSignature.decode(e.origin),
+    pendingSign: e.pendingSign,
   );
 
   static SettlementModel _toSettlementModel(Settlement s) => SettlementModel(
@@ -120,5 +124,42 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
     deleted: s.deleted,
+    sig: RecordSignature.decode(s.sig),
+    origin: RecordSignature.decode(s.origin),
+    pendingSign: s.pendingSign,
   );
 }
+
+/// A fully-populated companion for an LWW upsert of [e] (G6 fields included).
+ExpensesCompanion expenseCompanion(ExpenseModel e) => ExpensesCompanion(
+  id: Value(e.id),
+  roomId: Value(e.roomId),
+  description: Value(e.description),
+  amountCents: Value(e.amountCents),
+  currency: Value(e.currency),
+  paidBy: Value(e.paidBy),
+  splitsJson: Value(e.splitsJson),
+  createdAt: Value(e.createdAt),
+  updatedAt: Value(e.updatedAt),
+  deleted: Value(e.deleted),
+  sig: Value(e.sig?.encode()),
+  origin: Value(e.origin?.encode()),
+  pendingSign: Value(e.pendingSign),
+);
+
+/// A fully-populated companion for an LWW upsert of [s] (G6 fields included).
+SettlementsCompanion settlementCompanion(SettlementModel s) =>
+    SettlementsCompanion(
+      id: Value(s.id),
+      roomId: Value(s.roomId),
+      amountCents: Value(s.amountCents),
+      currency: Value(s.currency),
+      fromUser: Value(s.fromUser),
+      toUser: Value(s.toUser),
+      createdAt: Value(s.createdAt),
+      updatedAt: Value(s.updatedAt),
+      deleted: Value(s.deleted),
+      sig: Value(s.sig?.encode()),
+      origin: Value(s.origin?.encode()),
+      pendingSign: Value(s.pendingSign),
+    );

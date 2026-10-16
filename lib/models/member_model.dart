@@ -1,3 +1,5 @@
+import 'record_signature.dart';
+
 /// A group participant, projected from the Members table.
 ///
 /// [userId] is the **stable participant id** (per-group), not necessarily a
@@ -14,6 +16,12 @@ class MemberModel {
   final String status;
   final int updatedAt;
 
+  /// G6: signature of this version (null = legacy / unsigned).
+  final RecordSignature? sig;
+
+  /// G6: written while the signer wasn't ready; signed before it is sent.
+  final bool pendingSign;
+
   const MemberModel({
     required this.groupId,
     required this.userId,
@@ -21,7 +29,22 @@ class MemberModel {
     this.matrixId,
     required this.status,
     required this.updatedAt,
+    this.sig,
+    this.pendingSign = false,
   });
+
+  /// A copy with the G6 signing fields replaced (content unchanged).
+  MemberModel withSigning({RecordSignature? sig, bool pendingSign = false}) =>
+      MemberModel(
+        groupId: groupId,
+        userId: userId,
+        displayName: displayName,
+        matrixId: matrixId,
+        status: status,
+        updatedAt: updatedAt,
+        sig: sig,
+        pendingSign: pendingSign,
+      );
 
   bool get isActive => status == 'active';
 

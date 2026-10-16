@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart'
     show debugPrint, kDebugMode, visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,11 +13,15 @@ import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
 import '../database/daos/members_dao.dart';
 import '../database/daos/settings_dao.dart';
+import '../database/daos/signing_dao.dart';
 import '../database/daos/sync_states_dao.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
 import 'ledger_payloads.dart';
 import 'left_groups.dart';
+import 'record_gate.dart';
+import 'record_signing.dart';
+import 'record_verifier.dart';
 import 'self_recovery.dart';
 import 'sync_health.dart';
 
@@ -87,6 +90,14 @@ final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
 ///    lists us `active` with an older clock (the peer missed our leave notice)
 ///    and we left (not merely deleted), we re-send our stored `removed` member
 ///    payload to the sender, nothing else.
+/// 8. (G6) A digest from an account that is **not a participant** of the
+///    group at all is ignored — no member gossip, no repair, no reply (it used
+///    to fall through to rules 1–3). Rule 2's member entries are signed
+///    versions and go through the same verification as live records
+///    ([RecordGate]). The digest's `rejected` map lists versions the sender
+///    refused: rule 1 doesn't re-send a record whose version the sender
+///    already refused, and rule 4 treats such "agree to disagree" entries as
+///    matching (see [compareDigest]) — so a refused version never loops.
 class SyncEngine {
   final Ref _ref;
 
@@ -100,8 +111,12 @@ class SyncEngine {
   final ExpensesDao _expenses;
   final SyncStatesDao _syncStates;
   final SettingsDao _settings;
+  final SigningDao _signing;
 
   LedgerTransport? _transport;
+
+  /// G6: verifies the digests' member gossip (built in [start]).
+  RecordGate? _gate;
   StreamSubscription<TransportMessage>? _sub;
   Timer? _periodic;
   final Map<String, Timer> _pokes = {};
@@ -115,7 +130,8 @@ class SyncEngine {
       _members = ref.read(membersDaoProvider),
       _expenses = ref.read(expensesDaoProvider),
       _syncStates = ref.read(syncStatesDaoProvider),
-      _settings = SettingsDao(ref.read(appDatabaseProvider));
+      _settings = SettingsDao(ref.read(appDatabaseProvider)),
+      _signing = ref.read(signingDaoProvider);
 
   /// Whether async work may continue. Checked after **every** await: the
   /// engine may have been disposed (logout / account switch / container
@@ -153,7 +169,32 @@ class SyncEngine {
     if (!_alive) return;
     if (kDebugMode) debugPrint('[sync] engine started for ${transport.userId}');
     _transport = transport;
+    _gate = RecordGate(
+      verifier: RecordVerifier(
+        crypto: transport.crypto,
+        directory: transport.deviceKeys,
+        signing: _signing,
+      ),
+      signing: _signing,
+      groups: _groups,
+      members: _members,
+      expenses: _expenses,
+      isAlive: () => _alive,
+    );
     _sub = transport.onMessage.listen(_onMessage);
+    // G6: our own device key is first-hand knowledge.
+    final me = transport.crypto.identity;
+    if (me != null) {
+      try {
+        await _signing.pinServerKeys({
+          me.user: {me.device: me.key},
+        });
+      } catch (e) {
+        if (!_alive) return;
+        debugPrint('[sync] pinning own device key failed: $e');
+      }
+      if (!_alive) return;
+    }
     _ready.complete();
     _periodic = Timer.periodic(
       _ref.read(syncIntervalProvider),
@@ -278,8 +319,83 @@ class SyncEngine {
         if (!_alive) return;
         await _sendDigest(g.roomId);
       }
+      if (!_alive) return;
+      await _pinMemberDevices(groups.map((g) => g.roomId));
     } catch (e) {
       if (_alive) debugPrint('[sync] digest broadcast failed: $e');
+    }
+  }
+
+  /// G6: pins the current devices of every active claimed member of
+  /// [groupIds] as first-hand key knowledge — proactively, while they exist,
+  /// so records they sign stay verifiable after they sign out.
+  Future<void> _pinMemberDevices(Iterable<String> groupIds) async {
+    final transport = _transport;
+    if (transport == null) return;
+    final users = <String>{transport.userId};
+    for (final g in groupIds) {
+      users.addAll(await _members.activeClaimedMatrixIds(g));
+      if (!_alive) return;
+    }
+    try {
+      final devices = await transport.deviceKeys
+          .currentDevices(users)
+          .timeout(const Duration(seconds: 10));
+      if (!_alive) return;
+      await _signing.pinServerKeys(devices);
+    } catch (e) {
+      if (_alive) debugPrint('[sync] device-key refresh failed: $e');
+    }
+  }
+
+  /// G6: signs this group's rows written while the signer wasn't ready
+  /// (`pendingSign`, same clock) — they are never sent unsigned.
+  Future<void> _signPending(String groupId) async {
+    final transport = _transport;
+    if (transport == null || transport.crypto.identity == null) return;
+    final crypto = transport.crypto;
+    final group = await _groups.getGroup(groupId);
+    if (!_alive) return;
+    if (group != null && group.pendingSign) {
+      await _groups.upsertGroupLww(
+        groupCompanion(await signGroupMeta(crypto, group)),
+      );
+    }
+    for (final m in await _members.getMembers(groupId)) {
+      if (!_alive) return;
+      if (m.pendingSign) {
+        await _members.upsertMemberLww(
+          memberCompanion(await signMember(crypto, m)),
+        );
+      }
+    }
+    for (final e in await _expenses.getAllExpensesForGroup(groupId)) {
+      if (!_alive) return;
+      if (e.pendingSign) {
+        await _expenses.upsertExpenseLww(
+          expenseCompanion(
+            await signExpense(
+              crypto,
+              e,
+              creating: e.origin == null && e.updatedAt == e.createdAt,
+            ),
+          ),
+        );
+      }
+    }
+    for (final st in await _expenses.getAllSettlementsForGroup(groupId)) {
+      if (!_alive) return;
+      if (st.pendingSign) {
+        await _expenses.upsertSettlementLww(
+          settlementCompanion(
+            await signSettlement(
+              crypto,
+              st,
+              creating: st.origin == null && st.updatedAt == st.createdAt,
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -365,6 +481,8 @@ class SyncEngine {
     final transport = _transport;
     if (transport == null || !_alive) return;
     try {
+      await _signPending(groupId);
+      if (!_alive) return;
       final group = await _groups.getGroup(groupId);
       if (group == null || !_alive) return;
       final members = await _members.getMembers(groupId);
@@ -389,10 +507,19 @@ class SyncEngine {
                 .map((m) => m.matrixId!)
                 .toSet();
       if (targets.isEmpty) return;
+      final rejected = await _signing.rejectedForGroup(groupId);
+      if (!_alive) return;
       final result = await transport.sendToUsers(
         targets,
         digestEventType,
-        buildDigestContent(group, members, expenses, settlements, reply: reply),
+        buildDigestContent(
+          group,
+          members,
+          expenses,
+          settlements,
+          reply: reply,
+          rejected: rejected,
+        ),
       );
       if (!_alive) return;
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -463,7 +590,13 @@ class SyncEngine {
       final members = await _members.getMembers(groupId);
       if (!_alive) return;
       final senderRec = _claimedBy(members, msg.senderId);
-      if (senderRec != null && !senderRec.isActive) {
+      if (senderRec == null) {
+        // Rule 8: not a participant of this group at all — never let it
+        // gossip members, pull records or get a reply.
+        debugPrint('[sync] ignored digest for $groupId from non-member');
+        return;
+      }
+      if (!senderRec.isActive) {
         // Rule 6: the sender was removed — tell their device, nothing else.
         await _sendTracked(
           transport,
@@ -478,6 +611,8 @@ class SyncEngine {
       if (!_alive) return;
       final settlements = await _expenses.getAllSettlementsForGroup(groupId);
       if (!_alive) return;
+      final rejected = await _signing.rejectedForGroup(groupId);
+      if (!_alive) return;
 
       // Compare against pre-merge state: "identical" must mean the sender had
       // everything we had at this moment.
@@ -489,31 +624,30 @@ class SyncEngine {
         },
         localExpenses: {for (final e in expenses) e.id: e.updatedAt},
         localSettlements: {for (final s in settlements) s.id: s.updatedAt},
+        localRejected: rejected,
         remote: content,
       );
 
-      // Rule 2: membership gossip, merged LWW (same merge as live member
-      // payloads — see LedgerSyncer.processMember).
+      // Rule 2: membership gossip — each entry is a signed member version,
+      // verified + merged LWW exactly like a live member payload (G6).
+      final gate = _gate!;
       for (final entry in (content['members'] as Map? ?? const {}).entries) {
         if (!_alive) return;
-        final m = entry.value as Map;
-        await _members.upsertMemberLww(
-          MembersCompanion(
-            groupId: Value(groupId),
-            userId: Value(entry.key as String),
-            displayName: Value(m['name'] as String? ?? ''),
-            matrixId: Value(m['matrix_id'] as String?),
-            status: Value(m['status'] as String? ?? 'active'),
-            updatedAt: Value(m['updated_at'] as int? ?? 0),
-          ),
-        );
+        final m = entry.value;
+        if (entry.key is! String || m is! Map) continue;
+        await gate.member({
+          ...Map<String, dynamic>.from(m),
+          'group': groupId,
+          'participant_id': entry.key,
+        }, relayedBy: msg.senderId);
       }
 
-      // Rule 1: targeted repair of records the sender lacks or has stale.
+      // Rule 1: targeted repair of records the sender lacks or has stale
+      // (never a row still waiting for its signature — G6).
       for (final id in diff.expenseIdsToSend) {
         if (!_alive) return;
         final e = await _expenses.getExpenseById(id);
-        if (e != null && _alive) {
+        if (e != null && !e.pendingSign && _alive) {
           await _sendTracked(
             transport,
             {msg.senderId},
@@ -525,7 +659,7 @@ class SyncEngine {
       for (final id in diff.settlementIdsToSend) {
         if (!_alive) return;
         final s = await _expenses.getSettlementById(id);
-        if (s != null && _alive) {
+        if (s != null && !s.pendingSign && _alive) {
           await _sendTracked(
             transport,
             {msg.senderId},
@@ -535,7 +669,7 @@ class SyncEngine {
         }
       }
       if (!_alive) return;
-      if (diff.sendGroupMeta) {
+      if (diff.sendGroupMeta && !group.pendingSign) {
         await _sendTracked(
           transport,
           {msg.senderId},
@@ -614,12 +748,22 @@ class SyncEngine {
     String groupId,
     String to,
   ) async {
+    await _signPending(groupId);
+    if (!_alive) return;
+    final group = await _groups.getGroup(groupId);
+    final members = await _members.getMembers(groupId);
+    final expenses = await _expenses.getAllExpensesForGroup(groupId);
+    final settlements = await _expenses.getAllSettlementsForGroup(groupId);
+    if (!_alive) return;
     final content = buildBootstrapContent(
       groupId,
-      await _groups.getGroup(groupId),
-      await _members.getMembers(groupId),
-      await _expenses.getAllExpensesForGroup(groupId),
-      await _expenses.getAllSettlementsForGroup(groupId),
+      group,
+      members,
+      expenses,
+      settlements,
+      deviceKeys: await _signing.attestationsFor(
+        snapshotSigners(group, members, expenses, settlements),
+      ),
     );
     if (!_alive) return;
     await _sendTracked(transport, {to}, bootstrapEventType, content);
@@ -635,22 +779,41 @@ Map<String, dynamic> buildDigestContent(
   List<ExpenseModel> expenses,
   List<SettlementModel> settlements, {
   required bool reply,
+  Map<String, Map<String, int>> rejected = const {},
 }) => {
   'v': protocolVersion,
   'group': group.roomId,
   'reply': reply,
   'meta_updated_at': group.updatedAt,
+  // G6: each entry is the full signed member version (verifiable gossip);
+  // a row still waiting for its signature isn't gossiped yet.
   'members': {
     for (final m in members)
-      m.userId: {
-        'status': m.status,
-        'updated_at': m.updatedAt,
-        'name': m.displayName,
-        'matrix_id': m.matrixId,
-      },
+      if (!m.pendingSign)
+        m.userId: {
+          'status': m.status,
+          'updated_at': m.updatedAt,
+          'name': m.displayName,
+          'matrix_id': m.matrixId,
+          if (m.sig != null) 'sig': m.sig!.toJson(),
+        },
   },
   'expenses': {for (final e in expenses) e.id: e.updatedAt},
   'settlements': {for (final s in settlements) s.id: s.updatedAt},
+  if (rejected.isNotEmpty) 'rejected': digestRejectedMap(rejected),
+};
+
+/// The digest's `rejected` map (G6) from [SigningDao.rejectedForGroup]'s
+/// kind → id → clock: `{expenses: {id: T}, settlements: {…}, members:
+/// {participantId: T}, meta: T}`.
+Map<String, dynamic> digestRejectedMap(
+  Map<String, Map<String, int>> byKind,
+) => {
+  if (byKind['expense'] case final m? when m.isNotEmpty) 'expenses': m,
+  if (byKind['settlement'] case final m? when m.isNotEmpty) 'settlements': m,
+  if (byKind['member'] case final m? when m.isNotEmpty) 'members': m,
+  if (byKind['meta'] case final m? when m.isNotEmpty)
+    'meta': m.values.reduce((a, b) => a > b ? a : b),
 };
 
 class DigestDiff {
@@ -677,17 +840,54 @@ class DigestDiff {
 }
 
 /// Pure digest comparison (plain Dart, unit-testable without a DB).
+///
+/// G6: [localRejected] (kind → id → clock, from [SigningDao.rejectedForGroup])
+/// are the versions *we* refused, `remote['rejected']` (digest format, see
+/// [digestRejectedMap]) the ones the *sender* refused. A refused version is
+/// "seen": we never re-send a record the sender refused at (or above) our
+/// clock, a sender holding exactly what we refused isn't "newer", and both
+/// count as matching for rule 4 — the two sides agree to disagree instead of
+/// looping.
 @visibleForTesting
 DigestDiff compareDigest({
   required int localMetaUpdatedAt,
   required Map<String, ({String status, int updatedAt})> localMembers,
   required Map<String, int> localExpenses,
   required Map<String, int> localSettlements,
+  Map<String, Map<String, int>> localRejected = const {},
   required Map<String, dynamic> remote,
 }) {
+  final remoteRejected = remote['rejected'] is Map
+      ? remote['rejected'] as Map
+      : const {};
+  Map<String, int> rejectedSection(Object? raw) => {
+    if (raw is Map)
+      for (final e in raw.entries)
+        if (e.key is String && e.value is int) e.key as String: e.value as int,
+  };
+  final theirRejected = {
+    'expense': rejectedSection(remoteRejected['expenses']),
+    'settlement': rejectedSection(remoteRejected['settlements']),
+    'member': rejectedSection(remoteRejected['members']),
+  };
+  int? ourRejected(String kind, String id) => localRejected[kind]?[id];
+
+  /// We may skip sending our [local] version: the sender refused it.
+  bool theyRefused(String kind, String id, int local) {
+    final r = theirRejected[kind]![id];
+    return r != null && r >= local;
+  }
+
+  /// The sender's [remoteAt] isn't news: we refused that version already.
+  bool weRefused(String kind, String id, int remoteAt) {
+    final r = ourRejected(kind, id);
+    return r != null && remoteAt <= r;
+  }
+
   var senderHasNewer = false;
 
   (List<String>, bool) diffRecords(
+    String kind,
     Map<String, int> local,
     Map<String, dynamic> remoteMap,
   ) {
@@ -695,11 +895,20 @@ DigestDiff compareDigest({
     var theirsNewer = false;
     for (final entry in local.entries) {
       final remoteAt = remoteMap[entry.key] as int?;
-      if (remoteAt == null || remoteAt < entry.value) toSend.add(entry.key);
-      if (remoteAt != null && remoteAt > entry.value) theirsNewer = true;
+      if ((remoteAt == null || remoteAt < entry.value) &&
+          !theyRefused(kind, entry.key, entry.value)) {
+        toSend.add(entry.key);
+      }
+      if (remoteAt != null &&
+          remoteAt > entry.value &&
+          !weRefused(kind, entry.key, remoteAt)) {
+        theirsNewer = true;
+      }
     }
-    for (final key in remoteMap.keys) {
-      if (!local.containsKey(key)) theirsNewer = true;
+    for (final MapEntry(:key, :value) in remoteMap.entries) {
+      if (local.containsKey(key)) continue;
+      if (value is int && weRefused(kind, key, value)) continue;
+      theirsNewer = true;
     }
     return (toSend, theirsNewer);
   }
@@ -707,29 +916,55 @@ DigestDiff compareDigest({
   final remoteExpenses = (remote['expenses'] as Map? ?? const {});
   final remoteSettlements = (remote['settlements'] as Map? ?? const {});
   final (expensesToSend, expTheirs) = diffRecords(
+    'expense',
     localExpenses,
     Map<String, dynamic>.from(remoteExpenses),
   );
   final (settlementsToSend, setTheirs) = diffRecords(
+    'settlement',
     localSettlements,
     Map<String, dynamic>.from(remoteSettlements),
   );
   senderHasNewer = expTheirs || setTheirs;
 
   final remoteMeta = remote['meta_updated_at'] as int? ?? 0;
-  final sendGroupMeta = localMetaUpdatedAt > remoteMeta;
-  if (remoteMeta > localMetaUpdatedAt) senderHasNewer = true;
+  final theirMetaRefused = remoteRejected['meta'] as int?;
+  final ourMetaRefused = localRejected['meta']?.values.fold<int?>(
+    null,
+    (a, b) => a == null || b > a ? b : a,
+  );
+  final metaTheyRefused =
+      theirMetaRefused != null && theirMetaRefused >= localMetaUpdatedAt;
+  final metaWeRefused = ourMetaRefused != null && remoteMeta <= ourMetaRefused;
+  final sendGroupMeta = localMetaUpdatedAt > remoteMeta && !metaTheyRefused;
+  if (remoteMeta > localMetaUpdatedAt && !metaWeRefused) senderHasNewer = true;
+  final metaMatches =
+      remoteMeta == localMetaUpdatedAt ||
+      (remoteMeta > localMetaUpdatedAt && metaWeRefused) ||
+      (remoteMeta < localMetaUpdatedAt && metaTheyRefused);
 
   var membersIdentical = true;
   final remoteMembers = (remote['members'] as Map? ?? const {});
-  if (remoteMembers.length != localMembers.length) membersIdentical = false;
   for (final entry in localMembers.entries) {
     final r = remoteMembers[entry.key] as Map?;
-    if (r == null ||
-        r['status'] != entry.value.status ||
-        (r['updated_at'] as int? ?? 0) != entry.value.updatedAt) {
-      membersIdentical = false;
-    }
+    final remoteAt = r?['updated_at'] as int? ?? 0;
+    final same =
+        r != null &&
+        r['status'] == entry.value.status &&
+        remoteAt == entry.value.updatedAt;
+    final agreedToDisagree =
+        (r != null &&
+            remoteAt > entry.value.updatedAt &&
+            weRefused('member', entry.key, remoteAt)) ||
+        ((r == null || remoteAt < entry.value.updatedAt) &&
+            theyRefused('member', entry.key, entry.value.updatedAt));
+    if (!same && !agreedToDisagree) membersIdentical = false;
+  }
+  for (final MapEntry(:key, :value) in remoteMembers.entries) {
+    if (localMembers.containsKey(key)) continue;
+    final at = value is Map ? value['updated_at'] as int? ?? 0 : 0;
+    if (key is String && weRefused('member', key, at)) continue;
+    membersIdentical = false;
   }
 
   return DigestDiff(
@@ -742,7 +977,7 @@ DigestDiff compareDigest({
         expensesToSend.isEmpty &&
         settlementsToSend.isEmpty &&
         !sendGroupMeta &&
-        remoteMeta == localMetaUpdatedAt &&
+        metaMatches &&
         membersIdentical,
   );
 }

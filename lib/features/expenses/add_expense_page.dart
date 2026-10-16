@@ -14,6 +14,8 @@ import '../groups/create_group_page.dart' show kGroupCurrencies;
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 import 'split_editor.dart';
+import '../../core/sync/record_signing.dart' show RecordKind;
+import 'record_attribution.dart';
 
 /// Add (default) or edit an expense — pass [initial] to prefill the form and
 /// save the submit as an LWW edit of the same record.
@@ -312,6 +314,20 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               initialSplit: _initialSplit,
                               onPlanChanged: (p) => setState(() => _plan = p),
                             ),
+                            // G6: who added / last edited it (signed).
+                            if (widget.initial case final e?) ...[
+                              const SizedBox(height: Insets.xl),
+                              RecordAttribution(
+                                groupId: widget.roomId,
+                                kind: RecordKind.expense,
+                                recordId: e.id,
+                                origin: e.origin,
+                                sig: e.sig,
+                                createdAt: e.createdAt,
+                                updatedAt: e.updatedAt,
+                                members: members,
+                              ),
+                            ],
                           ],
                         ),
                       ),

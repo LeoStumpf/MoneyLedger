@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:matrix/matrix.dart';
+import 'package:vodozemac/vodozemac.dart' as vod;
 
 import 'buffered_inbox.dart';
 import 'ledger_transport.dart';
@@ -120,9 +121,84 @@ class MatrixLedgerTransport implements LedgerTransport {
     }
   }
 
+  @override
+  late final RecordCrypto crypto = MatrixRecordCrypto(_client);
+
+  @override
+  late final DeviceKeyDirectory deviceKeys = MatrixDeviceKeyDirectory(_client);
+
   /// Stops listening (the client is app-lifetime, so this is rarely needed).
   Future<void> dispose() async {
     await _sub?.cancel();
     await _inbox.close();
+  }
+}
+
+/// G6: signs records with this device's Matrix Ed25519 fingerprint key (the
+/// vodozemac olm account) and verifies Ed25519 signatures via vodozemac —
+/// native and web (wasm) alike.
+class MatrixRecordCrypto implements RecordCrypto {
+  MatrixRecordCrypto(this._client);
+  final Client _client;
+
+  @override
+  SignerId? get identity {
+    final user = _client.userID;
+    final device = _client.deviceID;
+    final key = _client.encryption?.fingerprintKey;
+    if (!_client.isLogged() || !_client.encryptionEnabled) return null;
+    if (user == null || device == null || key == null) return null;
+    return SignerId(user: user, device: device, key: key);
+  }
+
+  @override
+  Future<String> sign(String message) async {
+    final encryption = _client.encryption;
+    if (encryption == null || !encryption.enabled) {
+      throw const TransportUnavailableException('encryption is not enabled');
+    }
+    return encryption.olmManager.signString(message);
+  }
+
+  @override
+  bool verify(String key, String message, String signature) {
+    try {
+      vod.Ed25519PublicKey.fromBase64(key).verify(
+        message: message,
+        signature: vod.Ed25519Signature.fromBase64(signature),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+}
+
+/// G6: the homeserver's current (self-signed, unblocked) device keys.
+class MatrixDeviceKeyDirectory implements DeviceKeyDirectory {
+  MatrixDeviceKeyDirectory(this._client);
+  final Client _client;
+
+  @override
+  Future<Map<String, Map<String, String>>> currentDevices(
+    Set<String> users,
+  ) async {
+    final targets = users.where((u) => u.isNotEmpty).toSet();
+    if (targets.isEmpty || !_client.isLogged()) return const {};
+    await _client.updateUserDeviceKeys(additionalUsers: targets);
+    final result = <String, Map<String, String>>{};
+    for (final u in targets) {
+      final devices = <String, String>{};
+      for (final dk
+          in _client.userDeviceKeys[u]?.deviceKeys.values ??
+              const <DeviceKeys>[]) {
+        final id = dk.deviceId;
+        final key = dk.ed25519Key;
+        if (id == null || key == null || !dk.isValid || dk.blocked) continue;
+        devices[id] = key;
+      }
+      if (devices.isNotEmpty) result[u] = devices;
+    }
+    return result;
   }
 }

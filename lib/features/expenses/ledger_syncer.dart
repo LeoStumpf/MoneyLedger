@@ -10,13 +10,17 @@ import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
+import '../../core/database/daos/signing_dao.dart';
 import '../../core/database/daos/sync_states_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/left_groups.dart';
 import '../../core/sync/peer_convergence.dart';
+import '../../core/sync/record_gate.dart';
+import '../../core/sync/record_verifier.dart';
 import '../../models/member_model.dart';
+import '../../models/record_signature.dart';
 import 'expenses_provider.dart';
 
 /// LWW clocks on inbound records are clamped to at most `now + this` so a
@@ -59,6 +63,11 @@ class LedgerSyncer {
   final MembersDao _members;
   final SettingsDao _settings;
   final SyncStatesDao _syncStates;
+  final SigningDao _signing;
+
+  /// G6: verifies every inbound version before it is stored (built in
+  /// [start] from the transport's crypto + device directory).
+  RecordGate? _gate;
 
   /// Record revisions each peer sent us — feeds the fast in-sync proof (G29).
   final PeerConvergenceTracker _convergence = PeerConvergenceTracker();
@@ -76,7 +85,8 @@ class LedgerSyncer {
       _groups = ref.read(groupsDaoProvider),
       _members = ref.read(membersDaoProvider),
       _settings = SettingsDao(ref.read(appDatabaseProvider)),
-      _syncStates = ref.read(syncStatesDaoProvider);
+      _syncStates = ref.read(syncStatesDaoProvider),
+      _signing = ref.read(signingDaoProvider);
 
   /// False once disposed or once the captured DB is closed (on an account
   /// switch the old DB closes before this syncer's `onDispose` runs).
@@ -108,6 +118,18 @@ class LedgerSyncer {
     }
     if (!_alive) return;
     _myMxid = transport.userId;
+    _gate = RecordGate(
+      verifier: RecordVerifier(
+        crypto: transport.crypto,
+        directory: transport.deviceKeys,
+        signing: _signing,
+      ),
+      signing: _signing,
+      groups: _groups,
+      members: _members,
+      expenses: _expenses,
+      isAlive: () => _alive,
+    );
     _sub = transport.onMessage.listen(_onMessage);
     _ready.complete();
   }
@@ -167,15 +189,28 @@ class LedgerSyncer {
         return;
       }
 
+      // G6: every version must carry a valid signature by its editor's
+      // device (RecordGate → RecordVerifier); refused ones are recorded.
+      final gate = _gate!;
+      final via = msg.senderId;
       switch (msg.type) {
         case expenseEventType:
-          await processExpense(msg.content, _expenses);
+          await gate.expense(msg.content, relayedBy: via);
         case settlementEventType:
-          await processSettlement(msg.content, _expenses);
+          await gate.settlement(msg.content, relayedBy: via);
         case groupMetaEventType:
-          await processGroupMeta(msg.content, _groups);
+          await gate.meta(msg.content, relayedBy: via);
         case memberEventType:
-          await processMember(msg.content, _members);
+          // A non-member may only speak for itself (gate above) — and its
+          // self-claim / join must then be signed by that very account.
+          final senderIsMember = members.any(
+            (m) => m.isActive && m.matrixId == msg.senderId,
+          );
+          await gate.member(
+            msg.content,
+            relayedBy: via,
+            requiredSigner: senderIsMember ? null : msg.senderId,
+          );
           if (isOwnLeaveFromOtherDevice(
             senderId: msg.senderId,
             content: msg.content,
@@ -184,12 +219,13 @@ class LedgerSyncer {
             await _applyOwnLeave(group);
           }
         case bootstrapEventType:
-          await processBootstrap(
+          // Key attestations are trusted only from a sender we trust with the
+          // whole group anyway: the inviter of a group new to us (TOFU), or
+          // one of our own devices.
+          await gate.snapshot(
             msg.content,
-            _groups,
-            _members,
-            _expenses,
-            isAlive: () => _alive,
+            relayedBy: via,
+            trustAttestations: !groupKnown || msg.senderId == _myMxid,
           );
       }
       if (!_alive) return;
@@ -403,6 +439,8 @@ class LedgerSyncer {
           clampInboundClock(content['updated_at'] as int? ?? createdAt),
         ),
         deleted: Value(content['deleted'] as bool? ?? false),
+        sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
+        origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
       ),
     );
   }
@@ -430,6 +468,8 @@ class LedgerSyncer {
           clampInboundClock(content['updated_at'] as int? ?? createdAt),
         ),
         deleted: Value(content['deleted'] as bool? ?? false),
+        sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
+        origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
       ),
     );
   }
@@ -449,6 +489,7 @@ class LedgerSyncer {
         name: Value(content['name'] as String? ?? group),
         currency: Value(content['currency'] as String? ?? 'EUR'),
         updatedAt: Value(clampInboundClock(content['updated_at'] as int? ?? 0)),
+        sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
       ),
     );
   }
@@ -476,13 +517,18 @@ class LedgerSyncer {
                 DateTime.now().millisecondsSinceEpoch,
           ),
         ),
+        sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
       ),
     );
   }
 
   /// New-member bootstrap: a single payload carrying the group meta, full member
   /// list, and the whole ledger. Each nested record carries its own `group` id.
-  /// Also the merge of a full backup restore (G5, `BackupService.restore`).
+  ///
+  /// **Unverified** low-level merge (tests / tooling). The live syncer and the
+  /// backup restore go through `RecordGate.snapshot`, which verifies every
+  /// version's signature first (G6).
+  @visibleForTesting
   static Future<void> processBootstrap(
     Map<String, dynamic> content,
     GroupsDao groupDao,
@@ -493,7 +539,11 @@ class LedgerSyncer {
     // [isAlive] lets the live syncer stop mid-snapshot when it's disposed or
     // its DB closes (account switch) instead of writing into a closed DB.
     bool stop() => isAlive != null && !isAlive();
-    await processGroupMeta(content, groupDao);
+    final meta = content['meta'];
+    await processGroupMeta(
+      meta is Map ? Map<String, dynamic>.from(meta) : content,
+      groupDao,
+    );
     for (final m in (content['members'] as List? ?? const [])) {
       if (stop()) return;
       await processMember(Map<String, dynamic>.from(m as Map), memberDao);

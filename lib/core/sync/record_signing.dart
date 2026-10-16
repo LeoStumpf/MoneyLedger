@@ -1,0 +1,276 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:canonical_json/canonical_json.dart';
+import 'package:crypto/crypto.dart';
+
+import '../../models/expense_model.dart';
+import '../../models/group_model.dart';
+import '../../models/member_model.dart';
+import '../../models/record_signature.dart';
+import '../matrix/ledger_transport.dart';
+
+/// G6 signed records — what is signed, and how (plain Dart, no Flutter/DB).
+///
+/// Every **version** of an expense, settlement, member (participant) and
+/// group meta is signed by the device that wrote it, tombstones included.
+/// The signed body is built from the **model** (after parsing / defaulting),
+/// never from a raw inbound map, so a record rebuilt from Drift and relayed
+/// later verifies exactly like the original. It contains a type tag (no
+/// cross-type replay), the `group` and record id (no cross-group replay),
+/// every content field, the LWW clock, the tombstone flag and the signer
+/// (user, device, key). Transport fields (`v`, `sig`) are not signed.
+///
+/// Expenses and settlements also carry an `origin`: the creator's signed
+/// creation statement (`{t: …#origin, id, group, created_at, signer}`),
+/// copied unchanged by every later editor — it backs "added by". It is part
+/// of each version's body, so an editor vouches for which creation it
+/// continues.
+///
+/// The bytes are Matrix canonical JSON (`canonical_json`); what the device
+/// key signs is the ASCII string `mlsig1:` + base64url(SHA-256(bytes)) —
+/// ASCII, so every implementation (vodozemac's `String` API, the test fake)
+/// signs exactly the same message whatever the text fields contain.
+
+/// The record kinds that carry signatures. [wire] is the stable name used in
+/// the rejected-versions table and the digest's `rejected` map.
+enum RecordKind {
+  expense('expense', 'com.moneyledger.expense'),
+  settlement('settlement', 'com.moneyledger.settlement'),
+  member('member', 'com.moneyledger.member'),
+  meta('meta', 'com.moneyledger.group');
+
+  const RecordKind(this.wire, this.typeTag);
+  final String wire;
+  final String typeTag;
+
+  static RecordKind? fromWire(String s) {
+    for (final k in values) {
+      if (k.wire == s) return k;
+    }
+    return null;
+  }
+}
+
+Map<String, Object?> _signer(SignerId s) => s.toJson();
+
+SignerId signerOf(RecordSignature s) =>
+    SignerId(user: s.user, device: s.device, key: s.key);
+
+/// The split map of [splitsJson] as a JSON object (malformed → empty).
+Map<String, Object?> _splits(String splitsJson) {
+  try {
+    final decoded = jsonDecode(splitsJson);
+    if (decoded is Map<String, dynamic>) return decoded;
+  } catch (_) {}
+  return const {};
+}
+
+/// The creation statement behind "added by" for an expense / settlement.
+Map<String, Object?> originBody(
+  RecordKind kind,
+  String id,
+  String group,
+  int createdAt,
+  SignerId signer,
+) => {
+  't': '${kind.typeTag}#origin',
+  'id': id,
+  'group': group,
+  'created_at': createdAt,
+  'signer': _signer(signer),
+};
+
+Map<String, Object?> expenseBody(ExpenseModel e, SignerId signer) => {
+  't': RecordKind.expense.typeTag,
+  'id': e.id,
+  'group': e.roomId,
+  'description': e.description,
+  'amount': e.amountCents,
+  'currency': e.currency,
+  'paid_by': e.paidBy,
+  'split': _splits(e.splitsJson),
+  'created_at': e.createdAt,
+  'updated_at': e.updatedAt,
+  'deleted': e.deleted,
+  'origin': e.origin?.toJson(),
+  'signer': _signer(signer),
+};
+
+Map<String, Object?> settlementBody(SettlementModel s, SignerId signer) => {
+  't': RecordKind.settlement.typeTag,
+  'id': s.id,
+  'group': s.roomId,
+  'amount': s.amountCents,
+  'currency': s.currency,
+  'from': s.fromUser,
+  'to': s.toUser,
+  'created_at': s.createdAt,
+  'updated_at': s.updatedAt,
+  'deleted': s.deleted,
+  'origin': s.origin?.toJson(),
+  'signer': _signer(signer),
+};
+
+Map<String, Object?> memberBody(MemberModel m, SignerId signer) => {
+  't': RecordKind.member.typeTag,
+  'group': m.groupId,
+  'participant_id': m.userId,
+  'name': m.displayName,
+  'matrix_id': m.matrixId,
+  'status': m.status,
+  'updated_at': m.updatedAt,
+  'signer': _signer(signer),
+};
+
+Map<String, Object?> groupMetaBody(GroupModel g, SignerId signer) => {
+  't': RecordKind.meta.typeTag,
+  'group': g.roomId,
+  'name': g.name,
+  'currency': g.currency,
+  'updated_at': g.updatedAt,
+  'signer': _signer(signer),
+};
+
+/// The ASCII message the device key signs for [body]. Throws
+/// `ArgumentError` for a body canonical JSON can't encode (e.g. a float).
+String signingMessage(Map<String, Object?> body) {
+  final canonical = canonicalJson.encode(body);
+  final digest = base64Url.encode(sha256.convert(canonical).bytes);
+  return 'mlsig1:${digest.replaceAll('=', '')}';
+}
+
+/// Whether [sig] is a valid signature of [body] (built for `signerOf(sig)`)
+/// by the key embedded in [sig]. Never throws.
+bool signatureMatches(
+  RecordCrypto crypto,
+  Map<String, Object?> body,
+  RecordSignature sig,
+) {
+  try {
+    return crypto.verify(sig.key, signingMessage(body), sig.sig);
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<RecordSignature> _sign(
+  RecordCrypto crypto,
+  SignerId id,
+  Map<String, Object?> body,
+) async => RecordSignature(
+  user: id.user,
+  device: id.device,
+  key: id.key,
+  sig: await crypto.sign(signingMessage(body)),
+);
+
+/// Signs [e] as a new version by [crypto]'s device. [creating] also mints the
+/// creator's `origin` (otherwise the existing one is kept, possibly null for a
+/// legacy record).
+Future<ExpenseModel> signExpense(
+  RecordCrypto crypto,
+  ExpenseModel e, {
+  bool creating = false,
+}) async {
+  final id = crypto.identity!;
+  final origin = creating
+      ? await _sign(
+          crypto,
+          id,
+          originBody(RecordKind.expense, e.id, e.roomId, e.createdAt, id),
+        )
+      : e.origin;
+  final withOrigin = e.withSigning(origin: origin);
+  return withOrigin.withSigning(
+    origin: origin,
+    sig: await _sign(crypto, id, expenseBody(withOrigin, id)),
+  );
+}
+
+Future<SettlementModel> signSettlement(
+  RecordCrypto crypto,
+  SettlementModel s, {
+  bool creating = false,
+}) async {
+  final id = crypto.identity!;
+  final origin = creating
+      ? await _sign(
+          crypto,
+          id,
+          originBody(RecordKind.settlement, s.id, s.roomId, s.createdAt, id),
+        )
+      : s.origin;
+  final withOrigin = s.withSigning(origin: origin);
+  return withOrigin.withSigning(
+    origin: origin,
+    sig: await _sign(crypto, id, settlementBody(withOrigin, id)),
+  );
+}
+
+Future<MemberModel> signMember(RecordCrypto crypto, MemberModel m) async {
+  final id = crypto.identity!;
+  return m.withSigning(sig: await _sign(crypto, id, memberBody(m, id)));
+}
+
+Future<GroupModel> signGroupMeta(RecordCrypto crypto, GroupModel g) async {
+  final id = crypto.identity!;
+  return g.withSigning(sig: await _sign(crypto, id, groupMetaBody(g, id)));
+}
+
+/// How long a local write waits for the relay identity before it is saved
+/// `pendingSign` instead (local-first: a write never fails for lack of a
+/// signer).
+const kSignerWaitTimeout = Duration(seconds: 5);
+
+/// Signs local writes with this device's key (G6). Built from the transport
+/// future captured **before the first await** (G19). When the signer isn't
+/// ready (transport unavailable, encryption not set up) the record comes back
+/// marked `pendingSign` — saved locally, signed later by the sync engine
+/// before it is ever sent.
+class LocalRecordSigner {
+  LocalRecordSigner(this._transport);
+
+  final Future<LedgerTransport> _transport;
+
+  Future<RecordCrypto?> _crypto() async {
+    try {
+      final t = await _transport.timeout(kSignerWaitTimeout);
+      return t.crypto.identity == null ? null : t.crypto;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<T> _run<T>(
+    Future<T> Function(RecordCrypto c) sign,
+    T Function() pending,
+  ) async {
+    final c = await _crypto();
+    if (c == null) return pending();
+    try {
+      return await sign(c);
+    } catch (_) {
+      return pending();
+    }
+  }
+
+  Future<ExpenseModel> expense(ExpenseModel e, {bool creating = false}) => _run(
+    (c) => signExpense(c, e, creating: creating),
+    () => e.withSigning(origin: e.origin, pendingSign: true),
+  );
+
+  Future<SettlementModel> settlement(
+    SettlementModel s, {
+    bool creating = false,
+  }) => _run(
+    (c) => signSettlement(c, s, creating: creating),
+    () => s.withSigning(origin: s.origin, pendingSign: true),
+  );
+
+  Future<MemberModel> member(MemberModel m) =>
+      _run((c) => signMember(c, m), () => m.withSigning(pendingSign: true));
+
+  Future<GroupModel> group(GroupModel g) =>
+      _run((c) => signGroupMeta(c, g), () => g.withSigning(pendingSign: true));
+}

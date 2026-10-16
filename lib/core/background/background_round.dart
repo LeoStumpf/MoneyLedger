@@ -345,6 +345,12 @@ class _TrackingTransport implements LedgerTransport {
   String get userId => _inner.userId;
 
   @override
+  RecordCrypto get crypto => _inner.crypto;
+
+  @override
+  DeviceKeyDirectory get deviceKeys => _inner.deviceKeys;
+
+  @override
   Stream<TransportMessage> get onMessage => _inner.onMessage.map((m) {
     if (_seen.add(m)) received++;
     _touch();

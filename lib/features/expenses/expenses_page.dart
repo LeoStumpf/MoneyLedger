@@ -25,6 +25,9 @@ import '../groups/group_exit_dialog.dart';
 import '../groups/group_provider.dart';
 import 'expenses_provider.dart';
 import 'ledger_syncer.dart';
+import '../../core/sync/record_signing.dart' show RecordKind;
+import '../../models/record_signature.dart';
+import 'record_attribution.dart';
 
 enum _GroupMenuAction { addMember, edit, export, exit }
 
@@ -265,6 +268,17 @@ class ExpensesPage extends ConsumerWidget {
     }
     String nameOf(String id) =>
         id == myId ? l.you : (names[id] ?? localpartOf(id));
+    // G6: flag signature problems (key conflicts, someone posing as us).
+    final keys = ref.watch(knownDeviceKeysProvider).value ?? const [];
+    final myMxid = ref.watch(currentUserIdProvider);
+    bool attention(RecordSignature? origin, RecordSignature? sig) =>
+        keys.isNotEmpty &&
+        recordNeedsAttention(
+          origin: origin,
+          sig: sig,
+          myMxid: myMxid,
+          keys: keys,
+        );
 
     Widget tileFor(Object record) {
       if (record is SettlementModel) {
@@ -278,6 +292,7 @@ class ExpensesPage extends ConsumerWidget {
               ? l.settlementPaidYou(from)
               : l.settlementTitle(from, to),
           pending: syncStatus.isRecordPending(record.updatedAt),
+          attention: attention(record.origin, record.sig),
           onDelete: readOnly
               ? null
               : () => _confirmDeleteSettlement(context, ref, record, from, to),
@@ -291,6 +306,7 @@ class ExpensesPage extends ConsumerWidget {
             : l.paidByName(nameOf(expense.paidBy)),
         effect: myId == null ? null : expenseEffectFor(expense, myId),
         pending: syncStatus.isRecordPending(expense.updatedAt),
+        attention: attention(expense.origin, expense.sig),
         onTap: readOnly
             ? null
             : () =>
@@ -576,7 +592,24 @@ class ExpensesPage extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.deleteSettlementTitle),
-        content: Text(l.deleteSettlementBody(fromName, toName, amount)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.deleteSettlementBody(fromName, toName, amount)),
+            // G6: who recorded (and last changed) this payment.
+            const SizedBox(height: Insets.m),
+            RecordAttribution(
+              groupId: roomId,
+              kind: RecordKind.settlement,
+              recordId: settlement.id,
+              origin: settlement.origin,
+              sig: settlement.sig,
+              createdAt: settlement.createdAt,
+              updatedAt: settlement.updatedAt,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -859,6 +892,9 @@ class _LedgerRow extends StatelessWidget {
   final String amount;
   final Widget? amountNote;
   final bool pending;
+
+  /// G6: a signature problem (key conflict / someone posing as us).
+  final bool attention;
   final String menuTooltip;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
@@ -870,6 +906,7 @@ class _LedgerRow extends StatelessWidget {
     required this.menuTooltip,
     this.amountNote,
     this.pending = false,
+    this.attention = false,
     this.onTap,
     this.onDelete,
   });
@@ -896,13 +933,32 @@ class _LedgerRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      if (attention)
+                        Padding(
+                          padding: const EdgeInsets.only(left: Insets.xs),
+                          child: Tooltip(
+                            message: l.recordSignatureWarning,
+                            child: Icon(
+                              Icons.gpp_maybe_outlined,
+                              key: const Key('recordAttention'),
+                              size: 16,
+                              color: scheme.error,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -977,6 +1033,7 @@ class _ExpenseTile extends StatelessWidget {
   /// What this expense means for me — null when I'm not a participant.
   final ({int net, bool involved})? effect;
   final bool pending;
+  final bool attention;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   const _ExpenseTile({
@@ -984,6 +1041,7 @@ class _ExpenseTile extends StatelessWidget {
     required this.payerLine,
     required this.effect,
     required this.pending,
+    this.attention = false,
     this.onTap,
     this.onDelete,
   });
@@ -1030,6 +1088,7 @@ class _ExpenseTile extends StatelessWidget {
       amount: context.money(expense.amountCents, expense.currency),
       amountNote: note,
       pending: pending,
+      attention: attention,
       menuTooltip: l.expenseOptions,
       onTap: onTap,
       onDelete: onDelete,
@@ -1044,11 +1103,13 @@ class _SettlementTile extends StatelessWidget {
   final SettlementModel settlement;
   final String title;
   final bool pending;
+  final bool attention;
   final VoidCallback? onDelete;
   const _SettlementTile({
     required this.settlement,
     required this.title,
     required this.pending,
+    this.attention = false,
     this.onDelete,
   });
 
@@ -1066,6 +1127,7 @@ class _SettlementTile extends StatelessWidget {
       subtitle: l.paymentLabel,
       amount: context.money(settlement.amountCents, settlement.currency),
       pending: pending,
+      attention: attention,
       menuTooltip: l.settlementOptions,
       onDelete: onDelete,
     );

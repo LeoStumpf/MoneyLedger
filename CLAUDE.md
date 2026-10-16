@@ -24,6 +24,7 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 - [`sqflite`](https://pub.dev/packages/sqflite) — required by the matrix SDK's internal SQLite store
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE UI strings (ARB) + locale formatting (G12)
 - [`package_info_plus`](https://pub.dev/packages/package_info_plus) — app version on the About page
+- `vodozemac` (Ed25519 verify), [`canonical_json`](https://pub.dev/packages/canonical_json) + [`crypto`](https://pub.dev/packages/crypto) (SHA-256) — G6 signed records
 
 **License: AGPL-3.0-or-later** (`LICENSE`; `matrix` + `flutter_vodozemac` are
 AGPL). Dependency licenses: `THIRD_PARTY_NOTICES.md` — update it when adding a
@@ -126,8 +127,11 @@ lib/
         groups_dao.dart        # Groups table queries → GroupModel (LWW upsert)
         members_dao.dart       # Participants (id + name + optional matrixId; LWW; activeClaimedMatrixIds)
         sync_states_dao.dart   # PeerSyncStates: per-(group,peer) anti-entropy bookkeeping
+        signing_dao.dart       # G6: KnownDeviceKeys (device-key history) + RejectedVersions
         settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, left-group tombstones, per account); never synced
     matrix/
+      record_crypto.dart          # G6 ports: RecordCrypto (sign/verify), DeviceKeyDirectory, SignerId
+      hmac_record_crypto.dart     # G6 fake device keys (HMAC stand-in) for tests + offline demo
       ledger_transport.dart       # LedgerTransport port + TransportMessage + event-type constants
                                   #   + SendResult, TransportUnavailableException, pure planDeviceSend
       matrix_ledger_transport.dart # Real adapter — encrypted to-device send/receive (forClient)
@@ -138,6 +142,9 @@ lib/
       left_groups.dart         # LeftGroupTombstone + pure classifyPeerViewOfMe (G9 leave/delete)
       sync_status_provider.dart # groupSyncStatusProvider — drives the cloud icons
       peer_convergence.dart    # G29 fast in-sync proof from an inbound record (pure)
+      record_signing.dart      # G6: signed bodies (canonical JSON), message, sign*, LocalRecordSigner
+      record_verifier.dart     # G6: RecordVerifier (accept / refuse) + signatureStatus (display)
+      record_gate.dart         # G6: RecordGate — the only inbound apply path (live, bootstrap, gossip, restore)
   models/
     expense_model.dart         # Plain Dart models (ExpenseModel, SettlementModel)
     group_model.dart           # Plain Dart model (GroupModel)
@@ -281,9 +288,57 @@ expense/settlement/group-meta require an active claimed member; a `bootstrap` fo
 an **unknown** group is TOFU-accepted (else member-only); a `member` payload from
 a non-member is allowed only as a **self-claim/join** for the sender's own MXID
 and never hijacks a participant another account owns. Inbound `updated_at` is
-clamped to `now + 5 min` (`clampInboundClock`) to bound clock-skew LWW wins. Not
-yet covered: per-record cryptographic authorship (a member can still forge
-another member's record) — see `docs/open-points.md`.
+clamped to `now + 5 min` (`clampInboundClock`) to bound clock-skew LWW wins.
+The gate authenticates the *relaying* sender; the *author* of each version is
+authenticated by its signature (G6, below). Digests from an account that isn't
+a participant of the group at all are ignored (rule 8 — no gossip, repair or
+reply).
+
+**Signed records (G6, protocol v2).** Policy: any active member may create /
+edit / delete any expense or settlement (and edit members / group meta), but
+**every version is signed by the device that wrote it** — the editing device's
+Matrix **Ed25519 fingerprint key** (vodozemac olm account,
+`olmManager.signString`; verify via `vod.Ed25519PublicKey.verify`), exposed as
+`LedgerTransport.crypto` (`RecordCrypto`) + `LedgerTransport.deviceKeys`
+(`DeviceKeyDirectory`, the homeserver's current device list). Design doc:
+`docs/design/g6-signed-records.md`.
+- **What's signed** (`record_signing.dart`): a body built from the parsed
+  *model* (type tag, group, id, all fields, `updated_at`, `deleted`, signer
+  {user, device, key}; `v`/`sig` excluded) → Matrix canonical JSON →
+  message `mlsig1:` + base64url(SHA-256) (ASCII). Expenses / settlements also
+  carry an immutable **`origin`** (creator's signed creation statement →
+  "added by"), copied by every editor; `sig` → "last edited by". A delete is
+  a signed version too.
+- **Local writes** sign via `LocalRecordSigner` (captured in the write
+  contexts before the first await, G19). Signer not ready → row saved with
+  `pending_sign` (local-first), never sent; `SyncEngine._signPending` signs it
+  (same clock) before digests / bootstraps.
+- **Inbound** goes only through `RecordGate` (live records, bootstrap
+  snapshots, digest member gossip, backup restore): not newer than stored →
+  no-op (an unsigned relay of a grandfathered row we hold is harmless); not
+  newer than a version we refused → dropped; else `RecordVerifier`: **refused**
+  if unsigned, bad signature, bad / changed origin, wrong signer (a
+  non-member's self-claim must be signed by itself) or **key conflict** (the
+  embedded key contradicts the key we pinned for that (user, device) or the
+  server lists); a clock > now + 5 min is dropped (transient). Refused
+  versions go to `rejected_versions` and the digest's `rejected` map, so peers
+  stop re-sending them (no repair loop; "agree to disagree" counts as in sync).
+- **Key binding after logout:** every device pins every member device key it
+  sees first-hand (`known_device_keys`, source `server`: after each digest
+  broadcast + on demand when verifying), so signatures stay verifiable after
+  the signer signs out (`client.logout` deletes the device). Bootstraps /
+  backups carry `device_keys` attestations, trusted only from a new group's
+  inviter, our own devices or a user-started restore (source `attested` →
+  "vouched"). Unknown device → accepted, shown **unverified**.
+  `signatureStatus` derives verified / vouched / unverified / conflict /
+  legacy at display time.
+- **UI** (`record_attribution.dart`): edit-expense footer + payment dialog
+  "Added by X · Last edited by Y" (details dialog: device + how verified, or
+  vouched by whom; refused-newer-version notice); the list flags only key
+  conflicts and someone posing as us.
+- Rows from before G6 (schema ≤ 5) are **grandfathered** as legacy/unsigned
+  locally; peers refuse them if relayed (they can't be bootstrapped to new
+  members/devices — re-edit to sign). Residual risks: `docs/open-points.md`.
 
 **Leaving / deleting a group (G9).** The expenses app bar's overflow menu (⋮,
 next to *Export CSV*) offers **Leave group** when this account is an active
@@ -459,9 +514,13 @@ without id / `updated_at`) — mapped to localized messages
 **Restore** = pick → `BackupService.preview` (per group: new / left earlier /
 N records that are absent or older locally / up to date; totals; *other
 account* warning when `account` ≠ the signed-in MXID) → confirm →
-`BackupService.restore`: per group, in one transaction, the syncer's own
-`LedgerSyncer.processBootstrap` (**LWW by stable id**, tombstones win when
-newer, inbound clock clamp) — idempotent, re-restoring is a no-op. User
+`BackupService.restore`: per group, `RecordGate.snapshot` — the syncer's own
+verifying apply path (**LWW by stable id**, tombstones win when newer) —
+idempotent, re-restoring is a no-op. **G6:** every signed version is
+**verified** like an inbound record (a tampered one is refused, the rest
+restores); the file's `device_keys` are trusted as vouched-for keys (the user
+chose the file); unsigned rows (pre-G6 history) are restored as legacy. Export
+includes `pending_sign` rows (unsigned) and the attestations. User
 intent, so **no membership gate**; a group this account had **left/deleted**
 here gets its `LeftGroupTombstone` cleared first (else the syncer would keep
 dropping it). If the peers have us `removed` with a newer clock, digest gossip
@@ -532,7 +591,10 @@ the first, is used). Both preview and import resolve names with the pure
 (LWW-upsert meta, create if absent — a CSV with no id mints a UUIDv7), resolve
 participants **by display name**, then **LWW-upsert each expense / settlement
 by id** using `Updated At` as the clock. Re-importing never duplicates; merging
-into a live group lets the newer copy win.
+into a live group lets the newer copy win. **G6:** the CSV has no signatures —
+every row that **wins** (new or newer than local) becomes a version signed by
+**the importing device** (as editor; new records also as creator, "added
+by"); rows that don't win are counted but never re-signed.
 
 **Documented limitations** (acceptable for a human-readable export):
 tombstones are **not** in the sheet — a deleted record simply isn't exported
@@ -718,14 +780,14 @@ wait for a Drift write with `eventually(condition, tester: tester)`
   - `client.updateUserDeviceKeys(additionalUsers: targets)` before each send — roomless device lists aren't persisted (the SDK evicts device keys for users you share no encrypted room with), so re-resolve every time (cheap, idempotent).
   - `client.sendToDeviceEncryptedChunked(devices, type, content)` — encrypts + sends to every target device; your own current device is auto-excluded, and other devices of the sender **do** receive (the fake relay mirrors this). It **returns silently** when `!client.encryptionEnabled` or no device remains — so the adapter checks `isLogged()`/`encryptionEnabled` first (→ `TransportUnavailableException`) and picks devices via the pure `planDeviceSend`, returning a `SendResult`. The fake (`FakeMatrixNetwork(bufferInbound:)`, `FakeTransport.unavailable`, `removeDevice`, `sent` log) simulates both cases.
 
-### Data Model & wire protocol (v1)
+### Data Model & wire protocol (v2)
 
-Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** to avoid float errors. Every to-device payload carries `"v": 1` (protocol version — enables sharding/migration later) and a `"group": "<groupId>"`. Record payloads carry a `created_at`, an `updated_at` LWW clock (ms epoch), and a `deleted` tombstone flag. Receivers apply **whole-record LWW** on `updated_at`. The codec lives in `lib/core/sync/ledger_payloads.dart`; event type constants in `lib/core/matrix/ledger_transport.dart`.
+Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** to avoid float errors. Every to-device payload carries `"v": 2` (protocol version; v2 = G6 signed records — v1 code never read `v`, so the bump is additive) and a `"group": "<groupId>"`. Record payloads carry a `created_at`, an `updated_at` LWW clock (ms epoch), and a `deleted` tombstone flag. Receivers apply **whole-record LWW** on `updated_at`. The codec lives in `lib/core/sync/ledger_payloads.dart`; event type constants in `lib/core/matrix/ledger_transport.dart`.
 
-**`com.moneyledger.expense`** (settlement analogous). Edit = full re-send with a higher `updated_at`; delete = same with `deleted: true`:
+**`com.moneyledger.expense`** (settlement analogous). Edit = full re-send with a higher `updated_at`; delete = same with `deleted: true`. Every version carries `sig` (its editor's device signature); expenses/settlements also `origin` (the creator's, unchanged across edits) — see "Signed records (G6)":
 ```json
 {
-  "v": 1,
+  "v": 2,
   "id": "<uuidv7>",
   "group": "<groupId>",
   "description": "Dinner",
@@ -735,31 +797,34 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
   "split": { "@alice:matrix.org": 2100, "@bob:matrix.org": 2100 },
   "created_at": 1760000000000,
   "updated_at": 1760000050000,
-  "deleted": false
+  "deleted": false,
+  "origin": { "user": "@alice:matrix.org", "device": "AAAA", "key": "<b64 ed25519>", "sig": "<b64>" },
+  "sig":    { "user": "@bob:matrix.org",   "device": "BBBB", "key": "<b64 ed25519>", "sig": "<b64>" }
 }
 ```
 
 `paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs.
 
-**`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted" }` (`from`/`to` are participant ids).
+**`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "origin", "sig" }` (`from`/`to` are participant ids).
 
-**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.)
+**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "sig" }`.
 
-**`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → updated_at`, **tombstones included**; the `members` map (keyed by participant id) doubles as membership/identity gossip. A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
+**`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → updated_at`, **tombstones included**; the `members` map (keyed by participant id) doubles as membership/identity gossip — each entry is the full **signed** member version (verified like a member payload). `rejected` (optional, G6) lists versions the sender refused (`{expenses: {id: T}, settlements: {…}, members: {pid: T}, meta: T}`) so peers don't re-send them. A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
 ```json
 {
-  "v": 1,
+  "v": 2,
   "group": "<groupId>",
   "reply": false,
   "meta_updated_at": 1760000000000,
-  "members": { "<participantId>": {"status": "active", "updated_at": 1759990000000, "name": "Alex", "matrix_id": "@alice:x.org"} },
+  "members": { "<participantId>": {"status": "active", "updated_at": 1759990000000, "name": "Alex", "matrix_id": "@alice:x.org", "sig": {"user": "…", "device": "…", "key": "…", "sig": "…"}} },
   "expenses":    { "<uuid>": 1760000050000 },
-  "settlements": { "<uuid>": 1759995000000 }
+  "settlements": { "<uuid>": 1759995000000 },
+  "rejected":    { "expenses": { "<uuid>": 1760000090000 } }
 }
 ```
 
-**`com.moneyledger.resync_request`** — `{ "v": 1, "scope": "group", "group": "<groupId>" }` or `{ "v": 1, "scope": "all" }`. Handler replies with `bootstrap` payload(s) only if the requester is an active member of that group, or is the responder's own MXID (`scope: all` honored only for self — new-device recovery).
+**`com.moneyledger.resync_request`** — `{ "v": 2, "scope": "group", "group": "<groupId>" }` or `{ "v": 2, "scope": "all" }`. Handler replies with `bootstrap` payload(s) only if the requester is an active member of that group, or is the responder's own MXID (`scope: all` honored only for self — new-device recovery).
 
-**`com.moneyledger.bootstrap`** — whole-group snapshot (group meta + members + expenses + settlements), each record with `updated_at`/`deleted`, **tombstones included** (so a stale device can't keep a live copy of a deleted record). Sent when adding a member and in response to a `resync_request`.
+**`com.moneyledger.bootstrap`** — whole-group snapshot (group meta + members + expenses + settlements), each record with `updated_at`/`deleted` and its signatures, **tombstones included** (so a stale device can't keep a live copy of a deleted record). `meta` is the signed group-meta payload (top-level `name`/`currency`/`updated_at` mirror it); `device_keys` (`{user: {device: key}}`) attests the signers' keys the sender pinned first-hand. Rows still `pending_sign` are left out. Each record is verified on its own; an unknown group is only created if its meta verifies. Sent when adding a member and in response to a `resync_request`.
 
 The receiver rules for digests (targeted repair, membership gossip, reply bounding, sync-status marking, unknown-group/removed-sender handling) are documented in full on `SyncEngine` (`lib/core/sync/sync_engine.dart`).

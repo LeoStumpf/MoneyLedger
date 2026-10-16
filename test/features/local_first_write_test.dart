@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/database/app_database.dart';
+import 'package:money_ledger/core/matrix/hmac_record_crypto.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
@@ -24,6 +25,11 @@ class _OfflineTransport implements LedgerTransport {
   ) async => throw Exception('offline');
   @override
   Future<String?> profileName(String matrixId) async => null;
+  static final _keys = HmacKeyRegistry();
+  @override
+  final RecordCrypto crypto = _keys.deviceCrypto('@alice:x.org', 'D1');
+  @override
+  DeviceKeyDirectory get deviceKeys => _keys;
 }
 
 void main() {

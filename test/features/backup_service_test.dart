@@ -12,10 +12,16 @@ import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/database/daos/settings_dao.dart';
+import 'package:money_ledger/core/database/daos/signing_dao.dart';
 import 'package:money_ledger/core/sync/left_groups.dart';
+import 'package:money_ledger/core/sync/record_signing.dart';
+import 'package:money_ledger/core/sync/record_verifier.dart';
+import 'package:money_ledger/models/expense_model.dart';
+import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/backup/backup_service.dart';
 import 'package:money_ledger/features/backup/ledger_backup.dart';
 
+import '../helpers/fake_ledger_network.dart';
 import '../helpers/in_memory_database.dart';
 
 const me = '@me:x';
@@ -26,6 +32,8 @@ BackupService serviceFor(AppDatabase db) => BackupService(
   members: MembersDao(db),
   expenses: ExpensesDao(db),
   settings: SettingsDao(db),
+  signing: SigningDao(db),
+  transport: Future.value(FakeMatrixNetwork().clientFor(me)),
 );
 
 Future<void> seed(AppDatabase db) async {
@@ -281,5 +289,98 @@ void main() {
     await target.close();
     expect(await svc.restore(parseBackup(json)), isEmpty);
     target = openTestDatabase(); // for tearDown
+  });
+
+  group('G6 signed backups', () {
+    Future<(String, FakeMatrixNetwork)> signedExport(AppDatabase db) async {
+      final net = FakeMatrixNetwork();
+      final crypto = net.clientFor(me).crypto;
+      await GroupsDao(db).upsertGroupLww(
+        groupCompanion(
+          await signGroupMeta(
+            crypto,
+            const GroupModel(
+              roomId: 'g2',
+              name: 'Signed',
+              currency: 'EUR',
+              updatedAt: 10,
+            ),
+          ),
+        ),
+      );
+      for (final id in ['a', 'b']) {
+        await ExpensesDao(db).upsertExpenseLww(
+          expenseCompanion(
+            await signExpense(
+              crypto,
+              ExpenseModel(
+                id: id,
+                roomId: 'g2',
+                description: 'Expense $id',
+                amountCents: 100,
+                currency: 'EUR',
+                paidBy: me,
+                splitsJson: '{"$me":100}',
+                createdAt: 20,
+                updatedAt: 20,
+              ),
+              creating: true,
+            ),
+          ),
+        );
+      }
+      await SigningDao(db).pinServerKeys({
+        me: {'D1': crypto.identity!.key},
+      });
+      final svc = BackupService(
+        db: db,
+        groups: GroupsDao(db),
+        members: MembersDao(db),
+        expenses: ExpensesDao(db),
+        settings: SettingsDao(db),
+        signing: SigningDao(db),
+        transport: Future.value(net.clientFor(me)),
+      );
+      return (await svc.exportJson(account: me, now: 1), net);
+    }
+
+    BackupService restorer(AppDatabase db, FakeMatrixNetwork net) =>
+        BackupService(
+          db: db,
+          groups: GroupsDao(db),
+          members: MembersDao(db),
+          expenses: ExpensesDao(db),
+          settings: SettingsDao(db),
+          signing: SigningDao(db),
+          transport: Future.value(net.clientFor(me, device: 'D2')),
+        );
+
+    test('the file carries signatures + key attestations; a restore on a '
+        'new device (old one signed out) verifies them as vouched', () async {
+      final fresh = openTestDatabase();
+      addTearDown(fresh.close);
+      final (json, net) = await signedExport(openTestDatabase());
+      expect(json, contains('"device_keys"'));
+      net.removeDevice(me); // the exporting device is gone
+
+      expect(await restorer(fresh, net).restore(parseBackup(json)), ['g2']);
+      final e = await ExpensesDao(fresh).getExpenseById('a');
+      expect(e!.sig!.user, me);
+      final keys = await SigningDao(fresh).keysFor(me, 'D1');
+      expect(signatureStatus(e.sig, keys).status, SigStatus.vouched);
+    });
+
+    test(
+      'a tampered record in the file is refused, the rest restores',
+      () async {
+        final fresh = openTestDatabase();
+        addTearDown(fresh.close);
+        final (json, net) = await signedExport(openTestDatabase());
+        final tampered = json.replaceFirst('"Expense a"', '"Expense A!"');
+        await restorer(fresh, net).restore(parseBackup(tampered));
+        expect(await ExpensesDao(fresh).getExpenseById('a'), isNull);
+        expect(await ExpensesDao(fresh).getExpenseById('b'), isNotNull);
+      },
+    );
   });
 }

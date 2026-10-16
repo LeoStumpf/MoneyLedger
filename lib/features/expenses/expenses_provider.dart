@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -11,13 +10,16 @@ import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
+import '../../core/database/daos/signing_dao.dart';
 import '../../core/database/daos/sync_states_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/ledger_payloads.dart';
+import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
 import '../auth/auth_provider.dart';
 import '../../models/expense_model.dart';
+import '../../models/member_model.dart' show nextLwwClock;
 
 part 'expenses_provider.g.dart';
 
@@ -54,6 +56,10 @@ GroupsDao groupsDao(Ref ref) => GroupsDao(ref.watch(appDatabaseProvider));
 @Riverpod(keepAlive: true)
 MembersDao membersDao(Ref ref) => MembersDao(ref.watch(appDatabaseProvider));
 
+/// G6 device-key history + refused versions of the current account.
+@Riverpod(keepAlive: true)
+SigningDao signingDao(Ref ref) => SigningDao(ref.watch(appDatabaseProvider));
+
 @Riverpod(keepAlive: true)
 SyncStatesDao syncStatesDao(Ref ref) =>
     SyncStatesDao(ref.watch(appDatabaseProvider));
@@ -84,7 +90,11 @@ class _WriteContext {
     // Only awaited when there are replication targets; don't let an unused
     // transport failure surface as an unhandled async error.
     transport.ignore();
+    signer = LocalRecordSigner(transport);
   }
+
+  /// G6: signs every version this write produces with this device's key.
+  late final LocalRecordSigner signer;
 
   final AppDatabase db;
   final ExpensesDao expenses;
@@ -98,12 +108,15 @@ class _WriteContext {
   /// undelivered to-device messages and the SDK retries. Self is included so
   /// the user's other devices stay in sync (the SDK skips the current device).
   /// Skipped silently once [db] is closed (signed out / switched account).
+  /// A version still waiting for its signature (G6, `sig` absent) isn't
+  /// sent: peers would refuse it; the sync engine signs it and anti-entropy
+  /// delivers it.
   Future<void> replicate(
     String groupId,
     String type,
     Map<String, dynamic> content,
   ) async {
-    if (db.isClosed) return;
+    if (db.isClosed || content['sig'] == null) return;
     try {
       // Targets are the claimed participants' Matrix accounts; pure-local
       // participants have no account to send to.
@@ -156,10 +169,12 @@ class ExpenseAdder extends _$ExpenseAdder {
       createdAt: createdAt,
       updatedAt: createdAt,
     );
+    final signed = await w.signer.expense(expense, creating: true);
+    if (w.db.isClosed) return;
     // Local-first: persist to Drift immediately so the expense is saved
     // and visible even offline. Replication is best-effort afterwards.
-    await w.expenses.upsertExpenseLww(_toCompanion(expense));
-    await w.replicate(roomId, expenseEventType, expensePayload(expense));
+    await w.expenses.upsertExpenseLww(expenseCompanion(signed));
+    await w.replicate(roomId, expenseEventType, expensePayload(signed));
   });
 
   Future<void> addSettlement({
@@ -180,13 +195,11 @@ class ExpenseAdder extends _$ExpenseAdder {
       createdAt: createdAt,
       updatedAt: createdAt,
     );
+    final signed = await w.signer.settlement(settlement, creating: true);
+    if (w.db.isClosed) return;
     // Local-first: persist before replicating (see addExpense).
-    await w.expenses.upsertSettlementLww(_toSettlementCompanion(settlement));
-    await w.replicate(
-      roomId,
-      settlementEventType,
-      settlementPayload(settlement),
-    );
+    await w.expenses.upsertSettlementLww(settlementCompanion(signed));
+    await w.replicate(roomId, settlementEventType, settlementPayload(signed));
   });
 
   /// Edits an existing expense: the full record is re-written with a fresh
@@ -202,6 +215,8 @@ class ExpenseAdder extends _$ExpenseAdder {
     required Map<String, int> splits,
     required int createdAt,
   }) => _run((w) async {
+    // The creator's origin ("added by") is carried over unchanged (G6).
+    final current = await w.expenses.getExpenseById(id);
     final expense = ExpenseModel(
       id: id,
       roomId: roomId,
@@ -211,10 +226,13 @@ class ExpenseAdder extends _$ExpenseAdder {
       paidBy: paidBy,
       splitsJson: jsonEncode(splits),
       createdAt: createdAt,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      updatedAt: nextLwwClock(current?.updatedAt ?? 0),
+      origin: current?.origin,
     );
-    await w.expenses.upsertExpenseLww(_toCompanion(expense));
-    await w.replicate(roomId, expenseEventType, expensePayload(expense));
+    final signed = await w.signer.expense(expense);
+    if (w.db.isClosed) return;
+    await w.expenses.upsertExpenseLww(expenseCompanion(signed));
+    await w.replicate(roomId, expenseEventType, expensePayload(signed));
   });
 
   /// Deletes an expense as a tombstone: the row is kept (deleted = true, fresh
@@ -232,11 +250,15 @@ class ExpenseAdder extends _$ExpenseAdder {
       paidBy: current.paidBy,
       splitsJson: current.splitsJson,
       createdAt: current.createdAt,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      updatedAt: nextLwwClock(current.updatedAt),
       deleted: true,
+      origin: current.origin,
     );
-    await w.expenses.upsertExpenseLww(_toCompanion(tombstone));
-    await w.replicate(roomId, expenseEventType, expensePayload(tombstone));
+    // A delete is a signed version too ("deleted by").
+    final signed = await w.signer.expense(tombstone);
+    if (w.db.isClosed) return;
+    await w.expenses.upsertExpenseLww(expenseCompanion(signed));
+    await w.replicate(roomId, expenseEventType, expensePayload(signed));
   });
 
   /// Deletes a settlement as a tombstone (see [deleteExpense]). Settlements
@@ -252,40 +274,13 @@ class ExpenseAdder extends _$ExpenseAdder {
       fromUser: current.fromUser,
       toUser: current.toUser,
       createdAt: current.createdAt,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      updatedAt: nextLwwClock(current.updatedAt),
       deleted: true,
+      origin: current.origin,
     );
-    await w.expenses.upsertSettlementLww(_toSettlementCompanion(tombstone));
-    await w.replicate(
-      roomId,
-      settlementEventType,
-      settlementPayload(tombstone),
-    );
+    final signed = await w.signer.settlement(tombstone);
+    if (w.db.isClosed) return;
+    await w.expenses.upsertSettlementLww(settlementCompanion(signed));
+    await w.replicate(roomId, settlementEventType, settlementPayload(signed));
   });
-
-  static ExpensesCompanion _toCompanion(ExpenseModel e) => ExpensesCompanion(
-    id: Value(e.id),
-    roomId: Value(e.roomId),
-    description: Value(e.description),
-    amountCents: Value(e.amountCents),
-    currency: Value(e.currency),
-    paidBy: Value(e.paidBy),
-    splitsJson: Value(e.splitsJson),
-    createdAt: Value(e.createdAt),
-    updatedAt: Value(e.updatedAt),
-    deleted: Value(e.deleted),
-  );
-
-  static SettlementsCompanion _toSettlementCompanion(SettlementModel s) =>
-      SettlementsCompanion(
-        id: Value(s.id),
-        roomId: Value(s.roomId),
-        amountCents: Value(s.amountCents),
-        currency: Value(s.currency),
-        fromUser: Value(s.fromUser),
-        toUser: Value(s.toUser),
-        createdAt: Value(s.createdAt),
-        updatedAt: Value(s.updatedAt),
-        deleted: Value(s.deleted),
-      );
 }

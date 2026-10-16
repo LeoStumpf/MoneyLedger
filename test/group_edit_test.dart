@@ -25,6 +25,7 @@ import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
+import 'helpers/test_providers.dart';
 import 'helpers/l10n.dart';
 import 'helpers/eventually.dart';
 
@@ -186,6 +187,7 @@ void main() {
       );
       return ProviderScope(
         overrides: [
+          ...signingUiOverrides(),
           expensesForRoomProvider.overrideWith(
             (ref, roomId) => Stream.value(expenses),
           ),

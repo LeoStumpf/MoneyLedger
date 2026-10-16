@@ -13,6 +13,10 @@
 /// retains nothing once a to-device message is delivered.
 library;
 
+import 'record_crypto.dart';
+
+export 'record_crypto.dart';
+
 // Payload type tags carried as the to-device event `type`. All app payloads use
 // the `com.moneyledger.` prefix so the transport can filter them on receive.
 const expenseEventType = 'com.moneyledger.expense';
@@ -148,6 +152,14 @@ abstract interface class LedgerTransport {
   /// has no display name or the lookup fails (offline, unknown user); never
   /// throws.
   Future<String?> profileName(String matrixId);
+
+  /// G6: this device's record signer + Ed25519 verifier (the relay identity's
+  /// Matrix device key).
+  RecordCrypto get crypto;
+
+  /// G6: the homeserver's current device keys — first-hand (user, device) →
+  /// key bindings for verifying record signatures.
+  DeviceKeyDirectory get deviceKeys;
 }
 
 /// [name] trimmed, or null when it is empty / null — the profile-name

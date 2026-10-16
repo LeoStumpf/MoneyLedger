@@ -335,5 +335,19 @@
   "csvPreviewAmbiguous": "Mehrere Personen heißen gleich – die aktive wird verwendet: {names}",
   "csvImportAction": "Importieren",
   "csvImportEmpty": "Diese CSV enthält keine Ausgaben oder Zahlungen.",
-  "importedExpensesAndPayments": "{expenses} und {payments} importiert"
+  "importedExpensesAndPayments": "{expenses} und {payments} importiert",
+  "recordAddedBy": "Hinzugefügt von {name}",
+  "recordEditedBy": "Zuletzt bearbeitet von {name}",
+  "recordRecordedBy": "Erfasst von {name}",
+  "recordYou": "dir",
+  "recordUnsigned": "Von einer älteren App-Version gespeichert (unsigniert)",
+  "recordSigUnverified": "Signatur nicht überprüfbar – das signierende Gerät wurde evtl. abgemeldet",
+  "recordSigVerified": "Beim Empfang mit dem Geräteschlüssel überprüft",
+  "recordSigVouched": "Gerät bestätigt von {name}",
+  "recordSigConflict": "Signatur passt nicht zum Gerät von {name}",
+  "recordNotYourDevice": "Gibt vor, von dir zu sein – aber nicht von einem deiner Geräte",
+  "recordVersionRejected": "Eine neuere Version (weitergeleitet von {relay}) wurde abgelehnt: Sie gibt vor, von {name} zu sein, ist aber nicht gültig von dessen Gerät signiert.",
+  "recordSignedByDevice": "Signiert von Gerät {device} · {date}",
+  "recordSignatureDetails": "Signaturdetails",
+  "recordSignatureWarning": "Signaturproblem"
 }

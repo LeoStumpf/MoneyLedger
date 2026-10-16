@@ -15,6 +15,9 @@ import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
+import 'package:money_ledger/core/matrix/transport_provider.dart';
+
+import '../helpers/fake_ledger_network.dart';
 import '../helpers/in_memory_database.dart';
 
 void main() {
@@ -63,8 +66,14 @@ void main() {
   late ProviderContainer c;
   setUp(() {
     final db = openTestDatabase();
+    final net = FakeMatrixNetwork();
     c = ProviderContainer(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith(
+          (ref) => net.clientFor('@importer:x.org'),
+        ),
+      ],
     );
     addTearDown(() {
       c.dispose();
@@ -105,6 +114,22 @@ void main() {
       expect(splits[pidByName['Sam']], 2100);
     },
   );
+
+  test('G6: imported rows are signed by the importing device (as creator '
+      'and editor); a row that does not win is not re-signed', () async {
+    await import(buildGroupCsv(grp, members, [exp(updatedAt: 2000)]));
+    final e = await c.read(expensesDaoProvider).getExpenseById('e1');
+    expect(e!.sig!.user, '@importer:x.org');
+    expect(e.origin!.user, '@importer:x.org');
+    final g = await c.read(groupsDaoProvider).getGroup('g1');
+    expect(g!.sig!.user, '@importer:x.org');
+    final ms = await c.read(membersDaoProvider).getMembers('g1');
+    expect(ms.every((m) => m.sig != null), isTrue);
+
+    await import(buildGroupCsv(grp, members, [exp(updatedAt: 1500)]));
+    final again = await c.read(expensesDaoProvider).getExpenseById('e1');
+    expect(again!.sig, e.sig, reason: 'stale row skipped, nothing re-signed');
+  });
 
   test('re-importing the same CSV is idempotent (no duplicates)', () async {
     final csv = buildGroupCsv(grp, members, [exp()]);

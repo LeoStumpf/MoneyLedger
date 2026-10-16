@@ -146,6 +146,17 @@ level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
 
+**2026-10-16 (G6 signed records, partial pass)** · working tree on `56416b7` ·
+release APK installed with `adb install -r` on phone (A) and emu (B), no
+logout / data clear. In group "G7a Test" (pre-G6 legacy rows): B added
+"G6Signed" → A received it (footer "Hinzugefügt von <B>", no unverified
+hint); A edited it (6 → 8 €) → B shows "Added by you · Last edited by <A>",
+A "Hinzugefügt von <B> · Zuletzt bearbeitet von dir"; signature details on B:
+both versions "Verified on receipt against the device's key"; A deleted the
+legacy expense "LagProbe" (signed tombstone) → gone on B; both sync icons
+cloud_done; no `[g6] refused` in logcat. Not covered on devices: forged
+records (unit/integration tests), relay after logout, restore.
+
 **2026-10-15** · build `88b4408` + working-tree fixes (registration web fallback,
 local re-add — see G7 notes) · release APK signed with the upload key ·
 phone = Pixel `09291JEC226042` (account A) · emu-B = AVD `zc` (account B) ·

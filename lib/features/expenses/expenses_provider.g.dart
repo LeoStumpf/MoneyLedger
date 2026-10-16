@@ -201,6 +201,52 @@ final class MembersDaoProvider
 
 String _$membersDaoHash() => r'd9a0cb328ed0e80f8566beffc6b14eb0602dcb9b';
 
+/// G6 device-key history + refused versions of the current account.
+
+@ProviderFor(signingDao)
+final signingDaoProvider = SigningDaoProvider._();
+
+/// G6 device-key history + refused versions of the current account.
+
+final class SigningDaoProvider
+    extends $FunctionalProvider<SigningDao, SigningDao, SigningDao>
+    with $Provider<SigningDao> {
+  /// G6 device-key history + refused versions of the current account.
+  SigningDaoProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'signingDaoProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$signingDaoHash();
+
+  @$internal
+  @override
+  $ProviderElement<SigningDao> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SigningDao create(Ref ref) {
+    return signingDao(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SigningDao value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SigningDao>(value),
+    );
+  }
+}
+
+String _$signingDaoHash() => r'85c352cdc266f6c84acb05d2a3a8e0c2da12d25f';
+
 @ProviderFor(syncStatesDao)
 final syncStatesDaoProvider = SyncStatesDaoProvider._();
 

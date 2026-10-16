@@ -17,6 +17,9 @@ The version-exact list of all packages (direct and transitive) is in
 |---|---|---|
 | `matrix` (Famedly Matrix SDK) | 7.2.2 | **AGPL-3.0** |
 | `flutter_vodozemac` (E2EE bindings) | 0.6.0 | **AGPL-3.0** |
+| `vodozemac` (Dart API — Ed25519 verify for signed records, G6) | 0.5.0 | **AGPL-3.0** |
+| `canonical_json` (signed-record encoding, G6) | 1.1.3 | Apache-2.0 |
+| `crypto` (SHA-256 for signed records, G6) | 3.0.7 | BSD-3-Clause |
 | `flutter`, `flutter_localizations` (SDK) | 3.44 | BSD-3-Clause |
 | `go_router`, `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
 | `sqflite` | 2.4.2+1 | BSD-2-Clause |
@@ -56,13 +59,14 @@ Build/dev-only tools (`build_runner`, `drift_dev`, `riverpod_generator`,
 `flutter_lints`, `sqlite3` and `fake_async` for tests) and all transitive dependencies are
 permissive — MIT, BSD-2/3-Clause or Apache-2.0 — plus:
 
-- `vodozemac` (Dart package, pulled in by `matrix`) — AGPL-3.0;
+- (`vodozemac`, `canonical_json` and `crypto` used to be transitive only;
+  since G6 they are direct dependencies — see the table above);
 - `gtk` — MPL-2.0, Linux-desktop only (not shipped in the Android/web app).
 
 ## Compatibility
 
 All of the above are compatible with distributing MoneyLedger under the
-AGPL-3.0: the two AGPL-3.0 packages (`matrix`, `flutter_vodozemac`) are the
+AGPL-3.0: the AGPL-3.0 packages (`matrix`, `flutter_vodozemac`, `vodozemac`) are the
 reason the app itself is AGPL-licensed; MIT, BSD, Apache-2.0 and MPL-2.0 code
 may be combined with AGPL-3.0 code. **No incompatible license was found**
 (checked against each package's `LICENSE` in the pub cache for the versions in

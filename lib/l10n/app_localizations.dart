@@ -2113,6 +2113,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Imported {expenses} and {payments}'**
   String importedExpensesAndPayments(String expenses, String payments);
+
+  /// G6: who created an expense/payment (signed origin)
+  ///
+  /// In en, this message translates to:
+  /// **'Added by {name}'**
+  String recordAddedBy(String name);
+
+  /// G6: who signed the current version
+  ///
+  /// In en, this message translates to:
+  /// **'Last edited by {name}'**
+  String recordEditedBy(String name);
+
+  /// G6: who recorded a payment
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded by {name}'**
+  String recordRecordedBy(String name);
+
+  /// G6: the current user as editor, e.g. 'Added by you'
+  ///
+  /// In en, this message translates to:
+  /// **'you'**
+  String get recordYou;
+
+  /// G6: a pre-G6 record without signature
+  ///
+  /// In en, this message translates to:
+  /// **'Saved by an older app version (unsigned)'**
+  String get recordUnsigned;
+
+  /// G6
+  ///
+  /// In en, this message translates to:
+  /// **'Signature not verifiable — the signing device may have signed out'**
+  String get recordSigUnverified;
+
+  /// G6: details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Verified on receipt against the device\'s key'**
+  String get recordSigVerified;
+
+  /// G6: key vouched for by a snapshot sender
+  ///
+  /// In en, this message translates to:
+  /// **'Device confirmed by {name}'**
+  String recordSigVouched(String name);
+
+  /// G6: key conflict
+  ///
+  /// In en, this message translates to:
+  /// **'Signature doesn\'t match {name}\'s device'**
+  String recordSigConflict(String name);
+
+  /// G6: impersonation warning
+  ///
+  /// In en, this message translates to:
+  /// **'Claims to be from you, but not from one of your devices'**
+  String get recordNotYourDevice;
+
+  /// G6: notice on the edit page
+  ///
+  /// In en, this message translates to:
+  /// **'A newer version relayed by {relay} was refused: it claims to be from {name} but isn\'t validly signed by their device.'**
+  String recordVersionRejected(String relay, String name);
+
+  /// G6: details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Signed by device {device} · {date}'**
+  String recordSignedByDevice(String device, String date);
+
+  /// G6: details sheet title / tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Signature details'**
+  String get recordSignatureDetails;
+
+  /// G6: list icon tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Signature problem'**
+  String get recordSignatureWarning;
 }
 
 class _AppLocalizationsDelegate

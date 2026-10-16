@@ -7,7 +7,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/database/daos/signing_dao.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
+import 'package:money_ledger/features/expenses/record_attribution.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/backup/backup_providers.dart';
@@ -113,6 +115,15 @@ List<dynamic> testOverrides({
   allMembersProvider.overrideWith((_) => Stream.value(const [])),
   // Never touch the app_links plugin in widget tests.
   ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
+  ...signingUiOverrides(),
+];
+
+/// G6: the signature-status streams of the record UI, without a database
+/// stream (drift stream timers would outlive the widget-test tree).
+/// [keys]: the device-key history the UI sees.
+List<dynamic> signingUiOverrides({List<KnownKey> keys = const []}) => [
+  knownDeviceKeysProvider.overrideWith((_) => Stream.value(keys)),
+  rejectedVersionProvider.overrideWith((_, _) => Stream.value(null)),
 ];
 
 /// Additional override for groups tests where you want to control the group list.

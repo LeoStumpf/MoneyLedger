@@ -63,11 +63,16 @@ class GroupSnapshot {
   final List<MemberModel> members;
   final List<ExpenseModel> expenses;
   final List<SettlementModel> settlements;
+
+  /// G6: first-hand device keys of the snapshot's signers (user → device →
+  /// key), so a restore on a fresh device can still check them.
+  final Map<String, Map<String, String>> deviceKeys;
   const GroupSnapshot({
     required this.group,
     required this.members,
     required this.expenses,
     required this.settlements,
+    this.deviceKeys = const {},
   });
 }
 
@@ -93,6 +98,8 @@ String buildBackupJson({
           g.members,
           g.expenses,
           g.settlements,
+          deviceKeys: g.deviceKeys,
+          includePending: true,
         ),
     ],
   });

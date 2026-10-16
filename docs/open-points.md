@@ -9,13 +9,36 @@ lives in [`plan.md`](../plan.md) → Phase G**; this file keeps the background.
 
 ## Open gaps
 
-### Per-record cryptographic authorship — the residual trust-model gap
-Inbound records are membership-gated (`LedgerSyncer.isSenderAuthorized`): only an
-active member of a group can write to it, and the E2EE `senderId` is
-authenticated. But records carry no per-record signature, so a member can still
-forge **another member's** expense/settlement (the gate authenticates the
-*relaying* sender, not the *authoring* participant). Closing this needs per-record
-signing + key distribution — a sizeable protocol addition, deferred.
+### Signed records (G6) — residual risks
+Every record version is signed by its editor's Matrix device key and verified
+on receipt (see CLAUDE.md "Signed records (G6)" and
+`docs/design/g6-signed-records.md`). What is still open:
+- **Fabricated device ids.** A member can sign a version "as" X with an
+  invented device id and their own key. Receivers that never saw that device
+  (and don't find it on X's server device list) can't tell it from a device X
+  signed out of before they pinned it: the version is **accepted but shown
+  unverified**; X's own devices flag it ("not from one of your devices").
+  Closing this needs **cross-signing** (device keys signed by X's
+  self-signing key survive logout) — the app never sets cross-signing up;
+  future item (with G11).
+- **Malicious inviter.** A new member trusts the inviter's bootstrap
+  (TOFU, as before) including its `device_keys` attestations, so the inviter
+  could vouch for fake keys ("vouched" in the details).
+- **Homeserver.** A user's homeserver can add devices for that user (the
+  Matrix E2EE trust model; G11 / SAS verification).
+- **Divergence by disagreement.** An honest device that accepted a version as
+  "unverified" and one that refused it (key conflict) keep different
+  versions; the digest `rejected` map stops the repair loop and the refusing
+  side shows a notice on the record.
+- **Grandfathered rows.** Rows from before G6 stay local legacy/unsigned;
+  peers refuse them when relayed, so they can't be bootstrapped to new
+  members/devices (re-edit to sign). Unsigned member / meta rows of an old
+  group likewise; group meta of such a group must be re-saved (edit) before a
+  new member can be bootstrapped.
+- **Size.** Signatures roughly double a record's wire size — tighter single
+  message bootstrap ceiling (G14).
+- Same-clock different versions (two signed versions with one `updated_at`):
+  first stored wins (G27 tie-break still open).
 
 ### Device-verification enforcement
 SAS (emoji) verification exists for **visibility + manual** trust only
@@ -58,9 +81,10 @@ Three flows can only be verified on a real device + homeserver, not in
 
 Durable constraints of the current design — not bugs, but worth knowing.
 
-- **Trust model — membership-gated, not cryptographically authored.** See the
-  open gap above. Digest-borne membership gossip in `SyncEngine` is gated only by
-  the digest *sender* being a known member (rules 5/6), not per-entry.
+- **Trust model — membership-gated relays, signed authorship (G6).** The
+  relaying sender must be a group member; each version's author is proven by
+  its device signature. Digest member gossip is verified per entry, and
+  digests from non-participants are ignored (rule 8). Residual risks above.
 - **Wall-clock LWW.** Merges are whole-record last-writer-wins on `updated_at`
   (ms epoch). Inbound `updated_at` is clamped to `now + 5 min` so a skewed/hostile
   future clock can't win every merge forever; within that window a later honest

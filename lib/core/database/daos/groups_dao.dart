@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/group_model.dart';
+import '../../../models/record_signature.dart';
 
 part 'groups_dao.g.dart';
 
@@ -39,5 +40,17 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
     name: g.name,
     currency: g.currency,
     updatedAt: g.updatedAt,
+    sig: RecordSignature.decode(g.sig),
+    pendingSign: g.pendingSign,
   );
 }
+
+/// A fully-populated companion for an LWW upsert of [g] (G6 fields included).
+GroupsCompanion groupCompanion(GroupModel g) => GroupsCompanion(
+  roomId: Value(g.roomId),
+  name: Value(g.name),
+  currency: Value(g.currency),
+  updatedAt: Value(g.updatedAt),
+  sig: Value(g.sig?.encode()),
+  pendingSign: Value(g.pendingSign),
+);

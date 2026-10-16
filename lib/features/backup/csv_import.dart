@@ -1,10 +1,15 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../core/database/app_database.dart';
+import '../../core/database/daos/expenses_dao.dart';
+import '../../core/database/daos/groups_dao.dart';
+import '../../core/database/daos/members_dao.dart';
+import '../../core/matrix/transport_provider.dart';
+import '../../core/sync/record_signing.dart';
+import '../../models/expense_model.dart';
+import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
 import 'ledger_csv.dart';
@@ -107,6 +112,11 @@ typedef CsvImportResult = ({int expenses, int payments});
 /// each expense / payment is **LWW-upserted by id** using the row's
 /// `Updated At` clock — so re-importing a backup is idempotent and merging
 /// into an existing group lets the newer copy win.
+///
+/// G6: the CSV carries no signatures. A row that **wins** against the local
+/// copy (or is new) becomes a version signed by **this device as its
+/// editor** (new records also get this device as their creator, "added
+/// by"); rows that don't win are skipped, never re-signed.
 @riverpod
 class CsvImporter extends _$CsvImporter {
   @override
@@ -163,6 +173,7 @@ class CsvImporter extends _$CsvImporter {
     final groupsDao = ref.read(groupsDaoProvider);
     final membersDao = ref.read(membersDaoProvider);
     final expensesDao = ref.read(expensesDaoProvider);
+    final signer = LocalRecordSigner(ref.read(ledgerTransportProvider.future));
     final now = DateTime.now().millisecondsSinceEpoch;
 
     // 1) Ensure the group. New id when the CSV carries none; never clobber an
@@ -174,14 +185,16 @@ class CsvImporter extends _$CsvImporter {
       final currency = parsed.rows.isNotEmpty
           ? parsed.rows.first.currency
           : 'EUR';
-      await groupsDao.upsertGroupLww(
-        GroupsCompanion(
-          roomId: Value(groupId),
-          name: Value(parsed.groupName ?? 'Imported group'),
-          currency: Value(currency),
-          updatedAt: Value(now),
+      final group = await signer.group(
+        GroupModel(
+          roomId: groupId,
+          name: parsed.groupName ?? 'Imported group',
+          currency: currency,
+          updatedAt: now,
         ),
       );
+      if (db.isClosed) return (expenses: 0, payments: 0);
+      await groupsDao.upsertGroupLww(groupCompanion(group));
     }
 
     // 2) Resolve every referenced name to a participant id, creating local
@@ -194,15 +207,17 @@ class CsvImporter extends _$CsvImporter {
     for (final name in resolution.unmatched) {
       if (db.isClosed) return (expenses: 0, payments: 0);
       final pid = const Uuid().v7();
-      await membersDao.upsertMemberLww(
-        MembersCompanion(
-          groupId: Value(groupId),
-          userId: Value(pid),
-          displayName: Value(name),
-          status: const Value('active'),
-          updatedAt: Value(now),
+      final member = await signer.member(
+        MemberModel(
+          groupId: groupId,
+          userId: pid,
+          displayName: name,
+          status: 'active',
+          updatedAt: now,
         ),
       );
+      if (db.isClosed) return (expenses: 0, payments: 0);
+      await membersDao.upsertMemberLww(memberCompanion(member));
       pidByName[name] = pid;
     }
 
@@ -215,19 +230,27 @@ class CsvImporter extends _$CsvImporter {
       final payer = pidByName[row.paidByName] ?? row.paidByName;
       final recipient = row.paymentRecipient;
       if (recipient != null) {
-        await expensesDao.upsertSettlementLww(
-          SettlementsCompanion(
-            id: Value(id),
-            roomId: Value(groupId),
-            amountCents: Value(row.amountCents),
-            currency: Value(row.currency),
-            fromUser: Value(payer),
-            toUser: Value(pidByName[recipient] ?? recipient),
-            createdAt: Value(row.createdAt),
-            updatedAt: Value(row.updatedAt),
-            deleted: const Value(false),
+        final stored = await expensesDao.getSettlementById(id);
+        if (stored != null && stored.updatedAt >= row.updatedAt) {
+          payments++; // already up to date here — counted, not re-signed
+          continue;
+        }
+        final signed = await signer.settlement(
+          SettlementModel(
+            id: id,
+            roomId: groupId,
+            amountCents: row.amountCents,
+            currency: row.currency,
+            fromUser: payer,
+            toUser: pidByName[recipient] ?? recipient,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+            origin: stored?.origin,
           ),
+          creating: stored == null,
         );
+        if (db.isClosed) break;
+        await expensesDao.upsertSettlementLww(settlementCompanion(signed));
         payments++;
         continue;
       }
@@ -235,20 +258,28 @@ class CsvImporter extends _$CsvImporter {
         for (final e in row.sharesByName.entries)
           if (pidByName[e.key] != null) pidByName[e.key]!: e.value,
       };
-      await expensesDao.upsertExpenseLww(
-        ExpensesCompanion(
-          id: Value(id),
-          roomId: Value(groupId),
-          description: Value(row.description),
-          amountCents: Value(row.amountCents),
-          currency: Value(row.currency),
-          paidBy: Value(payer),
-          splitsJson: Value(jsonEncode(splits)),
-          createdAt: Value(row.createdAt),
-          updatedAt: Value(row.updatedAt),
-          deleted: const Value(false),
+      final stored = await expensesDao.getExpenseById(id);
+      if (stored != null && stored.updatedAt >= row.updatedAt) {
+        expenses++; // already up to date here — counted, not re-signed
+        continue;
+      }
+      final signed = await signer.expense(
+        ExpenseModel(
+          id: id,
+          roomId: groupId,
+          description: row.description,
+          amountCents: row.amountCents,
+          currency: row.currency,
+          paidBy: payer,
+          splitsJson: jsonEncode(splits),
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          origin: stored?.origin,
         ),
+        creating: stored == null,
       );
+      if (db.isClosed) break;
+      await expensesDao.upsertExpenseLww(expenseCompanion(signed));
       expenses++;
     }
     return (expenses: expenses, payments: payments);

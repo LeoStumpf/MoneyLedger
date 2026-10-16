@@ -53,6 +53,7 @@ void main() {
         testApp(
           const AddExpensePage(roomId: 'g1'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -81,6 +82,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -133,6 +135,7 @@ void main() {
           const AddExpensePage(roomId: 'g1'),
           locale: const Locale('de'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -178,6 +181,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -228,6 +232,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -271,6 +276,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -316,6 +322,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -354,6 +361,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -409,6 +417,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1', initial: initial),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -447,6 +456,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1', initial: initial),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -496,6 +506,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1'),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),
@@ -556,6 +567,7 @@ void main() {
         testRouterApp(
           const AddExpensePage(roomId: 'g1', initial: initial),
           overrides: [
+            ...signingUiOverrides(),
             appDatabaseProvider.overrideWith((ref) => db),
             ledgerTransportProvider.overrideWith(
               (ref) => net.clientFor('@alice:x.org'),

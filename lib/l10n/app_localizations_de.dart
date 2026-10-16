@@ -1316,4 +1316,64 @@ class AppLocalizationsDe extends AppLocalizations {
   String importedExpensesAndPayments(String expenses, String payments) {
     return '$expenses und $payments importiert';
   }
+
+  @override
+  String recordAddedBy(String name) {
+    return 'Hinzugefügt von $name';
+  }
+
+  @override
+  String recordEditedBy(String name) {
+    return 'Zuletzt bearbeitet von $name';
+  }
+
+  @override
+  String recordRecordedBy(String name) {
+    return 'Erfasst von $name';
+  }
+
+  @override
+  String get recordYou => 'dir';
+
+  @override
+  String get recordUnsigned =>
+      'Von einer älteren App-Version gespeichert (unsigniert)';
+
+  @override
+  String get recordSigUnverified =>
+      'Signatur nicht überprüfbar – das signierende Gerät wurde evtl. abgemeldet';
+
+  @override
+  String get recordSigVerified =>
+      'Beim Empfang mit dem Geräteschlüssel überprüft';
+
+  @override
+  String recordSigVouched(String name) {
+    return 'Gerät bestätigt von $name';
+  }
+
+  @override
+  String recordSigConflict(String name) {
+    return 'Signatur passt nicht zum Gerät von $name';
+  }
+
+  @override
+  String get recordNotYourDevice =>
+      'Gibt vor, von dir zu sein – aber nicht von einem deiner Geräte';
+
+  @override
+  String recordVersionRejected(String relay, String name) {
+    return 'Eine neuere Version (weitergeleitet von $relay) wurde abgelehnt: Sie gibt vor, von $name zu sein, ist aber nicht gültig von dessen Gerät signiert.';
+  }
+
+  @override
+  String recordSignedByDevice(String device, String date) {
+    return 'Signiert von Gerät $device · $date';
+  }
+
+  @override
+  String get recordSignatureDetails => 'Signaturdetails';
+
+  @override
+  String get recordSignatureWarning => 'Signaturproblem';
 }

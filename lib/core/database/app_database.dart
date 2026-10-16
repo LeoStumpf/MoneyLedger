@@ -10,6 +10,10 @@ class Groups extends Table {
   TextColumn get currency => text().withDefault(const Constant('EUR'))();
   IntColumn get updatedAt =>
       integer().withDefault(const Constant(0))(); // ms epoch, LWW clock
+  // G6: signature of this meta version (JSON, wire `sig`), NULL = legacy.
+  TextColumn get sig => text().nullable()();
+  // G6: written while the signer wasn't ready; signed before it's sent.
+  BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {roomId};
@@ -30,6 +34,11 @@ class Expenses extends Table {
   // Tombstone: deleted records are kept forever so anti-entropy can never
   // resurrect them on another device.
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  // G6: this version's signature + the creator's signed origin (JSON, the
+  // wire `sig` / `origin` objects verbatim); NULL = legacy (pre-G6) row.
+  TextColumn get sig => text().nullable()();
+  TextColumn get origin => text().nullable()();
+  BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -47,6 +56,10 @@ class Settlements extends Table {
   IntColumn get updatedAt =>
       integer().withDefault(const Constant(0))(); // ms epoch, LWW clock
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  // G6 — see Expenses.
+  TextColumn get sig => text().nullable()();
+  TextColumn get origin => text().nullable()();
+  BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -71,9 +84,49 @@ class Members extends Table {
   TextColumn get matrixId => text().nullable()(); // claimed account, or null
   TextColumn get status => text().withDefault(const Constant('active'))();
   IntColumn get updatedAt => integer()(); // ms epoch, LWW clock
+  // G6 — see Groups.
+  TextColumn get sig => text().nullable()();
+  BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {groupId, userId};
+}
+
+/// G6: every (user, device) → Ed25519 key binding this device has seen —
+/// **first-hand** from the homeserver's device list (`source = 'server'`,
+/// incl. our own device) or vouched for by a trusted snapshot sender
+/// (`source = 'attested'`, [attestedBy] = that sender's MXID). Kept after the
+/// device signs out, so records it signed stay verifiable. Device-local trust,
+/// per account; never synced and not purged with a group.
+class KnownDeviceKeys extends Table {
+  TextColumn get userId => text()();
+  TextColumn get deviceId => text()();
+  TextColumn get ed25519Key => text()();
+  TextColumn get source => text()(); // 'server' | 'attested'
+  TextColumn get attestedBy => text().nullable()();
+  IntColumn get firstSeenAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {userId, deviceId, ed25519Key};
+}
+
+/// G6: inbound record versions this device refused (bad / missing signature,
+/// key conflict, changed origin). [updatedAt] is the highest refused clock per
+/// record; advertised in our digests (`rejected`) so peers stop re-sending
+/// them (no repair loop). [kind] is `expense` / `settlement` / `member` /
+/// `meta` ([recordId] = group id for meta).
+class RejectedVersions extends Table {
+  TextColumn get groupId => text()();
+  TextColumn get kind => text()();
+  TextColumn get recordId => text()();
+  IntColumn get updatedAt => integer()();
+  TextColumn get reason => text()();
+  TextColumn get relayedBy => text()();
+  TextColumn get claimedSigner => text().nullable()();
+  IntColumn get rejectedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {groupId, kind, recordId};
 }
 
 /// Per-peer sync bookkeeping for the anti-entropy digest exchange (Phase C).
@@ -100,7 +153,16 @@ class AppSettings extends Table {
 }
 
 @DriftDatabase(
-  tables: [Groups, Expenses, Settlements, Members, PeerSyncStates, AppSettings],
+  tables: [
+    Groups,
+    Expenses,
+    Settlements,
+    Members,
+    PeerSyncStates,
+    AppSettings,
+    KnownDeviceKeys,
+    RejectedVersions,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   /// Opens the on-device database file/store called [name] (per-account ledger
@@ -154,10 +216,13 @@ class AppDatabase extends _$AppDatabase {
     await (delete(
       peerSyncStates,
     )..where((t) => t.groupId.equals(groupId))).go();
+    await (delete(
+      rejectedVersions,
+    )..where((t) => t.groupId.equals(groupId))).go();
   });
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -205,6 +270,24 @@ class AppDatabase extends _$AppDatabase {
       // v5 (Phase F): device-local settings (onboarding-seen flag).
       if (from < 5) {
         await m.createTable(appSettings);
+      }
+      // v6 (G6 signed records): per-version signatures (+ the creator's
+      // origin), a pending-signature flag, the device-key history and the
+      // refused versions. Existing rows keep `sig = NULL`: grandfathered as
+      // legacy / unsigned (nobody can sign other people's history).
+      if (from < 6) {
+        await m.addColumn(groups, groups.sig);
+        await m.addColumn(groups, groups.pendingSign);
+        await m.addColumn(members, members.sig);
+        await m.addColumn(members, members.pendingSign);
+        await m.addColumn(expenses, expenses.sig);
+        await m.addColumn(expenses, expenses.origin);
+        await m.addColumn(expenses, expenses.pendingSign);
+        await m.addColumn(settlements, settlements.sig);
+        await m.addColumn(settlements, settlements.origin);
+        await m.addColumn(settlements, settlements.pendingSign);
+        await m.createTable(knownDeviceKeys);
+        await m.createTable(rejectedVersions);
       }
     },
     beforeOpen: (_) async {

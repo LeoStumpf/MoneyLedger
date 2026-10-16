@@ -5,8 +5,13 @@ import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
+import '../../core/database/daos/signing_dao.dart';
+import '../../core/matrix/ledger_transport.dart';
+import '../../core/matrix/transport_provider.dart';
+import '../../core/sync/ledger_payloads.dart';
+import '../../core/sync/record_gate.dart';
+import '../../core/sync/record_verifier.dart';
 import '../expenses/expenses_provider.dart';
-import '../expenses/ledger_syncer.dart';
 import '../onboarding/onboarding_provider.dart';
 import 'ledger_backup.dart';
 
@@ -24,12 +29,20 @@ class BackupService {
   final ExpensesDao expenses;
   final SettingsDao settings;
 
+  /// G6: device-key history (export attestations, restore verification).
+  final SigningDao signing;
+
+  /// G6: the relay identity — its crypto verifies restored signatures.
+  final Future<LedgerTransport> transport;
+
   BackupService({
     required this.db,
     required this.groups,
     required this.members,
     required this.expenses,
     required this.settings,
+    required this.signing,
+    required this.transport,
   });
 
   bool get _alive => !db.isClosed;
@@ -42,12 +55,18 @@ class BackupService {
     final snapshots = <GroupSnapshot>[];
     for (final g in await groups.getAllGroups()) {
       if (!_alive) throw StateError('account switched during export');
+      final ms = await members.getMembers(g.roomId);
+      final es = await expenses.getAllExpensesForGroup(g.roomId);
+      final ss = await expenses.getAllSettlementsForGroup(g.roomId);
       snapshots.add(
         GroupSnapshot(
           group: g,
-          members: await members.getMembers(g.roomId),
-          expenses: await expenses.getAllExpensesForGroup(g.roomId),
-          settlements: await expenses.getAllSettlementsForGroup(g.roomId),
+          members: ms,
+          expenses: es,
+          settlements: ss,
+          deviceKeys: await signing.attestationsFor(
+            snapshotSigners(g, ms, es, ss),
+          ),
         ),
       );
     }
@@ -130,22 +149,41 @@ class BackupService {
   /// no membership gate, and a group this account had left/deleted here has
   /// its left-group tombstone cleared first (otherwise the syncer would keep
   /// dropping its records). Returns the ids of the restored groups.
+  ///
+  /// G6: every signed version is verified like an inbound record
+  /// ([RecordGate]); a tampered one is refused, the rest restore. The file's
+  /// `device_keys` are trusted as vouched-for keys (the user chose the
+  /// file), and unsigned rows (pre-G6 history in the user's own backup) are
+  /// restored as legacy. (Not in one transaction: verifying may look up
+  /// device keys on the homeserver.)
   Future<List<String>> restore(LedgerBackup backup) async {
     final restored = <String>[];
+    final t = await transport;
+    if (!_alive) return restored;
+    final gate = RecordGate(
+      verifier: RecordVerifier(
+        crypto: t.crypto,
+        directory: t.deviceKeys,
+        signing: signing,
+      ),
+      signing: signing,
+      groups: groups,
+      members: members,
+      expenses: expenses,
+      acceptUnsigned: true,
+      isAlive: () => _alive,
+    );
     for (final g in backup.groups) {
       if (!_alive) return restored;
       final gid = g['group'] as String;
-      await db.transaction(() async {
-        await settings.clearGroupLeft(gid);
-        await LedgerSyncer.processBootstrap(
-          g,
-          groups,
-          members,
-          expenses,
-          isAlive: () => _alive,
-        );
-      });
-      restored.add(gid);
+      await settings.clearGroupLeft(gid);
+      if (!_alive) return restored;
+      await gate.snapshot(
+        g,
+        relayedBy: backup.account ?? t.userId,
+        trustAttestations: true,
+      );
+      if (await groups.getGroup(gid) != null) restored.add(gid);
     }
     return restored;
   }
@@ -196,5 +234,7 @@ final backupServiceProvider = Provider.autoDispose<BackupService>(
     members: ref.watch(membersDaoProvider),
     expenses: ref.watch(expensesDaoProvider),
     settings: ref.watch(settingsDaoProvider),
+    signing: ref.watch(signingDaoProvider),
+    transport: ref.watch(ledgerTransportProvider.future),
   ),
 );

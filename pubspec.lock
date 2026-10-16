@@ -162,7 +162,7 @@ packages:
     source: hosted
     version: "8.12.6"
   canonical_json:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: canonical_json
       sha256: "618db0b1ea4238a3ef2f325908beee6269550d73b69dc5220456b75ce3cec072"
@@ -266,7 +266,7 @@ packages:
     source: hosted
     version: "0.3.5+2"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
@@ -1203,7 +1203,7 @@ packages:
     source: hosted
     version: "15.2.0"
   vodozemac:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: vodozemac
       sha256: bbe7dd31d7f623e2aeedb92e4b71a8b519e6109ce1e2911b5a220f6752b65cda

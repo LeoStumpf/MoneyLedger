@@ -283,6 +283,7 @@ void main() {
           testApp(
             const ExpensesPage(roomId: _roomId),
             overrides: [
+              ...signingUiOverrides(),
               expensesForRoomProvider.overrideWith(
                 (ref, roomId) => Stream.value([expense]),
               ),

@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -7,15 +6,19 @@ import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
+import '../../core/database/daos/signing_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/left_groups.dart';
 import '../../core/sync/ledger_payloads.dart';
+import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
 import '../onboarding/onboarding_provider.dart';
+
+export '../../core/database/daos/members_dao.dart' show memberCompanion;
 
 part 'group_provider.g.dart';
 
@@ -73,11 +76,37 @@ class _GroupWriteContext {
       members = ref.read(membersDaoProvider),
       expenses = ref.read(expensesDaoProvider),
       settings = ref.read(settingsDaoProvider),
+      signing = ref.read(signingDaoProvider),
       health = ref.read(syncHealthProvider.notifier),
       transport = ref.read(ledgerTransportProvider.future) {
     // Not every mutation awaits the transport (e.g. a solo-group delete);
     // don't let an unused transport failure surface as an unhandled error.
     transport.ignore();
+    signer = LocalRecordSigner(transport);
+  }
+
+  /// G6: signs every version a mutation writes with this device's key.
+  late final LocalRecordSigner signer;
+  final SigningDao signing;
+
+  /// Signs [m] and saves it (LWW). Returns the stored (signed or
+  /// `pendingSign`) version.
+  Future<MemberModel> saveMember(MemberModel m) async {
+    final signed = await signer.member(m);
+    if (!db.isClosed) await members.upsertMemberLww(memberCompanion(signed));
+    return signed;
+  }
+
+  /// Sends a member payload — unless the version still waits for its
+  /// signature (G6: peers refuse unsigned versions; anti-entropy delivers it
+  /// once the sync engine has signed it).
+  Future<void> sendMember(Set<String> targets, MemberModel m) async {
+    if (m.sig == null || targets.isEmpty) return;
+    await (await transport).sendToUsers(
+      targets,
+      memberEventType,
+      memberPayload(m),
+    );
   }
 
   final AppDatabase db;
@@ -104,7 +133,7 @@ class _GroupWriteContext {
     String type,
     Map<String, dynamic> content,
   ) async {
-    if (db.isClosed) return;
+    if (db.isClosed || content['sig'] == null) return;
     try {
       final targets = (await members.activeClaimedMatrixIds(groupId)).toSet();
       if (targets.isEmpty || db.isClosed) return;
@@ -119,16 +148,25 @@ class _GroupWriteContext {
     }
   }
 
-  Future<Map<String, dynamic>> buildBootstrap(String groupId) async =>
-      buildBootstrapContent(
-        groupId,
-        await groups.getGroup(groupId),
-        await members.getMembers(groupId),
-        // Tombstones included: the new member must learn about deletions too,
-        // or they would re-gossip dead records via anti-entropy.
-        await expenses.getAllExpensesForGroup(groupId),
-        await expenses.getAllSettlementsForGroup(groupId),
-      );
+  Future<Map<String, dynamic>> buildBootstrap(String groupId) async {
+    final group = await groups.getGroup(groupId);
+    final ms = await members.getMembers(groupId);
+    // Tombstones included: the new member must learn about deletions too,
+    // or they would re-gossip dead records via anti-entropy.
+    final es = await expenses.getAllExpensesForGroup(groupId);
+    final ss = await expenses.getAllSettlementsForGroup(groupId);
+    return buildBootstrapContent(
+      groupId,
+      group,
+      ms,
+      es,
+      ss,
+      // G6: vouch for the signers' keys we saw first-hand.
+      deviceKeys: await signing.attestationsFor(
+        snapshotSigners(group, ms, es, ss),
+      ),
+    );
+  }
 }
 
 /// Runs [body] with a freshly captured [_GroupWriteContext]: loading → result,
@@ -159,26 +197,26 @@ class GroupCreator extends _$GroupCreator {
         final me = await w.myMxid();
         final myName = await w.profileNameOrLocalpart(me);
         if (w.db.isClosed) return;
-        await w.groups.upsertGroupLww(
-          GroupsCompanion(
-            roomId: Value(groupId),
-            name: Value(name),
-            currency: Value(currency),
-            updatedAt: Value(now),
+        final group = await w.signer.group(
+          GroupModel(
+            roomId: groupId,
+            name: name,
+            currency: currency,
+            updatedAt: now,
           ),
         );
+        if (w.db.isClosed) return;
+        await w.groups.upsertGroupLww(groupCompanion(group));
         // The creator is the first participant, claimed by their own account
         // (participant id == their MXID, the invariant for from-scratch users).
-        await w.members.upsertMemberLww(
-          memberCompanion(
-            MemberModel(
-              groupId: groupId,
-              userId: me,
-              displayName: myName,
-              matrixId: me,
-              status: 'active',
-              updatedAt: now,
-            ),
+        await w.saveMember(
+          MemberModel(
+            groupId: groupId,
+            userId: me,
+            displayName: myName,
+            matrixId: me,
+            status: 'active',
+            updatedAt: now,
           ),
         );
       });
@@ -238,7 +276,7 @@ class MemberAdder extends _$MemberAdder {
             status: 'active',
             updatedAt: DateTime.now().millisecondsSinceEpoch,
           );
-    await w.members.upsertMemberLww(memberCompanion(member));
+    final saved = await w.saveMember(member);
 
     final transport = await w.transport;
 
@@ -253,7 +291,7 @@ class MemberAdder extends _$MemberAdder {
     final others = (await w.members.activeClaimedMatrixIds(
       groupId,
     )).where((m) => m != userId).toSet();
-    await transport.sendToUsers(others, memberEventType, memberPayload(member));
+    await w.sendMember(others, saved);
   }
 
   /// Shares the whole group with a Matrix account **without** assigning them a
@@ -282,8 +320,7 @@ class MemberAdder extends _$MemberAdder {
       status: 'active',
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
-    await w.members.upsertMemberLww(memberCompanion(member));
-    await _relayToClaimed(w, groupId, member);
+    await _relayToClaimed(w, groupId, await w.saveMember(member));
   });
 
   /// Re-adds a removed **local** participant (G7): reactivates the same
@@ -320,8 +357,7 @@ class MemberAdder extends _$MemberAdder {
   ) async {
     final current = _find(await w.members.getMembers(groupId), participantId);
     if (current == null) return;
-    final updated = _copyWith(current, matrixId: matrixId);
-    await w.members.upsertMemberLww(memberCompanion(updated));
+    final updated = await w.saveMember(_copyWith(current, matrixId: matrixId));
     final transport = await w.transport;
     await transport.sendToUsers(
       {matrixId},
@@ -329,11 +365,7 @@ class MemberAdder extends _$MemberAdder {
       await w.buildBootstrap(groupId),
     );
     final targets = (await w.members.activeClaimedMatrixIds(groupId)).toSet();
-    await transport.sendToUsers(
-      targets,
-      memberEventType,
-      memberPayload(updated),
-    );
+    await w.sendMember(targets, updated);
   }
 
   /// Claims an existing participant as **this device's own account** — the
@@ -359,16 +391,10 @@ class MemberAdder extends _$MemberAdder {
     final current = _find(await w.members.getMembers(groupId), participantId);
     if (current == null || current.matrixId == null) return;
     final detached = current.matrixId!;
-    final updated = _copyWith(current, matrixId: null);
-    await w.members.upsertMemberLww(memberCompanion(updated));
+    final updated = await w.saveMember(_copyWith(current, matrixId: null));
     final targets = (await w.members.activeClaimedMatrixIds(groupId)).toSet()
       ..add(detached);
-    final transport = await w.transport;
-    await transport.sendToUsers(
-      targets,
-      memberEventType,
-      memberPayload(updated),
-    );
+    await w.sendMember(targets, updated);
   });
 
   Future<void> _editParticipant(
@@ -378,8 +404,7 @@ class MemberAdder extends _$MemberAdder {
   ) => _run((w) async {
     final current = _find(await w.members.getMembers(groupId), participantId);
     if (current == null) return;
-    final updated = edit(current);
-    await w.members.upsertMemberLww(memberCompanion(updated));
+    final updated = await w.saveMember(edit(current));
     await _relayToClaimed(w, groupId, updated);
   });
 
@@ -388,14 +413,8 @@ class MemberAdder extends _$MemberAdder {
     String groupId,
     MemberModel member,
   ) async {
-    final transport = await w.transport;
     final targets = (await w.members.activeClaimedMatrixIds(groupId)).toSet();
-    if (targets.isEmpty) return;
-    await transport.sendToUsers(
-      targets,
-      memberEventType,
-      memberPayload(member),
-    );
+    await w.sendMember(targets, member);
   }
 
   static MemberModel? _find(List<MemberModel> members, String participantId) {
@@ -461,19 +480,14 @@ class MemberRemover extends _$MemberRemover {
           DateTime.now().millisecondsSinceEpoch,
         );
         if (updated == null) return;
-        await w.members.upsertMemberLww(memberCompanion(updated));
+        final saved = await w.saveMember(updated);
         // Relay to every claimed account, including the removed member's own
         // device so it learns of the removal.
         final targets = members
             .map((m) => m.matrixId)
             .whereType<String>()
             .toSet();
-        final transport = await w.transport;
-        await transport.sendToUsers(
-          targets,
-          memberEventType,
-          memberPayload(updated),
-        );
+        await w.sendMember(targets, saved);
       });
 }
 
@@ -514,15 +528,16 @@ Future<int> profileNameRefresh(Ref ref) async {
             : (names[mxid] = await transport.profileName(mxid));
         if (db.isClosed) return renamed;
         if (name == null || name == m.displayName) continue;
-        final updated = MemberModel(
-          groupId: m.groupId,
-          userId: m.userId,
-          displayName: name,
-          matrixId: m.matrixId,
-          status: m.status,
-          updatedAt: nextLwwClock(m.updatedAt),
+        final updated = await w.saveMember(
+          MemberModel(
+            groupId: m.groupId,
+            userId: m.userId,
+            displayName: name,
+            matrixId: m.matrixId,
+            status: m.status,
+            updatedAt: nextLwwClock(m.updatedAt),
+          ),
         );
-        await w.members.upsertMemberLww(memberCompanion(updated));
         await w.replicate(
           group.roomId,
           memberEventType,
@@ -582,11 +597,11 @@ class GroupExiter extends _$GroupExiter {
         final members = await w.members.getMembers(groupId);
         final now = DateTime.now().millisecondsSinceEpoch;
         final self = claimedBy(members, me);
-        final removed = self == null
+        final unsigned = self == null
             ? null
             : _removedCopy(members, self.userId, now);
-        if (removed != null) {
-          await w.members.upsertMemberLww(memberCompanion(removed));
+        final removed = unsigned == null ? null : await w.saveMember(unsigned);
+        if (removed != null && removed.sig != null) {
           final targets = members
               .map((m) => m.matrixId)
               .whereType<String>()
@@ -651,31 +666,16 @@ class GroupEditor extends _$GroupEditor {
     final current = await w.groups.getGroup(groupId);
     if (current == null) return;
     if (current.name == name && current.currency == currency) return;
-    final updated = GroupModel(
-      roomId: groupId,
-      name: name,
-      currency: currency,
-      updatedAt: nextLwwClock(current.updatedAt),
-    );
-    await w.groups.upsertGroupLww(
-      GroupsCompanion(
-        roomId: Value(groupId),
-        name: Value(name),
-        currency: Value(currency),
-        updatedAt: Value(updated.updatedAt),
+    final updated = await w.signer.group(
+      GroupModel(
+        roomId: groupId,
+        name: name,
+        currency: currency,
+        updatedAt: nextLwwClock(current.updatedAt),
       ),
     );
+    if (w.db.isClosed) return;
+    await w.groups.upsertGroupLww(groupCompanion(updated));
     await w.replicate(groupId, groupMetaEventType, groupMetaPayload(updated));
   });
 }
-
-/// Maps a [MemberModel] to a fully-populated companion (all columns set) for an
-/// LWW upsert.
-MembersCompanion memberCompanion(MemberModel m) => MembersCompanion(
-  groupId: Value(m.groupId),
-  userId: Value(m.userId),
-  displayName: Value(m.displayName),
-  matrixId: Value(m.matrixId),
-  status: Value(m.status),
-  updatedAt: Value(m.updatedAt),
-);

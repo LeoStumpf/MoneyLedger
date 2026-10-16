@@ -1301,4 +1301,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String importedExpensesAndPayments(String expenses, String payments) {
     return 'Imported $expenses and $payments';
   }
+
+  @override
+  String recordAddedBy(String name) {
+    return 'Added by $name';
+  }
+
+  @override
+  String recordEditedBy(String name) {
+    return 'Last edited by $name';
+  }
+
+  @override
+  String recordRecordedBy(String name) {
+    return 'Recorded by $name';
+  }
+
+  @override
+  String get recordYou => 'you';
+
+  @override
+  String get recordUnsigned => 'Saved by an older app version (unsigned)';
+
+  @override
+  String get recordSigUnverified =>
+      'Signature not verifiable — the signing device may have signed out';
+
+  @override
+  String get recordSigVerified =>
+      'Verified on receipt against the device\'s key';
+
+  @override
+  String recordSigVouched(String name) {
+    return 'Device confirmed by $name';
+  }
+
+  @override
+  String recordSigConflict(String name) {
+    return 'Signature doesn\'t match $name\'s device';
+  }
+
+  @override
+  String get recordNotYourDevice =>
+      'Claims to be from you, but not from one of your devices';
+
+  @override
+  String recordVersionRejected(String relay, String name) {
+    return 'A newer version relayed by $relay was refused: it claims to be from $name but isn\'t validly signed by their device.';
+  }
+
+  @override
+  String recordSignedByDevice(String device, String date) {
+    return 'Signed by device $device · $date';
+  }
+
+  @override
+  String get recordSignatureDetails => 'Signature details';
+
+  @override
+  String get recordSignatureWarning => 'Signature problem';
 }

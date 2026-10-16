@@ -26,6 +26,7 @@ library;
 import 'dart:async';
 
 import 'package:money_ledger/core/matrix/buffered_inbox.dart';
+import 'package:money_ledger/core/matrix/hmac_record_crypto.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 
 class FakeMatrixNetwork {
@@ -33,6 +34,10 @@ class FakeMatrixNetwork {
 
   /// Whether devices buffer inbound payloads while nobody listens.
   final bool bufferInbound;
+
+  /// G6: every fake device's signing key + the "homeserver device list".
+  /// [removeDevice] also drops the device from it (sign-out).
+  final HmacKeyRegistry keys = HmacKeyRegistry();
 
   /// Public profile display names by MXID (G17) — what
   /// [FakeTransport.profileName] returns; absent → null (no display name).
@@ -61,6 +66,7 @@ class FakeMatrixNetwork {
   /// user left with no devices becomes unreachable for senders.
   void removeDevice(String userId, {String device = 'D1'}) {
     _clients[userId]?.remove(device)?.dispose();
+    keys.removeDevice(userId, device);
   }
 
   SendResult _send(
@@ -161,7 +167,16 @@ class FakeTransport implements LedgerTransport {
   /// a signed-out client / encryption not enabled.
   bool unavailable = false;
 
-  FakeTransport(this._net, this.userId, this.deviceId);
+  FakeTransport(this._net, this.userId, this.deviceId)
+    : crypto = _net.keys.deviceCrypto(userId, deviceId);
+
+  /// G6: this fake device's signer (see [HmacKeyRegistry]). Set
+  /// `crypto.ready = false` to simulate encryption not being ready.
+  @override
+  final HmacRecordCrypto crypto;
+
+  @override
+  DeviceKeyDirectory get deviceKeys => _net.keys;
 
   void _emit(TransportMessage m) {
     _net._activity++;
