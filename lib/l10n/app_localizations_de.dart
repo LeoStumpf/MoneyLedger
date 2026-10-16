@@ -1056,6 +1056,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Füge die erste Ausgabe hinzu – MoneyLedger rechnet aus, wer wem was schuldet.';
 
   @override
+  String get expensesEmptyAloneBody =>
+      'Bisher bist nur du in der Gruppe. Füge die Leute hinzu, mit denen du Kosten teilst – danach die erste Ausgabe.';
+
+  @override
+  String get addPeople => 'Personen hinzufügen';
+
+  @override
   String get splitSection => 'Aufteilung';
 
   @override

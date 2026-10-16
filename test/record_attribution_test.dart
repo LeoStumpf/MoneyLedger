@@ -172,9 +172,7 @@ void main() {
     );
   });
 
-  testWidgets('edit page footer shows "Added by … · Last edited by …"', (
-    tester,
-  ) async {
+  Future<void> pumpEditPage(WidgetTester tester, {required bool pin}) async {
     final db = openTestDatabase();
     addTearDown(db.close);
     final net = FakeMatrixNetwork();
@@ -191,10 +189,12 @@ void main() {
     }
     final aliceDev = net.clientFor(alice).crypto;
     final bobDev = net.clientFor(bob).crypto;
-    await SigningDao(db).pinServerKeys({
-      alice: {'D1': aliceDev.identity!.key},
-      bob: {'D1': bobDev.identity!.key},
-    });
+    if (pin) {
+      await SigningDao(db).pinServerKeys({
+        alice: {'D1': aliceDev.identity!.key},
+        bob: {'D1': bobDev.identity!.key},
+      });
+    }
     final created = await signExpense(
       aliceDev,
       const ExpenseModel(
@@ -243,6 +243,18 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
+  }
+
+  Future<void> unmount(WidgetTester tester) async {
+    // Unmount and let drift's stream-close timers run.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 10));
+  }
+
+  testWidgets('edit page footer shows "Added by … · Last edited by …"', (
+    tester,
+  ) async {
+    await pumpEditPage(tester, pin: true);
     expect(find.text('Added by Alex ·'), findsOneWidget);
     expect(find.text('Last edited by Sam'), findsOneWidget);
     expect(find.text(en.recordSigUnverified), findsNothing);
@@ -250,9 +262,18 @@ void main() {
     await tester.tap(find.byKey(const Key('recordSignatureInfo')));
     await tester.pumpAndSettle();
     expect(find.text(en.recordSigVerified), findsNWidgets(2));
+    await unmount(tester);
+  });
 
-    // Unmount and let drift's stream-close timers run.
-    await tester.pumpWidget(const SizedBox());
-    await tester.pump(const Duration(milliseconds: 10));
+  testWidgets('G46: an unverifiable (not conflicting) signature is no '
+      'footer noise — only the details dialog says so', (tester) async {
+    await pumpEditPage(tester, pin: false);
+    expect(find.text('Added by Alex ·'), findsOneWidget);
+    expect(find.text(en.recordSigUnverified), findsNothing);
+
+    await tester.tap(find.byKey(const Key('recordSignatureInfo')));
+    await tester.pumpAndSettle();
+    expect(find.text(en.recordSigUnverified), findsNWidgets(2));
+    await unmount(tester);
   });
 }

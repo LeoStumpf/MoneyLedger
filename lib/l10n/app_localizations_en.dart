@@ -1045,6 +1045,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Add the first expense — MoneyLedger works out who owes whom.';
 
   @override
+  String get expensesEmptyAloneBody =>
+      'It\'s just you so far. Add the people you share costs with, then the first expense.';
+
+  @override
+  String get addPeople => 'Add people';
+
+  @override
   String get splitSection => 'Split';
 
   @override

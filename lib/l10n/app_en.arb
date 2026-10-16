@@ -630,6 +630,14 @@
   "allSettledUpBody": "Nobody in this group owes anybody anything.",
   "expensesEmptyTitle": "No expenses yet",
   "expensesEmptyBody": "Add the first expense — MoneyLedger works out who owes whom.",
+  "expensesEmptyAloneBody": "It's just you so far. Add the people you share costs with, then the first expense.",
+  "@expensesEmptyAloneBody": {
+    "description": "Empty ledger of a group whose only participant is the user (G46)"
+  },
+  "addPeople": "Add people",
+  "@addPeople": {
+    "description": "Call to action on an empty group with only the user in it (G46)"
+  },
   "splitSection": "Split",
   "nameOptionalHelper": "Optional with a Matrix ID — their profile name is used",
   "nameOrMatrixIdRequired": "Enter a name or a Matrix ID",

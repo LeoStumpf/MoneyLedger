@@ -110,3 +110,30 @@ final welcomeStatusProvider = Provider<WelcomeStatus>((ref) {
       ? WelcomeStatus.seen
       : WelcomeStatus.notSeen;
 });
+
+/// G46: where a signed-out device is sent when it is redirected off an
+/// in-app page (the welcome has been seen).
+enum SignedOutLanding {
+  /// The login page — after a Matrix sign-out (normal).
+  login,
+
+  /// The welcome with its three choices — after *Delete local data*: the
+  /// user chose not to use an account, so the login page would be the wrong
+  /// next step.
+  welcome,
+}
+
+/// The current [SignedOutLanding] (in memory). Set to
+/// [SignedOutLanding.welcome] right before local mode ends; the router puts
+/// it back to [SignedOutLanding.login] once someone is in again.
+class SignedOutLandingNotifier extends Notifier<SignedOutLanding> {
+  @override
+  SignedOutLanding build() => SignedOutLanding.login;
+
+  void set(SignedOutLanding landing) => state = landing;
+}
+
+final signedOutLandingProvider =
+    NotifierProvider<SignedOutLandingNotifier, SignedOutLanding>(
+      SignedOutLandingNotifier.new,
+    );

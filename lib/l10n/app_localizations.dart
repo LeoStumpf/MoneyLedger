@@ -1796,6 +1796,18 @@ abstract class AppLocalizations {
   /// **'Add the first expense — MoneyLedger works out who owes whom.'**
   String get expensesEmptyBody;
 
+  /// Empty ledger of a group whose only participant is the user (G46)
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s just you so far. Add the people you share costs with, then the first expense.'**
+  String get expensesEmptyAloneBody;
+
+  /// Call to action on an empty group with only the user in it (G46)
+  ///
+  /// In en, this message translates to:
+  /// **'Add people'**
+  String get addPeople;
+
   /// No description provided for @splitSection.
   ///
   /// In en, this message translates to:

@@ -287,7 +287,7 @@ void main() {
     });
 
     testWidgets('G39/G40 first open: welcome → use without account → local '
-        'onboarding → groups; delete local data → login', (tester) async {
+        'onboarding → groups; delete local data → welcome', (tester) async {
       c = makeContainer(timeout: const Duration(minutes: 5), prefs: const {});
       final router = await pumpApp(tester);
       expect(location(router), '/welcome');
@@ -333,13 +333,31 @@ void main() {
       await flush(tester);
       expect(location(router), '/groups');
 
-      // Leave local mode.
+      // Leave local mode (G46: *Delete local data* sets the landing first)
+      // → the welcome, opened on its three choices.
+      c.read(signedOutLandingProvider.notifier).set(SignedOutLanding.welcome);
+      await tester.runAsync(
+        () => c.read(devicePrefsProvider.notifier).endLocalProfile(),
+      );
+      await flush(tester);
+      expect(location(router), '/welcome');
+      expect(find.byKey(const Key('welcomeChoices')), findsOneWidget);
+      expect(gateway.requestsStarted, 0);
+
+      // In again → a later exit lands on the login page as usual.
+      await tester.runAsync(
+        () => c.read(devicePrefsProvider.notifier).startLocalProfile('Lea'),
+      );
+      await flush(tester);
+      flags.of(kLocalAccountId).add(true);
+      await flush(tester);
+      expect(location(router), '/groups');
+      expect(c.read(signedOutLandingProvider), SignedOutLanding.login);
       await tester.runAsync(
         () => c.read(devicePrefsProvider.notifier).endLocalProfile(),
       );
       await flush(tester);
       expect(location(router), '/login');
-      expect(gateway.requestsStarted, 0);
     });
   });
 }

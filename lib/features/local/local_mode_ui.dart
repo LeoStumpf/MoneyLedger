@@ -208,7 +208,8 @@ class LocalModeSettingsSection extends ConsumerWidget {
 }
 
 /// G40: "Delete local data" — after a confirmation every row of the local
-/// ledger is deleted and local mode ends (back to the login page).
+/// ledger is deleted and local mode ends (G46: back to the welcome, whose
+/// three choices fit someone who didn't want an account).
 Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   final messenger = ScaffoldMessenger.maybeOf(context);
@@ -241,12 +242,21 @@ Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
     ),
   );
   if (ok != true) return;
+  // G46: set before local mode ends, so the router's first redirect off the
+  // groups page already goes to the welcome (no login page flash).
+  container
+      .read(signedOutLandingProvider.notifier)
+      .set(SignedOutLanding.welcome);
   await deleteLocalLedger(
     db: db,
     prefs: prefs,
     deleteFiles: deleteFiles,
     releaseDb: () => container.invalidate(appDatabaseProvider),
     onError: (e) {
+      // Still in local mode: a later exit isn't necessarily this one.
+      container
+          .read(signedOutLandingProvider.notifier)
+          .set(SignedOutLanding.login);
       messenger?.showSnackBar(
         SnackBar(content: Text(l.failedWithError(e.toString()))),
       );

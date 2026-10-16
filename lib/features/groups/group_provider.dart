@@ -212,38 +212,45 @@ class GroupCreator extends _$GroupCreator {
   /// Creates a group locally (roomless): a fresh UUID id, with the creator as
   /// the first active member. Nothing is sent to Matrix — members are added (and
   /// the group replicated to them) via [MemberAdder].
-  Future<void> create(String name, String currency) =>
-      _runGroupWrite(ref, (s) => state = s, (w) async {
-        final groupId = const Uuid().v7();
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final me = await w.myMxid();
-        final myName = await w.profileNameOrLocalpart(me);
-        if (w.db.isClosed) return;
-        final group = await w.signer.group(
-          GroupModel(
-            roomId: groupId,
-            name: name,
-            currency: currency,
-            updatedAt: now,
-          ),
-        );
-        if (w.db.isClosed) return;
-        await w.groups.upsertGroupLww(groupCompanion(group));
-        // The creator is the first participant, claimed by their own account
-        // (participant id == their MXID, the invariant for from-scratch users).
-        // G40 local mode: claimed by the local pseudo account, with a fresh
-        // participant id (it keeps that id once a Matrix account adopts it).
-        await w.saveMember(
-          MemberModel(
-            groupId: groupId,
-            userId: isLocalAccountId(me) ? const Uuid().v7() : me,
-            displayName: myName,
-            matrixId: me,
-            status: 'active',
-            updatedAt: now,
-          ),
-        );
-      });
+  ///
+  /// Returns the new group's id once it is stored (G46: the create page opens
+  /// it), or null when the write failed (see [state]) or the DB closed.
+  Future<String?> create(String name, String currency) async {
+    String? created;
+    await _runGroupWrite(ref, (s) => state = s, (w) async {
+      final groupId = const Uuid().v7();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final me = await w.myMxid();
+      final myName = await w.profileNameOrLocalpart(me);
+      if (w.db.isClosed) return;
+      final group = await w.signer.group(
+        GroupModel(
+          roomId: groupId,
+          name: name,
+          currency: currency,
+          updatedAt: now,
+        ),
+      );
+      if (w.db.isClosed) return;
+      await w.groups.upsertGroupLww(groupCompanion(group));
+      // The creator is the first participant, claimed by their own account
+      // (participant id == their MXID, the invariant for from-scratch users).
+      // G40 local mode: claimed by the local pseudo account, with a fresh
+      // participant id (it keeps that id once a Matrix account adopts it).
+      await w.saveMember(
+        MemberModel(
+          groupId: groupId,
+          userId: isLocalAccountId(me) ? const Uuid().v7() : me,
+          displayName: myName,
+          matrixId: me,
+          status: 'active',
+          updatedAt: now,
+        ),
+      );
+      created = groupId;
+    });
+    return created;
+  }
 }
 
 @riverpod

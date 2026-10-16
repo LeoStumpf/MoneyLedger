@@ -307,6 +307,8 @@ class ExpensesPage extends ConsumerWidget {
                   readOnly: removed,
                   busy: expenseState.isLoading,
                   myId: meAsync.value?.userId,
+                  // G46: I'm the group's only active participant.
+                  onlyMe: canEdit && activeCount <= 1,
                   filter: search,
                 ),
                 if (adderState.isLoading)
@@ -336,6 +338,7 @@ class ExpensesPage extends ConsumerWidget {
     required bool readOnly,
     required bool busy,
     required String? myId,
+    bool onlyMe = false,
     LedgerFilter? filter,
   }) {
     final l = context.l10n;
@@ -387,11 +390,28 @@ class ExpensesPage extends ConsumerWidget {
       );
     }
     if (entries.isEmpty) {
+      // G46: a fresh group with only me in it — adding people comes first.
+      final invitePeople = !readOnly && onlyMe;
       return EmptyState(
         key: const Key('expensesEmpty'),
-        icon: Icons.receipt_long_outlined,
+        icon: invitePeople
+            ? Icons.group_add_outlined
+            : Icons.receipt_long_outlined,
         title: l.expensesEmptyTitle,
-        body: readOnly ? null : l.expensesEmptyBody,
+        body: readOnly
+            ? null
+            : invitePeople
+            ? l.expensesEmptyAloneBody
+            : l.expensesEmptyBody,
+        actions: [
+          if (invitePeople)
+            FilledButton.icon(
+              key: const Key('emptyAddPeople'),
+              onPressed: () => showAddPersonDialog(context, ref, roomId),
+              icon: const Icon(Icons.person_add_outlined),
+              label: Text(l.addPeople),
+            ),
+        ],
       );
     }
     String nameOf(String id) =>
@@ -721,27 +741,31 @@ class ExpensesPage extends ConsumerWidget {
         .toList();
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
-    final choice = await showDialog<MemberModel?>(
+    // G46: `null` = dismissed (barrier tap / back) → nothing happens;
+    // `(member: null)` = "I'm someone new".
+    final choice = await showDialog<({MemberModel? member})>(
       context: context,
       builder: (ctx) => SimpleDialog(
         title: Text(l.whichParticipantAreYou),
         children: [
           for (final m in unclaimed)
             SimpleDialogOption(
-              onPressed: () => Navigator.of(ctx).pop(m),
+              onPressed: () => Navigator.of(ctx).pop((member: m)),
               child: Text(m.displayName.isNotEmpty ? m.displayName : m.userId),
             ),
           SimpleDialogOption(
-            onPressed: () => Navigator.of(ctx).pop(null),
+            onPressed: () => Navigator.of(ctx).pop((member: null)),
             child: Text(l.imSomeoneNew),
           ),
         ],
       ),
     );
-    if (choice != null) {
+    if (choice == null) return;
+    final picked = choice.member;
+    if (picked != null) {
       await ref
           .read(memberAdderProvider.notifier)
-          .selfClaim(roomId, choice.userId);
+          .selfClaim(roomId, picked.userId);
     } else {
       // "Someone new" — ask for a name, then join as a fresh participant.
       if (!context.mounted) return;

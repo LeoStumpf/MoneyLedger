@@ -310,9 +310,11 @@ class _FormerMemberTile extends ConsumerWidget {
 }
 
 /// G11: a subtle warning under a member whose devices aren't all verified
-/// (red "not reachable" when none is verified and verified-only sync is on);
-/// tap → their device list with Verify actions. Nothing while loading / on
-/// error (offline) — it's a hint, not a gate.
+/// (red "not reachable" when none is verified); tap → their device list with
+/// Verify actions. Nothing while loading / on error (offline) — it's a hint,
+/// not a gate. G46: only while "Only sync with verified devices" is on — then
+/// unverified devices really get nothing; otherwise it is technical noise
+/// (the device list stays one tap away: ⋮ → Devices).
 class _PeerDeviceWarning extends ConsumerWidget {
   const _PeerDeviceWarning({required this.matrixId, required this.name});
   final String matrixId;
@@ -320,14 +322,15 @@ class _PeerDeviceWarning extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final verifiedOnly = ref.watch(verifiedOnlySyncProvider).value ?? false;
+    if (!verifiedOnly) return const SizedBox.shrink();
     final devices = ref.watch(memberDevicesProvider(matrixId)).value;
     if (devices == null) return const SizedBox.shrink();
     final trust = peerDeviceTrust(devices);
     if (!trust.needsAttention) return const SizedBox.shrink();
-    final verifiedOnly = ref.watch(verifiedOnlySyncProvider).value ?? false;
     final l = context.l10n;
     final theme = Theme.of(context);
-    final blocked = verifiedOnly && trust.noneVerified;
+    final blocked = trust.noneVerified;
     final color = blocked
         ? theme.colorScheme.error
         : theme.colorScheme.onSurfaceVariant;

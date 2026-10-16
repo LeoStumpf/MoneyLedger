@@ -43,20 +43,27 @@ class WelcomePage extends ConsumerStatefulWidget {
     super.key,
     this.revisit = false,
     this.initialTopic = WelcomeTopic.intro,
+    this.startAtChoices = false,
   });
 
   final bool revisit;
   final WelcomeTopic initialTopic;
+
+  /// G46: open on the choices page (the explanation was read before — e.g.
+  /// after *Delete local data*); the pages stay a swipe away. Ignored with
+  /// [revisit].
+  final bool startAtChoices;
 
   @override
   ConsumerState<WelcomePage> createState() => _WelcomePageState();
 }
 
 class _WelcomePageState extends ConsumerState<WelcomePage> {
-  late final PageController _pages = PageController(
-    initialPage: widget.initialTopic.index,
-  );
-  late int _page = widget.initialTopic.index;
+  late final int _initialPage = widget.startAtChoices && !widget.revisit
+      ? WelcomeTopic.values.length
+      : widget.initialTopic.index;
+  late final PageController _pages = PageController(initialPage: _initialPage);
+  late int _page = _initialPage;
 
   /// Explanation pages + (first open only) the choices page.
   int get _count => WelcomeTopic.values.length + (widget.revisit ? 0 : 1);

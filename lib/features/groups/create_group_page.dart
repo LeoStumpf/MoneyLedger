@@ -29,15 +29,20 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref
+    final groupId = await ref
         .read(groupCreatorProvider.notifier)
         .create(_nameCtrl.text.trim(), _currency);
+    if (!mounted) return;
     final error = ref.read(groupCreatorProvider).error;
-    if (error != null && mounted) {
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.failedWithError(error.toString()))),
       );
-    } else if (mounted) {
+    } else if (groupId != null) {
+      // G46: open the new group right away. Replacing this page keeps the
+      // groups list underneath, so Back from the group lands there.
+      context.pushReplacement('/groups/$groupId/expenses');
+    } else {
       context.pop();
     }
   }

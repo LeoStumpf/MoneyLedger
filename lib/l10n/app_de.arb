@@ -283,6 +283,8 @@
   "allSettledUpBody": "In dieser Gruppe schuldet niemand jemandem etwas.",
   "expensesEmptyTitle": "Noch keine Ausgaben",
   "expensesEmptyBody": "Füge die erste Ausgabe hinzu – MoneyLedger rechnet aus, wer wem was schuldet.",
+  "expensesEmptyAloneBody": "Bisher bist nur du in der Gruppe. Füge die Leute hinzu, mit denen du Kosten teilst – danach die erste Ausgabe.",
+  "addPeople": "Personen hinzufügen",
   "splitSection": "Aufteilung",
   "nameOptionalHelper": "Mit Matrix-ID optional – dann wird ihr Profilname verwendet",
   "nameOrMatrixIdRequired": "Gib einen Namen oder eine Matrix-ID ein",

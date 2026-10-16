@@ -23,9 +23,7 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'Create'), findsOneWidget);
     });
 
-    testWidgets('creating a group saves it to Drift and pops back', (
-      tester,
-    ) async {
+    testWidgets('creating a group saves it to Drift', (tester) async {
       final net = FakeMatrixNetwork();
       final db = openTestDatabase();
       addTearDown(db.close);

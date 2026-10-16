@@ -160,15 +160,18 @@ void main() {
       ...store.overrides(gateway),
     ];
 
-    testWidgets('warns about unverified devices; verifying one from the '
-        'sheet records it and clears the warning', (tester) async {
+    testWidgets('verified-only on: warns about unverified devices; '
+        'verifying one from the sheet records it and clears the warning', (
+      tester,
+    ) async {
+      const b0 = SignerId(user: bob, device: 'B0', key: 'key-B0');
       final gateway = FakeDeviceGateway(
         const [],
         peers: {
-          bob: [bobDevice('B1', name: 'Bob phone')],
+          bob: [bobDevice('B0'), bobDevice('B1', name: 'Bob phone')],
         },
       );
-      final store = FakeTrustStore();
+      final store = FakeTrustStore(trusted: {b0}, verifiedOnly: true);
       await tester.pumpWidget(
         testApp(
           const GroupMembersPage(roomId: 'g1'),
@@ -193,12 +196,35 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(store.trusted, {
+        b0,
         const SignerId(user: bob, device: 'B1', key: 'key-B1'),
       });
       expect(find.widgetWithText(TextButton, 'Verify'), findsNothing);
       Navigator.of(tester.element(find.text('Devices of Bob'))).pop();
       await tester.pumpAndSettle();
       expect(find.text('1 unverified device'), findsNothing);
+    });
+
+    testWidgets('G46: verified-only off → no device line at all', (
+      tester,
+    ) async {
+      final gateway = FakeDeviceGateway(
+        const [],
+        peers: {
+          bob: [bobDevice('B1'), bobDevice('B2')],
+        },
+      );
+      await tester.pumpWidget(
+        testApp(
+          const GroupMembersPage(roomId: 'g1'),
+          overrides: overrides(gateway, FakeTrustStore()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Bob'), findsOneWidget);
+      expect(find.byKey(const Key('peerDeviceWarning:$bob')), findsNothing);
+      expect(find.text('2 unverified devices'), findsNothing);
+      expect(find.text('Not reachable — no verified device'), findsNothing);
     });
 
     testWidgets('verified-only on and no verified device → not reachable', (

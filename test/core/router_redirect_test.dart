@@ -13,6 +13,7 @@ String? redirect(
   AppSessionKind? session,
   WelcomeStatus welcome = WelcomeStatus.seen,
   bool connecting = false,
+  SignedOutLanding landing = SignedOutLanding.login,
 }) => routerRedirect(
   session:
       session ??
@@ -22,6 +23,7 @@ String? redirect(
       status ??
       (onboardingSeen ? OnboardingStatus.seen : OnboardingStatus.notSeen),
   connecting: connecting,
+  landing: landing,
   location: location,
 );
 
@@ -206,6 +208,24 @@ void main() {
     test('app pages lead to the login', () {
       expect(redirect(false, '/groups'), '/login');
       expect(redirect(false, '/devices'), '/login');
+    });
+    test('G46: after "Delete local data" app pages lead to the welcome', () {
+      const welcome = SignedOutLanding.welcome;
+      expect(redirect(false, '/groups', landing: welcome), '/welcome');
+      expect(
+        redirect(false, '/groups/g1/expenses', landing: welcome),
+        '/welcome',
+      );
+      // Allowed pages stay where they are.
+      expect(redirect(false, '/login', landing: welcome), isNull);
+      expect(redirect(false, '/welcome', landing: welcome), isNull);
+      // Only for a signed-out device: in local mode / signed in it's moot.
+      expect(redirect(true, '/groups', landing: welcome), isNull);
+      // The first open still goes to the welcome either way.
+      expect(
+        redirect(false, '/groups', welcome: WelcomeStatus.notSeen),
+        '/welcome',
+      );
     });
   });
 

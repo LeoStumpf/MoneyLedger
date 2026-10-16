@@ -148,7 +148,7 @@ bool recordNeedsAttention({
 }
 
 /// "Added by X · Last edited by Y" for an expense / payment (G6), with a
-/// subtle hint for unverifiable signatures, a warning for conflicts, a
+/// warning for conflicts (G46: unverifiable signatures only in the details), a
 /// details dialog (device + how it was verified) and a notice when a newer
 /// version was refused.
 class RecordAttribution extends ConsumerWidget {
@@ -232,14 +232,14 @@ class RecordAttribution extends ConsumerWidget {
               ),
           ],
         ),
-        if (a.hint != null)
+        // G46: only a real problem shows under the line; an unverifiable
+        // (accepted) signature is in the details dialog only.
+        if (a.hint != null && a.problem)
           Text(
             a.hint!,
-            style: a.problem
-                ? theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  )
-                : muted,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
           ),
         if (rejected != null && rejected.updatedAt > updatedAt) ...[
           const SizedBox(height: Insets.xs),

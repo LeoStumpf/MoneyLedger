@@ -545,10 +545,10 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [ ] Two-device smoke (sync, invite, SAS) + `docs/smoke-test.md`
 
 ### G46. UX quick wins (goal 2) 🟠
-- [ ] "Which participant are you?" dialog: dismiss = cancel (not "I'm new")
-- [ ] After creating a group, open it; empty group shows "Add people" CTA
-- [ ] After *Delete local data* go to the welcome, not the login page
-- [ ] Hide signature/device details behind "Details" unless there is a real problem
+- [x] "Which participant are you?" dialog: dismiss = cancel (not "I'm new")
+- [x] After creating a group, open it; empty group shows "Add people" CTA
+- [x] After *Delete local data* go to the welcome, not the login page
+- [x] Hide signature/device details behind "Details" unless there is a real problem
 
 ### G47. Custom categories + dropdown picker 🟡
 - [ ] Category selection becomes a dropdown/selector (icon + name, "None",
@@ -622,6 +622,11 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [ ] Optional copy: welcome / connect flow says nothing is contacted until
       you confirm your server
 
+### G56. UX follow-ups (found in G46) 🟢
+- [ ] Members page: full MXID as subtitle — shorten / tuck away?
+- [ ] Groups app bar "Devices" icon → move into the settings sheet
+- [ ] "Add people" prompt also when I'm alone but the group already has expenses
+
 ---
 
 ## Execution queue (conductor process)
@@ -674,7 +679,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G43 — privacy promises true (web CDN, matrix.org probes, privacy texts)
 - [x] G44 — small release fixes (license label, AGP blob, release logging)
 - [x] G45 — minimal Matrix footprint (sync filter, presence) — device smoke 7.12 moved to the end
-- [ ] G46 — UX quick wins
+- [x] G46 — UX quick wins
 - [ ] G47 — custom categories + dropdown
 - [ ] G48 — restore points + revert
 - [ ] G49 — expense date
@@ -684,7 +689,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
 - [ ] G55 — web glyph coverage without Google (found in G43)
-- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check
+- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list)
+- [ ] G56 — UX follow-ups (found in G46)
 
 ---
 

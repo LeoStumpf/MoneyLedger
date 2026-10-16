@@ -52,7 +52,7 @@ const _signedOutEntryPages = {kWelcomeLocation, kLocalSetupLocation};
 /// * [AppSessionKind.loading] (device preferences not read yet) → splash.
 /// * Signed out: welcome not seen → the welcome (public pages allowed);
 ///   seen → login / register / welcome / local setup / public pages, else
-///   login.
+///   [landing] (login; the welcome after *Delete local data*, G46).
 /// * Local mode with "Connect a Matrix account" in progress ([connecting]) →
 ///   only login / register / public pages.
 /// * In (local or Matrix): onboarding flag [OnboardingStatus.unknown] → the
@@ -64,6 +64,7 @@ String? routerRedirect({
   required WelcomeStatus welcome,
   required OnboardingStatus onboarding,
   bool connecting = false,
+  SignedOutLanding landing = SignedOutLanding.login,
   required String location,
 }) {
   final public = _publicPages.contains(location);
@@ -83,7 +84,10 @@ String? routerRedirect({
                   _signedOutEntryPages.contains(location) ||
                   public
               ? null
-              : '/login';
+              : switch (landing) {
+                  SignedOutLanding.login => '/login',
+                  SignedOutLanding.welcome => kWelcomeLocation,
+                };
       }
     case AppSessionKind.local:
       if (connecting) {
@@ -117,7 +121,14 @@ GoRouter router(Ref ref) {
   // (toggling guarantees a notification regardless of the new value).
   final listenable = ValueNotifier<bool>(false);
   void bump() => listenable.value = !listenable.value;
-  ref.listen<AppSessionKind>(appSessionProvider, (_, _) => bump());
+  ref.listen<AppSessionKind>(appSessionProvider, (_, next) {
+    // G46: someone is in again → a later sign-out lands on the login page.
+    if (next == AppSessionKind.local || next == AppSessionKind.matrix) {
+      ref.read(signedOutLandingProvider.notifier).set(SignedOutLanding.login);
+    }
+    bump();
+  });
+  ref.listen<SignedOutLanding>(signedOutLandingProvider, (_, _) => bump());
   ref.listen<WelcomeStatus>(welcomeStatusProvider, (_, _) => bump());
   ref.listen<bool>(connectingAccountProvider, (_, _) => bump());
   ref.listen<OnboardingStatus>(onboardingGateProvider, (_, _) => bump());
@@ -131,6 +142,7 @@ GoRouter router(Ref ref) {
       welcome: ref.read(welcomeStatusProvider),
       onboarding: ref.read(onboardingGateProvider),
       connecting: ref.read(connectingAccountProvider),
+      landing: ref.read(signedOutLandingProvider),
       location: state.matchedLocation,
     ),
     errorBuilder: (_, state) => ErrorPage(error: state.error),
@@ -138,7 +150,13 @@ GoRouter router(Ref ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
       GoRoute(path: kSplashLocation, builder: (_, _) => const SplashPage()),
-      GoRoute(path: kWelcomeLocation, builder: (_, _) => const WelcomePage()),
+      GoRoute(
+        path: kWelcomeLocation,
+        // G46: seen before (e.g. after *Delete local data*) → the choices.
+        builder: (_, _) => WelcomePage(
+          startAtChoices: ref.read(welcomeStatusProvider) == WelcomeStatus.seen,
+        ),
+      ),
       GoRoute(
         path: kHowItWorksLocation,
         builder: (_, s) => WelcomePage(
