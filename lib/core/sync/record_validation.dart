@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../models/expense_model.dart';
+import '../../models/member_model.dart';
 
 /// Content rules every expense / payment must satisfy (G18 review) — plain
 /// Dart, shared by the inbound gate (`RecordGate` refuses violations as
@@ -57,3 +58,30 @@ String? settlementProblem(SettlementModel s) {
   if (s.fromUser == s.toUser) return 'payment to oneself';
   return null;
 }
+
+/// Whether [id] is a syntactically valid Matrix user ID (G18 review):
+/// `@localpart:server` — a non-empty localpart without `:` / whitespace, a
+/// non-empty server name (may carry a port / IPv6 literal) without
+/// whitespace, at most 255 characters. Local mode's pseudo account
+/// (`local:self`) is **not** one.
+bool isValidMxid(String? id) =>
+    id != null && id.length <= 255 && _mxidPattern.hasMatch(id);
+
+final _mxidPattern = RegExp(r'^@[^\s:]+:[^\s]+$');
+
+/// Why [m] is not a valid participant version, or null when it is: a claim
+/// ([MemberModel.matrixId]) that isn't a valid MXID ([isValidMxid]) — e.g.
+/// local mode's pseudo account planted by a peer, which would otherwise be
+/// taken for "me" by a local-mode restore / adoption, or reach the device-key
+/// lookup as a replication target. [allowLocalClaim]: a claim by local
+/// mode's pseudo account ([kLocalClaimId]) is fine — local mode's own backup.
+String? memberProblem(MemberModel m, {bool allowLocalClaim = false}) {
+  final claim = m.matrixId;
+  if (claim == null || isValidMxid(claim)) return null;
+  if (allowLocalClaim && claim == kLocalClaimId) return null;
+  return 'invalid matrix id';
+}
+
+/// Local mode's pseudo account (`kLocalAccountId` in `app_session.dart`,
+/// repeated here to keep this file plain Dart; a test pins them equal).
+const kLocalClaimId = 'local:self';

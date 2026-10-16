@@ -1152,6 +1152,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get restoreLocalOwnFile =>
+      'Stelle nur eine Sicherung wieder her, die du selbst erstellt hast: Dieses Gerät signiert ihre Einträge als deine. Gruppen mit Matrix-Konten werden unsigniert wiederhergestellt und nicht synchronisiert.';
+
+  @override
   String groupsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

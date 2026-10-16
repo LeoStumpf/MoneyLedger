@@ -33,6 +33,9 @@ class KnownKey {
 }
 
 const keySourceServer = 'server';
+
+/// G18 review 2: how many refused versions are remembered per record.
+const kMaxRefusedVersionsPerRecord = 4;
 const keySourceAttested = 'attested';
 
 /// One refused inbound version (G6, [RejectedVersions]).
@@ -186,47 +189,66 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
 
   // ── refused versions ──────────────────────────────────────────────────────
 
-  /// The refused version of record [recordId] ([kind]) in [groupId], if any.
+  /// The **highest** refused version of record [recordId] ([kind]) in
+  /// [groupId], if any.
   Future<RecordVersion?> rejectedVersion(
     String groupId,
     String kind,
     String recordId,
-  ) => _rejectedRow(
-    groupId,
-    kind,
-    recordId,
-  ).then((r) => r == null ? null : (at: r.updatedAt, hash: r.versionHash));
+  ) => _rejectedRows(groupId, kind, recordId).then(
+    (rows) => rows.isEmpty
+        ? null
+        : (at: rows.first.updatedAt, hash: rows.first.versionHash),
+  );
 
-  /// The clock of the refused version of [recordId], if any.
+  /// The clock of the highest refused version of [recordId], if any.
   Future<int?> rejectedClock(String groupId, String kind, String recordId) =>
       rejectedVersion(groupId, kind, recordId).then((v) => v?.at);
 
-  Future<RejectedVersion?> _rejectedRow(
+  /// Whether exactly [version] of [recordId] was refused (same clock and,
+  /// when both hashes are known, the same G27 hash).
+  Future<bool> isRejected(
+    String groupId,
+    String kind,
+    String recordId,
+    RecordVersion version,
+  ) async {
+    for (final r in await _rejectedRows(groupId, kind, recordId)) {
+      if (r.updatedAt == version.at &&
+          compareVersions(version, (at: r.updatedAt, hash: r.versionHash)) ==
+              0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// The refused versions of one record, highest first.
+  Future<List<RejectedVersion>> _rejectedRows(
     String groupId,
     String kind,
     String recordId,
   ) =>
-      (select(rejectedVersions)..where(
-            (t) =>
-                t.groupId.equals(groupId) &
-                t.kind.equals(kind) &
-                t.recordId.equals(recordId),
-          ))
-          .getSingleOrNull();
+      (select(rejectedVersions)
+            ..where(
+              (t) =>
+                  t.groupId.equals(groupId) &
+                  t.kind.equals(kind) &
+                  t.recordId.equals(recordId),
+            )
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.updatedAt),
+              (t) => OrderingTerm.desc(t.versionHash),
+            ]))
+          .get();
 
-  /// Records a refused version. One row per record: the **highest** refused
-  /// version (clock, then G27 hash) is kept.
+  /// Records a refused version. G18 review 2: a small **set** per record —
+  /// the [kMaxRefusedVersionsPerRecord] highest refused versions (clock,
+  /// then G27 hash) are kept, so a lower refused version a peer still holds
+  /// isn't forgotten (and re-sent on every digest) once a higher one is
+  /// refused too.
   Future<void> recordRejected(RefusedVersion v, {int? now}) =>
       transaction(() async {
-        final old = await _rejectedRow(v.groupId, v.kind, v.recordId);
-        if (old != null &&
-            compareVersions(v.version, (
-                  at: old.updatedAt,
-                  hash: old.versionHash,
-                )) <
-                0) {
-          return;
-        }
         await into(rejectedVersions).insertOnConflictUpdate(
           RejectedVersionsCompanion.insert(
             groupId: v.groupId,
@@ -240,10 +262,29 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
             versionHash: Value(v.versionHash),
           ),
         );
+        final rows = await _rejectedRows(v.groupId, v.kind, v.recordId);
+        if (rows.length <= kMaxRefusedVersionsPerRecord) return;
+        // Keep the highest versions (G27 order: clock, then hash).
+        rows.sort(
+          (a, b) => compareVersions(
+            (at: b.updatedAt, hash: b.versionHash),
+            (at: a.updatedAt, hash: a.versionHash),
+          ),
+        );
+        for (final r in rows.skip(kMaxRefusedVersionsPerRecord)) {
+          await (delete(rejectedVersions)..where(
+                (t) =>
+                    t.groupId.equals(r.groupId) &
+                    t.kind.equals(r.kind) &
+                    t.recordId.equals(r.recordId) &
+                    t.updatedAt.equals(r.updatedAt) &
+                    t.versionHash.equals(r.versionHash),
+              ))
+              .go();
+        }
       });
 
-  /// Forgets the refusal of one record (a restore the user started stored
-  /// that version after all — G18 review).
+  /// Forgets every refusal of one record (tests / tooling).
   Future<void> clearRejected(String groupId, String kind, String recordId) =>
       (delete(rejectedVersions)..where(
             (t) =>
@@ -253,35 +294,87 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
           ))
           .go();
 
-  /// kind → record id → refused version, for [groupId]'s digest.
+  /// Forgets the refusals of one record up to (and including) [version] — a
+  /// restore the user started stored that version after all (G18 review).
+  Future<void> clearRejectedUpTo(
+    String groupId,
+    String kind,
+    String recordId,
+    RecordVersion version,
+  ) => transaction(() async {
+    for (final r in await _rejectedRows(groupId, kind, recordId)) {
+      if (compareVersions((at: r.updatedAt, hash: r.versionHash), version) >
+          0) {
+        continue;
+      }
+      await (delete(rejectedVersions)..where(
+            (t) =>
+                t.groupId.equals(groupId) &
+                t.kind.equals(kind) &
+                t.recordId.equals(recordId) &
+                t.updatedAt.equals(r.updatedAt) &
+                t.versionHash.equals(r.versionHash),
+          ))
+          .go();
+    }
+  });
+
+  /// kind → record id → **highest** refused version, for [groupId]'s digest
+  /// (`rejected`).
   Future<Map<String, Map<String, RecordVersion>>> rejectedForGroup(
+    String groupId,
+  ) => rejectedSetsForGroup(groupId).then(
+    (all) => {
+      for (final MapEntry(key: kind, value: byId) in all.entries)
+        kind: {
+          for (final MapEntry(key: id, value: vs) in byId.entries) id: vs.first,
+        },
+    },
+  );
+
+  /// kind → record id → every refused version (highest first), for
+  /// [groupId]'s digest comparison and its `rejected_more` section.
+  Future<Map<String, Map<String, List<RecordVersion>>>> rejectedSetsForGroup(
     String groupId,
   ) => (select(rejectedVersions)..where((t) => t.groupId.equals(groupId)))
       .get()
       .then((rows) {
-        final out = <String, Map<String, RecordVersion>>{};
+        final out = <String, Map<String, List<RecordVersion>>>{};
         for (final r in rows) {
-          (out[r.kind] ??= {})[r.recordId] = (
+          ((out[r.kind] ??= {})[r.recordId] ??= []).add((
             at: r.updatedAt,
             hash: r.versionHash,
-          );
+          ));
+        }
+        for (final byId in out.values) {
+          for (final vs in byId.values) {
+            vs.sort((a, b) => compareVersions(b, a));
+          }
         }
         return out;
       });
 
-  /// The refused version of one record, if any — for the edit page notice.
+  /// The highest refused version of one record, if any — for the edit page
+  /// notice.
   Stream<RefusedVersion?> watchRejected(
     String groupId,
     String kind,
     String recordId,
   ) =>
-      (select(rejectedVersions)..where(
-            (t) =>
-                t.groupId.equals(groupId) &
-                t.kind.equals(kind) &
-                t.recordId.equals(recordId),
-          ))
-          .watchSingleOrNull()
+      (select(rejectedVersions)
+            ..where(
+              (t) =>
+                  t.groupId.equals(groupId) &
+                  t.kind.equals(kind) &
+                  t.recordId.equals(recordId),
+            )
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.updatedAt),
+              (t) => OrderingTerm.desc(t.versionHash),
+            ])
+            ..limit(1))
+          .watch()
+          .map((rows) => rows.firstOrNull)
           .map(
             (r) => r == null
                 ? null

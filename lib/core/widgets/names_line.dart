@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// One line of text built from a localized template with **name**
-/// placeholders, where every name ellipsizes on its own (G33): "Alexandra
-/// Longname… paid Sam Otherlo…" instead of the whole sentence being cut after
-/// the first name. Literal parts ("paid", "hat … bezahlt") are never cut.
+/// A sentence built from a localized template with **name** placeholders
+/// (G33), e.g. "Alexandra paid Sam" / "Sam zahlt an dich".
+///
+/// G18 review 2: it wraps onto up to [maxLines] lines (default 2) — a single
+/// line left only a few letters of a name next to a ledger row's amount
+/// ("mo… zahlt an dich"). Only when the whole sentence doesn't fit into
+/// [maxLines] lines are the names shortened, **each on its own** and never
+/// the literal words: every name is capped at the same number of characters
+/// (short names stay whole, long ones are cut evenly, with "…"), the largest
+/// cap that fits wins ([capNames]).
 ///
 /// [template] is the localized sentence built with [NamesLine.sentinel]s in
 /// place of the names (e.g. `l.settlementTitle(sentinel(0), sentinel(1))`);
@@ -15,6 +21,7 @@ class NamesLine extends StatelessWidget {
     required this.template,
     required this.names,
     this.style,
+    this.maxLines = 2,
   });
 
   /// The placeholder for the [i]-th name — a private-use code point that
@@ -26,80 +33,59 @@ class NamesLine extends StatelessWidget {
   /// sentinel → name.
   final Map<String, String> names;
   final TextStyle? style;
+  final int maxLines;
 
   /// The sentence with the names filled in (semantics / tests).
-  String get fullText {
-    var s = template;
-    names.forEach((k, v) => s = s.replaceAll(k, v));
-    return s;
-  }
+  String get fullText => capNames(template, names, null);
 
   @override
   Widget build(BuildContext context) {
     final effective = DefaultTextStyle.of(context).style.merge(style);
-    final segments = splitNameTemplate(template, names.keys.toSet());
     final scaler = MediaQuery.textScalerOf(context);
     final direction = Directionality.of(context);
-    double widthOf(String text) {
-      final p = TextPainter(
-        text: TextSpan(text: text, style: effective),
-        textDirection: direction,
-        textScaler: scaler,
-        maxLines: 1,
-      )..layout();
-      // Ceil: a Text never needs more than this, so the measured row
-      // can't exceed the line by a rounding hair.
-      final w = p.width.ceilToDouble();
-      p.dispose();
-      return w;
-    }
-
     return Semantics(
       label: fullText,
       excludeSemantics: true,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final literal = segments
-              .where((s) => !s.isName)
-              .fold<double>(0, (sum, s) => sum + widthOf(s.text));
-          final natural = [
-            for (final s in segments)
-              if (s.isName) widthOf(names[s.text] ?? ''),
-          ];
-          final widths = constraints.maxWidth.isFinite
-              ? allocateNameWidths(constraints.maxWidth - literal, natural)
-              : natural;
-          var n = 0;
-          // Unconstrained + clipped: on an absurdly narrow line even the
-          // literal words don't fit — clip instead of an overflow error.
-          return UnconstrainedBox(
-            alignment: AlignmentDirectional.centerStart,
-            constrainedAxis: Axis.vertical,
-            clipBehavior: Clip.hardEdge,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final s in segments)
-                  if (s.isName)
-                    SizedBox(
-                      width: widths[n++],
-                      child: Text(
-                        names[s.text] ?? '',
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        style: effective,
-                      ),
-                    )
-                  else
-                    Text(
-                      s.text,
-                      maxLines: 1,
-                      softWrap: false,
-                      style: effective,
-                    ),
-              ],
-            ),
+          final width = constraints.maxWidth;
+          bool fits(String text) {
+            final p = TextPainter(
+              text: TextSpan(text: text, style: effective),
+              textDirection: direction,
+              textScaler: scaler,
+              maxLines: maxLines,
+            )..layout(maxWidth: width);
+            final ok = !p.didExceedMaxLines;
+            p.dispose();
+            return ok;
+          }
+
+          var shown = fullText;
+          if (width.isFinite && !fits(shown)) {
+            // The largest per-name cap that fits (binary search).
+            final longest = names.values.fold<int>(
+              0,
+              (m, n) => n.characters.length > m ? n.characters.length : m,
+            );
+            var lo = 1, hi = longest - 1, best = 1;
+            while (lo <= hi) {
+              final mid = (lo + hi) ~/ 2;
+              if (fits(capNames(template, names, mid))) {
+                best = mid;
+                lo = mid + 1;
+              } else {
+                hi = mid - 1;
+              }
+            }
+            shown = capNames(template, names, best);
+          }
+          return Text(
+            shown,
+            key: const Key('namesLineText'),
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+            style: effective,
           );
         },
       ),
@@ -107,43 +93,22 @@ class NamesLine extends StatelessWidget {
   }
 }
 
-/// A [NamesLine] template split into literal text and name sentinels. Pure.
-List<({String text, bool isName})> splitNameTemplate(
-  String template,
-  Set<String> sentinels,
-) {
-  final out = <({String text, bool isName})>[];
-  final buf = StringBuffer();
-  for (final rune in template.runes) {
-    final ch = String.fromCharCode(rune);
-    if (sentinels.contains(ch)) {
-      if (buf.isNotEmpty) out.add((text: buf.toString(), isName: false));
-      buf.clear();
-      out.add((text: ch, isName: true));
+/// [template] with each sentinel of [names] replaced by its name — cut to
+/// at most [cap] characters (graphemes) plus "…" when longer; [cap] null =
+/// whole names. Pure.
+String capNames(String template, Map<String, String> names, int? cap) {
+  final out = StringBuffer();
+  for (final ch in template.characters) {
+    final name = names[ch];
+    if (name == null) {
+      out.write(ch);
+    } else if (cap == null || name.characters.length <= cap) {
+      out.write(name);
     } else {
-      buf.write(ch);
+      out
+        ..write(name.characters.take(cap).toString().trimRight())
+        ..write('…');
     }
   }
-  if (buf.isNotEmpty) out.add((text: buf.toString(), isName: false));
-  return out;
-}
-
-/// Shares [available] width between names of the given [natural] widths
-/// ("water filling"): names that fit get their full width, the rest split
-/// what's left equally — so a short name never forces a long one to be cut
-/// more than necessary, and two long names are cut evenly. Pure.
-List<double> allocateNameWidths(double available, List<double> natural) {
-  final result = List<double>.filled(natural.length, 0);
-  if (natural.isEmpty) return result;
-  var left = available < 0 ? 0.0 : available;
-  final order = List<int>.generate(natural.length, (i) => i)
-    ..sort((a, b) => natural[a].compareTo(natural[b]));
-  for (var k = 0; k < order.length; k++) {
-    final i = order[k];
-    final share = left / (order.length - k);
-    final w = natural[i] <= share ? natural[i] : share;
-    result[i] = w;
-    left -= w;
-  }
-  return result;
+  return out.toString();
 }

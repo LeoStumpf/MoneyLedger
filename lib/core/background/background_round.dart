@@ -115,6 +115,12 @@ class BackgroundRoundResult {
 /// - [openSession] — restores the relay session; `null` = signed out.
 /// - [openDatabase] — opens the account's ledger DB (per account, G4).
 /// - [abort] — completes when the round must stop early (app started).
+/// - [abortRequests] — G18 review 2: cancels the session's homeserver
+///   requests in flight (closes its HTTP client). Called when the round is
+///   stopped, **before** it waits for the step in flight and closes the
+///   stores: a request may take up to `kHttpHeaderTimeout` (90 s), far
+///   longer than [inFlightGrace] — aborted, the step fails at once instead
+///   of finishing (and writing) after the stores were closed.
 ///
 /// Steps: open the session and the account DB; start [LedgerSyncer] +
 /// [SyncEngine] (no startup digest); fetch once and wait until the relay is
@@ -135,6 +141,7 @@ Future<BackgroundRoundResult> runBackgroundRound({
   required Future<BackgroundSession?> Function() openSession,
   required AppDatabase Function(String mxid) openDatabase,
   Future<void>? abort,
+  void Function()? abortRequests,
   Duration timeout = kBackgroundRoundTimeout,
   Duration quietPeriod = const Duration(seconds: 2),
   Duration pokeDebounce = const Duration(milliseconds: 300),
@@ -171,8 +178,12 @@ Future<BackgroundRoundResult> runBackgroundRound({
   /// [touchesStores]: false for a pure wait (nothing to settle before close).
   Future<bool> guard(Future<void> f, {bool touchesStores = true}) async {
     var done = false;
-    final step = f.then(
-      (_) => done = true,
+    // G18 review 2: typed `void` — the error handler used to return null for
+    // a Future<bool>, so a failing step threw an ArgumentError instead.
+    final step = f.then<void>(
+      (_) {
+        done = true;
+      },
       onError: (Object e) {
         debugPrint('[bg] step failed: $e');
         done = true;
@@ -184,6 +195,14 @@ Future<BackgroundRoundResult> runBackgroundRound({
     return done && !stop.isCompleted;
   }
 
+  void cancelRequests() {
+    try {
+      abortRequests?.call();
+    } catch (e) {
+      debugPrint('[bg] aborting requests failed: $e');
+    }
+  }
+
   /// Waits (bounded) for a step still running when the round stopped.
   Future<void> settleInFlight() async {
     final step = inFlight;
@@ -192,6 +211,8 @@ Future<BackgroundRoundResult> runBackgroundRound({
       await step.timeout(inFlightGrace);
     } on TimeoutException {
       debugPrint('[bg] a step is still running — closing anyway');
+    } catch (_) {
+      // The step's own failure was logged by guard().
     }
   }
 
@@ -210,6 +231,7 @@ Future<BackgroundRoundResult> runBackgroundRound({
       if (identical(first, _stopped)) {
         // Timed out / aborted while restoring: close it once it's open —
         // before returning (the caller releases the slot after we return).
+        cancelRequests();
         try {
           final s = await opening.timeout(inFlightGrace);
           await s?.close();
@@ -317,6 +339,9 @@ Future<BackgroundRoundResult> runBackgroundRound({
     return result;
   } finally {
     budget.cancel();
+    // Stopped early: cut the requests in flight first, so the step settles
+    // now instead of writing into closed stores later (G18 review 2).
+    if (stop.isCompleted) cancelRequests();
     await settleInFlight();
     // Order matters: stop the sync components first, then close the ledger
     // DB, then the session (its store holds the Olm sessions — closed last,

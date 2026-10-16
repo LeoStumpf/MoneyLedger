@@ -9,11 +9,13 @@
 ///    pseudo account [kLocalAccountId] — is re-claimed by the new MXID (a new
 ///    LWW version), so the user is that group's active, claimed member and
 ///    the group syncs to their other devices / can invite members (G18);
-///  * every row local mode couldn't sign (no device key) is marked
-///    `pendingSign` and then **signed by the account's device** (expenses and
+///  * every row local mode wrote (stored `pendingSign` — local mode has no
+///    device key) is **signed by the account's device** (expenses and
 ///    payments also get their creation statement, "added by") — peers refuse
 ///    unsigned versions (G6), so without this an adopted group could never
-///    be relayed.
+///    be relayed. G18 review 2: **only** those rows: an unsigned row local
+///    mode didn't write (a legacy row restored from a backup file — which
+///    anyone can craft) stays unsigned legacy and is never signed here.
 ///
 /// Afterwards the local DB is wiped and (G41) its files deleted — local mode
 /// would start empty again — and the device preferences say where the data
@@ -29,14 +31,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/expenses_provider.dart';
-import '../../models/expense_model.dart';
-import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../database/app_database.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
 import '../database/daos/members_dao.dart';
 import '../database/daos/settings_dao.dart';
+import '../matrix/auth_gateway.dart';
 import '../matrix/record_crypto.dart';
 import '../matrix/transport_provider.dart';
 import '../sync/pending_signer.dart';
@@ -71,9 +72,9 @@ class LocalAdoptionResult {
 }
 
 /// Copies every group of [local] into [target] (LWW merge), re-claims the
-/// local pseudo account's participants for [mxid], marks unsigned rows
-/// `pendingSign`, signs them with [crypto] (when it has an identity) and
-/// wipes [local]. Idempotent: re-running after a crash merges the same
+/// local pseudo account's participants for [mxid], signs the rows local mode
+/// wrote (`pendingSign`) with [crypto] (when it has an identity) and wipes
+/// [local]. Idempotent: re-running after a crash merges the same
 /// versions again. [isAlive] stops it when [target] closes (account switch).
 Future<LocalAdoptionResult> adoptLocalLedger({
   required AppDatabase target,
@@ -102,19 +103,17 @@ Future<LocalAdoptionResult> adoptLocalLedger({
 
   await target.transaction(() async {
     for (final g in groups) {
-      await to.groups.upsertGroupLww(groupCompanion(_groupToSign(g)));
+      await to.groups.upsertGroupLww(groupCompanion(g));
       for (final m in await from.members.getMembers(g.roomId)) {
         await to.members.upsertMemberLww(
           memberCompanion(adoptedMember(m, mxid)),
         );
       }
       for (final e in await from.expenses.getAllExpensesForGroup(g.roomId)) {
-        await to.expenses.upsertExpenseLww(expenseCompanion(_expenseToSign(e)));
+        await to.expenses.upsertExpenseLww(expenseCompanion(e));
       }
       for (final s in await from.expenses.getAllSettlementsForGroup(g.roomId)) {
-        await to.expenses.upsertSettlementLww(
-          settlementCompanion(_settlementToSign(s)),
-        );
+        await to.expenses.upsertSettlementLww(settlementCompanion(s));
       }
       final archive = archives[g.roomId];
       if (archive != null) await to.settings.archiveGroup(g.roomId, archive);
@@ -184,14 +183,19 @@ Future<int?> signAdoptedGroups({
 /// the DAOs — restored from a backup — instead of copied from the local
 /// ledger: every participant claimed by [from] becomes claimed by [to]
 /// ([reclaimedMember]); with [signLater], every unsigned row of the group is
-/// marked `pendingSign` as well (for [signAdoptedGroups]).
+/// marked `pendingSign` as well ([markUnsignedPending], for
+/// [signAdoptedGroups]).
 ///
 /// * Restoring a **local-mode backup into a Matrix account**: [from] =
 ///   [kLocalAccountId], [to] = the MXID, [signLater] — the same result as
-///   "Connect a Matrix account" ([adoptLocalLedger]).
+///   "Connect a Matrix account" ([adoptLocalLedger]). G18 review 2: the
+///   caller does this only for a truly local group (`isOwnLocalGroup`).
 /// * Restoring a **Matrix backup in local mode**: [from] = the backup's
 ///   account, [to] = [kLocalAccountId], no [signLater] (nothing can be
-///   signed here; connecting an account later adopts as usual).
+///   signed here; connecting an account later adopts as usual), and
+///   [onlySignedClaims] (G18 review 2): only a claim [from] really signed
+///   (verified on the way in) is taken over — an unsigned one could name
+///   anybody's participant.
 ///
 /// A participant isn't re-claimed when [to] already claims an active one in
 /// the group (no second "me"). Run it inside the restore's transaction.
@@ -204,64 +208,86 @@ Future<bool> reclaimGroupInPlace({
   required String from,
   required String to,
   required bool signLater,
+  bool onlySignedClaims = false,
 }) async {
   var reclaimed = false;
   final all = await members.getMembers(groupId);
   final mine = claimedBy(all, to);
   final mayReclaim = mine == null || !mine.isActive;
   for (final m in all) {
-    if (mayReclaim && m.matrixId == from) {
+    if (mayReclaim &&
+        m.matrixId == from &&
+        (!onlySignedClaims || m.sig != null)) {
       await members.upsertMemberLww(
         memberCompanion(reclaimedMember(m, from: from, to: to)),
       );
       reclaimed = true;
-    } else if (signLater && m.sig == null && !m.pendingSign) {
+    }
+  }
+  if (signLater) {
+    await markUnsignedPending(
+      groups: groups,
+      members: members,
+      expenses: expenses,
+      groupId: groupId,
+    );
+  }
+  return reclaimed;
+}
+
+/// Marks every unsigned row of [groupId] (meta, participants, expenses,
+/// payments) `pendingSign` — same clock, so the signed copy is the same G27
+/// version. G18 review 2: only for a group whose rows are this user's own —
+/// a truly local group of local mode's own backup (`isOwnLocalGroup`);
+/// never for legacy rows of a shared group.
+Future<void> markUnsignedPending({
+  required GroupsDao groups,
+  required MembersDao members,
+  required ExpensesDao expenses,
+  required String groupId,
+}) async {
+  for (final m in await members.getMembers(groupId)) {
+    if (m.sig == null && !m.pendingSign) {
       await members.upsertMemberLww(
         memberCompanion(m.withSigning(pendingSign: true)),
       );
     }
   }
-  if (!signLater) return reclaimed;
   final g = await groups.getGroup(groupId);
   if (g != null && g.sig == null && !g.pendingSign) {
-    await groups.upsertGroupLww(groupCompanion(_groupToSign(g)));
+    await groups.upsertGroupLww(
+      groupCompanion(g.withSigning(pendingSign: true)),
+    );
   }
   for (final e in await expenses.getAllExpensesForGroup(groupId)) {
     if (e.sig == null && !e.pendingSign) {
-      await expenses.upsertExpenseLww(expenseCompanion(_expenseToSign(e)));
+      await expenses.upsertExpenseLww(
+        expenseCompanion(e.withSigning(origin: e.origin, pendingSign: true)),
+      );
     }
   }
   for (final st in await expenses.getAllSettlementsForGroup(groupId)) {
     if (st.sig == null && !st.pendingSign) {
       await expenses.upsertSettlementLww(
-        settlementCompanion(_settlementToSign(st)),
+        settlementCompanion(
+          st.withSigning(origin: st.origin, pendingSign: true),
+        ),
       );
     }
   }
-  return reclaimed;
 }
-
-// Unsigned versions wait for the adopting account's signature (same clock:
-// the signed copy is the same G27 version).
-GroupModel _groupToSign(GroupModel g) =>
-    g.sig == null ? g.withSigning(pendingSign: true) : g;
-
-ExpenseModel _expenseToSign(ExpenseModel e) =>
-    e.sig == null ? e.withSigning(origin: e.origin, pendingSign: true) : e;
-
-SettlementModel _settlementToSign(SettlementModel s) =>
-    s.sig == null ? s.withSigning(origin: s.origin, pendingSign: true) : s;
 
 /// [m] as adopted into [mxid]'s account: the participant claimed by local
 /// mode's pseudo account becomes claimed by [mxid] (a new LWW version — it
-/// beats the local one everywhere); unsigned versions wait for the account's
-/// signature.
+/// beats the local one everywhere, and waits for the account's signature).
+/// Any other participant is copied as is (G18 review 2: only what local
+/// mode wrote — stored `pendingSign` — gets signed).
 @visibleForTesting
 MemberModel adoptedMember(MemberModel m, String mxid) {
   if (isLocalAccountId(m.matrixId)) {
     return reclaimedMember(m, from: kLocalAccountId, to: mxid);
   }
-  return m.sig == null ? m.withSigning(pendingSign: true) : m;
+  return m;
 }
 
 /// [m] with its claim moved from account [from] to [to] (G40 / G41): the same
@@ -307,11 +333,90 @@ class LocalAdoptionResultNotifier extends Notifier<LocalAdoptionResult?> {
   }
 }
 
+/// G18 review 2: the "Connect a Matrix account" flow, derived from **state**
+/// instead of the sign-in call's result (kept alive by
+/// [localLedgerAdoptionProvider], watched app-wide by `LedgerSyncHost`):
+///
+/// * local profile + connect in progress + a signed-in Matrix account →
+///   `beginLocalAdoption(account)`. Covers a sign-in that finishes **late**
+///   (after the page's timeout — the SDK call isn't cancelled), a crash
+///   between sign-in and the preference write (the connect flag is
+///   persisted, the session restored on the next start), and the normal
+///   case alike. Acts only once the device preferences have loaded.
+/// * local profile, **no** connect in progress (cancelled) → no Matrix
+///   session may live on: a session that exists (or signs in late, after
+///   the cancel) is **signed out** (`logout`). It can only be the fresh
+///   device this connect attempt created — local mode starts signed out —
+///   so deleting that device loses nothing. A Matrix client that was never
+///   built (no connect in this run) is left alone.
+final localConnectGuardProvider = Provider<void>((ref) {
+  final prefs = ref.watch(devicePrefsProvider);
+  if (!prefs.hasValue || prefs.isLoading) return;
+  final p = prefs.requireValue;
+  if (p.localProfile == null) return;
+  if (p.connecting) {
+    final mxid = ref.watch(accountUserIdProvider);
+    if (mxid == null) return;
+    final notifier = ref.read(devicePrefsProvider.notifier);
+    debugPrint(
+      '[local] connect signed in as $mxid — adopting the local ledger',
+    );
+    // Not during this build: it changes the preferences this provider
+    // watches.
+    unawaited(
+      Future(
+        () => notifier.beginLocalAdoption(mxid, onlyWhileConnecting: true),
+      ).catchError((Object e) {
+        // In memory it is begun; the stored flag lags (retried next start).
+        debugPrint('[local] could not store the pending adoption: $e');
+      }),
+    );
+    return;
+  }
+  // Local mode without a connect: only a client this run built for a
+  // connect can hold a session — never build one here.
+  if (!ref.exists(authGatewayProvider)) return;
+  var disposed = false;
+  StreamSubscription<bool>? sub;
+  ref.onDispose(() {
+    disposed = true;
+    sub?.cancel();
+  });
+  Future<void> signOutStray(AuthGateway g) async {
+    if (disposed || !g.isLoggedIn) return;
+    debugPrint(
+      '[local] a cancelled connect signed in (${g.userId}) — signing it out',
+    );
+    try {
+      await g.logout();
+    } catch (e) {
+      debugPrint('[local] signing out the cancelled connect failed: $e');
+    }
+  }
+
+  unawaited(
+    ref
+        .read(authGatewayProvider.future)
+        .then((g) async {
+          if (disposed) return;
+          sub = g.loginStateChanges.listen((on) {
+            if (on) unawaited(signOutStray(g));
+          });
+          await signOutStray(g);
+        })
+        .catchError((Object e) {
+          debugPrint('[local] connect guard: no auth gateway: $e');
+        }),
+  );
+});
+
 /// Runs the pending adoption (device prefs `adoptInto` == the signed-in
 /// account) once that account's DB is open. Watched app-wide by
-/// `LedgerSyncHost`. Never throws; a failure is logged and retried on the
-/// next start (the preference stays).
+/// `LedgerSyncHost` (and keeps [localConnectGuardProvider] alive). Never
+/// throws; a failure is logged and retried on the next start (the
+/// preference stays).
 final localLedgerAdoptionProvider = Provider<void>((ref) {
+  ref.watch(localConnectGuardProvider);
   final adoptInto = ref.watch(
     devicePrefsProvider.select((p) => p.value?.adoptInto),
   );

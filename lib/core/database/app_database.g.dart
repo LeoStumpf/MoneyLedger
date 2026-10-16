@@ -3929,7 +3929,13 @@ class $RejectedVersionsTable extends RejectedVersions
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {groupId, kind, recordId};
+  Set<GeneratedColumn> get $primaryKey => {
+    groupId,
+    kind,
+    recordId,
+    updatedAt,
+    versionHash,
+  };
   @override
   RejectedVersion map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';

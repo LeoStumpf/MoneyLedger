@@ -130,7 +130,7 @@ All amounts are already integer cents, so there are no floats, which `canonical_
 | `expenses`, `settlements` | `sig TEXT NULL` (wire `sig` object as JSON, relayed verbatim), `origin TEXT NULL`, `pending_sign BOOL DEFAULT 0` |
 | `members`, `groups` | `sig TEXT NULL`, `pending_sign BOOL DEFAULT 0` |
 | **new** `known_device_keys` | PK `(user_id, device_id, ed25519_key)`; `source` (`server` \| `attested`), `attested_by TEXT NULL`, `first_seen_at`, `last_seen_at` |
-| **new** `rejected_versions` | PK `(group_id, kind, record_id)`; `updated_at` (highest rejected clock), `reason`, `relayed_by`, `claimed_signer`, `rejected_at` |
+| **new** `rejected_versions` | PK `(group_id, kind, record_id)`; `updated_at` (highest rejected clock), `reason`, `relayed_by`, `claimed_signer`, `rejected_at` (v9: + `version_hash`; v10: PK `(group_id, kind, record_id, updated_at, version_hash)`, ≤ 4 per record — see the second G18 review below) |
 
 - `purgeGroup` also clears `rejected_versions`.
 - `known_device_keys` is per account and survives a group purge. It is device-local trust and is never synced.
@@ -236,6 +236,32 @@ Attestations relayed by another member for a known group are ignored. A `server`
 - **Membership.** A non-member can no longer self-claim, join as new or
   rejoin (§6.1 `member_self_claim` is moot): an active member assigns the
   slot (invite / claim).
+
+**Second G18 review (2026-10-16).**
+
+- **Refusal sets.** `rejected_versions` keeps up to 4 refused versions per
+  record (the version is part of the primary key, schema v10). The digest's
+  `rejected` map still carries the highest one per record (compatible); the
+  others go into an optional `rejected_more` (`{expenses: {id: ["T:hash8",
+  …]}, settlements, members, meta: [...]}`) that older peers ignore.
+- **`matrix_id` validation.** A member version whose `matrix_id` is set but
+  isn't a syntactically valid MXID (`@localpart:server`) — including local
+  mode's `local:self` — is refused as `invalid_record` (live, gossip,
+  snapshot, restore). Only a restore of local mode's own backup (a truly
+  local group) may store `local:self` claims. Send targets are filtered to
+  valid MXIDs (`activeClaimedMatrixIds`, digest targets, the transport).
+- **Record ids are bound to their group.** An expense / payment version whose
+  id is stored for another group is refused as `invalid_record` (it would
+  move / overwrite that record); the CSV import aborts on such a row and the
+  DAO's LWW upsert never moves a row between groups.
+- **Restored unsigned rows.** A backup file is unauthenticated: an unsigned
+  restored version carries **no** `origin` (attribution must never vouch for
+  unsigned content) and is never marked `pending_sign`. This device
+  signs restored rows only for a **truly local** group of a local-mode
+  backup (no Matrix-claimed participant in the file or the DB, nothing
+  signed in the file), and adopting a local ledger signs only the rows local
+  mode wrote (`pending_sign`). A Matrix backup restored in local mode hands
+  over only a participant claim the backup account signed.
 
 **Status (G35 review).** Risks 1–3 and 5 are accepted for v1 and listed in `docs/open-points.md`. 1 and 2 **need cross-signing** (future item: set up cross-signing for in-app accounts, then treat SSK-signed devices as verified and, optionally, refuse unknown devices of accounts that have it); G11's opt-in verified-only sync narrows 3 for outbound data only.
 

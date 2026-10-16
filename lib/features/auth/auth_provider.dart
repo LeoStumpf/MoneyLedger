@@ -7,7 +7,6 @@ import '../../core/matrix/matrix_ledger_transport.dart';
 import '../../core/matrix/matrix_service.dart';
 import '../../core/matrix/matrix_sync_watchdog.dart';
 import '../../core/session/app_session.dart';
-import '../../core/session/device_prefs.dart';
 import '../../models/login_flows_result.dart';
 
 part 'auth_provider.g.dart';
@@ -129,7 +128,6 @@ class AuthNotifier extends _$AuthNotifier {
     });
     if (!ref.mounted) return;
     state = result;
-    await _afterSignIn();
     _refreshLoginState();
   }
 
@@ -147,7 +145,6 @@ class AuthNotifier extends _$AuthNotifier {
     });
     if (!ref.mounted) return;
     state = result;
-    await _afterSignIn();
     _refreshLoginState();
   }
 
@@ -167,7 +164,6 @@ class AuthNotifier extends _$AuthNotifier {
     });
     if (!ref.mounted) return;
     state = result;
-    await _afterSignIn();
     _refreshLoginState();
   }
 
@@ -182,23 +178,10 @@ class AuthNotifier extends _$AuthNotifier {
     _refreshLoginState();
   }
 
-  /// G40: a sign-in that succeeded while a local profile is active is a
-  /// "Connect a Matrix account" — local mode ends and the local ledger is
-  /// queued for adoption into this account (`LocalLedgerAdoption`).
-  Future<void> _afterSignIn() async {
-    if (state.hasError || !ref.mounted) return;
-    final prefs = ref.read(devicePrefsProvider).value;
-    if (prefs?.localProfile == null) return;
-    final gateway = await ref.read(authGatewayProvider.future);
-    final mxid = gateway.userId;
-    if (mxid == null || mxid.isEmpty || !ref.mounted) return;
-    try {
-      await ref.read(devicePrefsProvider.notifier).beginLocalAdoption(mxid);
-    } catch (e) {
-      // Kept in memory for this run; retried on the next connect.
-      debugPrint('[local] could not store the pending adoption: $e');
-    }
-  }
+  // G40 / G18 review 2: a sign-in during "Connect a Matrix account" is
+  // turned into the local ledger's adoption by `localConnectGuardProvider`
+  // (local_adoption.dart) — derived from the session state, so a sign-in
+  // that finishes late (after a timeout) is adopted too.
 
   /// Recompute [isLoggedInProvider] immediately after a login/logout instead of
   /// waiting for the gateway's async stream — so the router redirect can't read

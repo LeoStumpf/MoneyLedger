@@ -62,11 +62,25 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
   backup still restores them as legacy (G5).
 - **Size.** Signatures roughly double a record's wire size (~0.86 KB per
   record in a bootstrap) — handled by chunked bootstraps (G14, below).
-- **Refusals are per version, one row per record (G18 review).** A refusal
-  blocks exactly the refused version (clock + hash). Only the highest refused
-  version per record is remembered — a peer still holding an *older* refused
-  version re-offers it each digest cycle (re-verified and refused again; one
-  message per cycle, not a tight loop).
+- **Refusals are per version, a small set per record (G18 review 2, schema
+  v10).** A refusal blocks exactly the refused version (clock + hash); the 4
+  highest refused versions per record are remembered (`rejected` carries the
+  highest, `rejected_more` the rest). A record with more than 4 *different*
+  refused versions still held by peers would see the lowest ones re-offered
+  each digest cycle (one message per cycle, not a tight loop) — needs a peer
+  producing that many bad versions of one record.
+- **Unsigned backup rows (G18 review 2).** A backup file isn't
+  authenticated. Unsigned rows of a restored backup stay *unsigned legacy*
+  (with **no** origin — attribution never vouches for unsigned content) and are never signed by this
+  device — except a **truly local** group of a local-mode backup (no Matrix
+  claim in the file or already here, nothing signed), which is adopted and
+  signed as the user's own (the preview warns to restore only one's own
+  file). A crafted local backup can therefore make this device sign a new,
+  purely local group with made-up content — harmless to others (nobody else
+  is in it). Limit: a local backup of a group **shared with Matrix accounts**
+  (only possible after restoring a Matrix backup in local mode) restored
+  into an account or local mode loses its `local:self` claim and stays
+  unsigned — restore the original Matrix backup instead.
 
 ### Scalability (G14) — measured ceilings
 Real limit: Synapse refuses to-device content > **65 536 bytes** per device
@@ -242,6 +256,19 @@ for further accounts would be needed to make use of it (test devices only).
 - The adoption waits up to 30 s for the new device's signing key; if it isn't
   ready, the sync engine signs the rows later — records edited in local mode
   then have no creation statement ("added by" missing; they still verify).
+  (G18 review 2: the engine no longer signs while the adoption is pending —
+  only after it finished without a key.)
+- (G18 review 2) "Connect a Matrix account" follows the session state: a
+  sign-in that finishes late (after the timeout) or before a crash is
+  adopted; a sign-in that lands **after** the connect was cancelled is
+  signed out again (`logout` — it is the fresh device of that attempt). If
+  the app is killed between such a late sign-in and its sign-out, the next
+  *Connect* finds the stored session and adopts into that account at once
+  (the user did authenticate it).
+- (G18 review 2) Only rows local mode wrote (`pendingSign`) are signed on
+  adoption; legacy rows restored from a Matrix backup in local mode stay
+  unsigned, and a Matrix backup in local mode only hands over a participant
+  the backup account really signed.
 - A pending adoption (`local_adopt_into`) only runs when *that* account is
   signed in; signing out before it ran and using another account leaves the
   local ledger waiting for the first one (it is never lost, just not shown).
@@ -254,9 +281,9 @@ for further accounts would be needed to make use of it (test devices only).
   the next deletion takes it). No start-up sweep for leftovers.
 
 ### Smaller items
-- Balance page suggested payments are one line (G33 `NamesLine`): on a phone
-  a long MXID-localpart name shrinks to a few characters ("mone… zahlt an
-  dich") — readable with display names; the avatars show who it is.
+- (G18 review 2, done) Suggested payments / payment rows (`NamesLine`) wrap
+  onto two lines; names are only shortened (each on its own) when even two
+  lines don't fit.
 - The `router` provider's `refreshListenable`/redirect wiring (against
   `isLoggedInProvider` + `onboardingSeenProvider`) is untested; `routerRedirect`
   (pure) is well covered.
@@ -274,14 +301,19 @@ Durable constraints of the current design — not bugs, but worth knowing.
   digests from non-participants are ignored (rule 8). Since the G18 review a
   non-member can't make itself a participant (invites assign the slot), a
   removal sticks, plaintext to-device events are dropped, and invalid
-  content is refused. Residual risks above.
+  content is refused. Since the second G18 review a participant's
+  `matrix_id` must be a valid MXID (`local:self` / garbage refused as
+  `invalid_record`; replication targets are filtered too) and a record id
+  of another group is refused (gate, CSV import, DAO). Residual risks above.
 - **Background gate (G18 review).** A background round never treats a
   registered app as stale: an app that doesn't answer is assumed busy and the
   round is skipped. The app releases its slot when its engine detaches; if it
   dies without that (crash), rounds stay skipped until the process restarts —
   the safe side. Conversely the app waits for a running round (showing
   "Finishing background sync…") and only proceeds after `maxWait` (2 min) if
-  a round answers but never finishes (logged).
+  a round answers but never finishes (logged). (G18 review 2) A stopped round
+  closes its own HTTP client first (aborts the requests in flight — they may
+  take up to 90 s), so no late `/sync` result lands in closed stores.
 - **Wall-clock LWW.** Merges are whole-record last-writer-wins on `updated_at`
   (ms epoch), ties broken by the content hash (G27 — deterministic, but not
   "fair": the higher hash wins, whoever wrote it). Inbound `updated_at` is
@@ -300,6 +332,15 @@ Durable constraints of the current design — not bugs, but worth knowing.
 
 ## Resolved
 
+- **G18 second review** (2026-10-16): a crafted backup can no longer make
+  this device sign forged versions (only truly local groups of a local
+  backup / rows local mode wrote are signed; unsigned restored rows keep no
+  foreign origin); "Connect a Matrix account" adopts late sign-ins and signs
+  out a session that lands after a cancel; inbound `matrix_id` validated;
+  refusal set per record (schema v10, digest `rejected_more`); record ids
+  bound to their group; the engine leaves adopted rows to the adoption; the
+  background round aborts in-flight requests before closing its stores;
+  `NamesLine` wraps onto two lines.
 - **G36+ follow-ups** (2026-10-16): localized SAS emoji names; verified-only
   wording; sync-loop request timeout + watchdog; fast ack (writer pending
   ~10 s → ~6 s); single-flight login/registration (late success adopted, no

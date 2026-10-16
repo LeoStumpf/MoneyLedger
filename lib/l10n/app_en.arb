@@ -713,6 +713,10 @@
       }
     }
   },
+  "restoreLocalOwnFile": "Only restore a backup you made yourself: this device signs its entries as yours. Groups that include Matrix accounts are restored unsigned and won't sync.",
+  "@restoreLocalOwnFile": {
+    "description": "G18 review 2 restore preview warning: a local-mode backup restored into a Matrix account — its entries get signed by this device."
+  },
   "groupsCount": "{count, plural, =1{1 group} other{{count} groups}}",
   "@groupsCount": {
     "placeholders": {

@@ -6,6 +6,7 @@ import 'package:matrix/matrix.dart';
 import 'buffered_inbox.dart';
 import 'ed25519_verify.dart';
 import '../sync/payload_budget.dart';
+import '../sync/record_validation.dart' show isValidMxid;
 import 'ledger_transport.dart';
 
 /// Real [LedgerTransport] backed by the Matrix SDK [Client]. The only place that
@@ -61,7 +62,9 @@ class MatrixLedgerTransport implements LedgerTransport {
     Map<String, dynamic> content, {
     DeliveryPolicy policy = DeliveryPolicy.everyone,
   }) async {
-    final targets = userIds.where((u) => u.isNotEmpty).toSet();
+    // G18 review 2: only syntactically valid MXIDs ever reach the device-key
+    // lookup (a planted claim like `local:self` is skipped).
+    final targets = userIds.where(isValidMxid).toSet();
     if (targets.isEmpty) return SendResult.nothingToSend;
 
     // The SDK's sendToDeviceEncryptedChunked returns silently when encryption

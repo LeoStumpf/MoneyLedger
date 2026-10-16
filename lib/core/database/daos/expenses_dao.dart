@@ -31,12 +31,20 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
   /// version is re-written (idempotent; lets `pendingSign` → signed land at
   /// the same clock). Read + write run in one transaction, so concurrent
   /// inbound versions resolve deterministically. The companion must set
-  /// `id` and `updatedAt`.
+  /// `id` and `updatedAt`. G18 review 2: a row of **another group** with the
+  /// same id is left alone (the write is dropped).
   Future<void> upsertExpenseLww(ExpensesCompanion expense) =>
       transaction(() async {
         final old = await (select(
           expenses,
         )..where((t) => t.id.equals(expense.id.value))).getSingleOrNull();
+        // G18 review 2 (last guard): an id stored for another group is never
+        // moved / overwritten by a version of this group.
+        if (old != null &&
+            expense.roomId.present &&
+            old.roomId != expense.roomId.value) {
+          return;
+        }
         final incoming = _expenseFromCompanion(expense);
         final hash = computeExpenseVersionHash(incoming);
         if (old != null &&
@@ -61,6 +69,11 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
         final old = await (select(
           settlements,
         )..where((t) => t.id.equals(settlement.id.value))).getSingleOrNull();
+        if (old != null &&
+            settlement.roomId.present &&
+            old.roomId != settlement.roomId.value) {
+          return;
+        }
         final incoming = _settlementFromCompanion(settlement);
         final hash = computeSettlementVersionHash(incoming);
         if (old != null &&

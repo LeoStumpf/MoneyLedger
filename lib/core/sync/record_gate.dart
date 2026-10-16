@@ -47,6 +47,17 @@ import 'record_verifier.dart';
 /// legacy instead of refused; earlier sync refusals of a restored version
 /// are bypassed and cleared; the signer rule (5) doesn't apply (the user's
 /// own file). Bad signatures and invalid content are refused there as well.
+/// G18 review 2: a restored unsigned version carries **no** `origin` — a
+/// creation statement on an unsigned row would lend its (possibly forged)
+/// content an "added by" (attribution must never lie), and the row must
+/// never look like this device's to sign later.
+///
+/// G18 review 2: a participant version whose `matrix_id` isn't a valid MXID
+/// is refused as `invalid_record` (`memberProblem`) — except a claim by local
+/// mode's pseudo account when [allowLocalClaims] (a restore of local mode's
+/// own backup). An expense / payment version whose id is stored for
+/// **another group** is refused as `invalid_record` too (it would move or
+/// overwrite that group's record).
 class RecordGate {
   RecordGate({
     required this.verifier,
@@ -55,6 +66,7 @@ class RecordGate {
     required this.members,
     required this.expenses,
     this.acceptUnsigned = false,
+    this.allowLocalClaims = false,
     bool Function()? isAlive,
     this.onRefused,
     int Function()? clock,
@@ -67,6 +79,10 @@ class RecordGate {
   final MembersDao members;
   final ExpensesDao expenses;
   final bool acceptUnsigned;
+
+  /// Restore of local mode's own backup only: participant claims by the
+  /// local pseudo account (`local:self`) are stored, not refused.
+  final bool allowLocalClaims;
   final bool Function() _isAlive;
   final int Function() _clock;
 
@@ -95,8 +111,7 @@ class RecordGate {
     RecordVersion v,
   ) async {
     if (acceptUnsigned) return false;
-    final r = await signing.rejectedVersion(group, kind.wire, id);
-    return r != null && r.at == v.at && compareVersions(v, r) == 0;
+    return signing.isRejected(group, kind.wire, id, v);
   }
 
   /// Whether to store an unsigned version anyway (restore only; a far-future
@@ -150,10 +165,34 @@ class RecordGate {
     RecordVersion version,
   ) async {
     if (!acceptUnsigned || !_isAlive()) return;
-    final r = await signing.rejectedVersion(group, kind.wire, id);
-    if (r != null && compareVersions(r, version) <= 0 && _isAlive()) {
-      await signing.clearRejected(group, kind.wire, id);
-    }
+    await signing.clearRejectedUpTo(group, kind.wire, id, version);
+  }
+
+  /// G18 review 2: [stored] (looked up by id) belongs to another group than
+  /// the inbound version — refuse it (it would move / overwrite that
+  /// group's record). Returns whether it was refused.
+  Future<bool> _foreignId(
+    String group,
+    String? storedGroup,
+    RecordKind kind,
+    String id,
+    RecordVersion version,
+    String relayedBy,
+    RecordSignature? sig,
+  ) async {
+    if (storedGroup == null || storedGroup == group) return false;
+    if (await _refusedExactly(group, kind, id, version)) return true;
+    await _refuse(
+      group,
+      kind,
+      id,
+      version,
+      const Verdict.reject(RejectReason.invalid),
+      relayedBy,
+      sig,
+      detail: 'id belongs to another group',
+    );
+    return true;
   }
 
   /// Rule 5: whether [sig]'s account may have written a version stamped [at]
@@ -219,6 +258,17 @@ class RecordGate {
     final version = expenseVersion(e);
     final stored = await expenses.getExpenseById(e.id);
     if (!_isAlive()) return false;
+    if (await _foreignId(
+      e.roomId,
+      stored?.roomId,
+      RecordKind.expense,
+      e.id,
+      version,
+      relayedBy,
+      e.sig,
+    )) {
+      return false;
+    }
     if (stored != null && !versionWins(version, expenseVersion(stored))) {
       return false;
     }
@@ -264,10 +314,12 @@ class RecordGate {
         !_isAlive()) {
       return false;
     }
-    final row = expenseCompanion(e);
-    await expenses.upsertExpenseLww(
-      v.accepted ? row : row.copyWith(updatedAt: Value(_clamp(e.updatedAt))),
-    );
+    final row = v.accepted
+        ? expenseCompanion(e)
+        : expenseCompanion(
+            e.withSigning(),
+          ).copyWith(updatedAt: Value(_clamp(e.updatedAt)));
+    await expenses.upsertExpenseLww(row);
     await _clearRefusal(e.roomId, RecordKind.expense, e.id, version);
     return true;
   }
@@ -281,6 +333,17 @@ class RecordGate {
     final version = settlementVersion(s);
     final stored = await expenses.getSettlementById(s.id);
     if (!_isAlive()) return false;
+    if (await _foreignId(
+      s.roomId,
+      stored?.roomId,
+      RecordKind.settlement,
+      s.id,
+      version,
+      relayedBy,
+      s.sig,
+    )) {
+      return false;
+    }
     if (stored != null && !versionWins(version, settlementVersion(stored))) {
       return false;
     }
@@ -326,10 +389,12 @@ class RecordGate {
         !_isAlive()) {
       return false;
     }
-    final row = settlementCompanion(s);
-    await expenses.upsertSettlementLww(
-      v.accepted ? row : row.copyWith(updatedAt: Value(_clamp(s.updatedAt))),
-    );
+    final row = v.accepted
+        ? settlementCompanion(s)
+        : settlementCompanion(
+            s.withSigning(),
+          ).copyWith(updatedAt: Value(_clamp(s.updatedAt)));
+    await expenses.upsertSettlementLww(row);
     await _clearRefusal(s.roomId, RecordKind.settlement, s.id, version);
     return true;
   }
@@ -357,6 +422,20 @@ class RecordGate {
       m.userId,
       version,
     )) {
+      return false;
+    }
+    final problem = memberProblem(m, allowLocalClaim: allowLocalClaims);
+    if (problem != null) {
+      await _refuse(
+        m.groupId,
+        RecordKind.member,
+        m.userId,
+        version,
+        const Verdict.reject(RejectReason.invalid),
+        relayedBy,
+        m.sig,
+        detail: problem,
+      );
       return false;
     }
     final v = await verifier.member(m, requiredSigner: requiredSigner);

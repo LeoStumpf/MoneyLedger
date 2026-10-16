@@ -245,8 +245,15 @@ class DevicePrefsNotifier extends AsyncNotifier<DevicePrefs> {
   /// G40: a connect signed in as [mxid] — local mode ends, the local ledger
   /// is to be moved into that account ([adoptInto], done by
   /// `LocalLedgerAdoption`). One write, so a crash can't leave both.
-  Future<void> beginLocalAdoption(String mxid) => _update(
-    (p) => p.copyWith(localProfile: null, connecting: false, adoptInto: mxid),
+  /// [onlyWhileConnecting] (G18 review 2): a no-op unless a connect is still
+  /// in progress (it may have been cancelled meanwhile).
+  Future<void> beginLocalAdoption(
+    String mxid, {
+    bool onlyWhileConnecting = false,
+  }) => _update(
+    (p) => onlyWhileConnecting && !(p.connecting && p.localProfile != null)
+        ? p
+        : p.copyWith(localProfile: null, connecting: false, adoptInto: mxid),
   );
 
   /// G40: the local ledger now lives in [mxid]'s account DB.

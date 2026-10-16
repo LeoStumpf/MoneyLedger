@@ -591,6 +591,15 @@ class RestorePreviewDialog extends StatelessWidget {
                     : l.restoreAccountIntoLocal(preview.backup.account!),
               ),
             ],
+            // G18 review 2: the file isn't authenticated — this device will
+            // sign its truly local groups as the user's own.
+            if (preview.takeover == RestoreTakeover.localIntoAccount) ...[
+              const SizedBox(height: Insets.m),
+              _Warning(
+                key: const Key('restoreLocalOwnFile'),
+                text: l.restoreLocalOwnFile,
+              ),
+            ],
             if (preview.otherAccount) ...[
               const SizedBox(height: Insets.m),
               _Warning(

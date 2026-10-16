@@ -177,4 +177,68 @@ void main() {
       expect(d.senderHasNewer, isTrue);
     });
   });
+
+  // G18 review 2 (Minor 1): more than one refused version per record.
+  group('refusal sets (rejected_more)', () {
+    test('a lower refused version a peer still holds is not "newer"', () {
+      final d = compareDigest(
+        localMetaUpdatedAt: 1,
+        localMembers: const {},
+        localExpenses: const {'e1': 100},
+        localSettlements: const {},
+        localRejected: const {
+          'expense': {'e1': (at: 300, hash: '')},
+        },
+        localRejectedMore: const {
+          'expense': {
+            'e1': [(at: 200, hash: '')],
+          },
+        },
+        remote: {
+          'meta_updated_at': 1,
+          'members': const {},
+          'expenses': {'e1': 200},
+        },
+      );
+      expect(d.senderHasNewer, isFalse);
+      expect(d.identical, isTrue, reason: 'agree to disagree, no loop');
+    });
+
+    test("we do not re-send a version in the sender's rejected_more", () {
+      final d = diff(
+        remote: {
+          'expenses': {'e1': 50},
+          'rejected': {
+            'expenses': {'e1': 300},
+          },
+          'rejected_more': {
+            'expenses': {
+              'e1': [100],
+            },
+          },
+        },
+      );
+      expect(d.expenseIdsToSend, isEmpty);
+    });
+
+    test('the digest carries the highest per record in rejected, the rest '
+        'in rejected_more', () {
+      final (top, more) = splitRefusals({
+        'expense': {
+          'e1': [(at: 300, hash: 'bbbbbbbbcc'), (at: 200, hash: 'aaaaaaaacc')],
+        },
+        'meta': {
+          'g': [(at: 9, hash: '')],
+        },
+      });
+      expect(top['expense']!['e1']!.at, 300);
+      expect(more['expense']!['e1']!.single.at, 200);
+      expect(more.containsKey('meta'), isFalse);
+      expect(digestRejectedMoreMap(more), {
+        'expenses': {
+          'e1': ['200:aaaaaaaa'],
+        },
+      });
+    });
+  });
 }

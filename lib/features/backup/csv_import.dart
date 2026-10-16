@@ -117,6 +117,11 @@ class CsvImportException implements Exception {
   String toString() => 'Row $row: $problem';
 }
 
+/// The [CsvImportException.problem] of a row whose `Expense ID` belongs to a
+/// record of **another group** (G18 review 2) — importing it would move that
+/// record into this group.
+const kCsvForeignIdProblem = 'this ID belongs to an entry of another group';
+
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///
 /// Merge semantics (Phase D, G13): the group is resolved by `Group ID`
@@ -294,6 +299,10 @@ class CsvImporter extends _$CsvImporter {
         final problem = settlementProblem(draft);
         if (problem != null) throw CsvImportException(i + 2, problem);
         final stored = await expensesDao.getSettlementById(id);
+        // G18 review 2: an id of another group's record would move it here.
+        if (stored != null && stored.roomId != groupId) {
+          throw CsvImportException(i + 2, kCsvForeignIdProblem);
+        }
         if (stored != null && stored.updatedAt >= updatedAt) {
           payments++; // already up to date here — counted, not re-signed
           continue;
@@ -327,6 +336,9 @@ class CsvImporter extends _$CsvImporter {
       final problem = expenseProblem(draft);
       if (problem != null) throw CsvImportException(i + 2, problem);
       final stored = await expensesDao.getExpenseById(id);
+      if (stored != null && stored.roomId != groupId) {
+        throw CsvImportException(i + 2, kCsvForeignIdProblem);
+      }
       if (stored != null && stored.updatedAt >= updatedAt) {
         expenses++; // already up to date here — counted, not re-signed
         continue;

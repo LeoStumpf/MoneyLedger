@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
+import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -20,6 +21,7 @@ import '../database/account_database.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/matrix_ledger_transport.dart';
 import '../matrix/matrix_service.dart';
+import '../matrix/request_timeout_http_client.dart';
 import 'background_gate.dart';
 import 'background_round.dart';
 import 'background_scheduler.dart';
@@ -174,11 +176,15 @@ Future<BackgroundRoundResult?> runBackgroundTask() async {
   }
   final osStop = _osStop = Completer<void>();
   try {
+    // G18 review 2: the round's own HTTP client — closing it aborts the
+    // requests in flight (IOClient.close is forced) before the stores close.
+    final roundHttp = RequestTimeoutHttpClient(http.Client());
     return await runBackgroundRound(
       tryAcquire: gate.tryAcquire,
-      openSession: _openMatrixSession,
+      openSession: () => _openMatrixSession(roundHttp),
       openDatabase: openAccountDatabase,
       abort: Future.any([gate.abort, osStop.future]),
+      abortRequests: roundHttp.close,
     );
   } finally {
     gate.release();
@@ -187,14 +193,14 @@ Future<BackgroundRoundResult?> runBackgroundTask() async {
 
 /// Restores the Matrix session exactly like the app does (same store, same
 /// E2EE setup) but without the endless sync loop. Null when signed out.
-Future<BackgroundSession?> _openMatrixSession() async {
+Future<BackgroundSession?> _openMatrixSession(http.Client httpClient) async {
   try {
     // Without vodozemac the SDK disables E2EE and to-device sends are no-ops.
     await vod.init();
   } catch (e) {
     debugPrint('[bg] vodozemac init failed; E2EE disabled: $e');
   }
-  final client = await buildMatrixClient();
+  final client = await buildMatrixClient(httpClient: httpClient);
   // One-shot: no background sync loop after init's first /sync.
   client.backgroundSync = false;
   // Subscribe before init(): init's first /sync may already carry payloads.

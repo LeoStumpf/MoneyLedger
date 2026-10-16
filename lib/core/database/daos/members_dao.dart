@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/member_model.dart';
 import '../../../models/record_signature.dart';
+import '../../sync/record_validation.dart' show isValidMxid;
 import '../../sync/record_version.dart';
 
 part 'members_dao.g.dart';
@@ -31,7 +32,9 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
 
   /// Matrix IDs of the active, **claimed** participants — i.e. the reachable
   /// to-device sync targets. Pure-local participants (no [matrixId]) are
-  /// skipped; they are ledger data only.
+  /// skipped; they are ledger data only. G18 review 2: so is a claim that
+  /// isn't a valid MXID (e.g. local mode's `local:self`) — it never becomes
+  /// a send target / device-key lookup.
   Future<List<String>> activeClaimedMatrixIds(String groupId) =>
       (select(members)..where(
             (t) =>
@@ -40,7 +43,12 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
                 t.matrixId.isNotNull(),
           ))
           .get()
-          .then((rows) => rows.map((r) => r.matrixId!).toList());
+          .then(
+            (rows) => [
+              for (final r in rows)
+                if (isValidMxid(r.matrixId)) r.matrixId!,
+            ],
+          );
 
   /// The participant in [groupId] claimed by [matrixId], if any. Tolerates
   /// duplicate claims left by the pre-G26 re-add bug (prefers active, then

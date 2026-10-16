@@ -10,6 +10,7 @@ import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../database/app_database.dart';
 import '../session/app_session.dart' show isLocalAccountId;
+import '../session/device_prefs.dart' show devicePrefsProvider;
 import 'pending_signer.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
@@ -24,6 +25,7 @@ import 'ledger_payloads.dart';
 import 'left_groups.dart';
 import 'payload_budget.dart';
 import 'record_gate.dart';
+import 'record_validation.dart' show isValidMxid;
 import 'record_verifier.dart';
 import 'record_version.dart';
 import 'self_recovery.dart';
@@ -407,9 +409,15 @@ class SyncEngine {
 
   /// G6: signs this group's rows written while the signer wasn't ready
   /// (`pendingSign`, same clock) — they are never sent unsigned.
+  ///
+  /// G18 review 2: not while a local-ledger adoption into this account is
+  /// still pending — the adoption signs those rows itself, with their
+  /// creation statements ("added by"); signing them first would lose those
+  /// for records edited in local mode.
   Future<void> _signPending(String groupId) async {
     final transport = _transport;
     if (transport == null || transport.crypto.identity == null) return;
+    if (_localAdoptionPending(transport.userId)) return;
     await signPendingRows(
       crypto: transport.crypto,
       groups: _groups,
@@ -418,6 +426,18 @@ class SyncEngine {
       groupId: groupId,
       isAlive: () => _alive,
     );
+  }
+
+  /// Whether the device preferences say the local ledger is still being
+  /// adopted into [me] (G40). Only consulted when the app built them — a
+  /// background round never does (no adoption runs there).
+  bool _localAdoptionPending(String me) {
+    try {
+      if (!_ref.exists(devicePrefsProvider)) return false;
+      return _ref.read(devicePrefsProvider).value?.adoptInto == me;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Debounced "something changed in [groupId]": coalesces a burst of inbound
@@ -564,11 +584,13 @@ class SyncEngine {
       final targets = onlyTo != null
           ? {onlyTo}
           : members
-                .where((m) => m.isActive && m.matrixId != null)
+                .where((m) => m.isActive && isValidMxid(m.matrixId))
                 .map((m) => m.matrixId!)
                 .toSet();
       if (targets.isEmpty) return;
-      final rejected = await _signing.rejectedForGroup(groupId);
+      final (rejected, rejectedMore) = splitRefusals(
+        await _signing.rejectedSetsForGroup(groupId),
+      );
       if (!_alive) return;
       // G14: flat when it fits, else bucketed (possibly several messages).
       final messages = buildDigestMessages(
@@ -583,6 +605,7 @@ class SyncEngine {
         detail: detailBuckets,
         detailIds: detailIds,
         rejected: rejected,
+        rejectedMore: rejectedMore,
       );
       late SendResult result;
       for (final m in messages) {
@@ -678,7 +701,9 @@ class SyncEngine {
       if (!_alive) return;
       final settlements = await _expenses.getAllSettlementsForGroup(groupId);
       if (!_alive) return;
-      final rejected = await _signing.rejectedForGroup(groupId);
+      final (rejected, rejectedMore) = splitRefusals(
+        await _signing.rejectedSetsForGroup(groupId),
+      );
       if (!_alive) return;
 
       // Compare against pre-merge state: "identical" must mean the sender had
@@ -702,6 +727,7 @@ class SyncEngine {
           for (final s in settlements) s.id: settlementVersionHash(s),
         },
         localRejected: rejected,
+        localRejectedMore: rejectedMore,
         remote: content,
       );
 
@@ -911,8 +937,15 @@ Map<String, dynamic> buildDigestContent(
   List<SettlementModel> settlements, {
   required bool reply,
   Map<String, Map<String, RecordVersion>> rejected = const {},
+  Map<String, Map<String, List<RecordVersion>>> rejectedMore = const {},
 }) => {
-  ..._digestHeader(group, members, reply: reply, rejected: rejected),
+  ..._digestHeader(
+    group,
+    members,
+    reply: reply,
+    rejected: rejected,
+    rejectedMore: rejectedMore,
+  ),
   'expenses': {
     for (final e in expenses) e.id: encodeDigestVersion(expenseVersion(e)),
   },
@@ -928,6 +961,7 @@ Map<String, dynamic> _digestHeader(
   required bool reply,
   bool last = false,
   Map<String, Map<String, RecordVersion>> rejected = const {},
+  Map<String, Map<String, List<RecordVersion>>> rejectedMore = const {},
 }) => {
   'v': protocolVersion,
   'group': group.roomId,
@@ -949,6 +983,10 @@ Map<String, dynamic> _digestHeader(
         },
   },
   if (rejected.isNotEmpty) 'rejected': digestRejectedMap(rejected),
+  // G18 review 2: further refused versions of the same records (older
+  // peers ignore the key; they only miss these extra "don't re-send" hints).
+  if (rejectedMore.isNotEmpty)
+    'rejected_more': digestRejectedMoreMap(rejectedMore),
 };
 
 /// G14: the digest for a group as one or more to-device messages of at most
@@ -982,6 +1020,7 @@ List<Map<String, dynamic>> buildDigestMessages(
   Set<int> detail = const {},
   Set<String> detailIds = const {},
   Map<String, Map<String, RecordVersion>> rejected = const {},
+  Map<String, Map<String, List<RecordVersion>>> rejectedMore = const {},
 }) {
   if (bits == null) {
     final flat = buildDigestContent(
@@ -991,6 +1030,7 @@ List<Map<String, dynamic>> buildDigestMessages(
       settlements,
       reply: reply,
       rejected: rejected,
+      rejectedMore: rejectedMore,
     );
     if (encodedPayloadBytes(flat) <= budget) return [flat];
   }
@@ -1004,6 +1044,7 @@ List<Map<String, dynamic>> buildDigestMessages(
       reply: reply,
       last: last,
       rejected: rejected,
+      rejectedMore: rejectedMore,
     ),
     'bucket_bits': b,
     'buckets': digestBucketHashes(
@@ -1075,6 +1116,50 @@ Map<String, dynamic> digestRejectedMap(
         m.values.reduce((a, b) => compareVersions(a, b) >= 0 ? a : b),
       ),
   };
+}
+
+/// G18 review 2: the digest's `rejected_more` section — the refused versions
+/// beyond the highest one per record ([splitRefusals]): `{expenses: {id:
+/// ["T:hash8", …]}, settlements: {…}, members: {…}, meta: ["T:hash8", …]}`.
+Map<String, dynamic> digestRejectedMoreMap(
+  Map<String, Map<String, List<RecordVersion>>> byKind,
+) {
+  Map<String, List<String>> enc(Map<String, List<RecordVersion>> m) => {
+    for (final MapEntry(:key, :value) in m.entries)
+      if (value.isNotEmpty)
+        key: [for (final v in value) encodeDigestVersion(v)],
+  };
+  return {
+    if (byKind['expense'] case final m? when m.isNotEmpty) 'expenses': enc(m),
+    if (byKind['settlement'] case final m? when m.isNotEmpty)
+      'settlements': enc(m),
+    if (byKind['member'] case final m? when m.isNotEmpty) 'members': enc(m),
+    if (byKind['meta'] case final m? when m.isNotEmpty)
+      'meta': [
+        for (final vs in m.values)
+          for (final v in vs) encodeDigestVersion(v),
+      ],
+  };
+}
+
+/// Splits [SigningDao.rejectedSetsForGroup]'s refusal sets (highest first)
+/// into the highest version per record (the digest's `rejected`) and the
+/// rest (`rejected_more`). For `meta` the highest over all entries is kept.
+(
+  Map<String, Map<String, RecordVersion>>,
+  Map<String, Map<String, List<RecordVersion>>>,
+)
+splitRefusals(Map<String, Map<String, List<RecordVersion>>> sets) {
+  final top = <String, Map<String, RecordVersion>>{};
+  final more = <String, Map<String, List<RecordVersion>>>{};
+  for (final MapEntry(key: kind, value: byId) in sets.entries) {
+    for (final MapEntry(key: id, value: vs) in byId.entries) {
+      if (vs.isEmpty) continue;
+      (top[kind] ??= {})[id] = vs.first;
+      if (vs.length > 1) (more[kind] ??= {})[id] = vs.sublist(1);
+    }
+  }
+  return (top, more);
 }
 
 /// Whether [a] and [b] are the same version: same clock and, when both
@@ -1178,6 +1263,7 @@ DigestDiff compareDigest({
   required Map<String, int> localSettlements,
   Map<String, String> localSettlementHashes = const {},
   Map<String, Map<String, RecordVersion>> localRejected = const {},
+  Map<String, Map<String, List<RecordVersion>>> localRejectedMore = const {},
   required Map<String, dynamic> remote,
 }) {
   final remoteRejected = remote['rejected'] is Map
@@ -1193,17 +1279,41 @@ DigestDiff compareDigest({
     'settlement': rejectedSection(remoteRejected['settlements']),
     'member': rejectedSection(remoteRejected['members']),
   };
+  // G18 review 2: further refused versions per record (`rejected_more`).
+  final remoteMore = remote['rejected_more'] is Map
+      ? remote['rejected_more'] as Map
+      : const {};
+  List<RecordVersion> versionList(Object? raw) => [
+    if (raw is List)
+      for (final v in raw) ?parseDigestVersion(v),
+  ];
+  Map<String, List<RecordVersion>> moreSection(Object? raw) => {
+    if (raw is Map)
+      for (final e in raw.entries)
+        if (e.key is String) e.key as String: versionList(e.value),
+  };
+  final theirMore = {
+    'expense': moreSection(remoteMore['expenses']),
+    'settlement': moreSection(remoteMore['settlements']),
+    'member': moreSection(remoteMore['members']),
+  };
 
   /// We may skip sending our [local] version: the sender refused exactly it.
   bool theyRefused(String kind, String id, RecordVersion local) {
     final r = theirRejected[kind]![id];
-    return r != null && _sameVersion(local, r);
+    if (r != null && _sameVersion(local, r)) return true;
+    return (theirMore[kind]![id] ?? const []).any(
+      (v) => _sameVersion(local, v),
+    );
   }
 
   /// The sender's version [theirs] isn't news: we refused exactly it.
   bool weRefused(String kind, String id, RecordVersion theirs) {
     final r = localRejected[kind]?[id];
-    return r != null && _sameVersion(theirs, r);
+    if (r != null && _sameVersion(theirs, r)) return true;
+    return (localRejectedMore[kind]?[id] ?? const []).any(
+      (v) => _sameVersion(theirs, v),
+    );
   }
 
   Map<String, RecordVersion> versions(
@@ -1293,9 +1403,13 @@ DigestDiff compareDigest({
     (a, b) => a == null || compareVersions(b, a) > 0 ? b : a,
   );
   final metaTheyRefused =
-      theirMetaRefused != null && _sameVersion(localMeta, theirMetaRefused);
+      (theirMetaRefused != null && _sameVersion(localMeta, theirMetaRefused)) ||
+      versionList(remoteMore['meta']).any((v) => _sameVersion(localMeta, v));
   final metaWeRefused =
-      ourMetaRefused != null && _sameVersion(remoteMeta, ourMetaRefused);
+      (ourMetaRefused != null && _sameVersion(remoteMeta, ourMetaRefused)) ||
+      (localRejectedMore['meta']?.values ?? const <List<RecordVersion>>[]).any(
+        (vs) => vs.any((v) => _sameVersion(remoteMeta, v)),
+      );
   final sendGroupMeta = metaCmp > 0 && !metaTheyRefused;
   if (metaCmp < 0 && !metaWeRefused) senderHasNewer = true;
   final metaMatches =

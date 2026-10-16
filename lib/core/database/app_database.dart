@@ -129,8 +129,9 @@ class KnownDeviceKeys extends Table {
 /// G6: inbound record versions this device refused (bad / missing signature,
 /// key conflict, changed origin, invalid content). [updatedAt] + [versionHash]
 /// identify the refused **version** (G18 review: a refusal blocks exactly that
-/// version, never other versions of the record); one row per record, the
-/// highest refused version wins. Advertised in our digests (`rejected`) so peers stop re-sending
+/// version, never other versions of the record). G18 review 2 (schema v10):
+/// a small set per record — the version is part of the primary key and the
+/// `kMaxRefusedVersionsPerRecord` highest refused versions are kept. Advertised in our digests (`rejected`) so peers stop re-sending
 /// them (no repair loop). [kind] is `expense` / `settlement` / `member` /
 /// `meta` ([recordId] = group id for meta).
 class RejectedVersions extends Table {
@@ -148,7 +149,13 @@ class RejectedVersions extends Table {
   TextColumn get versionHash => text().withDefault(const Constant(''))();
 
   @override
-  Set<Column> get primaryKey => {groupId, kind, recordId};
+  Set<Column> get primaryKey => {
+    groupId,
+    kind,
+    recordId,
+    updatedAt,
+    versionHash,
+  };
 }
 
 /// Per-peer sync bookkeeping for the anti-entropy digest exchange (Phase C).
@@ -267,7 +274,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -375,6 +382,11 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
         await m.addColumn(rejectedVersions, rejectedVersions.versionHash);
+      }
+      // v10 (G18 review 2): a refusal set per record — the refused version
+      // (clock + hash) joins the primary key; the existing rows are kept.
+      if (from < 10 && from >= 6) {
+        await m.alterTable(TableMigration(rejectedVersions));
       }
     },
     beforeOpen: (_) async {

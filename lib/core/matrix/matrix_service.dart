@@ -7,7 +7,10 @@ import 'package:sqflite/sqflite.dart' as sqflite;
 
 import 'request_timeout_http_client.dart';
 
-Future<Client> buildMatrixClient() async {
+/// [httpClient]: the HTTP client to use (G18 review 2: the background round
+/// passes its own, so it can abort requests in flight before it closes the
+/// stores); default a fresh [RequestTimeoutHttpClient].
+Future<Client> buildMatrixClient({http.Client? httpClient}) async {
   MatrixSdkDatabase db;
 
   if (kIsWeb) {
@@ -37,7 +40,7 @@ Future<Client> buildMatrixClient() async {
     database: db,
     // G36: bound every request's wait for response headers — a request on a
     // socket that died in a network switch otherwise hangs the sync loop.
-    httpClient: RequestTimeoutHttpClient(http.Client()),
+    httpClient: httpClient ?? RequestTimeoutHttpClient(http.Client()),
     nativeImplementations: NativeImplementations.dummy,
     // SAS (emoji) device verification over to-device messages (Phase F /
     // G11). Without these the SDK ignores every verification request and

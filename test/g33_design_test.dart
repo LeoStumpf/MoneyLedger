@@ -78,34 +78,25 @@ List<dynamic> _pageOverrides({
 
 void main() {
   group('NamesLine helpers (pure)', () {
-    test('splitNameTemplate keeps literals and sentinels in order', () {
+    test('capNames fills in whole names, or caps each on its own', () {
       final a = NamesLine.sentinel(0), b = NamesLine.sentinel(1);
-      expect(splitNameTemplate('$a hat $b bezahlt', {a, b}), [
-        (text: a, isName: true),
-        (text: ' hat ', isName: false),
-        (text: b, isName: true),
-        (text: ' bezahlt', isName: false),
-      ]);
-    });
-
-    test('allocateNameWidths: fitting names keep their width', () {
-      expect(allocateNameWidths(300, [100, 50]), [100, 50]);
-    });
-
-    test('allocateNameWidths: a short name leaves the rest to a long one', () {
-      expect(allocateNameWidths(200, [40, 500]), [40, 160]);
-    });
-
-    test('allocateNameWidths: two long names share evenly', () {
-      expect(allocateNameWidths(200, [400, 500]), [100, 100]);
-      expect(allocateNameWidths(-5, [10]), [0]);
+      final names = {a: 'Alexandra', b: 'Sam'};
+      expect(
+        capNames('$a hat $b bezahlt', names, null),
+        'Alexandra hat Sam bezahlt',
+      );
+      expect(capNames('$a hat $b bezahlt', names, 4), 'Alex… hat Sam bezahlt');
+      expect(capNames('$a pays $b', {a: 'Al ex', b: 'Sam'}, 3), 'Al… pays Sam');
     });
   });
 
   group('ledger rows', () {
     testWidgets('a settlement between two very long names keeps both '
         'visible, each ellipsized', (tester) async {
+      // The test font's square glyphs are ~2× a real font's width: 800 test
+      // px ≈ a phone's line.
       _phone(tester);
+      tester.view.physicalSize = const Size(800, 860);
       await tester.pumpWidget(
         testApp(
           const ExpensesPage(roomId: _g),
@@ -135,18 +126,24 @@ void main() {
         ),
         findsOneWidget,
       );
-      final a = tester.getRect(find.text(_longA));
-      final b = tester.getRect(find.text(_longB));
-      final paid = tester.getRect(find.text(' paid '));
-      // Both names get an equal, real share of the line (the test font is
-      // wide — every glyph is a square), in order: A, "paid", B.
-      expect(a.width, greaterThan(16));
-      expect(a.width, closeTo(b.width, 1));
-      expect(a.right, lessThanOrEqualTo(paid.left + 0.5));
-      expect(paid.right, lessThanOrEqualTo(b.left + 0.5));
-      // …and B ends before the amount.
+      // G18 review 2: the sentence wraps onto two lines instead of cutting
+      // each name to a few letters; both names stay (mostly) readable, the
+      // literal is intact, and the title ends before the amount.
+      final title = find.byKey(const Key('settlementTitle'));
+      final text = tester.widget<Text>(
+        find.descendant(
+          of: title,
+          matching: find.byKey(const Key('namesLineText')),
+        ),
+      );
+      expect(text.maxLines, 2);
+      final shown = text.data!;
+      expect(shown, contains(' paid '));
+      expect(shown, startsWith(_longA.substring(0, 12)));
+      expect(shown.split(' paid ').last, startsWith(_longB.substring(0, 12)));
+      final rect = tester.getRect(title);
       final amount = tester.getRect(find.text('€12.50'));
-      expect(b.right, lessThanOrEqualTo(amount.left));
+      expect(rect.right, lessThanOrEqualTo(amount.left));
     });
 
     testWidgets('German: the expense title gets the line, the long '

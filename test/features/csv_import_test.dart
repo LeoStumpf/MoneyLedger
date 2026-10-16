@@ -345,6 +345,47 @@ void main() {
 
   // G18 review (findings 8, 13).
   group('G18 review', () {
+    // G18 review 2 (Minor 2).
+    test("an Expense ID of another group's record aborts the import — the "
+        'record is never moved', () async {
+      await import(buildGroupCsv(grp, members, [exp(id: 'shared-id')]));
+      const other = GroupModel(
+        roomId: 'g2',
+        name: 'Flat',
+        currency: 'EUR',
+        updatedAt: 1000,
+      );
+      final otherMembers = [
+        for (final m in members)
+          MemberModel(
+            groupId: 'g2',
+            userId: m.userId,
+            displayName: m.displayName,
+            status: 'active',
+            updatedAt: 1,
+          ),
+      ];
+      final csv = buildGroupCsv(other, otherMembers, [
+        exp(id: 'shared-id', desc: 'Moved', updatedAt: 999999),
+      ]).replaceAll(',g1,', ',g2,');
+      await expectLater(
+        import(csv),
+        throwsA(
+          isA<CsvImportException>().having(
+            (e) => e.problem,
+            'problem',
+            kCsvForeignIdProblem,
+          ),
+        ),
+      );
+      final e = (await c
+          .read(expensesDaoProvider)
+          .getExpenseById('shared-id'))!;
+      expect(e.roomId, 'g1');
+      expect(e.description, 'Dinner');
+      expect(await c.read(groupsDaoProvider).getGroup('g2'), isNull);
+    });
+
     test('a far-future Updated At is clamped to now on import', () async {
       final before = DateTime.now().millisecondsSinceEpoch;
       await import(

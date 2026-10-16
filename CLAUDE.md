@@ -262,7 +262,7 @@ pure-local participant (ledger data only, never a sync/replication target).
 Expenses (`paid_by`, `split` keys) and settlements (`from`/`to`) reference the
 **participant id**, so linking/detaching a Matrix account (claim/unclaim) or
 removing a member never rewrites history. Replication targets
-`MembersDao.activeClaimedMatrixIds`; "who am I in this group" is
+`MembersDao.activeClaimedMatrixIds` (valid MXIDs only — G18 review 2); "who am I in this group" is
 `currentParticipant` (the participant whose `matrixId` is this device's MXID —
 in local mode the pseudo account `kLocalAccountId`, see "Local mode (G40)");
 the UI resolves ids → names via `participantNames(groupId)`
@@ -379,20 +379,32 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
 - **Connect a Matrix account** (upgrade): `setConnecting(true)` (persisted, so a
   web SSO reload keeps it) → router allows only login / register / public
   pages (login page: close button = cancel, subtitle says the groups move) →
-  on a successful login / token login / registration `AuthNotifier._afterSignIn`
-  writes `beginLocalAdoption(mxid)` (local profile cleared + `adoptInto = mxid`
-  in one write; `localModeActive` already flips false once the MXID is known).
+  **G18 review 2:** the trigger is derived from **state**, not the sign-in
+  call — `localConnectGuardProvider` (kept alive by
+  `localLedgerAdoptionProvider`): device prefs loaded + local profile +
+  `connecting` + a signed-in MXID → `beginLocalAdoption(mxid,
+  onlyWhileConnecting: true)` (local profile cleared + `adoptInto = mxid` in
+  one write; `localModeActive` already flips false once the MXID is known).
+  So a sign-in that finishes **late** (after the page's timeout — the SDK
+  call isn't cancelled) or right before a crash (the connect flag is
+  persisted, the session restored) is adopted too. Local profile **without**
+  `connecting` (cancelled) + an auth gateway this run built → any session
+  that exists or signs in later is **logged out** (it is the fresh device of
+  that connect attempt; no Matrix session lives on in local mode).
   `localLedgerAdoptionProvider` (watched by `LedgerSyncHost`) then runs
   `adoptLocalLedger` (`local_adoption.dart`) once that account's DB is open:
   every row of the local DB is **LWW-merged** into the account DB (an account
   that already has groups merges, no duplicates; idempotent after a crash),
   the participant claimed by `local:self` becomes claimed by the MXID
-  (`adoptedMember`, `nextLwwClock`), every unsigned row is marked
-  `pendingSign` and **signed by the account's device** right away
+  (`adoptedMember`, `nextLwwClock`), and the rows **local mode wrote**
+  (stored `pendingSign`; G18 review 2: only those — a legacy row restored
+  from a backup file stays unsigned) are **signed by the account's device**
+  right away
   (`signPendingRows(originIfMissing: true)` — creation statements too, so
   "added by" works and peers never refuse them as unsigned; waits up to
   `localAdoptionKeyWaitProvider` = 30 s for the device key, else the sync
-  engine signs before the first digest — without origin for edited rows),
+  engine signs before the first digest — without origin for edited rows; it
+  holds off while `adoptInto` is this account, G18 review 2),
   archive entries + attested keys copied, then the **local DB is wiped**,
   `finishLocalAdoption(mxid)` (`lastAdoptedInto`), the local DB's files are
   deleted (G41, see below), a groups-page banner, and
@@ -416,29 +428,45 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
   `test/core/local_ledger_files_test.dart`, `local_mode_test.dart`.
 - **Backups across the boundary (G41)** — `BackupService.restore`,
   `restoreTakeover(backup.account, me)`:
+  - **G18 review 2 — a backup file is unauthenticated** (anyone can write a
+    "local" one): this device signs restored rows **only** for a **truly
+    local** group of a local-mode backup (`isOwnLocalGroup`: no participant
+    claimed by a Matrix account in the file or already in the DB, nothing in
+    the file signed). Any other group of a local backup is restored with its
+    `local:self` claims dropped (`withoutLocalClaims`: a participant already
+    here keeps its stored version, a new one becomes an unclaimed person) as
+    unsigned legacy rows — never signed. Unsigned restored versions carry **no**
+    `origin` (`RecordGate` — attribution never lies); `local:self`
+    claims are refused unless `RecordGate.allowLocalClaims` (that truly local
+    group). A normal restore (`RestoreTakeover.none`) never signs anything;
+    local mode's own backup restored **in local mode** marks a truly local
+    group's rows `pendingSign` (`markUnsignedPending` — they are local mode's
+    own writes again, signed on connect).
   - a **local-mode backup** (`account` = `local:self`) restored into a Matrix
-    account = the adoption above, per group **inside the restore
-    transaction**: `reclaimGroupInPlace(from: local:self, to: mxid,
-    signLater: true)` (same `reclaimedMember` / `nextLwwClock` as
-    `adoptedMember`; every unsigned row → `pendingSign`), then after the
-    transactions `signAdoptedGroups` (shared with `adoptLocalLedger`;
-    `signPendingRows(originIfMissing: true)`, "added by" included). Key not
-    ready → the sync engine signs before the first digest. Also applied to a
-    group of any backup that still holds a `local:self` claim. The preview
-    says so (`RestoreTakeover.localIntoAccount`, `restoreLocalIntoAccount`;
-    no "other account" warning);
+    account = the adoption above **for its truly local groups**, per group
+    **inside the restore transaction**: `reclaimGroupInPlace(from:
+    local:self, to: mxid, signLater: true)` (same `reclaimedMember` /
+    `nextLwwClock` as `adoptedMember`; every unsigned row of that group →
+    `pendingSign`), then after the transactions `signAdoptedGroups` (shared
+    with `adoptLocalLedger`; `signPendingRows(originIfMissing: true)`, "added
+    by" included). Key not ready → the sync engine signs before the first
+    digest. The preview says so (`RestoreTakeover.localIntoAccount`,
+    `restoreLocalIntoAccount`; no "other account" warning) and warns to
+    restore only one's own file (`restoreLocalOwnFile`);
   - a **Matrix backup restored in local mode**: signatures are verified
     (`LocalOnlyTransport` verifies Ed25519 via `verifyEd25519` — no Matrix
     client needed; before G41 it refused every signature, so nothing was
     restored), then the participant claimed by the backup's account is
-    re-claimed by `local:self` (`reclaimGroupInPlace(signLater: false)`;
-    never a second "me": skipped when `local:self` already claims an active
-    participant) — the user is "me" there; nothing is sent. *Connect a
+    re-claimed by `local:self` (`reclaimGroupInPlace(signLater: false,
+    onlySignedClaims: true)` — G18 review 2: only a claim that account
+    really signed; never a second "me": skipped when `local:self` already
+    claims an active participant) — the user is "me" there; nothing is sent. *Connect a
     Matrix account* later adopts it back (same account → peers accept it;
     another account → peers ignore it as a non-member). Preview:
     `restoreAccountIntoLocal`;
   - a local backup in local mode / a Matrix backup into an account: unchanged.
-  Tests: `test/features/local_backup_restore_test.dart`.
+  Tests: `test/features/local_backup_restore_test.dart`,
+  `test/integration/security_review2_test.dart` (crafted backups, Major 1).
 
 ### Data Flow
 
@@ -505,7 +533,10 @@ Matrix **Ed25519 fingerprint key** (vodozemac olm account,
   never freezes a record); **invalid content** (`record_validation.dart`:
   split not a non-empty `{participant: int ≥ 0}` map summing to the amount,
   amount outside 1 … `kMaxAmountCents` = 10^13 cents, no payer, payment to
-  oneself) → refused `invalid_record`; else `RecordVerifier`: a clock > now +
+  oneself; G18 review 2: a member `matrix_id` that isn't a valid MXID —
+  `isValidMxid`, e.g. `local:self` — `memberProblem`; an expense / payment
+  id stored for **another group**) → refused `invalid_record`; else
+  `RecordVerifier`: a clock > now +
   5 min is dropped **first** (transient, signed or not); **refused** if
   unsigned, bad signature, bad / changed origin, wrong signer (a non-member's
   member payload must be signed by itself) or **key conflict** (the embedded
@@ -515,10 +546,12 @@ Matrix **Ed25519 fingerprint key** (vodozemac olm account,
   for versions not newer than its removal) or be the relaying account itself
   — else dropped as `signer_not_member` (transient; a snapshot's meta may be
   signed by one of the snapshot's own members). Refused versions go to
-  `rejected_versions` (one row per record: the highest refused version incl.
-  `version_hash`, schema v9; never one stamped beyond now + 5 min) and the
-  digest's `rejected` map (`"<ms>:<hash8>"` per id), so peers stop re-sending
-  exactly that version (no repair loop; "agree to disagree" counts as in
+  `rejected_versions` (G18 review 2, schema v10: a small set per record — the
+  version (clock + `version_hash`) is part of the PK, the
+  `kMaxRefusedVersionsPerRecord` = 4 highest are kept; never one stamped
+  beyond now + 5 min) and the digest's `rejected` map (`"<ms>:<hash8>"`, the
+  highest per id) + optional `rejected_more` (the others, lists; older peers
+  ignore it), so peers stop re-sending exactly those versions (no repair loop; "agree to disagree" counts as in
   sync). A user-started restore bypasses and clears earlier sync refusals of
   the versions it stores, and isn't subject to the signer rule.
 - **Key binding after logout:** every device pins every member device key it
@@ -657,7 +690,11 @@ connected + battery not low; `lib/core/background/`) fixes that:
   sync…* (`BackgroundSyncWaitApp`). `maxWait` (2 min) is only a last resort
   against a wedged round (logged). A stopped round waits up to
   `kBackgroundInFlightGrace` (10 s) for the step in flight (a `/sync`, a
-  digest broadcast, a session still opening) before it closes the stores. The
+  digest broadcast, a session still opening) before it closes the stores —
+  **G18 review 2:** after first aborting the requests in flight
+  (`runBackgroundRound(abortRequests:)` = closing the round's own
+  `RequestTimeoutHttpClient`, passed to `buildMatrixClient(httpClient:)`;
+  `IOClient.close` is forced), since a request may take up to 90 s. The
   app gives its slot back when its engine detaches (`AppLifecycleListener
   .onDetach` — backed out of; otherwise rounds would stay skipped until the
   process dies). Gate logic is tested on a fake `PortRegistry`
@@ -1158,10 +1195,13 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
   the bare localpart (LWW rename + relay, only in groups where we're active).
 - **Shared widgets** (`lib/core/widgets/`): `ContentWidth` (centre + cap width
   on wide screens — wrap page content in it), `EmptyState`, `BrandLogo`,
-  `NamesLine` (G33: a localized sentence whose **names ellipsize
-  independently** — build the template with `NamesLine.sentinel(i)` in place
-  of each name, e.g. settlement rows "A paid B", and the balance page's
-  suggested payments "A pays B / You pay B / A pays you").
+  `NamesLine` (G33: a localized sentence with name placeholders — build the
+  template with `NamesLine.sentinel(i)` in place of each name, e.g.
+  settlement rows "A paid B", and the balance page's suggested payments "A
+  pays B / You pay B / A pays you"; G18 review 2: it **wraps onto up to two
+  lines**, and only if that isn't enough are the names shortened, each on
+  its own to the same character cap (`capNames`), literals never cut; the
+  ledger row keeps its amount on the first line).
 - **Lists under an extended FAB** pad their bottom with
   `Insets.fabClearance(context)` (88 dp + the system navigation inset — a
   ListView with explicit padding doesn't add it itself), never a fixed number.
@@ -1293,7 +1333,7 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 
 **`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "sig" }`.
 
-**`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → "<updated_at>:<hash8>"` (G27; a bare int = clock only), **tombstones included**; `meta_hash` is the meta's hash8; the `members` map (keyed by participant id) doubles as membership/identity gossip — each entry is the full **signed** member version (verified like a member payload). `rejected` (optional, G6) lists versions the sender refused (`{expenses: {id: T}, settlements: {…}, members: {pid: T}, meta: T}`) so peers don't re-send them. A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
+**`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → "<updated_at>:<hash8>"` (G27; a bare int = clock only), **tombstones included**; `meta_hash` is the meta's hash8; the `members` map (keyed by participant id) doubles as membership/identity gossip — each entry is the full **signed** member version (verified like a member payload). `rejected` (optional, G6) lists versions the sender refused (`{expenses: {id: T}, settlements: {…}, members: {pid: T}, meta: T}`) so peers don't re-send them; G18 review 2: the highest refused version per id — further ones ride in an optional `rejected_more` (`{expenses: {id: ["T:hash8", …]}, …, meta: [...]}`). A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
 ```json
 {
   "v": 2,

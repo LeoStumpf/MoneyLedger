@@ -74,7 +74,7 @@ void main() {
       ),
     );
     addTearDown(db.close);
-    expect(db.schemaVersion, 9);
+    expect(db.schemaVersion, greaterThanOrEqualTo(9));
     final signing = SigningDao(db);
 
     final keys = await signing.allKeys();

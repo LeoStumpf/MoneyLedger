@@ -502,6 +502,108 @@ void main() {
       },
     );
 
+    Future<void> until(bool Function() done) async {
+      for (var i = 0; i < 300 && !done(); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    }
+
+    // G18 review 2 (Major 2): the adoption follows the session state, not
+    // the sign-in call's result.
+    test(
+      'a sign-in that finishes late (after the timeout) is adopted',
+      () async {
+        final c = makeApp();
+        await settle(c);
+        final groupId = await createLocalGroup(c);
+        await c.read(devicePrefsProvider.notifier).setConnecting(true);
+        net.clientFor(_mxid);
+        gateway
+          ..pendingRequest = Completer<void>()
+          ..requestTimeout = const Duration(milliseconds: 20);
+        await c
+            .read(authProvider.notifier)
+            .login(
+              resolvedHomeserver: 'https://x.test',
+              username: 'lea',
+              password: 'pw',
+            );
+        expect(c.read(authProvider).hasError, isTrue, reason: 'timed out');
+        expect(c.read(appSessionProvider), AppSessionKind.local);
+        expect(store.values.containsKey('local_profile'), isTrue);
+
+        gateway.pendingRequest!.complete(); // the SDK call succeeds late
+        await until(() => store.values['local_last_adopted_into'] == _mxid);
+        await settle(c);
+        expect(store.values['local_last_adopted_into'], _mxid);
+        expect(store.values.containsKey('local_profile'), isFalse);
+        expect(c.read(appSessionProvider), AppSessionKind.matrix);
+        final db = c.read(appDatabaseProvider);
+        expect(
+          claimedBy(await MembersDao(db).getMembers(groupId), _mxid),
+          isNotNull,
+        );
+      },
+    );
+
+    test('a cancelled connect whose sign-in finishes late is signed out '
+        'again — no Matrix session in local mode', () async {
+      final c = makeApp();
+      await settle(c);
+      await createLocalGroup(c);
+      await c.read(devicePrefsProvider.notifier).setConnecting(true);
+      net.clientFor(_mxid);
+      gateway
+        ..pendingRequest = Completer<void>()
+        ..requestTimeout = const Duration(milliseconds: 20);
+      await c
+          .read(authProvider.notifier)
+          .login(
+            resolvedHomeserver: 'https://x.test',
+            username: 'lea',
+            password: 'pw',
+          );
+      await c.read(devicePrefsProvider.notifier).setConnecting(false);
+      await settle(c);
+
+      gateway.pendingRequest!.complete(); // the late success after cancel
+      await until(() => !gateway.isLoggedIn);
+      await settle(c);
+      expect(gateway.isLoggedIn, isFalse, reason: 'signed out again');
+      expect(c.read(appSessionProvider), AppSessionKind.local);
+      expect(store.values.containsKey('local_profile'), isTrue);
+      expect(store.values.containsKey('local_adopt_into'), isFalse);
+      expect(store.values.containsKey('local_last_adopted_into'), isFalse);
+      expect(c.read(ledgerIdentityProvider), kLocalAccountId);
+    });
+
+    test('a crash between sign-in and the preference write: adopted on the '
+        'next start', () async {
+      final first = makeApp();
+      await settle(first);
+      final groupId = await createLocalGroup(first);
+      first.dispose();
+
+      // Signed in (the session was stored), the connect flag still set.
+      gateway.dispose();
+      gateway = FakeAuthGateway(initialUserId: _mxid);
+      net.clientFor(_mxid);
+      final c = makeApp(
+        prefs: const {
+          'welcome_seen': '1',
+          'local_profile': _profile,
+          'local_connecting': '1',
+        },
+      );
+      await settle(c);
+      await until(() => store.values['local_last_adopted_into'] == _mxid);
+      await settle(c);
+      expect(store.values['local_last_adopted_into'], _mxid);
+      expect(c.read(appSessionProvider), AppSessionKind.matrix);
+      final db = c.read(appDatabaseProvider);
+      expect(await GroupsDao(db).getGroup(groupId), isNotNull);
+    });
+
     test('a cancelled connect stays in local mode', () async {
       final c = makeApp();
       await settle(c);
@@ -532,18 +634,21 @@ void main() {
       expect(a.pendingSign, isTrue);
     });
 
-    test('other participants only wait for a signature when unsigned', () {
-      const m = MemberModel(
+    test('other participants are copied as they are (G18 review 2: only '
+        'what local mode wrote — pendingSign — gets signed)', () {
+      const legacy = MemberModel(
         groupId: 'g',
         userId: 'p2',
         displayName: 'Max',
         status: 'active',
         updatedAt: 100,
       );
-      final a = adoptedMember(m, _mxid);
+      final a = adoptedMember(legacy, _mxid);
       expect(a.matrixId, isNull);
       expect(a.updatedAt, 100);
-      expect(a.pendingSign, isTrue);
+      expect(a.pendingSign, isFalse, reason: 'a restored legacy row');
+      final written = legacy.withSigning(pendingSign: true);
+      expect(adoptedMember(written, _mxid).pendingSign, isTrue);
     });
   });
 }

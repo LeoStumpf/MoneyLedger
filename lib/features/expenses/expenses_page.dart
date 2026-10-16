@@ -1273,6 +1273,9 @@ class _LedgerRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
+                    // G18 review 2: a payment's title may wrap onto a second
+                    // line — the amount stays on the first.
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Row(

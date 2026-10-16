@@ -1139,6 +1139,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get restoreLocalOwnFile =>
+      'Only restore a backup you made yourself: this device signs its entries as yours. Groups that include Matrix accounts are restored unsigned and won\'t sync.';
+
+  @override
   String groupsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

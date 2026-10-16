@@ -7,6 +7,7 @@ import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../../models/sync_state_model.dart';
+import 'record_validation.dart' show isValidMxid;
 
 part 'sync_status_provider.g.dart';
 
@@ -49,7 +50,8 @@ GroupSyncStatus computeSyncStatus({
   // self; pure-local participants can't sync, so they never count as pending.
   final activePeers = [
     for (final m in members)
-      if (m.isActive && m.matrixId != null && m.matrixId != selfId) m.matrixId!,
+      if (m.isActive && isValidMxid(m.matrixId) && m.matrixId != selfId)
+        m.matrixId!,
   ];
   if (activePeers.isEmpty) {
     return const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null);

@@ -335,6 +335,55 @@ void main() {
     expect(fetchDoneAtClose, isTrue);
   });
 
+  // G18 review 2 (Minor 5): a request can outlast the grace (90 s header
+  // timeout vs 10 s) — the round aborts it before closing the stores.
+  test('a stopped round aborts the requests in flight before it closes the '
+      'stores', () async {
+    await sharedGroupBobClosed();
+    final abort = Completer<void>();
+    final request = Completer<void>(); // a /sync that would hang for long
+    var aborted = false;
+    var fetchSettledAtClose = false;
+    var fetchSettled = false;
+    late FakeSession session;
+    session = _ClosingSession(
+      net.clientFor(bob),
+      onFetch: () async {
+        abort.complete(); // the app starts mid-/sync
+        try {
+          await request.future;
+        } finally {
+          fetchSettled = true;
+        }
+      },
+      onClose: () => fetchSettledAtClose = fetchSettled,
+    );
+    final db = openDb(bob);
+    var dbOpenAtSettle = false;
+    final result = await runBackgroundRound(
+      tryAcquire: () async => true,
+      openSession: () async => session,
+      openDatabase: (_) => db,
+      abort: abort.future,
+      abortRequests: () {
+        aborted = true;
+        dbOpenAtSettle = !db.isClosed;
+        // Closing the HTTP client fails the request at once.
+        request.completeError(StateError('Client is already closed'));
+      },
+      quietPeriod: const Duration(milliseconds: 100),
+      pokeDebounce: const Duration(milliseconds: 1),
+      // Far shorter than the hanging request: without the abort the stores
+      // would be closed under it.
+      inFlightGrace: const Duration(milliseconds: 100),
+    );
+    expect(result.status, BackgroundRoundStatus.aborted);
+    expect(aborted, isTrue);
+    expect(dbOpenAtSettle, isTrue, reason: 'aborted before the DB closed');
+    expect(fetchSettledAtClose, isTrue, reason: 'settled before close');
+    expect(db.isClosed, isTrue);
+  });
+
   test('a session still opening when stopped is closed before the round '
       'returns', () async {
     await sharedGroupBobClosed();

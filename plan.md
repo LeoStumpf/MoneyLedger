@@ -483,12 +483,12 @@ Must happen before the first Play upload (the id is permanent there).
 
 ### G18. Final release review 🟡
 - [x] Code review over all of Phase G (sync/crypto/backup/math): 16 findings incl. 4 blockers → all fixed with regression tests
-- [ ] Second review pass over the G18 fixes (after G40/G39/G38)
+- [x] Second review pass over the G18 fixes (after G40/G39/G38): 3 major + 5 minor → all fixed with regression tests (schema v10)
 - [x] (G38: devices reset, "Testgruppe A+B" + "Lokal-Test" recreated) Recreate the pre-G6 test groups ("G7a Test"/"G7a Probe") or document them
       as legacy-only (G35 decision)
-- [ ] Balance suggestion rows truncate long names to ~4 chars ("mone… zahlt an
+- [x] Balance suggestion rows truncate long names to ~4 chars ("mone… zahlt an
       dich") — allow 2 lines instead of single-line NamesLine there
-- [ ] Delete the local emulator app-data safety copy
+- [x] Delete the local emulator app-data safety copy
       (scratchpad `emu_appdata_backup.tgz`, contains test-account keys)
 - [ ] `./build.sh` green; release APK on emulator + phone
 - [ ] Docs in sync (CLAUDE.md, README, open-points); release notes

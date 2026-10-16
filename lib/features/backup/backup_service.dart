@@ -201,11 +201,26 @@ class BackupService {
   /// backup account's participant to the local pseudo account (the user is
   /// "me" there; nothing can be signed or sent) — connecting that account
   /// later adopts it back.
+  ///
+  /// G18 review 2: a backup file is not authenticated — anyone can write a
+  /// "local" one — so this device only ever signs what can't hurt anyone
+  /// else: a local backup's group is adopted (re-claimed + signed) only when
+  /// it is **truly local** ([isOwnLocalGroup]: no participant claimed by a
+  /// Matrix account in the file or already here, no signature in the file).
+  /// Any other group of a local backup is restored as unsigned legacy rows,
+  /// its `local:self` claims dropped (a new participant is kept unclaimed),
+  /// nothing signed. Restoring a local backup **in local mode** marks a truly
+  /// local group's rows `pendingSign` (they are local mode's own, like local
+  /// writes; connecting an account signs them). A Matrix backup in local
+  /// mode re-claims only a **signed** participant of the backup account. A
+  /// normal restore never signs anything.
   Future<List<String>> restore(LedgerBackup backup) async {
     final restored = <String>[];
     final t = await transport;
     if (!_alive) return restored;
     final takeover = restoreTakeover(backup.account, t.userId);
+    final localFile = isLocalAccountId(backup.account);
+    final inLocalMode = isLocalAccountId(t.userId);
     final adopted = <String>[];
     final verifier = RecordVerifier(
       crypto: t.crypto,
@@ -223,6 +238,18 @@ class BackupService {
       acceptUnsigned: true,
       isAlive: () => _alive,
     );
+    // Local mode's own claims (`local:self`) are only accepted from a truly
+    // local group of a local backup (G18 review 2).
+    final localGate = RecordGate(
+      verifier: verifier,
+      signing: signing,
+      groups: groups,
+      members: members,
+      expenses: expenses,
+      acceptUnsigned: true,
+      allowLocalClaims: true,
+      isAlive: () => _alive,
+    );
     await verifier.prefetch({
       for (final g in backup.groups) ...payloadSignerUsers(g),
     });
@@ -232,10 +259,18 @@ class BackupService {
       final gid = g['group'] as String;
       try {
         await db.transaction(() async {
+          // G18 review 2: only a truly local group keeps local mode's claims.
+          var payload = g;
+          var ownLocal = false;
+          if (localFile) {
+            final here = await members.getMembers(gid);
+            ownLocal = isOwnLocalGroup(g, here);
+            if (!ownLocal) payload = withoutLocalClaims(g, here);
+          }
           await settings.clearGroupLeft(gid);
           if (!_alive) return;
-          await gate.snapshot(
-            g,
+          await (ownLocal ? localGate : gate).snapshot(
+            payload,
             relayedBy: backup.account ?? t.userId,
             trustAttestations: true,
           );
@@ -245,7 +280,14 @@ class BackupService {
           if (await groups.getGroup(gid) == null) {
             throw const _GroupNotRestored();
           }
-          if (await _takeOver(gid, takeover, backup.account, t.userId)) {
+          if (await _takeOver(
+            gid,
+            takeover,
+            backup.account,
+            t.userId,
+            ownLocal: ownLocal,
+            inLocalMode: inLocalMode,
+          )) {
             adopted.add(gid);
           }
         });
@@ -283,45 +325,112 @@ class BackupService {
 
   /// G41, inside [gid]'s restore transaction: the [takeover] step. Returns
   /// whether the group now waits for this account's signatures.
+  ///
+  /// G18 review 2: [ownLocal] = the group is a truly local group of a local
+  /// backup ([isOwnLocalGroup]) — the only kind this device may adopt and
+  /// sign. [inLocalMode]: the ledger restored into is local mode's.
   Future<bool> _takeOver(
     String gid,
     RestoreTakeover takeover,
     String? backupAccount,
-    String me,
-  ) async {
-    if (takeover == RestoreTakeover.accountIntoLocal) {
-      await reclaimGroupInPlace(
-        groups: groups,
-        members: members,
-        expenses: expenses,
-        groupId: gid,
-        from: backupAccount!,
-        to: kLocalAccountId,
-        signLater: false,
-      );
-      return false;
+    String me, {
+    required bool ownLocal,
+    required bool inLocalMode,
+  }) async {
+    switch (takeover) {
+      case RestoreTakeover.accountIntoLocal:
+        // Only a claim the backup account really signed becomes "me".
+        await reclaimGroupInPlace(
+          groups: groups,
+          members: members,
+          expenses: expenses,
+          groupId: gid,
+          from: backupAccount!,
+          to: kLocalAccountId,
+          signLater: false,
+          onlySignedClaims: true,
+        );
+        return false;
+      case RestoreTakeover.localIntoAccount:
+        if (!ownLocal) return false;
+        await reclaimGroupInPlace(
+          groups: groups,
+          members: members,
+          expenses: expenses,
+          groupId: gid,
+          from: kLocalAccountId,
+          to: me,
+          signLater: true,
+        );
+        return true;
+      case RestoreTakeover.none:
+        // Local mode's own backup in local mode: its truly local groups'
+        // rows are local mode's own writes again (signed once an account is
+        // connected). Nothing is ever signed here.
+        if (inLocalMode && ownLocal) {
+          await markUnsignedPending(
+            groups: groups,
+            members: members,
+            expenses: expenses,
+            groupId: gid,
+          );
+        }
+        return false;
     }
-    // A local-mode claim in a group restored into an account (a local
-    // backup — or one nested in an account's backup, e.g. restored there
-    // before G41) is adopted.
-    if (!me.startsWith('@')) return false;
-    if (takeover == RestoreTakeover.none &&
-        !(await members.getMembers(
-          gid,
-        )).any((m) => isLocalAccountId(m.matrixId))) {
-      return false;
-    }
-    await reclaimGroupInPlace(
-      groups: groups,
-      members: members,
-      expenses: expenses,
-      groupId: gid,
-      from: kLocalAccountId,
-      to: me,
-      signLater: true,
-    );
-    return true;
   }
+}
+
+/// G18 review 2: whether backed-up [group] (from a **local-mode** backup) is
+/// a truly local group this device may adopt: no participant — in the file
+/// or already [here] — is claimed by a Matrix account (only by local mode's
+/// pseudo account, or nobody), and nothing in the file is signed (local mode
+/// can't sign: a signature means the group came from somewhere else).
+bool isOwnLocalGroup(Map<String, dynamic> group, List<MemberModel> here) {
+  bool foreignClaim(String? id) => id != null && !isLocalAccountId(id);
+  if (here.any((m) => foreignClaim(m.matrixId))) return false;
+  for (final raw in group['members'] as List? ?? const []) {
+    if (raw is! Map) continue;
+    final m = memberFromPayload(Map<String, dynamic>.from(raw));
+    if (m != null && foreignClaim(m.matrixId)) return false;
+  }
+  if (payloadSignerUsers(group).isNotEmpty) return false;
+  final meta = group['meta'];
+  if (meta is Map && meta['sig'] != null) return false;
+  return true;
+}
+
+/// G18 review 2: [group] without local mode's claims — for a local backup's
+/// group that isn't truly local ([isOwnLocalGroup]). A participant claimed
+/// by `local:self` that is already [here] is left out (the stored version
+/// stays); a new one is kept as an unclaimed (local) person.
+Map<String, dynamic> withoutLocalClaims(
+  Map<String, dynamic> group,
+  List<MemberModel> here,
+) {
+  final known = {for (final m in here) m.userId};
+  final out = <Map<String, dynamic>>[];
+  for (final raw in group['members'] as List? ?? const []) {
+    if (raw is! Map) continue;
+    final entry = Map<String, dynamic>.from(raw);
+    final m = memberFromPayload(entry);
+    if (m == null || !isLocalAccountId(m.matrixId)) {
+      out.add(entry);
+      continue;
+    }
+    if (known.contains(m.userId)) continue;
+    out.add(
+      memberPayload(
+        MemberModel(
+          groupId: m.groupId,
+          userId: m.userId,
+          displayName: m.displayName,
+          status: m.status,
+          updatedAt: m.updatedAt,
+        ),
+      ),
+    );
+  }
+  return {...group, 'members': out};
 }
 
 /// G41: whose participant a restore hands to whom.

@@ -68,10 +68,10 @@ void main() {
       await tester.pump();
 
       // G17: per-person balances (names fall back to the MXID localpart)…
-      // (Each name also appears once per suggested-payment line it's in.)
-      expect(find.text('bob'), findsNWidgets(2));
-      expect(find.text('carol'), findsNWidgets(2));
-      expect(find.text('alice'), findsNWidgets(3));
+      // (The suggested-payment lines are one Text each, G18 review 2.)
+      expect(find.text('bob'), findsOneWidget);
+      expect(find.text('carol'), findsOneWidget);
+      expect(find.text('alice'), findsOneWidget);
       expect(find.text('gets back'), findsOneWidget);
       expect(find.text('owes'), findsNWidgets(2));
       // …and the suggested payments.
@@ -79,8 +79,8 @@ void main() {
       expect(_debtTitle('carol pays alice'), findsOneWidget);
     });
 
-    testWidgets('G33: a suggested payment between two long names keeps '
-        'both visible, each ellipsized', (tester) async {
+    testWidgets('G33 / G18 review 2: a suggested payment between two long '
+        'names wraps onto two lines, both names readable', (tester) async {
       // (The test font draws every glyph as a square — much wider than a
       // real one — so give the line some room.)
       tester.view.physicalSize = const Size(600, 1000);
@@ -109,19 +109,83 @@ void main() {
       expect(tester.takeException(), isNull);
       final title = _debtTitle('$longA pays $longB');
       expect(title, findsOneWidget);
-      final a = tester.getRect(
-        find.descendant(of: title, matching: find.text(longA)),
+      final shown = tester
+          .widget<Text>(
+            find.descendant(
+              of: title,
+              matching: find.byKey(const Key('namesLineText')),
+            ),
+          )
+          .data!;
+      // Both names keep a real part (cut evenly, never dropped), the literal
+      // stays whole.
+      final parts = shown.split(' pays ');
+      expect(parts, hasLength(2));
+      expect(parts[0], startsWith(longA.substring(0, 15)));
+      expect(parts[1], startsWith(longB.substring(0, 15)));
+      // Two lines at most.
+      expect(tester.getSize(title).height, lessThanOrEqualTo(2 * 20 + 1));
+    });
+
+    testWidgets('G18 review 2 (German): "… zahlt an dich" shows the whole '
+        'long name on two lines', (tester) async {
+      // (The test font's square glyphs are about twice as wide as a real
+      // font's: 600 test px ≈ a phone's line.)
+      tester.view.physicalSize = const Size(600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      const me = '@me:matrix.org';
+      const longA = 'moneyledger test a';
+      await tester.pumpWidget(
+        testApp(
+          const BalancePage(roomId: _roomId),
+          locale: const Locale('de'),
+          overrides: [
+            ...testOverrides(
+              isLoggedIn: true,
+              debts: [
+                const DebtEntry(
+                  from: '@mltest:matrix.org',
+                  to: me,
+                  cents: 2100,
+                  currency: 'EUR',
+                ),
+              ],
+            ),
+            participantNamesProvider.overrideWith(
+              (ref, g) => {'@mltest:matrix.org': longA, me: 'Ich'},
+            ),
+            currentParticipantProvider.overrideWith(
+              (ref, g) => Future<MemberModel?>.value(
+                const MemberModel(
+                  groupId: _roomId,
+                  userId: me,
+                  matrixId: me,
+                  status: 'active',
+                  updatedAt: 1,
+                ),
+              ),
+            ),
+          ],
+        ),
       );
-      final b = tester.getRect(
-        find.descendant(of: title, matching: find.text(longB)),
-      );
-      final pays = tester.getRect(find.text(' pays '));
-      expect(a.width, greaterThan(60));
-      expect(a.width, closeTo(b.width, 1));
-      // Both are cut (their full width wouldn't fit), neither is dropped.
-      expect(a.width, lessThan(longA.length * 14));
-      expect(a.right, lessThanOrEqualTo(pays.left + 0.5));
-      expect(pays.right, lessThanOrEqualTo(b.left + 0.5));
+      await tester.pump();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      final title = _debtTitle('$longA zahlt an dich');
+      expect(title, findsOneWidget);
+      final shown = tester
+          .widget<Text>(
+            find.descendant(
+              of: title,
+              matching: find.byKey(const Key('namesLineText')),
+            ),
+          )
+          .data!;
+      // Before: one line, "mo… zahlt an dich".
+      expect(shown, '$longA zahlt an dich');
+      expect(tester.getSize(title).height, greaterThan(20 + 1));
     });
 
     testWidgets('shows "Balance" AppBar title', (tester) async {
