@@ -83,15 +83,18 @@ void main() {
     final groupId = (await alice.read(groupsDaoProvider).watchAllGroups().first)
         .first
         .roomId;
-    // Bob is a real, claimed member (invited + self-joins).
+    // Bob is a real, claimed member (invited by Alice into a slot).
     await alice
         .read(memberAdderProvider.notifier)
         .invite(groupId, '@bob:y.org');
     await net.settle();
-    await bob.read(memberAdderProvider.notifier).joinAsNew(groupId, 'Bob');
-    await net.settle();
 
     // Now a record from Bob (a member) is accepted by Alice.
+    final bobPid =
+        (await bob
+                .read(membersDaoProvider)
+                .memberByMatrixId(groupId, '@bob:y.org'))!
+            .userId;
     await bob
         .read(expenseAdderProvider.notifier)
         .addExpense(
@@ -99,12 +102,8 @@ void main() {
           description: 'Lunch',
           amountCents: 2000,
           currency: 'EUR',
-          paidBy:
-              (await bob
-                      .read(membersDaoProvider)
-                      .memberByMatrixId(groupId, '@bob:y.org'))!
-                  .userId,
-          splits: const {},
+          paidBy: bobPid,
+          splits: {bobPid: 2000},
         );
     await net.settle();
 

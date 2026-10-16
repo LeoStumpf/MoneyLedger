@@ -109,6 +109,10 @@ class Members extends Table {
 /// (`source = 'attested'`, [attestedBy] = that sender's MXID). Kept after the
 /// device signs out, so records it signed stay verifiable. Device-local trust,
 /// per account; never synced and not purged with a group.
+///
+/// G18 review: an attestation is **scoped to the group** whose snapshot
+/// carried it ([attestedGroup]) and only vouches for that group's records;
+/// first-hand pins have `attested_group = ''` (valid everywhere).
 class KnownDeviceKeys extends Table {
   TextColumn get userId => text()();
   TextColumn get deviceId => text()();
@@ -116,14 +120,17 @@ class KnownDeviceKeys extends Table {
   TextColumn get source => text()(); // 'server' | 'attested'
   TextColumn get attestedBy => text().nullable()();
   IntColumn get firstSeenAt => integer()();
+  TextColumn get attestedGroup => text().withDefault(const Constant(''))();
 
   @override
-  Set<Column> get primaryKey => {userId, deviceId, ed25519Key};
+  Set<Column> get primaryKey => {userId, deviceId, ed25519Key, attestedGroup};
 }
 
 /// G6: inbound record versions this device refused (bad / missing signature,
-/// key conflict, changed origin). [updatedAt] is the highest refused clock per
-/// record; advertised in our digests (`rejected`) so peers stop re-sending
+/// key conflict, changed origin, invalid content). [updatedAt] + [versionHash]
+/// identify the refused **version** (G18 review: a refusal blocks exactly that
+/// version, never other versions of the record); one row per record, the
+/// highest refused version wins. Advertised in our digests (`rejected`) so peers stop re-sending
 /// them (no repair loop). [kind] is `expense` / `settlement` / `member` /
 /// `meta` ([recordId] = group id for meta).
 class RejectedVersions extends Table {
@@ -135,6 +142,10 @@ class RejectedVersions extends Table {
   TextColumn get relayedBy => text()();
   TextColumn get claimedSigner => text().nullable()();
   IntColumn get rejectedAt => integer()();
+
+  /// The G27 content hash of the refused version ('' = unknown: a refusal
+  /// recorded before schema v9 — matches any version at [updatedAt]).
+  TextColumn get versionHash => text().withDefault(const Constant(''))();
 
   @override
   Set<Column> get primaryKey => {groupId, kind, recordId};
@@ -233,7 +244,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -322,6 +333,25 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(expenses, expenses.versionHash);
         await m.addColumn(settlements, settlements.versionHash);
         await backfillVersionHashes(this);
+      }
+      // v9 (G18 review): device-key attestations are scoped to the group
+      // whose snapshot carried them (new PK column `attested_group`), and a
+      // refusal remembers the exact refused version (`version_hash`). The old
+      // attestations were account-wide and can't be scoped after the fact —
+      // they are dropped (records they vouched for show as unverified until a
+      // snapshot of their group attests them again).
+      // (A DB older than v6 created both tables in their current shape above.)
+      if (from < 9 && from >= 6) {
+        await customStatement(
+          "DELETE FROM known_device_keys WHERE source = 'attested'",
+        );
+        await m.alterTable(
+          TableMigration(
+            knownDeviceKeys,
+            newColumns: [knownDeviceKeys.attestedGroup],
+          ),
+        );
+        await m.addColumn(rejectedVersions, rejectedVersions.versionHash);
       }
     },
     beforeOpen: (_) async {

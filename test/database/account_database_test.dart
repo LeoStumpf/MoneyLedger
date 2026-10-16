@@ -396,7 +396,30 @@ void _cleanupTests() {
       await start(alice, '@alice:x.org');
       await start(alice, '@alice:x.org');
       expect(await legacyFile.exists(), isTrue);
-      expect(await setting(alice, legacyCleanupKey), 'kept');
+      // Not settled for good: re-checked on later starts.
+      expect(await setting(alice, legacyCleanupKey), isNull);
+    });
+
+    // G18 review: once the other claimed account has signed in here (and
+    // found the ledger already adopted — it can never adopt it), nobody needs
+    // the legacy file any more.
+    test('kept for another claimed account until it signs in once, then '
+        'deleted', () async {
+      await seed(claims: const ['@alice:x.org', '@bob:x.org']);
+      final alice = openTestDatabase();
+      addTearDown(alice.close);
+      await start(alice, '@alice:x.org'); // adopts
+      await start(alice, '@alice:x.org'); // kept for bob
+      expect(await legacyFile.exists(), isTrue);
+
+      final bob = openTestDatabase();
+      addTearDown(bob.close);
+      await start(bob, '@bob:x.org'); // check: already adopted → recorded
+      expect(await bob.select(bob.groups).get(), isEmpty);
+      expect(await legacyFile.exists(), isTrue, reason: 'not on that start');
+      await start(alice, '@alice:x.org'); // alice's next start deletes it
+      expect(await legacyFile.exists(), isFalse);
+      expect(await setting(alice, legacyCleanupKey), 'deleted');
     });
 
     test('not adopted (someone else\'s ledger) → kept and re-checked; '
@@ -447,6 +470,14 @@ void _cleanupTests() {
           legacyClaimedMatrixIds: {'@alice:x.org', '@bob:x.org'},
         ),
         isFalse,
+      );
+      expect(
+        canDeleteLegacy(
+          adoptedInto: a,
+          legacyClaimedMatrixIds: {'@alice:x.org', '@bob:x.org'},
+          checkedBy: {accountDatabaseName('@bob:x.org')},
+        ),
+        isTrue,
       );
     });
   });

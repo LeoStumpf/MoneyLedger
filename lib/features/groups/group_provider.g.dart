@@ -477,7 +477,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'b289c08a5a244b20b20fd62d6507072ead84c0cb';
+String _$memberAdderHash() => r'f597466cdc4367e8f4d018430da9e9210fb4e754';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

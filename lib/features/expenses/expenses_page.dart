@@ -403,6 +403,7 @@ class ExpensesPage extends ConsumerWidget {
           sig: sig,
           myMxid: myMxid,
           keys: keys,
+          group: roomId,
         );
 
     Widget tileFor(Object record) {

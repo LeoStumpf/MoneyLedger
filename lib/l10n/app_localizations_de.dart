@@ -1727,4 +1727,32 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get authInProgressHint =>
       'Der vorherige Versuch wartet noch auf den Server. Klappt er, wirst du automatisch angemeldet – sonst versuche es gleich noch einmal.';
+
+  @override
+  String inviteWhoIs(Object userId) {
+    return 'Wer ist $userId in dieser Gruppe?';
+  }
+
+  @override
+  String get inviteAsNewParticipant => 'Eine neue Person';
+
+  @override
+  String amountPreview(Object amount) {
+    return '= $amount';
+  }
+
+  @override
+  String get amountMustBePositive => 'Gib einen Betrag größer als 0 ein';
+
+  @override
+  String get amountTooLarge => 'Dieser Betrag ist zu groß';
+
+  @override
+  String get finishingBackgroundSync =>
+      'Hintergrund-Synchronisierung wird abgeschlossen …';
+
+  @override
+  String csvImportInvalidRow(int row, Object problem) {
+    return 'Zeile $row: $problem';
+  }
 }

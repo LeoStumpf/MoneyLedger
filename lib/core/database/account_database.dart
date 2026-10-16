@@ -33,8 +33,14 @@ const legacyAdoptedIntoKey = 'legacy_adopted_into';
 const legacyCheckedKey = 'legacy_checked';
 
 /// AppSettings key in a **per-account** DB (G36): the legacy-DB cleanup is
-/// settled — deleted, absent, or kept for another account for good.
+/// settled — deleted or absent.
 const legacyCleanupKey = 'legacy_cleanup_done';
+
+/// AppSettings key prefix in the **legacy** DB (G18 review):
+/// `legacy_checked_by:<per-account DB name>` — that account signed in after
+/// the legacy ledger was adopted by another one, so it can never adopt it
+/// (adoption happens once) and doesn't need it kept.
+const legacyCheckedByPrefix = 'legacy_checked_by:';
 
 /// Deterministic, filename-safe database name for [mxid]:
 /// `money_ledger_<16 hex chars>`. The raw MXID never appears in a filename /
@@ -114,25 +120,34 @@ AppDatabase openAccountDatabase(String mxid) {
   );
 }
 
-/// G36: whether the legacy ledger may be deleted — it was adopted
-/// ([adoptedInto] set) and **every** account it claimed is the adopting one
-/// (or it claimed none: only local / CSV participants). Any other claimed
-/// account might still sign in on this device and need it → keep it.
+/// G36 / G18 review: whether the legacy ledger may be deleted — it was
+/// adopted ([adoptedInto] set; its rows live on in that account DB) and
+/// **every** account it claimed is either the adopting one or one that has
+/// signed in here since and found it already adopted ([checkedBy], the DB
+/// names recorded by [adoptLegacyLedger]) — such an account can never adopt
+/// it any more. An account that hasn't signed in on this device since the
+/// upgrade keeps the file alive (the only copy of data it may want to
+/// recover by hand); it is deleted on a later start once that account has
+/// signed in once (or never, if it never does — the conservative choice).
 @visibleForTesting
 bool canDeleteLegacy({
   required String? adoptedInto,
   required Set<String> legacyClaimedMatrixIds,
+  Set<String> checkedBy = const {},
 }) =>
     adoptedInto != null &&
-    legacyClaimedMatrixIds.every((m) => accountDatabaseName(m) == adoptedInto);
+    legacyClaimedMatrixIds.every((m) {
+      final name = accountDatabaseName(m);
+      return name == adoptedInto || checkedBy.contains(name);
+    });
 
 /// G36: on an open of [target] whose legacy check already completed
 /// ([legacyCheckedKey]) on an earlier start, deletes the legacy DB if
 /// [canDeleteLegacy]. Marks [target] [legacyCleanupKey] once settled for good
-/// (deleted, absent, or adopted but kept for another account); a not-yet-
-/// adopted legacy DB is re-checked on later starts (another account may adopt
-/// it meanwhile). Returns whether [target] had completed its legacy check
-/// before (then there is nothing to adopt). Never throws.
+/// (deleted or absent); a legacy DB that has to be kept for now is re-checked
+/// on later starts (another account may adopt it / sign in meanwhile).
+/// Returns whether [target] had completed its legacy check before (then
+/// there is nothing to adopt). Never throws.
 Future<bool> cleanupLegacyLedger({
   required AppDatabase target,
   required Future<AppDatabase?> Function() openLegacy,
@@ -148,9 +163,11 @@ Future<bool> cleanupLegacyLedger({
     }
     final String? adoptedInto;
     final Set<String> claimed;
+    final Set<String> checkedBy;
     try {
       adoptedInto = await _getSetting(legacy, legacyAdoptedIntoKey);
       claimed = await _claimedMatrixIds(legacy);
+      checkedBy = await _checkedBy(legacy);
     } finally {
       await legacy.close();
     }
@@ -158,13 +175,14 @@ Future<bool> cleanupLegacyLedger({
     if (canDeleteLegacy(
       adoptedInto: adoptedInto,
       legacyClaimedMatrixIds: claimed,
+      checkedBy: checkedBy,
     )) {
       await deleteLegacy();
       debugPrint('[db] deleted the adopted legacy ledger');
       await _setSetting(target, legacyCleanupKey, 'deleted');
     } else {
+      // Re-checked on the next start (an account claimed in it may sign in).
       debugPrint('[db] legacy ledger kept: other accounts are claimed in it');
-      await _setSetting(target, legacyCleanupKey, 'kept');
     }
     return true;
   } catch (e) {
@@ -172,6 +190,13 @@ Future<bool> cleanupLegacyLedger({
     return true;
   }
 }
+
+Future<Set<String>> _checkedBy(AppDatabase db) async =>
+    (await (db.select(
+          db.appSettings,
+        )..where((t) => t.key.like('$legacyCheckedByPrefix%'))).get())
+        .map((r) => r.key.substring(legacyCheckedByPrefix.length))
+        .toSet();
 
 Future<Set<String>> _claimedMatrixIds(AppDatabase db) async =>
     (await db
@@ -221,6 +246,10 @@ Future<bool> adoptLegacyLedger({
           await _setSetting(legacy, legacyAdoptedIntoKey, targetName);
           adopted = true;
           debugPrint('[db] adopted legacy ledger into $targetName');
+        } else if (adoptedInto != null) {
+          // G18 review: we can never adopt it (adopted once already) — tell
+          // the cleanup this account doesn't need it kept.
+          await _setSetting(legacy, '$legacyCheckedByPrefix$targetName', '1');
         }
       } finally {
         await legacy.close();
@@ -244,7 +273,12 @@ Future<void> _copyAll({
   final settlements = await from.select(from.settlements).get();
   final syncStates = await from.select(from.peerSyncStates).get();
   final settings = (await from.select(from.appSettings).get())
-      .where((s) => s.key != legacyAdoptedIntoKey && s.key != legacyCheckedKey)
+      .where(
+        (s) =>
+            s.key != legacyAdoptedIntoKey &&
+            s.key != legacyCheckedKey &&
+            !s.key.startsWith(legacyCheckedByPrefix),
+      )
       .toList();
   await to.transaction(() async {
     await to.batch((b) {

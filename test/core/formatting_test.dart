@@ -69,6 +69,35 @@ void main() {
       expect(parseAmountCents('1,2.3,4'), isNull);
       expect(parseAmountCents('.'), isNull);
     });
+
+    // G18 review (finding 14).
+    test("de: a lone '.' + exactly 3 digits is thousands grouping", () {
+      expect(parseAmountCents('1.234', locale: 'de'), 123400);
+      expect(parseAmountCents('12.345', locale: 'de'), 1234500);
+      expect(parseAmountCents('1.23', locale: 'de'), 123); // decimal
+      expect(parseAmountCents('1.2345', locale: 'de'), 123); // decimal
+      expect(parseAmountCents('1,234', locale: 'de'), 123); // decimal comma
+      expect(parseAmountCents('1.234,5', locale: 'de'), 123450);
+    });
+
+    test("en: a lone '.' stays decimal; a lone ',' + 3 digits groups", () {
+      expect(parseAmountCents('1.234', locale: 'en'), 123);
+      expect(parseAmountCents('1,234', locale: 'en'), 123400);
+      expect(parseAmountCents('12,5', locale: 'en'), 1250);
+      expect(parseAmountCents('1,234.56', locale: 'en'), 123456);
+    });
+
+    test('odd groupings are rejected', () {
+      for (final bad in ['12,34.5', '1.23.456', '1234,567.8', '1,2345.6']) {
+        expect(parseAmountCents(bad), isNull, reason: bad);
+        expect(parseAmountCents(bad, locale: 'de'), isNull, reason: bad);
+      }
+      expect(parseAmountCents('1,234,567.89'), 123456789);
+    });
+
+    test('absurd lengths parse to null instead of throwing', () {
+      expect(parseAmountCents('9' * 400), isNull);
+    });
   });
 
   test('parseLocalizedDecimal (percentages)', () {

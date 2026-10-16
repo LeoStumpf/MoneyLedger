@@ -11,8 +11,20 @@
 /// sides starting at once, at least one sees the other).
 ///
 /// A mapping can outlive its isolate (the name server isn't cleaned up when an
-/// isolate dies), so "is the other side there?" is a ping that must be
-/// answered; an unanswered name is stale and removed.
+/// isolate dies), so "is the other side there?" is a ping. G18 review — who
+/// may treat an unanswered mapping as stale:
+/// - The **background** side never removes a mapping. A registered app that
+///   doesn't answer may just be busy (startup work on the main isolate), so
+///   the round is **skipped** (the next periodic run retries; a new app
+///   process starts with an empty name server anyway).
+/// - The **app** side asks a running round to stop and waits until its
+///   mapping is gone (the round releases it only after closing its stores),
+///   it answers `stopped`, or it hasn't answered anything for [staleAfter]
+///   (a dead isolate — then the mapping is removed). A live round always
+///   ends within its own budget (`kBackgroundRoundTimeout` + the bounded
+///   in-flight grace + closing), so [maxWait] is only a last resort against
+///   a wedged round; meanwhile the app shows "Finishing background sync…"
+///   instead of opening its stores in parallel.
 ///
 /// Protocol (messages are `[command, replyPort]`):
 /// - `ping` → `pong` (liveness).
@@ -27,16 +39,40 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:ui' show IsolateNameServer;
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 
 const _mainPortName = 'app.moneyledger.main';
 const _backgroundPortName = 'app.moneyledger.background';
 const _pingTimeout = Duration(seconds: 2);
 
+/// The process-wide port registry ([IsolateNameServer]); injectable so the
+/// gate logic is unit-tested with in-isolate ports.
+abstract interface class PortRegistry {
+  SendPort? lookup(String name);
+  bool register(SendPort port, String name);
+  void remove(String name);
+}
+
+class _IsolateNameServerRegistry implements PortRegistry {
+  const _IsolateNameServerRegistry();
+  @override
+  SendPort? lookup(String name) => IsolateNameServer.lookupPortByName(name);
+  @override
+  bool register(SendPort port, String name) =>
+      IsolateNameServer.registerPortWithName(port, name);
+  @override
+  void remove(String name) => IsolateNameServer.removePortNameMapping(name);
+}
+
 /// Sends `[command, reply]` to the port registered as [name] and waits for the
 /// first answer. Null when nothing is registered or no answer came in time.
-Future<Object?> _ask(String name, String command, Duration timeout) async {
-  final port = IsolateNameServer.lookupPortByName(name);
+Future<Object?> _ask(
+  PortRegistry registry,
+  String name,
+  String command,
+  Duration timeout,
+) async {
+  final port = registry.lookup(name);
   if (port == null) return null;
   final reply = ReceivePort();
   try {
@@ -49,58 +85,98 @@ Future<Object?> _ask(String name, String command, Duration timeout) async {
   }
 }
 
-/// Whether the side registered as [name] is alive; a stale mapping (its
-/// isolate is gone) is removed.
-Future<bool> _isAlive(String name) async {
-  if (IsolateNameServer.lookupPortByName(name) == null) return false;
-  if (await _ask(name, 'ping', _pingTimeout) == 'pong') return true;
-  debugPrint('[bg-gate] removing stale port $name');
-  IsolateNameServer.removePortNameMapping(name);
-  return false;
-}
+/// Whether a side is registered as [name] at all — answering or not. The
+/// background side treats an unanswered mapping as present (busy), never as
+/// stale (G18 review).
+Future<bool> _present(PortRegistry registry, String name) async =>
+    registry.lookup(name) != null;
 
 /// The app side. [claim] runs in `main()` **before** the Matrix client / DB
 /// are opened.
 class AppIsolateGate {
-  AppIsolateGate._();
+  AppIsolateGate._() : _registry = const _IsolateNameServerRegistry();
   static final instance = AppIsolateGate._();
 
+  /// A gate on [registry] (tests).
+  @visibleForTesting
+  AppIsolateGate.withRegistry(PortRegistry registry) : _registry = registry;
+
+  final PortRegistry _registry;
   ReceivePort? _port;
 
   /// Runs a quick foreground sync when a background round finds the app
   /// alive (set once the app's container exists). Null → answered at once.
   Future<void> Function()? onSyncRequest;
 
-  /// Registers the app and waits (bounded by [maxWait]) for a running
-  /// background round to stop and close its stores.
-  Future<void> claim({Duration maxWait = const Duration(seconds: 15)}) async {
-    if (_port != null) return;
+  /// Registers the app and waits for a running background round to stop and
+  /// close its stores (see the library doc). [onWaiting] is called once if
+  /// there is a round to wait for (the app shows "Finishing background
+  /// sync…"). Returns false only when [maxWait] ran out with the round still
+  /// answering but not stopping (logged — a wedged round; the app proceeds).
+  Future<bool> claim({
+    Duration maxWait = const Duration(minutes: 2),
+    Duration staleAfter = const Duration(seconds: 10),
+    Duration askTimeout = const Duration(seconds: 1),
+    void Function()? onWaiting,
+  }) async {
+    if (_port != null) return true;
     final port = _port = ReceivePort();
     port.listen(_onMessage);
     // A previous app isolate in this process is gone (we are the new one).
-    IsolateNameServer.removePortNameMapping(_mainPortName);
-    IsolateNameServer.registerPortWithName(port.sendPort, _mainPortName);
+    _registry.remove(_mainPortName);
+    _registry.register(port.sendPort, _mainPortName);
 
-    if (!await _isAlive(_backgroundPortName)) return;
-    debugPrint('[bg-gate] background round running — asking it to stop');
+    if (!await _present(_registry, _backgroundPortName)) return true;
+    debugPrint('[bg-gate] background round registered — asking it to stop');
+    onWaiting?.call();
     final sw = Stopwatch()..start();
-    // Re-ask in short slices: the round may release (and close its port) at
-    // any moment, which drops a pending request — the mapping disappearing is
-    // the answer then.
-    var stopped = false;
-    while (sw.elapsed < maxWait) {
-      if (IsolateNameServer.lookupPortByName(_backgroundPortName) == null ||
-          await _ask(_backgroundPortName, 'stop', const Duration(seconds: 1)) ==
-              'stopped') {
-        stopped = true;
+    var lastAnswer = Duration.zero;
+    while (true) {
+      if (_registry.lookup(_backgroundPortName) == null) break;
+      // Re-ask in short slices: the round may release (and close its port)
+      // at any moment, which drops a pending request — the mapping
+      // disappearing is the answer then.
+      final answer = await _ask(
+        _registry,
+        _backgroundPortName,
+        'stop',
+        askTimeout,
+      );
+      if (answer == 'stopped') break;
+      if (answer != null) lastAnswer = sw.elapsed;
+      if (answer == null &&
+          await _ask(_registry, _backgroundPortName, 'ping', askTimeout) ==
+              'pong') {
+        lastAnswer = sw.elapsed;
+      }
+      if (sw.elapsed - lastAnswer >= staleAfter) {
+        // Nothing answered for a long time: the round's isolate is gone.
+        debugPrint('[bg-gate] removing stale background port');
+        _registry.remove(_backgroundPortName);
         break;
+      }
+      if (sw.elapsed >= maxWait) {
+        debugPrint(
+          '[bg-gate] background round still running after '
+          '${sw.elapsed.inSeconds} s — proceeding (wedged round)',
+        );
+        return false;
       }
     }
     debugPrint(
-      '[bg-gate] background round '
-      '${stopped ? 'stopped' : 'did not stop in time'} '
-      'after ${sw.elapsedMilliseconds} ms',
+      '[bg-gate] background round finished after ${sw.elapsedMilliseconds} ms',
     );
+    return true;
+  }
+
+  /// Gives the app's slot back — when the app's engine detaches (its isolate
+  /// is about to end), and in tests.
+  void release() {
+    final port = _port;
+    if (port == null) return;
+    _port = null;
+    _registry.remove(_mainPortName);
+    port.close();
   }
 
   Future<void> _onMessage(dynamic msg) async {
@@ -122,6 +198,9 @@ class AppIsolateGate {
 
 /// The background side (one per round).
 class BackgroundIsolateGate {
+  BackgroundIsolateGate([this._registry = const _IsolateNameServerRegistry()]);
+
+  final PortRegistry _registry;
   ReceivePort? _port;
   final _abort = Completer<void>();
   final List<SendPort> _stopWaiters = [];
@@ -129,19 +208,19 @@ class BackgroundIsolateGate {
   /// Completes when the app asks this round to stop.
   Future<void> get abort => _abort.future;
 
-  /// Whether the app is alive in this process right now.
-  Future<bool> appAlive() => _isAlive(_mainPortName);
+  /// Whether the app is registered in this process right now — answering or
+  /// not (an unanswered app may be busy starting up: never treated as stale
+  /// from this side, G18 review).
+  Future<bool> appAlive() => _present(_registry, _mainPortName);
 
-  /// Takes the background slot unless the app (or another round) is alive.
+  /// Takes the background slot unless the app (or another round) is
+  /// registered.
   Future<bool> tryAcquire() async {
     if (await appAlive()) return false;
-    if (await _isAlive(_backgroundPortName)) return false;
+    if (await _present(_registry, _backgroundPortName)) return false;
     final port = ReceivePort();
     port.listen(_onMessage);
-    if (!IsolateNameServer.registerPortWithName(
-      port.sendPort,
-      _backgroundPortName,
-    )) {
+    if (!_registry.register(port.sendPort, _backgroundPortName)) {
       port.close();
       return false;
     }
@@ -155,9 +234,14 @@ class BackgroundIsolateGate {
     return true;
   }
 
-  /// Asks the alive app to sync now; true once it reports done.
+  /// Asks the app to sync now; true once it reports done. False (no answer)
+  /// when the app is registered but busy — the round is skipped then.
   Future<bool> delegateToApp(Duration timeout) async =>
-      await _ask(_mainPortName, 'sync', timeout) == 'done';
+      await _ask(_registry, _mainPortName, 'sync', timeout) == 'done';
+
+  /// Whether the registered app answers a ping (diagnostics only).
+  Future<bool> appAnswers() async =>
+      await _ask(_registry, _mainPortName, 'ping', _pingTimeout) == 'pong';
 
   void _onMessage(dynamic msg) {
     if (msg is! List || msg.length != 2 || msg[1] is! SendPort) return;
@@ -177,7 +261,7 @@ class BackgroundIsolateGate {
     final port = _port;
     if (port == null) return;
     _port = null;
-    IsolateNameServer.removePortNameMapping(_backgroundPortName);
+    _registry.remove(_backgroundPortName);
     port.close();
     for (final w in _stopWaiters) {
       w.send('stopped');

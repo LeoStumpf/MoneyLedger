@@ -42,13 +42,27 @@ class TransportMessage {
   final String type;
   final Map<String, dynamic> content;
 
+  /// Whether the payload arrived end-to-end encrypted (Olm). Only then is
+  /// [senderId] authenticated — the sync components drop anything else
+  /// (G18 review). The real transport doesn't even deliver plaintext ledger
+  /// events ([isAcceptedLedgerEvent]); the fakes mark their messages.
+  final bool encrypted;
+
   const TransportMessage({
     required this.senderId,
     required this.type,
     required this.content,
     this.senderDevice,
+    this.encrypted = false,
   });
 }
+
+/// Whether a to-device event of [type] is a ledger payload the transport
+/// delivers: a `com.moneyledger.*` type that arrived **encrypted** (G18
+/// review — a plaintext to-device event's `sender` is only what the
+/// homeserver claims, so it could impersonate any member).
+bool isAcceptedLedgerEvent({required String type, required bool encrypted}) =>
+    encrypted && type.startsWith(moneyLedgerTypePrefix);
 
 /// Thrown by [LedgerTransport.sendToUsers] when nothing can be sent at all:
 /// the relay isn't signed in, or end-to-end encryption isn't set up (the

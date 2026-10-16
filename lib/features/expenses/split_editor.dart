@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/sync/record_validation.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/person_avatar.dart';
 import '../../models/member_model.dart';
@@ -38,7 +39,14 @@ class SplitPlan {
     this.percents = const {},
   });
 
+  /// The split of [total] — never valid for a total outside 1 cent …
+  /// [kMaxAmountCents] (G18 review: no zero / negative expenses).
   SplitResult resolve(int total) {
+    final r = _resolve(total);
+    return isValidAmountCents(total) ? r : SplitResult(r.shares, false);
+  }
+
+  SplitResult _resolve(int total) {
     switch (mode) {
       case SplitMode.equal:
         return SplitResult(splitEqually(total, included), included.isNotEmpty);
@@ -170,7 +178,10 @@ class _SplitEditorState extends State<SplitEditor> {
       case SplitMode.exact:
         final exact = <String, int>{};
         for (final m in widget.members) {
-          final cents = parseAmountCents(_exactCtrl[m.userId]!.text);
+          final cents = parseAmountCents(
+            _exactCtrl[m.userId]!.text,
+            locale: context.localeName,
+          );
           if (cents != null && cents > 0) exact[m.userId] = cents;
         }
         return SplitPlan(mode: _mode, exact: exact);

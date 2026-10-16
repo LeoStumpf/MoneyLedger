@@ -367,8 +367,36 @@ void main() {
       expect(await restorer(fresh, net).restore(parseBackup(json)), ['g2']);
       final e = await ExpensesDao(fresh).getExpenseById('a');
       expect(e!.sig!.user, me);
-      final keys = await SigningDao(fresh).keysFor(me, 'D1');
-      expect(signatureStatus(e.sig, keys).status, SigStatus.vouched);
+      final keys = await SigningDao(fresh).allKeys();
+      // Our own backup vouches for our own (signed-out) device — scoped to
+      // the restored group (G18 review).
+      expect(
+        signatureStatus(e.sig, keys, group: 'g2').status,
+        SigStatus.vouched,
+      );
+      expect(signatureStatus(e.sig, keys).status, SigStatus.unverified);
+    });
+
+    // G18 review (finding 9).
+    test('a group whose meta is refused is not restored and keeps its '
+        'left-group tombstone', () async {
+      final fresh = openTestDatabase();
+      addTearDown(fresh.close);
+      final (json, net) = await signedExport(openTestDatabase());
+      final tampered = jsonDecode(json) as Map<String, dynamic>;
+      ((tampered['groups'] as List).single as Map)['meta']['name'] = 'Evil';
+      await SettingsDao(
+        fresh,
+      ).purgeGroupAsLeft('g2', const LeftGroupTombstone(leftAt: 5));
+
+      final restored = await restorer(
+        fresh,
+        net,
+      ).restore(parseBackup(jsonEncode(tampered)));
+      expect(restored, isEmpty);
+      expect(await GroupsDao(fresh).getGroup('g2'), isNull);
+      expect(await SettingsDao(fresh).leftGroup('g2'), isNotNull);
+      expect(await ExpensesDao(fresh).getAllExpensesForGroup('g2'), isEmpty);
     });
 
     test(

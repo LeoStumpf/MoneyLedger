@@ -86,6 +86,7 @@ Attribution attributionFor({
   required List<KnownKey> keys,
   required AppLocalizations l,
   RecordKind kind = RecordKind.expense,
+  String? group,
 }) {
   if (sig == null) return Attribution(line: l.recordUnsigned);
   final added = kind == RecordKind.settlement
@@ -102,7 +103,7 @@ Attribution attributionFor({
   String? hint;
   var problem = false;
   for (final s in [?origin, sig]) {
-    final st = signatureStatus(s, keys).status;
+    final st = signatureStatus(s, keys, group: group).status;
     if (s.user == myMxid &&
         (st == SigStatus.unverified || st == SigStatus.conflict)) {
       return Attribution(
@@ -135,9 +136,10 @@ bool recordNeedsAttention({
   required RecordSignature? sig,
   required String myMxid,
   required List<KnownKey> keys,
+  String? group,
 }) {
   for (final s in [?origin, ?sig]) {
-    final st = signatureStatus(s, keys).status;
+    final st = signatureStatus(s, keys, group: group).status;
     if (st == SigStatus.conflict) return true;
     if (s.user == myMxid && st == SigStatus.unverified) return true;
   }
@@ -199,6 +201,7 @@ class RecordAttribution extends ConsumerWidget {
       keys: keys,
       l: l,
       kind: kind,
+      group: groupId,
     );
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
@@ -261,7 +264,7 @@ class RecordAttribution extends ConsumerWidget {
   ) {
     final l = context.l10n;
     String statusText(RecordSignature s) {
-      final st = signatureStatus(s, keys);
+      final st = signatureStatus(s, keys, group: groupId);
       return switch (st.status) {
         SigStatus.verified => l.recordSigVerified,
         SigStatus.vouched => l.recordSigVouched(name(st.vouchedBy ?? '')),

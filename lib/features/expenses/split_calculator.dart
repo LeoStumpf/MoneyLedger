@@ -49,13 +49,18 @@ Map<String, int> distributeByWeights(int total, Map<String, num> weights) {
     final floor = exact.floor();
     result[id] = floor;
     assigned += floor;
-    remainders.add(_Remainder(id, exact - floor));
+    remainders.add(_Remainder(id, exact - floor, remainders.length));
   });
 
   // Distribute the leftover cents to the largest remainders first. The leftover
   // is always < (number of positive-weight entries), so candidates never run out.
   var leftover = total - assigned;
-  remainders.sort((a, b) => b.frac.compareTo(a.frac));
+  // Dart's sort isn't stable (> 32 elements) — the index makes "ties broken
+  // by insertion order" actually hold.
+  remainders.sort((a, b) {
+    final c = b.frac.compareTo(a.frac);
+    return c != 0 ? c : a.index.compareTo(b.index);
+  });
   for (var i = 0; leftover > 0 && i < remainders.length; i++, leftover--) {
     result[remainders[i].id] = result[remainders[i].id]! + 1;
   }
@@ -84,5 +89,6 @@ bool isEqualSplit(Map<String, int> map) {
 class _Remainder {
   final String id;
   final double frac;
-  _Remainder(this.id, this.frac);
+  final int index;
+  _Remainder(this.id, this.frac, this.index);
 }

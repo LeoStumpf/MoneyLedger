@@ -3310,6 +3310,18 @@ class $KnownDeviceKeysTable extends KnownDeviceKeys
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _attestedGroupMeta = const VerificationMeta(
+    'attestedGroup',
+  );
+  @override
+  late final GeneratedColumn<String> attestedGroup = GeneratedColumn<String>(
+    'attested_group',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     userId,
@@ -3318,6 +3330,7 @@ class $KnownDeviceKeysTable extends KnownDeviceKeys
     source,
     attestedBy,
     firstSeenAt,
+    attestedGroup,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3380,11 +3393,25 @@ class $KnownDeviceKeysTable extends KnownDeviceKeys
     } else if (isInserting) {
       context.missing(_firstSeenAtMeta);
     }
+    if (data.containsKey('attested_group')) {
+      context.handle(
+        _attestedGroupMeta,
+        attestedGroup.isAcceptableOrUnknown(
+          data['attested_group']!,
+          _attestedGroupMeta,
+        ),
+      );
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {userId, deviceId, ed25519Key};
+  Set<GeneratedColumn> get $primaryKey => {
+    userId,
+    deviceId,
+    ed25519Key,
+    attestedGroup,
+  };
   @override
   KnownDeviceKey map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -3413,6 +3440,10 @@ class $KnownDeviceKeysTable extends KnownDeviceKeys
         DriftSqlType.int,
         data['${effectivePrefix}first_seen_at'],
       )!,
+      attestedGroup: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}attested_group'],
+      )!,
     );
   }
 
@@ -3429,6 +3460,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
   final String source;
   final String? attestedBy;
   final int firstSeenAt;
+  final String attestedGroup;
   const KnownDeviceKey({
     required this.userId,
     required this.deviceId,
@@ -3436,6 +3468,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
     required this.source,
     this.attestedBy,
     required this.firstSeenAt,
+    required this.attestedGroup,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3448,6 +3481,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
       map['attested_by'] = Variable<String>(attestedBy);
     }
     map['first_seen_at'] = Variable<int>(firstSeenAt);
+    map['attested_group'] = Variable<String>(attestedGroup);
     return map;
   }
 
@@ -3461,6 +3495,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
           ? const Value.absent()
           : Value(attestedBy),
       firstSeenAt: Value(firstSeenAt),
+      attestedGroup: Value(attestedGroup),
     );
   }
 
@@ -3476,6 +3511,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
       source: serializer.fromJson<String>(json['source']),
       attestedBy: serializer.fromJson<String?>(json['attestedBy']),
       firstSeenAt: serializer.fromJson<int>(json['firstSeenAt']),
+      attestedGroup: serializer.fromJson<String>(json['attestedGroup']),
     );
   }
   @override
@@ -3488,6 +3524,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
       'source': serializer.toJson<String>(source),
       'attestedBy': serializer.toJson<String?>(attestedBy),
       'firstSeenAt': serializer.toJson<int>(firstSeenAt),
+      'attestedGroup': serializer.toJson<String>(attestedGroup),
     };
   }
 
@@ -3498,6 +3535,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
     String? source,
     Value<String?> attestedBy = const Value.absent(),
     int? firstSeenAt,
+    String? attestedGroup,
   }) => KnownDeviceKey(
     userId: userId ?? this.userId,
     deviceId: deviceId ?? this.deviceId,
@@ -3505,6 +3543,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
     source: source ?? this.source,
     attestedBy: attestedBy.present ? attestedBy.value : this.attestedBy,
     firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+    attestedGroup: attestedGroup ?? this.attestedGroup,
   );
   KnownDeviceKey copyWithCompanion(KnownDeviceKeysCompanion data) {
     return KnownDeviceKey(
@@ -3520,6 +3559,9 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
       firstSeenAt: data.firstSeenAt.present
           ? data.firstSeenAt.value
           : this.firstSeenAt,
+      attestedGroup: data.attestedGroup.present
+          ? data.attestedGroup.value
+          : this.attestedGroup,
     );
   }
 
@@ -3531,7 +3573,8 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
           ..write('ed25519Key: $ed25519Key, ')
           ..write('source: $source, ')
           ..write('attestedBy: $attestedBy, ')
-          ..write('firstSeenAt: $firstSeenAt')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('attestedGroup: $attestedGroup')
           ..write(')'))
         .toString();
   }
@@ -3544,6 +3587,7 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
     source,
     attestedBy,
     firstSeenAt,
+    attestedGroup,
   );
   @override
   bool operator ==(Object other) =>
@@ -3554,7 +3598,8 @@ class KnownDeviceKey extends DataClass implements Insertable<KnownDeviceKey> {
           other.ed25519Key == this.ed25519Key &&
           other.source == this.source &&
           other.attestedBy == this.attestedBy &&
-          other.firstSeenAt == this.firstSeenAt);
+          other.firstSeenAt == this.firstSeenAt &&
+          other.attestedGroup == this.attestedGroup);
 }
 
 class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
@@ -3564,6 +3609,7 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
   final Value<String> source;
   final Value<String?> attestedBy;
   final Value<int> firstSeenAt;
+  final Value<String> attestedGroup;
   final Value<int> rowid;
   const KnownDeviceKeysCompanion({
     this.userId = const Value.absent(),
@@ -3572,6 +3618,7 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
     this.source = const Value.absent(),
     this.attestedBy = const Value.absent(),
     this.firstSeenAt = const Value.absent(),
+    this.attestedGroup = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   KnownDeviceKeysCompanion.insert({
@@ -3581,6 +3628,7 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
     required String source,
     this.attestedBy = const Value.absent(),
     required int firstSeenAt,
+    this.attestedGroup = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : userId = Value(userId),
        deviceId = Value(deviceId),
@@ -3594,6 +3642,7 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
     Expression<String>? source,
     Expression<String>? attestedBy,
     Expression<int>? firstSeenAt,
+    Expression<String>? attestedGroup,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3603,6 +3652,7 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
       if (source != null) 'source': source,
       if (attestedBy != null) 'attested_by': attestedBy,
       if (firstSeenAt != null) 'first_seen_at': firstSeenAt,
+      if (attestedGroup != null) 'attested_group': attestedGroup,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3614,6 +3664,7 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
     Value<String>? source,
     Value<String?>? attestedBy,
     Value<int>? firstSeenAt,
+    Value<String>? attestedGroup,
     Value<int>? rowid,
   }) {
     return KnownDeviceKeysCompanion(
@@ -3623,6 +3674,7 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
       source: source ?? this.source,
       attestedBy: attestedBy ?? this.attestedBy,
       firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+      attestedGroup: attestedGroup ?? this.attestedGroup,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3648,6 +3700,9 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
     if (firstSeenAt.present) {
       map['first_seen_at'] = Variable<int>(firstSeenAt.value);
     }
+    if (attestedGroup.present) {
+      map['attested_group'] = Variable<String>(attestedGroup.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3663,6 +3718,7 @@ class KnownDeviceKeysCompanion extends UpdateCompanion<KnownDeviceKey> {
           ..write('source: $source, ')
           ..write('attestedBy: $attestedBy, ')
           ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('attestedGroup: $attestedGroup, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3759,6 +3815,18 @@ class $RejectedVersionsTable extends RejectedVersions
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _versionHashMeta = const VerificationMeta(
+    'versionHash',
+  );
+  @override
+  late final GeneratedColumn<String> versionHash = GeneratedColumn<String>(
+    'version_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     groupId,
@@ -3769,6 +3837,7 @@ class $RejectedVersionsTable extends RejectedVersions
     relayedBy,
     claimedSigner,
     rejectedAt,
+    versionHash,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3847,6 +3916,15 @@ class $RejectedVersionsTable extends RejectedVersions
     } else if (isInserting) {
       context.missing(_rejectedAtMeta);
     }
+    if (data.containsKey('version_hash')) {
+      context.handle(
+        _versionHashMeta,
+        versionHash.isAcceptableOrUnknown(
+          data['version_hash']!,
+          _versionHashMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3888,6 +3966,10 @@ class $RejectedVersionsTable extends RejectedVersions
         DriftSqlType.int,
         data['${effectivePrefix}rejected_at'],
       )!,
+      versionHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}version_hash'],
+      )!,
     );
   }
 
@@ -3906,6 +3988,10 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
   final String relayedBy;
   final String? claimedSigner;
   final int rejectedAt;
+
+  /// The G27 content hash of the refused version ('' = unknown: a refusal
+  /// recorded before schema v9 — matches any version at [updatedAt]).
+  final String versionHash;
   const RejectedVersion({
     required this.groupId,
     required this.kind,
@@ -3915,6 +4001,7 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
     required this.relayedBy,
     this.claimedSigner,
     required this.rejectedAt,
+    required this.versionHash,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3929,6 +4016,7 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
       map['claimed_signer'] = Variable<String>(claimedSigner);
     }
     map['rejected_at'] = Variable<int>(rejectedAt);
+    map['version_hash'] = Variable<String>(versionHash);
     return map;
   }
 
@@ -3944,6 +4032,7 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
           ? const Value.absent()
           : Value(claimedSigner),
       rejectedAt: Value(rejectedAt),
+      versionHash: Value(versionHash),
     );
   }
 
@@ -3961,6 +4050,7 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
       relayedBy: serializer.fromJson<String>(json['relayedBy']),
       claimedSigner: serializer.fromJson<String?>(json['claimedSigner']),
       rejectedAt: serializer.fromJson<int>(json['rejectedAt']),
+      versionHash: serializer.fromJson<String>(json['versionHash']),
     );
   }
   @override
@@ -3975,6 +4065,7 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
       'relayedBy': serializer.toJson<String>(relayedBy),
       'claimedSigner': serializer.toJson<String?>(claimedSigner),
       'rejectedAt': serializer.toJson<int>(rejectedAt),
+      'versionHash': serializer.toJson<String>(versionHash),
     };
   }
 
@@ -3987,6 +4078,7 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
     String? relayedBy,
     Value<String?> claimedSigner = const Value.absent(),
     int? rejectedAt,
+    String? versionHash,
   }) => RejectedVersion(
     groupId: groupId ?? this.groupId,
     kind: kind ?? this.kind,
@@ -3998,6 +4090,7 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
         ? claimedSigner.value
         : this.claimedSigner,
     rejectedAt: rejectedAt ?? this.rejectedAt,
+    versionHash: versionHash ?? this.versionHash,
   );
   RejectedVersion copyWithCompanion(RejectedVersionsCompanion data) {
     return RejectedVersion(
@@ -4013,6 +4106,9 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
       rejectedAt: data.rejectedAt.present
           ? data.rejectedAt.value
           : this.rejectedAt,
+      versionHash: data.versionHash.present
+          ? data.versionHash.value
+          : this.versionHash,
     );
   }
 
@@ -4026,7 +4122,8 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
           ..write('reason: $reason, ')
           ..write('relayedBy: $relayedBy, ')
           ..write('claimedSigner: $claimedSigner, ')
-          ..write('rejectedAt: $rejectedAt')
+          ..write('rejectedAt: $rejectedAt, ')
+          ..write('versionHash: $versionHash')
           ..write(')'))
         .toString();
   }
@@ -4041,6 +4138,7 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
     relayedBy,
     claimedSigner,
     rejectedAt,
+    versionHash,
   );
   @override
   bool operator ==(Object other) =>
@@ -4053,7 +4151,8 @@ class RejectedVersion extends DataClass implements Insertable<RejectedVersion> {
           other.reason == this.reason &&
           other.relayedBy == this.relayedBy &&
           other.claimedSigner == this.claimedSigner &&
-          other.rejectedAt == this.rejectedAt);
+          other.rejectedAt == this.rejectedAt &&
+          other.versionHash == this.versionHash);
 }
 
 class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
@@ -4065,6 +4164,7 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
   final Value<String> relayedBy;
   final Value<String?> claimedSigner;
   final Value<int> rejectedAt;
+  final Value<String> versionHash;
   final Value<int> rowid;
   const RejectedVersionsCompanion({
     this.groupId = const Value.absent(),
@@ -4075,6 +4175,7 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
     this.relayedBy = const Value.absent(),
     this.claimedSigner = const Value.absent(),
     this.rejectedAt = const Value.absent(),
+    this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RejectedVersionsCompanion.insert({
@@ -4086,6 +4187,7 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
     required String relayedBy,
     this.claimedSigner = const Value.absent(),
     required int rejectedAt,
+    this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : groupId = Value(groupId),
        kind = Value(kind),
@@ -4103,6 +4205,7 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
     Expression<String>? relayedBy,
     Expression<String>? claimedSigner,
     Expression<int>? rejectedAt,
+    Expression<String>? versionHash,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4114,6 +4217,7 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
       if (relayedBy != null) 'relayed_by': relayedBy,
       if (claimedSigner != null) 'claimed_signer': claimedSigner,
       if (rejectedAt != null) 'rejected_at': rejectedAt,
+      if (versionHash != null) 'version_hash': versionHash,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4127,6 +4231,7 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
     Value<String>? relayedBy,
     Value<String?>? claimedSigner,
     Value<int>? rejectedAt,
+    Value<String>? versionHash,
     Value<int>? rowid,
   }) {
     return RejectedVersionsCompanion(
@@ -4138,6 +4243,7 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
       relayedBy: relayedBy ?? this.relayedBy,
       claimedSigner: claimedSigner ?? this.claimedSigner,
       rejectedAt: rejectedAt ?? this.rejectedAt,
+      versionHash: versionHash ?? this.versionHash,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4169,6 +4275,9 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
     if (rejectedAt.present) {
       map['rejected_at'] = Variable<int>(rejectedAt.value);
     }
+    if (versionHash.present) {
+      map['version_hash'] = Variable<String>(versionHash.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4186,6 +4295,7 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
           ..write('relayedBy: $relayedBy, ')
           ..write('claimedSigner: $claimedSigner, ')
           ..write('rejectedAt: $rejectedAt, ')
+          ..write('versionHash: $versionHash, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5894,6 +6004,7 @@ typedef $$KnownDeviceKeysTableCreateCompanionBuilder =
       required String source,
       Value<String?> attestedBy,
       required int firstSeenAt,
+      Value<String> attestedGroup,
       Value<int> rowid,
     });
 typedef $$KnownDeviceKeysTableUpdateCompanionBuilder =
@@ -5904,6 +6015,7 @@ typedef $$KnownDeviceKeysTableUpdateCompanionBuilder =
       Value<String> source,
       Value<String?> attestedBy,
       Value<int> firstSeenAt,
+      Value<String> attestedGroup,
       Value<int> rowid,
     });
 
@@ -5943,6 +6055,11 @@ class $$KnownDeviceKeysTableFilterComposer
 
   ColumnFilters<int> get firstSeenAt => $composableBuilder(
     column: $table.firstSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get attestedGroup => $composableBuilder(
+    column: $table.attestedGroup,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5985,6 +6102,11 @@ class $$KnownDeviceKeysTableOrderingComposer
     column: $table.firstSeenAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get attestedGroup => $composableBuilder(
+    column: $table.attestedGroup,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$KnownDeviceKeysTableAnnotationComposer
@@ -6017,6 +6139,11 @@ class $$KnownDeviceKeysTableAnnotationComposer
 
   GeneratedColumn<int> get firstSeenAt => $composableBuilder(
     column: $table.firstSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get attestedGroup => $composableBuilder(
+    column: $table.attestedGroup,
     builder: (column) => column,
   );
 }
@@ -6064,6 +6191,7 @@ class $$KnownDeviceKeysTableTableManager
                 Value<String> source = const Value.absent(),
                 Value<String?> attestedBy = const Value.absent(),
                 Value<int> firstSeenAt = const Value.absent(),
+                Value<String> attestedGroup = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => KnownDeviceKeysCompanion(
                 userId: userId,
@@ -6072,6 +6200,7 @@ class $$KnownDeviceKeysTableTableManager
                 source: source,
                 attestedBy: attestedBy,
                 firstSeenAt: firstSeenAt,
+                attestedGroup: attestedGroup,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6082,6 +6211,7 @@ class $$KnownDeviceKeysTableTableManager
                 required String source,
                 Value<String?> attestedBy = const Value.absent(),
                 required int firstSeenAt,
+                Value<String> attestedGroup = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => KnownDeviceKeysCompanion.insert(
                 userId: userId,
@@ -6090,6 +6220,7 @@ class $$KnownDeviceKeysTableTableManager
                 source: source,
                 attestedBy: attestedBy,
                 firstSeenAt: firstSeenAt,
+                attestedGroup: attestedGroup,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -6136,6 +6267,7 @@ typedef $$RejectedVersionsTableCreateCompanionBuilder =
       required String relayedBy,
       Value<String?> claimedSigner,
       required int rejectedAt,
+      Value<String> versionHash,
       Value<int> rowid,
     });
 typedef $$RejectedVersionsTableUpdateCompanionBuilder =
@@ -6148,6 +6280,7 @@ typedef $$RejectedVersionsTableUpdateCompanionBuilder =
       Value<String> relayedBy,
       Value<String?> claimedSigner,
       Value<int> rejectedAt,
+      Value<String> versionHash,
       Value<int> rowid,
     });
 
@@ -6197,6 +6330,11 @@ class $$RejectedVersionsTableFilterComposer
 
   ColumnFilters<int> get rejectedAt => $composableBuilder(
     column: $table.rejectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6249,6 +6387,11 @@ class $$RejectedVersionsTableOrderingComposer
     column: $table.rejectedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RejectedVersionsTableAnnotationComposer
@@ -6285,6 +6428,11 @@ class $$RejectedVersionsTableAnnotationComposer
 
   GeneratedColumn<int> get rejectedAt => $composableBuilder(
     column: $table.rejectedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
     builder: (column) => column,
   );
 }
@@ -6334,6 +6482,7 @@ class $$RejectedVersionsTableTableManager
                 Value<String> relayedBy = const Value.absent(),
                 Value<String?> claimedSigner = const Value.absent(),
                 Value<int> rejectedAt = const Value.absent(),
+                Value<String> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RejectedVersionsCompanion(
                 groupId: groupId,
@@ -6344,6 +6493,7 @@ class $$RejectedVersionsTableTableManager
                 relayedBy: relayedBy,
                 claimedSigner: claimedSigner,
                 rejectedAt: rejectedAt,
+                versionHash: versionHash,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6356,6 +6506,7 @@ class $$RejectedVersionsTableTableManager
                 required String relayedBy,
                 Value<String?> claimedSigner = const Value.absent(),
                 required int rejectedAt,
+                Value<String> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RejectedVersionsCompanion.insert(
                 groupId: groupId,
@@ -6366,6 +6517,7 @@ class $$RejectedVersionsTableTableManager
                 relayedBy: relayedBy,
                 claimedSigner: claimedSigner,
                 rejectedAt: rejectedAt,
+                versionHash: versionHash,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

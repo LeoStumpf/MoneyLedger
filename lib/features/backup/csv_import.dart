@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/record_signing.dart';
+import '../../core/sync/record_validation.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
@@ -104,6 +106,17 @@ class CsvImportPreview {
 /// The outcome of an import.
 typedef CsvImportResult = ({int expenses, int payments});
 
+/// A CSV row the import refuses (G18 review) — nothing was imported. [row] is
+/// the 1-based line in the file (the header is line 1).
+class CsvImportException implements Exception {
+  final int row;
+  final String problem;
+  const CsvImportException(this.row, this.problem);
+
+  @override
+  String toString() => 'Row $row: $problem';
+}
+
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///
 /// Merge semantics (Phase D, G13): the group is resolved by `Group ID`
@@ -112,6 +125,13 @@ typedef CsvImportResult = ({int expenses, int payments});
 /// each expense / payment is **LWW-upserted by id** using the row's
 /// `Updated At` clock — so re-importing a backup is idempotent and merging
 /// into an existing group lets the newer copy win.
+///
+/// G18 review: the import is **all-or-nothing** — one transaction; a row
+/// whose amount / shares can't be read or that breaks the record rules
+/// (`record_validation.dart`, e.g. shares not summing to the amount) aborts
+/// it with a [CsvImportException] and nothing is written. `Updated At` (and
+/// the date) are clamped to now: a far-future clock in a file would
+/// otherwise win every later edit.
 ///
 /// G6: the CSV carries no signatures. A row that **wins** against the local
 /// copy (or is new) becomes a version signed by **this device as its
@@ -172,6 +192,9 @@ class CsvImporter extends _$CsvImporter {
     if (parsed.rows.isEmpty && parsed.participantNames.isEmpty) {
       return (expenses: 0, payments: 0);
     }
+    for (final (i, row) in parsed.rows.indexed) {
+      if (row.problem != null) throw CsvImportException(i + 2, row.problem!);
+    }
 
     // Captured before the first await (G19).
     final db = ref.read(appDatabaseProvider);
@@ -180,7 +203,28 @@ class CsvImporter extends _$CsvImporter {
     final expensesDao = ref.read(expensesDaoProvider);
     final signer = LocalRecordSigner(ref.read(ledgerTransportProvider.future));
     final now = DateTime.now().millisecondsSinceEpoch;
+    return db.transaction(
+      () => _write(
+        parsed,
+        db: db,
+        groupsDao: groupsDao,
+        membersDao: membersDao,
+        expensesDao: expensesDao,
+        signer: signer,
+        now: now,
+      ),
+    );
+  }
 
+  static Future<CsvImportResult> _write(
+    ParsedCsv parsed, {
+    required AppDatabase db,
+    required GroupsDao groupsDao,
+    required MembersDao membersDao,
+    required ExpensesDao expensesDao,
+    required LocalRecordSigner signer,
+    required int now,
+  }) async {
     // 1) Ensure the group. New id when the CSV carries none; never clobber an
     //    existing group's meta (LWW upsert only creates it when absent).
     final groupId = parsed.groupId ?? const Uuid().v7();
@@ -229,29 +273,33 @@ class CsvImporter extends _$CsvImporter {
     // 3) LWW-upsert each expense / payment by id.
     var expenses = 0;
     var payments = 0;
-    for (final row in parsed.rows) {
+    for (final (i, row) in parsed.rows.indexed) {
       if (db.isClosed) break;
       final id = row.id ?? const Uuid().v7();
       final payer = pidByName[row.paidByName] ?? row.paidByName;
       final recipient = row.paymentRecipient;
+      final updatedAt = row.updatedAt > now ? now : row.updatedAt;
+      final createdAt = row.createdAt > updatedAt ? updatedAt : row.createdAt;
       if (recipient != null) {
+        final draft = SettlementModel(
+          id: id,
+          roomId: groupId,
+          amountCents: row.amountCents,
+          currency: row.currency,
+          fromUser: payer,
+          toUser: pidByName[recipient] ?? recipient,
+          createdAt: createdAt,
+          updatedAt: updatedAt,
+        );
+        final problem = settlementProblem(draft);
+        if (problem != null) throw CsvImportException(i + 2, problem);
         final stored = await expensesDao.getSettlementById(id);
-        if (stored != null && stored.updatedAt >= row.updatedAt) {
+        if (stored != null && stored.updatedAt >= updatedAt) {
           payments++; // already up to date here — counted, not re-signed
           continue;
         }
         final signed = await signer.settlement(
-          SettlementModel(
-            id: id,
-            roomId: groupId,
-            amountCents: row.amountCents,
-            currency: row.currency,
-            fromUser: payer,
-            toUser: pidByName[recipient] ?? recipient,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-            origin: stored?.origin,
-          ),
+          draft.withSigning(origin: stored?.origin),
           creating: stored == null,
         );
         if (db.isClosed) break;
@@ -263,26 +311,28 @@ class CsvImporter extends _$CsvImporter {
         for (final e in row.sharesByName.entries)
           if (pidByName[e.key] != null) pidByName[e.key]!: e.value,
       };
+      final draft = ExpenseModel(
+        id: id,
+        roomId: groupId,
+        description: row.description,
+        amountCents: row.amountCents,
+        currency: row.currency,
+        paidBy: payer,
+        splitsJson: jsonEncode(splits),
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        category: row.category,
+        note: row.note,
+      );
+      final problem = expenseProblem(draft);
+      if (problem != null) throw CsvImportException(i + 2, problem);
       final stored = await expensesDao.getExpenseById(id);
-      if (stored != null && stored.updatedAt >= row.updatedAt) {
+      if (stored != null && stored.updatedAt >= updatedAt) {
         expenses++; // already up to date here — counted, not re-signed
         continue;
       }
       final signed = await signer.expense(
-        ExpenseModel(
-          id: id,
-          roomId: groupId,
-          description: row.description,
-          amountCents: row.amountCents,
-          currency: row.currency,
-          paidBy: payer,
-          splitsJson: jsonEncode(splits),
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-          category: row.category,
-          note: row.note,
-          origin: stored?.origin,
-        ),
+        draft.withSigning(origin: stored?.origin),
         creating: stored == null,
       );
       if (db.isClosed) break;

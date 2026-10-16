@@ -2731,6 +2731,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The previous attempt is still waiting for the server. If it succeeds you\'re signed in automatically — otherwise try again in a moment.'**
   String get authInProgressHint;
+
+  /// G18: inviter picks the participant an invited account becomes
+  ///
+  /// In en, this message translates to:
+  /// **'Who is {userId} in this group?'**
+  String inviteWhoIs(Object userId);
+
+  /// No description provided for @inviteAsNewParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'A new participant'**
+  String get inviteAsNewParticipant;
+
+  /// G18: live preview of the parsed amount under an amount field, e.g. '= 1.234,00 €'
+  ///
+  /// In en, this message translates to:
+  /// **'= {amount}'**
+  String amountPreview(Object amount);
+
+  /// No description provided for @amountMustBePositive.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount greater than 0'**
+  String get amountMustBePositive;
+
+  /// No description provided for @amountTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'That amount is too large'**
+  String get amountTooLarge;
+
+  /// No description provided for @finishingBackgroundSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing background sync…'**
+  String get finishingBackgroundSync;
+
+  /// G18: a CSV row the import refuses (nothing is imported); problem is technical text
+  ///
+  /// In en, this message translates to:
+  /// **'Row {row}: {problem}'**
+  String csvImportInvalidRow(int row, Object problem);
 }
 
 class _AppLocalizationsDelegate

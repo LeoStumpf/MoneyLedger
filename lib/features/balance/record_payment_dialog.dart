@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/sync/record_validation.dart';
 import '../groups/create_group_page.dart' show kGroupCurrencies;
 
 /// What the user confirmed in [RecordPaymentDialog].
@@ -71,10 +72,19 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
     super.dispose();
   }
 
-  /// Accepts `,` and `.` as decimal separator (G12).
+  /// Accepts `,` and `.` as decimal separator (G12); the UI locale decides a
+  /// lone grouping separator (G18 review). Null unless a storable amount
+  /// (1 cent … [kMaxAmountCents]).
   int? get _cents {
-    final c = parseAmountCents(_amount.text);
-    return c != null && c > 0 ? c : null;
+    final c = parseAmountCents(_amount.text, locale: context.localeName);
+    return c != null && isValidAmountCents(c) ? c : null;
+  }
+
+  /// Why the typed amount can't be recorded.
+  String _amountError(AppLocalizations l) {
+    final c = parseAmountCents(_amount.text, locale: context.localeName);
+    if (c == null) return l.invalidNumber;
+    return c < 1 ? l.amountMustBePositive : l.amountTooLarge;
   }
 
   /// Why "Record" is disabled, or null when the draft is complete.
@@ -138,7 +148,16 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                   child: TextField(
                     key: const Key('paymentAmount'),
                     controller: _amount,
-                    decoration: InputDecoration(labelText: l.amountLabel),
+                    decoration: InputDecoration(
+                      labelText: l.amountLabel,
+                      // G18 review: how the input was read.
+                      helperText: cents != null
+                          ? l.amountPreview(context.money(cents, _currency))
+                          : null,
+                      errorText: _amount.text.trim().isNotEmpty && cents == null
+                          ? _amountError(l)
+                          : null,
+                    ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),

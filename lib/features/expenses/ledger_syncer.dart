@@ -171,6 +171,12 @@ class LedgerSyncer {
 
   Future<void> _onMessage(TransportMessage msg) async {
     if (!_alive || !_recordTypes.contains(msg.type)) return;
+    // G18 review: only end-to-end encrypted payloads carry an authenticated
+    // sender — a plaintext to-device event could claim any `sender`.
+    if (!msg.encrypted) {
+      debugPrint('[ledger] dropped unencrypted ${msg.type} (${msg.senderId})');
+      return;
+    }
     final group = msg.content['group'] as String?;
     if (group == null) return;
 
@@ -231,8 +237,8 @@ class LedgerSyncer {
         case groupMetaEventType:
           await gate.meta(msg.content, relayedBy: via);
         case memberEventType:
-          // A non-member may only speak for itself (gate above) — and its
-          // self-claim / join must then be signed by that very account.
+          // A non-member may only touch the participant assigned to it (gate
+          // above) — and that version must be signed by that very account.
           final senderIsMember = members.any(
             (m) => m.isActive && m.matrixId == msg.senderId,
           );
@@ -364,12 +370,15 @@ class LedgerSyncer {
   /// - **bootstrap:** an **unknown** group is TOFU-accepted (an inviter or one of
   ///   your own devices defines it); a **known** group is re-snapshotted only by
   ///   an active member, so a stranger can't rewrite it wholesale.
-  /// - **member:** an active member may gossip any membership change; otherwise
-  ///   the sender may only speak for **its own MXID** — claiming itself
-  ///   (`matrix_id == senderId`) onto a new participant (join-as-new) or one that
-  ///   is unclaimed / already its own (self-claim). It can never forge another
-  ///   account's membership or **hijack** a participant already linked to someone
-  ///   else.
+  /// - **member:** an active member may gossip any membership change. A
+  ///   non-member (never added, or **removed** — removal must stick) may only
+  ///   update the participant an active member already **assigned to its own
+  ///   account**: an existing participant with `matrixId == senderId` whose
+  ///   latest status is `active` (in practice that makes it a member, so this
+  ///   never lets anyone in). It can **never** create a participant, reactivate
+  ///   a `removed` one, or claim an unclaimed local participant — joining a
+  ///   group (and claiming a local person) is done by an active member
+  ///   (`MemberAdder.add` / `invite` / `claim`, G18 review).
   @visibleForTesting
   static bool isSenderAuthorized({
     required String type,
@@ -387,23 +396,17 @@ class LedgerSyncer {
         return !groupKnown || senderIsActiveMember;
       case memberEventType:
         if (senderIsActiveMember) return true;
-        // Non-members may only assert membership for their own account.
-        final claimedMxid = content['matrix_id'] as String?;
         final participantId =
             content['participant_id'] as String? ?? content['user'] as String?;
-        if (claimedMxid == null ||
-            claimedMxid != senderId ||
+        if (content['matrix_id'] != senderId ||
+            content['status'] != 'active' ||
             participantId == null) {
           return false;
         }
-        // Allow a new participant (join-as-new) or one that is unclaimed / their
-        // own — but never overwrite a participant another account already owns.
-        final existing = members
-            .where((m) => m.userId == participantId)
-            .toList();
-        return existing.isEmpty ||
-            existing.first.matrixId == null ||
-            existing.first.matrixId == senderId;
+        final existing = members.where((m) => m.userId == participantId);
+        return existing.isNotEmpty &&
+            existing.first.matrixId == senderId &&
+            existing.first.isActive;
       case expenseEventType:
       case settlementEventType:
       case groupMetaEventType:
@@ -426,8 +429,12 @@ class LedgerSyncer {
     required LeftGroupTombstone tombstone,
   }) {
     if (type != bootstrapEventType || myMxid == null) return false;
+    // Only the snapshot's own member entries count (G18 review): an entry of
+    // another group must not lift this group's tombstone.
+    final snap = snapshotEntries(content);
+    if (snap == null) return false;
     return classifyPeerViewOfMe(
-          memberRecords: content['members'] as List? ?? const [],
+          memberRecords: snap.members,
           myMxid: myMxid,
           leftAt: tombstone.leftAt,
         ) ==
@@ -577,22 +584,21 @@ class LedgerSyncer {
     // [isAlive] lets the live syncer stop mid-snapshot when it's disposed or
     // its DB closes (account switch) instead of writing into a closed DB.
     bool stop() => isAlive != null && !isAlive();
-    final meta = content['meta'];
-    await processGroupMeta(
-      meta is Map ? Map<String, dynamic>.from(meta) : content,
-      groupDao,
-    );
-    for (final m in (content['members'] as List? ?? const [])) {
+    // Only entries of the snapshot's own group (G18 review).
+    final snap = snapshotEntries(content);
+    if (snap == null) return;
+    await processGroupMeta(snap.meta, groupDao);
+    for (final m in snap.members) {
       if (stop()) return;
-      await processMember(Map<String, dynamic>.from(m as Map), memberDao);
+      await processMember(m, memberDao);
     }
-    for (final e in (content['expenses'] as List? ?? const [])) {
+    for (final e in snap.expenses) {
       if (stop()) return;
-      await processExpense(Map<String, dynamic>.from(e as Map), expDao);
+      await processExpense(e, expDao);
     }
-    for (final s in (content['settlements'] as List? ?? const [])) {
+    for (final s in snap.settlements) {
       if (stop()) return;
-      await processSettlement(Map<String, dynamic>.from(s as Map), expDao);
+      await processSettlement(s, expDao);
     }
   }
 }

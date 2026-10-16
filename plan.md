@@ -222,8 +222,9 @@ notices. **Decision for Leo.**
 - [x] Leo decided (2026-10-15): license the app **AGPL-3.0**
 - [x] `LICENSE` (FSF AGPL-3.0 text, "or later" notice), `THIRD_PARTY_NOTICES.md`
       (no incompatible deps), licenses page + source link in About
-- [ ] **Leo:** AGPL-3.0-or-later (current) vs. -only; contact e-mail in PRIVACY.md;
-      make the GitHub repo public before distributing (G18)
+- [x] **Leo (2026-10-16):** AGPL-3.0-or-later confirmed; contact e-mail in
+      PRIVACY.md stays leo.m.stumpf@gmail.com; GitHub repo made public (history
+      scanned first: no keystores/key.properties/passwords/tokens in any commit)
 
 ### G22. Dependency upgrades (matrix 7 → 10+, file_picker 8 → 10) 🟡
 `flutter_vodozemac` is pinned at 0.6.x by `matrix` 7.2.2 (`vodozemac ^0.5.0`); 0.7+/0.8
@@ -423,8 +424,58 @@ all members), ~30k records (2,048-bucket summary). See CLAUDE.md "Message size".
 - [ ] A refused version costs one extra 3-message bucket exchange per cycle
       (bounded); refusals are per clock (blocks other versions at the same ms)
 
+### G40. Fully local mode — use the app without a Matrix account (Leo, 2026-10-16) 🟠
+Never implemented so far (only local *participants* exist; the app user always
+needs a Matrix login). Architecture already allows it (local-first Drift,
+transport is a port; the offline demo runs without Matrix).
+- [ ] "Use without account" on the welcome/login: asks for your name, opens a
+      device-local ledger DB (`money_ledger_local`), no Matrix client, no
+      sync/background jobs; all groups local-only, other people = local
+      participants; backup/CSV work as usual
+- [ ] Clear "local mode" indicator + explanation (nothing leaves this device;
+      back up!) in groups page / settings; features needing Matrix (add by
+      Matrix ID, devices, verification, sync status) hidden or explained
+- [ ] Upgrade path: "Connect a Matrix account" later → sign in, local data is
+      adopted into that account's DB (reuse the G4 adoption mechanism), your
+      local "me" participant becomes claimed by your MXID, groups can then
+      invite Matrix members; local DB marked adopted
+- [ ] Sign out / switch back to local mode semantics defined + tested;
+      EN + DE; tests; verified on the fresh installs in G38
+
+### G39. First-open welcome before login (Leo, 2026-10-16) 🟠
+Today the intro (`OnboardingPage`) only appears *after* login (per-account
+flag). A first-time user lands on a bare Matrix login without knowing why.
+- [ ] Device-wide "welcome seen" flag (works signed out; native + web) and a
+      short swipeable welcome before the login page: what MoneyLedger is
+      (shared expense tracking, Splitwise/Tricount-style), free + open source
+      (AGPL, link to the repo), no MoneyLedger server — data stays on your
+      devices; what Matrix is (open, decentralized messaging network; you
+      use an account on any homeserver, e.g. matrix.org — free sign-up);
+      why log in (your Matrix ID is your identity + the encrypted relay to
+      group members); what is shared with whom (members' devices get the
+      group's records, E2EE; the homeserver sees only ciphertext + who talks
+      to whom; nothing else); CTA "Sign in" / "Create account" / "Use
+      without account" (G40)
+- [ ] Post-login onboarding slimmed to what's still new (backup tip etc.),
+      no repetition; "How it works" reachable again from About
+- [ ] EN + DE, design system, tests; verified on the fresh installs in G38
+
+### G38. App id → `io.github.leostumpf.moneyledger` (Leo, 2026-10-16) 🟠
+Leo's naming scheme (ZoneCraft, timeLoggBook): `io.github.leostumpf.<name>`.
+Must happen before the first Play upload (the id is permanent there).
+- [ ] namespace + applicationId in `android/app/build.gradle.kts`, Kotlin
+      package/path of `MainActivity`, background-sync references
+      (`background_sync_native.dart`, `background_gate.dart`, jobscheduler
+      command in CLAUDE.md / smoke-test), bench tool, docs
+- [ ] Devices (approved by Leo): sign out + uninstall the old app on the
+      phone and emulator-5554, install the new id, log in test accounts A/B
+      again, recreate the test groups (replaces the pre-G6 legacy groups, G35)
+- [ ] Re-verify on devices: login, sync both ways, SAS between A and B,
+      background sync job id
+
 ### G18. Final release review 🟡
-- [ ] `/code-review` over all of Phase G; fix findings
+- [x] Code review over all of Phase G (sync/crypto/backup/math): 16 findings incl. 4 blockers → all fixed with regression tests
+- [ ] Second review pass over the G18 fixes (after G40/G39/G38)
 - [ ] Recreate the pre-G6 test groups ("G7a Test"/"G7a Probe") or document them
       as legacy-only (G35 decision)
 - [ ] Balance suggestion rows truncate long names to ~4 chars ("mone… zahlt an
@@ -479,7 +530,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G36+ — verification follow-ups + robustness leftovers (G29/G30/G31/G33/G37)
 - [ ] G37 — scale follow-ups (optional)
 - [ ] *(G32+ — newly discovered points)*
-- [ ] G18 — final release review
+- [ ] G40+G39 — fully local mode (no Matrix account) + first-open welcome
+- [ ] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
+- [~] G18 — final release review
 
 ---
 

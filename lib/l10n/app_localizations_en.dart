@@ -1703,4 +1703,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get authInProgressHint =>
       'The previous attempt is still waiting for the server. If it succeeds you\'re signed in automatically — otherwise try again in a moment.';
+
+  @override
+  String inviteWhoIs(Object userId) {
+    return 'Who is $userId in this group?';
+  }
+
+  @override
+  String get inviteAsNewParticipant => 'A new participant';
+
+  @override
+  String amountPreview(Object amount) {
+    return '= $amount';
+  }
+
+  @override
+  String get amountMustBePositive => 'Enter an amount greater than 0';
+
+  @override
+  String get amountTooLarge => 'That amount is too large';
+
+  @override
+  String get finishingBackgroundSync => 'Finishing background sync…';
+
+  @override
+  String csvImportInvalidRow(int row, Object problem) {
+    return 'Row $row: $problem';
+  }
 }

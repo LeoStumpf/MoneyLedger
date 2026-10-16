@@ -32,6 +32,11 @@ const kBackgroundSyncPeriod = Duration(minutes: 15);
 /// Hard bound for one background round (fetch + process + answer + shutdown).
 const kBackgroundRoundTimeout = Duration(seconds: 60);
 
+/// G18 review: how long a stopped round waits for a step still in flight
+/// (a `/sync`, a digest broadcast, the session being opened) before closing
+/// the stores under it.
+const kBackgroundInFlightGrace = Duration(seconds: 10);
+
 /// A signed-in relay session opened for one background round — the real one
 /// wraps a Matrix `Client` restored from its store (never logged in/out here).
 abstract interface class BackgroundSession {
@@ -117,6 +122,13 @@ class BackgroundRoundResult {
 /// up peers' immediate answers) while the previous pass produced traffic, at
 /// most [maxFetches] times; then dispose and close everything. The whole
 /// round is bounded by [timeout].
+///
+/// G18 review: when the round is stopped (time budget / [abort]) while a step
+/// is still running, it waits up to [inFlightGrace] for that step before it
+/// disposes the sync components and closes the DB + session — a step must
+/// never keep using stores that are being closed (or, once the slot is
+/// released, that the app has reopened). A session still being opened is
+/// awaited (bounded the same way) and closed before the round returns.
 Future<BackgroundRoundResult> runBackgroundRound({
   required Future<bool> Function() tryAcquire,
   required Future<BackgroundSession?> Function() openSession,
@@ -128,6 +140,7 @@ Future<BackgroundRoundResult> runBackgroundRound({
   Duration followUpWait = const Duration(seconds: 5),
   Duration digestMaxAge = kBackgroundSyncPeriod,
   int maxFetches = 3,
+  Duration inFlightGrace = kBackgroundInFlightGrace,
   int Function()? clock,
 }) async {
   final now = clock ?? () => DateTime.now().millisecondsSinceEpoch;
@@ -149,21 +162,36 @@ Future<BackgroundRoundResult> runBackgroundRound({
     }),
   );
 
+  /// The step currently running (completes, never throws) — awaited before
+  /// the stores are closed.
+  Future<void>? inFlight;
+
   /// Awaits [f] unless the round is stopped first. Returns false if stopped.
-  Future<bool> guard(Future<void> f) async {
-    if (stop.isCompleted) return false;
+  /// [touchesStores]: false for a pure wait (nothing to settle before close).
+  Future<bool> guard(Future<void> f, {bool touchesStores = true}) async {
     var done = false;
-    await Future.any([
-      f.then(
-        (_) => done = true,
-        onError: (Object e) {
-          debugPrint('[bg] step failed: $e');
-          done = true;
-        },
-      ),
-      stop.future,
-    ]);
+    final step = f.then(
+      (_) => done = true,
+      onError: (Object e) {
+        debugPrint('[bg] step failed: $e');
+        done = true;
+      },
+    );
+    if (touchesStores) inFlight = step;
+    if (stop.isCompleted) return false;
+    await Future.any([step, stop.future]);
     return done && !stop.isCompleted;
+  }
+
+  /// Waits (bounded) for a step still running when the round stopped.
+  Future<void> settleInFlight() async {
+    final step = inFlight;
+    if (step == null) return;
+    try {
+      await step.timeout(inFlightGrace);
+    } on TimeoutException {
+      debugPrint('[bg] a step is still running — closing anyway');
+    }
   }
 
   BackgroundSession? session;
@@ -179,8 +207,14 @@ Future<BackgroundRoundResult> runBackgroundRound({
         stop.future.then((_) => _stopped),
       ]);
       if (identical(first, _stopped)) {
-        // Timed out / aborted while restoring: close it once it's open.
-        unawaited(opening.then((s) => s?.close(), onError: (_) {}));
+        // Timed out / aborted while restoring: close it once it's open —
+        // before returning (the caller releases the slot after we return).
+        try {
+          final s = await opening.timeout(inFlightGrace);
+          await s?.close();
+        } catch (e) {
+          debugPrint('[bg] session still opening / close failed: $e');
+        }
         return BackgroundRoundResult(
           aborted
               ? BackgroundRoundStatus.aborted
@@ -237,7 +271,8 @@ Future<BackgroundRoundResult> runBackgroundRound({
       return _ended(aborted, t, broadcast);
     }
 
-    Future<bool> waitQuiet() => guard(t.quiet(quietPeriod, deadline: deadline));
+    Future<bool> waitQuiet() =>
+        guard(t.quiet(quietPeriod, deadline: deadline), touchesStores: false);
 
     debugPrint('[bg] round started for $mxid');
     var activityBefore = t.activity;
@@ -278,6 +313,7 @@ Future<BackgroundRoundResult> runBackgroundRound({
     return result;
   } finally {
     budget.cancel();
+    await settleInFlight();
     // Order matters: stop the sync components first, then close the ledger
     // DB, then the session (its store holds the Olm sessions — closed last,
     // after every send has been handed over).

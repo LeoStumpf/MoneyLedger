@@ -118,6 +118,7 @@ void main() {
     Future<void>? abort,
     Duration timeout = const Duration(seconds: 10),
     Duration digestMaxAge = const Duration(minutes: 15),
+    Duration inFlightGrace = const Duration(milliseconds: 200),
   }) => runBackgroundRound(
     tryAcquire: tryAcquire ?? () async => true,
     openSession: () async =>
@@ -129,6 +130,7 @@ void main() {
     pokeDebounce: const Duration(milliseconds: 1),
     followUpWait: Duration.zero,
     digestMaxAge: digestMaxAge,
+    inFlightGrace: inFlightGrace,
   );
 
   /// Alice and Bob share "Trip"; both apps ran once, Bob's is now closed.
@@ -305,6 +307,55 @@ void main() {
     expect(session.closed, isTrue);
   });
 
+  // G18 review (finding 7): a stopped round waits (bounded) for the step in
+  // flight before it closes the stores under it.
+  test('an abort waits for the in-flight /sync before closing', () async {
+    await sharedGroupBobClosed();
+    final abort = Completer<void>();
+    var fetchDone = false;
+    var fetchDoneAtClose = false;
+    late FakeSession session;
+    session = _ClosingSession(
+      net.clientFor(bob),
+      onFetch: () async {
+        abort.complete(); // the app starts mid-/sync
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        fetchDone = true;
+      },
+      onClose: () => fetchDoneAtClose = fetchDone,
+    );
+    final result = await round(
+      bob,
+      session: session,
+      abort: abort.future,
+      inFlightGrace: const Duration(seconds: 2),
+    );
+    expect(result.status, BackgroundRoundStatus.aborted);
+    expect(session.closed, isTrue);
+    expect(fetchDoneAtClose, isTrue);
+  });
+
+  test('a session still opening when stopped is closed before the round '
+      'returns', () async {
+    await sharedGroupBobClosed();
+    final opened = Completer<void>();
+    final session = FakeSession(net.clientFor(bob));
+    final result = await runBackgroundRound(
+      tryAcquire: () async => true,
+      openSession: () async {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        opened.complete();
+        return session;
+      },
+      openDatabase: (_) => openDb(bob),
+      timeout: const Duration(milliseconds: 50),
+      inFlightGrace: const Duration(seconds: 2),
+    );
+    expect(result.status, BackgroundRoundStatus.timedOut);
+    expect(opened.isCompleted, isTrue);
+    expect(session.closed, isTrue);
+  });
+
   test('broadcasts its own digest only when the last one is stale', () async {
     final (a, groupId) = await sharedGroupBobClosed();
 
@@ -333,4 +384,15 @@ void main() {
     );
     expect(a, isNotNull);
   });
+}
+
+class _ClosingSession extends FakeSession {
+  _ClosingSession(super.transport, {super.onFetch, required this.onClose});
+  final void Function() onClose;
+
+  @override
+  Future<void> close() async {
+    onClose();
+    await super.close();
+  }
 }

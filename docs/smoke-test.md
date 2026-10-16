@@ -67,11 +67,11 @@ Expected results are in *italics*.
 
 | # | Step → expected | How |
 |---|-----------------|-----|
-| 4.1 | Members → "Invite by Matrix ID" with B's MXID → *B listed (Matrix); B's device receives the group (bootstrap)* | 2dev |
+| 4.1 | Members → "Invite by Matrix ID" with B's MXID → *if local people exist: "Who is B in this group?" (a local person or "A new participant"); B listed (Matrix) as that participant; B's device receives the group (bootstrap) and is a member at once* (G18) | 2dev |
 | 4.2 | Invite an invalid ID (`bob`) → *"Invalid Matrix ID"* | emu |
 | 4.3 | "Add person" (name only) → *listed as "Local"; usable as payer / in splits* | emu |
 | 4.4 | Local person → ⋮ Link Matrix account (MXID) → *shows the MXID; that account now receives the group* | 2dev |
-| 4.5 | A device that received the group but whose MXID claims no participant → *banner "Which participant are you?" → Choose: pick a local person (self-claim) or "I'm someone new" + name; replicates* | 2dev |
+| 4.5 | A group this device holds without being a participant (e.g. CSV import) → *banner "Which participant are you?" → Choose: a local person or "I'm someone new" + name (local; peers only accept it from an active member — G18)* | emu |
 | 4.6 | ⋮ Rename / Detach Matrix account → *name changes everywhere; history keeps the participant* | emu |
 | 4.7 | ⋮ Remove from group → *moves to "Former members" (greyed, "Re-add"); expenses still show the name* | emu |
 | 4.8 | "Re-add" a former member (claimed **or** local) → *same participant reactivated (same name/history), no duplicate; peer sees it* | 2dev |
@@ -90,6 +90,8 @@ Expected results are in *italics*.
 | 5.8 | Type "Pizza" → *Food & drink chip preselected*; pick another chip → *typing no longer changes it*; tap the selected chip → *none* (G16) | emu |
 | 5.9 | Add a category + note → *category icon in the list, note icon after the title; peer shows the same icon + note (DE labels on a German device)* (G16) | 2dev |
 | 5.10 | 🔍 in the group app bar → type part of a description / note / payer → *list filtered, "N entries"*; category chips + "Involving me" narrow it; nothing found → *"Clear filters"* (G16) | emu |
+| 5.11 | Amount field: German device, type `1.234` → *preview "= 1.234,00 €" (thousands)*; English device `1.234` → *"= €1.23"*; `0` / `-5` → *Add disabled, no preview* (G18) | 2dev |
+| 5.12 | Start the app while a background round runs (trigger the job, open the app at once) → *"Finishing background sync…" briefly, then the app; logcat `[bg-gate] background round finished`* (G18) | phone |
 
 ## 6. Settlements & balances
 

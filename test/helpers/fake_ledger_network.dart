@@ -80,6 +80,23 @@ class FakeMatrixNetwork {
     keys.removeDevice(userId, device);
   }
 
+  /// G18 review: delivers a **plaintext** to-device event claiming to be from
+  /// [claimedSender] to every device of [target] (what a homeserver could
+  /// inject) — the sync components must drop it.
+  void injectPlaintext(
+    String target,
+    String claimedSender,
+    String type,
+    Map<String, dynamic> content,
+  ) {
+    _activity++;
+    for (final t in (_clients[target] ?? const {}).values) {
+      t._emit(
+        TransportMessage(senderId: claimedSender, type: type, content: content),
+      );
+    }
+  }
+
   SendResult _send(
     FakeTransport senderDevice,
     Set<String> targets,
@@ -120,6 +137,8 @@ class FakeMatrixNetwork {
             senderDevice: senderDevice.deviceId,
             type: type,
             content: content,
+            // Like the real relay: every ledger payload is Olm-encrypted.
+            encrypted: true,
           ),
         );
       }

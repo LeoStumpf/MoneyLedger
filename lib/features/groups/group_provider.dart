@@ -309,12 +309,28 @@ class MemberAdder extends _$MemberAdder {
     await w.sendMember(others, saved);
   }
 
-  /// Shares the whole group with a Matrix account **without** assigning them a
-  /// participant — they receive the bootstrap and then pick which existing
-  /// participant they are (self-claim on join, [selfClaim]). Use this to invite
-  /// someone who already has a local placeholder in the ledger.
-  Future<void> invite(String groupId, String matrixId) =>
-      _run((w) => w.sendBootstrap(matrixId, groupId));
+  /// Invites a Matrix account into the group **as a participant chosen by
+  /// the inviter** (G18 review): [participantId] = an existing (typically
+  /// local, unclaimed) participant the account becomes ([claim] — history
+  /// kept), else a new participant for it ([add]). Either way an active
+  /// member assigns the slot, the account receives the bootstrap and is an
+  /// active member right away. (Peers refuse membership changes a
+  /// non-member makes about itself — so the invitee can no longer pick its
+  /// own slot after a slot-less invite.)
+  Future<void> invite(
+    String groupId,
+    String matrixId, {
+    String? participantId,
+  }) => _run((w) async {
+    final members = await w.members.getMembers(groupId);
+    // An account that already claims a participant here is re-added as that
+    // participant (G26), never linked to a second one.
+    if (participantId == null || claimedBy(members, matrixId) != null) {
+      await _applyAdd(w, groupId, matrixId);
+    } else {
+      await _applyClaim(w, groupId, participantId, matrixId);
+    }
+  });
 
   /// Adds a Tricount-style local participant: a named person with no Matrix
   /// account (a fresh UUID participant id, `matrixId == null`). They are pure
@@ -372,17 +388,18 @@ class MemberAdder extends _$MemberAdder {
     await w.sendMember(targets, updated);
   }
 
-  /// Claims an existing participant as **this device's own account** — the
-  /// "self-claim on join" of open-points #7. Used when you've been invited to a
-  /// group ([invite]) and recognise yourself as one of the existing
-  /// participants; links your MXID and replicates so everyone sees the claim.
+  /// Claims an existing participant as **this device's own account** — for a
+  /// group this device holds without being a participant of it (e.g. one
+  /// created by a CSV import). Peers only accept it from an active member
+  /// (G18 review): an account that isn't a participant yet must be invited
+  /// into a slot by a member instead ([invite]).
   Future<void> selfClaim(String groupId, String participantId) => _run(
     (w) async => _applyClaim(w, groupId, participantId, await w.myMxid()),
   );
 
-  /// Joins a group you were invited to as a brand-new participant (you are not
+  /// Joins a group this device holds as a brand-new participant (you are not
   /// any of the existing local people) — creates a self-participant and tells
-  /// the others.
+  /// the others (who only accept it from an active member, see [selfClaim]).
   Future<void> joinAsNew(String groupId, String name) => _run(
     (w) async => _applyAdd(w, groupId, await w.myMxid(), displayName: name),
   );

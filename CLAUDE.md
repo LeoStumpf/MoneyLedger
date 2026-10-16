@@ -149,6 +149,7 @@ lib/
       sync_status_provider.dart # groupSyncStatusProvider — drives the cloud icons
       delivery_policy.dart     # G11 PolicyTransport: sends follow "only sync with verified devices"
       peer_convergence.dart    # G29 fast in-sync proof from an inbound record (pure)
+      record_validation.dart   # G18 content rules (split/amount bounds) — gate, CSV, forms
       record_signing.dart      # G6: signed bodies (canonical JSON), message, sign*, LocalRecordSigner
       record_verifier.dart     # G6: RecordVerifier (accept / refuse) + signatureStatus (display)
       record_gate.dart         # G6: RecordGate — the only inbound apply path (live, bootstrap, gossip, restore)
@@ -293,10 +294,12 @@ the next open. **G36 cleanup:** on a *later* open (the target already had
 `legacy_checked` before), `cleanupLegacyLedger` deletes the legacy DB
 (`deleteDatabase`: native file + `-wal`/`-shm`/`-journal`, web via
 `WasmProbeResult.deleteDatabase`) iff it is adopted and **every** MXID it
-claimed is the adopter (`canDeleteLegacy` — or it claimed none); otherwise it
-is kept (another claimed account might still need it). The per-account DB is
-then marked `legacy_cleanup_done` (`deleted` / `kept` / `absent`); a not yet
-adopted legacy DB is re-checked on later starts.
+claimed is the adopter **or has signed in here since** and found it already
+adopted (it can never adopt it; recorded as `legacy_checked_by:<db name>` in
+the legacy DB — G18 review) (`canDeleteLegacy` — or it claimed none);
+otherwise it is kept for that account (only a manual recovery could use it)
+and re-checked on later starts. The per-account DB is marked
+`legacy_cleanup_done` (`deleted` / `absent`) once settled.
 
 ### Data Flow
 
@@ -306,13 +309,28 @@ DAO LWW upsert → Drift stream providers → UI rebuild. Local writes are
 members (`_replicate`). Drift is the **local source of truth** — the UI always
 reads Drift streams, never Matrix in-memory state.
 
-**Membership gate (Phase F).** To-device messages are E2EE, so `msg.senderId` is
-authenticated. `LedgerSyncer.isSenderAuthorized` (pure, `@visibleForTesting`)
-drops any record whose sender isn't an active member of the target group:
-expense/settlement/group-meta require an active claimed member; a `bootstrap` for
-an **unknown** group is TOFU-accepted (else member-only); a `member` payload from
-a non-member is allowed only as a **self-claim/join** for the sender's own MXID
-and never hijacks a participant another account owns. Inbound `updated_at` is
+**Membership gate (Phase F, tightened G18 review).** To-device messages are
+E2EE, so `msg.senderId` is authenticated — **plaintext** to-device events are
+dropped (`isAcceptedLedgerEvent` in the real transport; `TransportMessage.encrypted`,
+checked again by `LedgerSyncer` / `SyncEngine`; the fake relay marks its
+messages encrypted, `FakeMatrixNetwork.injectPlaintext` simulates the rest).
+`LedgerSyncer.isSenderAuthorized` (pure, `@visibleForTesting`) drops any
+record whose sender isn't an active member of the target group:
+expense/settlement/group-meta require an active claimed member; a `bootstrap`
+for an **unknown** group is TOFU-accepted (else member-only) — but only its
+**own group's** entries are applied (`snapshotEntries`: nested meta / member /
+expense / settlement entries naming another group are dropped, also for the
+G9 re-add check); a `member` payload from a non-member is accepted **only** to
+update the participant an active member already assigned to that MXID
+(`matrixId == sender`, latest status `active`) — a non-member can **never**
+create a participant, reactivate a `removed` one or claim a local person, so a
+removal sticks (its records, member payloads, digests and resync requests are
+all ignored). Joining is done by an active member: **invite** = the inviter
+picks the slot (`MemberAdder.invite(group, mxid, participantId:)` → `claim` of
+a local person, else `add`; members page "Who is X in this group?"). The
+invitee-side picker (`selfClaim` / `joinAsNew`) remains only for groups this
+device holds without being a participant (e.g. a CSV import) — peers refuse it
+from non-members. Inbound `updated_at` is
 clamped to `now + 5 min` (`clampInboundClock`) to bound clock-skew LWW wins.
 The gate authenticates the *relaying* sender; the *author* of each version is
 authenticated by its signature (G6, below). Digests from an account that isn't
@@ -342,23 +360,42 @@ Matrix **Ed25519 fingerprint key** (vodozemac olm account,
   (same clock) before digests / bootstraps.
 - **Inbound** goes only through `RecordGate` (live records, bootstrap
   snapshots, digest member gossip, backup restore): not newer than stored →
-  no-op (an unsigned relay of a grandfathered row we hold is harmless); not
-  newer than a version we refused → dropped; else `RecordVerifier`: **refused**
-  if unsigned, bad signature, bad / changed origin, wrong signer (a
-  non-member's self-claim must be signed by itself) or **key conflict** (the
-  embedded key contradicts the key we pinned for that (user, device) or the
-  server lists); a clock > now + 5 min is dropped (transient). Refused
-  versions go to `rejected_versions` and the digest's `rejected` map, so peers
-  stop re-sending them (no repair loop; "agree to disagree" counts as in sync).
+  no-op (an unsigned relay of a grandfathered row we hold is harmless);
+  **exactly** the version we refused (clock + G27 hash) → dropped (G18 review:
+  other versions — higher or lower — are looked at on their own; a refusal
+  never freezes a record); **invalid content** (`record_validation.dart`:
+  split not a non-empty `{participant: int ≥ 0}` map summing to the amount,
+  amount outside 1 … `kMaxAmountCents` = 10^13 cents, no payer, payment to
+  oneself) → refused `invalid_record`; else `RecordVerifier`: a clock > now +
+  5 min is dropped **first** (transient, signed or not); **refused** if
+  unsigned, bad signature, bad / changed origin, wrong signer (a non-member's
+  member payload must be signed by itself) or **key conflict** (the embedded
+  key contradicts the key we pinned for that (user, device) or the server
+  lists). Then (defence in depth) the **signer** of an expense / payment /
+  meta version must claim a participant of that group (a removed one only
+  for versions not newer than its removal) or be the relaying account itself
+  — else dropped as `signer_not_member` (transient; a snapshot's meta may be
+  signed by one of the snapshot's own members). Refused versions go to
+  `rejected_versions` (one row per record: the highest refused version incl.
+  `version_hash`, schema v9; never one stamped beyond now + 5 min) and the
+  digest's `rejected` map (`"<ms>:<hash8>"` per id), so peers stop re-sending
+  exactly that version (no repair loop; "agree to disagree" counts as in
+  sync). A user-started restore bypasses and clears earlier sync refusals of
+  the versions it stores, and isn't subject to the signer rule.
 - **Key binding after logout:** every device pins every member device key it
   sees first-hand (`known_device_keys`, source `server`: after each digest
   broadcast + on demand when verifying), so signatures stay verifiable after
   the signer signs out (`client.logout` deletes the device). Bootstraps /
   backups carry `device_keys` attestations, trusted only from a new group's
   inviter, our own devices or a user-started restore (source `attested` →
-  "vouched"). Unknown device → accepted, shown **unverified**.
-  `signatureStatus` derives verified / vouched / unverified / conflict /
-  legacy at display time.
+  "vouched"). **G18 review:** an attestation is stored **per group**
+  (`known_device_keys.attested_group`, part of the PK, schema v9) and only
+  vouches for that group's records; and a peer's attestation never vouches
+  for a device of an account whose first-hand (server) device list we hold
+  without it (`attestationVouches` — an account vouching for its own device,
+  e.g. our own backup, still counts). Unknown device → accepted, shown
+  **unverified**. `signatureStatus(sig, allKeys, group:)` derives verified /
+  vouched / unverified / conflict / legacy at display time.
 - **UI** (`record_attribution.dart`): edit-expense footer + payment dialog
   "Added by X · Last edited by Y" (details dialog: device + how verified, or
   vouched by whom; refused-newer-version notice); the list flags only key
@@ -469,12 +506,23 @@ connected + battery not low; `lib/core/background/`) fixes that:
   process but different isolates, each with its own Matrix client / Drift
   connection on the same files (Olm sessions!) — they must never overlap. Both
   register a port in the process-wide `IsolateNameServer` and ping the other
-  side (register first, check second; unanswered = stale mapping, removed). The
-  app claims its slot in `main()` **before** opening anything
-  (`prepareBackgroundSync`) and asks a running round to `stop` (it aborts and
-  closes its stores, bounded wait). A round that finds the app alive doesn't
-  touch the stores: it asks the app to `sync` (one `oneShotSync` in the app's
-  client) and keeps the process awake meanwhile.
+  side (register first, check second). **G18 review:** the round **never**
+  removes a mapping — a registered app that doesn't answer may just be busy,
+  so the round is skipped (it asks the app to `sync` instead: one
+  `oneShotSync` in the app's client, keeping the process awake). The app
+  claims its slot in `main()` **before** opening anything
+  (`prepareBackgroundSync`), asks a running round to `stop` and waits until
+  the round has released its slot (released only after its stores are
+  closed), answered `stopped`, or stayed silent for 10 s (dead isolate → the
+  app removes the stale mapping); meanwhile it shows *Finishing background
+  sync…* (`BackgroundSyncWaitApp`). `maxWait` (2 min) is only a last resort
+  against a wedged round (logged). A stopped round waits up to
+  `kBackgroundInFlightGrace` (10 s) for the step in flight (a `/sync`, a
+  digest broadcast, a session still opening) before it closes the stores. The
+  app gives its slot back when its engine detaches (`AppLifecycleListener
+  .onDetach` — backed out of; otherwise rounds would stay skipped until the
+  process dies). Gate logic is tested on a fake `PortRegistry`
+  (`test/core/background_gate_test.dart`).
 - Setting: per account, device-local `AppSettings` `background_sync_enabled`
   (default on), *Settings* sheet (gear) on the groups page;
   `backgroundSyncSchedulingProvider` (watched by `LedgerSyncHost`) registers /
@@ -552,8 +600,8 @@ re-written) and `RecordGate` (a not-newer version is a no-op before
 verification) — and in the digests: entries are `"<ms>:<hash8>"` (first 8 hex
 chars; prefix order agrees with full-hash order), meta has `meta_hash`, members
 are hashed from their gossiped versions. A digest entry without a hash (bare
-int) compares by clock only. Refusals (`rejected_versions`) stay per clock: a
-refused version at `T` blocks every version stamped `T`. **Cached hash (G37,
+int) compares by clock only. Refusals (`rejected_versions`) name the exact
+version (clock + hash, G18 review). **Cached hash (G37,
 schema v8):** expenses / settlements have a `version_hash` column; the DAO's
 LWW upsert stores the hash of what it wrote (only for a companion carrying
 the whole content — a partial one stores NULL), the v8 migration backfills
@@ -639,11 +687,15 @@ transactions (`RecordVerifier.prefetch` for every signer in the file; the
 restore verifier caches them 10 min), so a group is restored completely or
 not at all; a failing group is rolled back (incl. its cleared left-group
 tombstone), the others still restore, and `RestoreIncompleteException`
-reports it ("N groups couldn't be restored and were left unchanged").
+reports it ("N groups couldn't be restored and were left unchanged"). A group
+whose meta is refused isn't restored either — its transaction is rolled back
+too, so its left-group tombstone stays (G18 review).
 **G6:** every signed version is
 **verified** like an inbound record (a tampered one is refused, the rest
 restores); the file's `device_keys` are trusted as vouched-for keys (the user
-chose the file); unsigned rows (pre-G6 history) are restored as legacy. Export
+chose the file; scoped to their group); unsigned rows (pre-G6 history) are
+restored as legacy, and earlier sync refusals of the restored versions are
+cleared. Export
 includes `pending_sign` rows (unsigned) and the attestations. User
 intent, so **no membership gate**; a group this account had **left/deleted**
 here gets its `LeftGroupTombstone` cleared first (else the syncer would keep
@@ -773,8 +825,14 @@ the first, is used). Both preview and import resolve names with the pure
 `resolveCsvNames`. **Merge** is idempotent: ensure the group by `Group ID`
 (LWW-upsert meta, create if absent — a CSV with no id mints a UUIDv7), resolve
 participants **by display name**, then **LWW-upsert each expense / settlement
-by id** using `Updated At` as the clock. Re-importing never duplicates; merging
-into a live group lets the newer copy win. **G6:** the CSV has no signatures —
+by id** using `Updated At` as the clock (clamped to now — a far-future clock
+would win every later edit). Re-importing never duplicates; merging
+into a live group lets the newer copy win. **G18 review:** the import is
+**all-or-nothing** (one transaction): a money cell that isn't a finite,
+non-negative amount (`1,234.56` / `12,50` grouping is tolerated, `12,34.5`
+isn't) or a row breaking the record rules (`expenseProblem` /
+`settlementProblem`, e.g. shares not summing to the amount) aborts it with a
+`CsvImportException` ("Row N: …") and nothing is written. **G6:** the CSV has no signatures —
 every row that **wins** (new or newer than local) becomes a version signed by
 **the importing device** (as editor; new records also as creator, "added
 by"); rows that don't win are counted but never re-signed.
@@ -869,7 +927,8 @@ change.** Only the add/edit form changed.
 - **`split_calculator.dart`** (pure Dart, no Flutter/DB): `splitEqually`,
   `splitByShares`, `splitByPercent` all route through one `distributeByWeights`
   **largest-remainder** core — floor each share, then hand leftover cents to the
-  largest fractional remainders (deterministic by insertion order). Every mode
+  largest fractional remainders (ties broken by insertion order — an explicit
+  index tie-breaker, Dart's sort isn't stable beyond 32 elements). Every mode
   **sums to the total exactly** (this also fixed the old equal-split cent loss,
   where `round()` per person could drop a cent on e.g. 100¢ ÷ 3). Also
   `isEqualSplit(map)` (edit-mode inference) and `remainingForExact`.
@@ -913,7 +972,14 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
 - **Amounts/dates:** `context.money(cents, currency)` (`€1,234.50` /
   `1.234,50 €`, always 2 decimals) and `context.date(ms)`; editable amount
   fields prefill with `formatAmountInput` and parse with `parseAmountCents`,
-  which accepts `,` **and** `.` as decimal separator. The **CSV stays machine
+  which accepts `,` **and** `.` as decimal separator. G18 review: pass the UI
+  `locale:` — a **lone** locale grouping separator followed by exactly 3
+  digits is thousands (`de`: `1.234` = 1234; `en`: `1.234` stays 1.234,
+  `1,234` = 1234); malformed grouping (`12,34.5`) is rejected. The amount
+  fields show a live preview of the parsed value (`amountPreview`, "=
+  1.234,00 €"), and only accept 1 cent … `kMaxAmountCents` (the expense
+  form's *Add* and the payment dialog's *Record* stay disabled otherwise;
+  `SplitPlan.resolve` is never valid for such a total). The **CSV stays machine
   format** (dot decimals, ISO dates, English headers) in every language.
 - **Widget tests:** `testApp`/`testRouterApp` add the localization delegates
   (English by default, `locale: Locale('de')` for German tests); any other

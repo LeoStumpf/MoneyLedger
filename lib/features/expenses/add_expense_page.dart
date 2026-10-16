@@ -1,10 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/sync/record_validation.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/person_avatar.dart';
@@ -56,15 +55,22 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   SplitPlan? _plan;
 
   /// Accepts `,` and `.` as decimal separator (G12) — see
-  /// [parseAmountCents].
-  int get _amountCents => parseAmountCents(_amountCtrl.text) ?? 0;
+  /// [parseAmountCents]; the UI locale decides a lone grouping separator
+  /// (`1.234` in German = 1234, G18 review).
+  int? get _parsedCents =>
+      parseAmountCents(_amountCtrl.text, locale: context.localeName);
+
+  /// The amount if it is a storable one (1 cent … [kMaxAmountCents]), else
+  /// 0 — which no split accepts.
+  int get _amountCents {
+    final c = _parsedCents;
+    return c != null && isValidAmountCents(c) ? c : 0;
+  }
 
   Map<String, int>? get _initialSplit {
     final json = widget.initial?.splitsJson;
     if (json == null) return null;
-    return (jsonDecode(json) as Map).map(
-      (k, v) => MapEntry(k as String, (v as num).toInt()),
-    );
+    return tryParseSplit(json) ?? const {};
   }
 
   @override
@@ -289,6 +295,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                         0,
                                         context.localeName,
                                       ),
+                                      // G18 review: how the input was read
+                                      // (e.g. "= 1.234,00 €").
+                                      helperText: _amountCents > 0
+                                          ? l.amountPreview(
+                                              context.money(
+                                                _amountCents,
+                                                _currency,
+                                              ),
+                                            )
+                                          : null,
                                     ),
                                     keyboardType:
                                         const TextInputType.numberWithOptions(
@@ -300,8 +316,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                       if (v == null || v.isEmpty) {
                                         return l.required;
                                       }
-                                      if (parseAmountCents(v) == null) {
-                                        return l.invalidNumber;
+                                      final c = parseAmountCents(
+                                        v,
+                                        locale: context.localeName,
+                                      );
+                                      if (c == null) return l.invalidNumber;
+                                      if (c < 1) return l.amountMustBePositive;
+                                      if (c > kMaxAmountCents) {
+                                        return l.amountTooLarge;
                                       }
                                       return null;
                                     },

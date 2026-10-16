@@ -17,6 +17,13 @@ part of 'csv_import.dart';
 /// `Updated At` clock — so re-importing a backup is idempotent and merging
 /// into an existing group lets the newer copy win.
 ///
+/// G18 review: the import is **all-or-nothing** — one transaction; a row
+/// whose amount / shares can't be read or that breaks the record rules
+/// (`record_validation.dart`, e.g. shares not summing to the amount) aborts
+/// it with a [CsvImportException] and nothing is written. `Updated At` (and
+/// the date) are clamped to now: a far-future clock in a file would
+/// otherwise win every later edit.
+///
 /// G6: the CSV carries no signatures. A row that **wins** against the local
 /// copy (or is new) becomes a version signed by **this device as its
 /// editor** (new records also get this device as their creator, "added
@@ -39,6 +46,13 @@ final csvImporterProvider = CsvImporterProvider._();
 /// `Updated At` clock — so re-importing a backup is idempotent and merging
 /// into an existing group lets the newer copy win.
 ///
+/// G18 review: the import is **all-or-nothing** — one transaction; a row
+/// whose amount / shares can't be read or that breaks the record rules
+/// (`record_validation.dart`, e.g. shares not summing to the amount) aborts
+/// it with a [CsvImportException] and nothing is written. `Updated At` (and
+/// the date) are clamped to now: a far-future clock in a file would
+/// otherwise win every later edit.
+///
 /// G6: the CSV carries no signatures. A row that **wins** against the local
 /// copy (or is new) becomes a version signed by **this device as its
 /// editor** (new records also get this device as their creator, "added
@@ -58,6 +72,13 @@ final class CsvImporterProvider
   /// each expense / payment is **LWW-upserted by id** using the row's
   /// `Updated At` clock — so re-importing a backup is idempotent and merging
   /// into an existing group lets the newer copy win.
+  ///
+  /// G18 review: the import is **all-or-nothing** — one transaction; a row
+  /// whose amount / shares can't be read or that breaks the record rules
+  /// (`record_validation.dart`, e.g. shares not summing to the amount) aborts
+  /// it with a [CsvImportException] and nothing is written. `Updated At` (and
+  /// the date) are clamped to now: a far-future clock in a file would
+  /// otherwise win every later edit.
   ///
   /// G6: the CSV carries no signatures. A row that **wins** against the local
   /// copy (or is new) becomes a version signed by **this device as its
@@ -87,7 +108,7 @@ final class CsvImporterProvider
   CsvImporter create() => CsvImporter();
 }
 
-String _$csvImporterHash() => r'7ec72c9170ed710e0e774f71a5c03b67ecf90599';
+String _$csvImporterHash() => r'b57a6973d676a74b0bc509117437cc96636cbfe1';
 
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///
@@ -97,6 +118,13 @@ String _$csvImporterHash() => r'7ec72c9170ed710e0e774f71a5c03b67ecf90599';
 /// each expense / payment is **LWW-upserted by id** using the row's
 /// `Updated At` clock — so re-importing a backup is idempotent and merging
 /// into an existing group lets the newer copy win.
+///
+/// G18 review: the import is **all-or-nothing** — one transaction; a row
+/// whose amount / shares can't be read or that breaks the record rules
+/// (`record_validation.dart`, e.g. shares not summing to the amount) aborts
+/// it with a [CsvImportException] and nothing is written. `Updated At` (and
+/// the date) are clamped to now: a far-future clock in a file would
+/// otherwise win every later edit.
 ///
 /// G6: the CSV carries no signatures. A row that **wins** against the local
 /// copy (or is new) becomes a version signed by **this device as its

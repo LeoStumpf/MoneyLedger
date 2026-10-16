@@ -73,9 +73,14 @@ int calendarDaysAgo(int msEpoch, {DateTime? now}) {
 ///    is grouping: `1.234,50` / `1,234.50` → 1234.5
 ///  * one kind repeated → grouping: `1.234.567` → 1234567
 ///  * spaces / `'` (Swiss grouping) are ignored.
-/// Returns null for anything else (letters, empty, `1,2.3,4`).
-double? parseLocalizedDecimal(String input) {
-  var s = input.trim().replaceAll(RegExp("[\\s  ']"), '');
+///  * G18 review: with a [locale], a **lone** occurrence of that locale's
+///    grouping separator followed by exactly three digits is grouping — `de`:
+///    `1.234` → 1234 (en: `1.234` stays 1.234; `en`: `1,234` → 1234).
+/// Grouping must be well-formed (first group 1–3 digits, then groups of
+/// exactly 3): `12,34.5` → null. Returns null for anything else (letters,
+/// empty, `1,2.3,4`, non-finite).
+double? parseLocalizedDecimal(String input, {String? locale}) {
+  var s = input.trim().replaceAll(RegExp("[\\s  ']"), '');
   if (s.isEmpty) return null;
   final lastComma = s.lastIndexOf(',');
   final lastDot = s.lastIndexOf('.');
@@ -84,20 +89,61 @@ double? parseLocalizedDecimal(String input) {
     final grouping = decimal == ',' ? '.' : ',';
     // The decimal separator must occur once, after every grouping separator.
     if (s.indexOf(decimal) != s.lastIndexOf(decimal)) return null;
+    final at = s.indexOf(decimal);
+    if (!_wellGrouped(s.substring(0, at), grouping)) return null;
     s = s.replaceAll(grouping, '').replaceAll(decimal, '.');
   } else {
     final sep = lastComma >= 0 ? ',' : (lastDot >= 0 ? '.' : null);
     if (sep != null) {
       final count = sep.allMatches(s).length;
-      s = count == 1 ? s.replaceAll(sep, '.') : s.replaceAll(sep, '');
+      final lone = count == 1;
+      final asGrouping =
+          !lone ||
+          (locale != null &&
+              sep == _groupingSeparator(locale) &&
+              RegExp(r'^-?\d+$').hasMatch(s.substring(0, s.indexOf(sep))) &&
+              RegExp(r'^\d{3}$').hasMatch(s.substring(s.indexOf(sep) + 1)));
+      if (asGrouping) {
+        if (!_wellGrouped(s, sep)) return null;
+        s = s.replaceAll(sep, '');
+      } else {
+        s = s.replaceAll(sep, '.');
+      }
     }
   }
   if (!RegExp(r'^-?(\d+\.?\d*|\.\d+)$').hasMatch(s)) return null;
-  return double.tryParse(s);
+  final v = double.tryParse(s);
+  return v != null && v.isFinite ? v : null;
 }
 
-/// [parseLocalizedDecimal] in integer cents (rounded), or null.
-int? parseAmountCents(String input) {
-  final v = parseLocalizedDecimal(input);
-  return v == null ? null : (v * 100).round();
+/// Whether [intPart] uses [sep] as well-formed thousands grouping: no
+/// separator at all, or a first group of 1–3 digits followed by groups of
+/// exactly 3 (`1,234,567`; not `12,34`).
+bool _wellGrouped(String intPart, String sep) {
+  final digits = intPart.startsWith('-') ? intPart.substring(1) : intPart;
+  if (!digits.contains(sep)) return true;
+  final groups = digits.split(sep);
+  if (!RegExp(r'^\d{1,3}$').hasMatch(groups.first)) return false;
+  return groups.skip(1).every((g) => RegExp(r'^\d{3}$').hasMatch(g));
+}
+
+/// The grouping separator of [locale] (`,` en, `.` de), or null.
+String? _groupingSeparator(String locale) {
+  try {
+    return NumberFormat.decimalPattern(locale).symbols.GROUP_SEP;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// [parseLocalizedDecimal] in integer cents (rounded), or null. Pass the UI
+/// [locale] for user input (see the `1.234` rule there).
+int? parseAmountCents(String input, {String? locale}) {
+  final v = parseLocalizedDecimal(input, locale: locale);
+  if (v == null) return null;
+  final cents = v * 100;
+  // Beyond 2^53 a double can't hold whole cents (and round() would throw on
+  // infinity); far above any valid amount anyway.
+  if (cents.abs() > 9007199254740991) return null;
+  return cents.round();
 }

@@ -19,6 +19,18 @@ enum RejectReason {
   originChanged('origin_changed'),
   keyConflict('key_conflict'),
   wrongSigner('wrong_signer'),
+
+  /// G18 review: the content is malformed or out of range (split not a
+  /// `{participant: cents}` map summing to the amount, amount outside
+  /// 1 … `kMaxAmountCents`, a payment to oneself, …) — see
+  /// `record_validation.dart`. Objective, so recorded like a bad signature.
+  invalid('invalid_record'),
+
+  /// G18 review: the version's signer is no participant of the record's
+  /// group (or signed it after being removed). Not recorded: the member
+  /// record that makes the signer a participant may simply not have arrived
+  /// yet — the version is re-offered by the next repair.
+  signerNotMember('signer_not_member', recorded: false),
   futureClock('future_clock', recorded: false);
 
   const RejectReason(this.wire, {this.recorded = true});
@@ -76,6 +88,7 @@ class RecordVerifier {
   final Map<String, Map<String, String>> _lastDevices = {};
 
   Future<Verdict> expense(ExpenseModel e, {ExpenseModel? stored}) => _check(
+    group: e.roomId,
     sig: e.sig,
     updatedAt: e.updatedAt,
     body: (s) => expenseBody(e, s),
@@ -87,6 +100,7 @@ class RecordVerifier {
 
   Future<Verdict> settlement(SettlementModel s, {SettlementModel? stored}) =>
       _check(
+        group: s.roomId,
         sig: s.sig,
         updatedAt: s.updatedAt,
         body: (id) => settlementBody(s, id),
@@ -99,6 +113,7 @@ class RecordVerifier {
   /// [requiredSigner]: the account that must have signed (a non-member's
   /// self-claim / join must be signed by the claimant itself).
   Future<Verdict> member(MemberModel m, {String? requiredSigner}) => _check(
+    group: m.groupId,
     sig: m.sig,
     updatedAt: m.updatedAt,
     body: (s) => memberBody(m, s),
@@ -106,12 +121,14 @@ class RecordVerifier {
   );
 
   Future<Verdict> meta(GroupModel g) => _check(
+    group: g.roomId,
     sig: g.sig,
     updatedAt: g.updatedAt,
     body: (s) => groupMetaBody(g, s),
   );
 
   Future<Verdict> _check({
+    required String group,
     required RecordSignature? sig,
     required int updatedAt,
     required Map<String, Object?> Function(SignerId) body,
@@ -120,10 +137,14 @@ class RecordVerifier {
     RecordSignature? storedOrigin,
     String? requiredSigner,
   }) async {
-    if (sig == null) return const Verdict.reject(RejectReason.unsigned);
+    // G18 review: the clock first — a far-future version is only ever
+    // dropped (transient), never recorded as refused, signed or not: a
+    // recorded refusal at a far-future clock used to block every later
+    // version of the record.
     if (updatedAt > _clock() + kSignedClockSkewTolerance.inMilliseconds) {
       return const Verdict.reject(RejectReason.futureClock);
     }
+    if (sig == null) return const Verdict.reject(RejectReason.unsigned);
     if (!signatureMatches(crypto, body(signerOf(sig)), sig)) {
       return const Verdict.reject(RejectReason.badSignature);
     }
@@ -138,10 +159,10 @@ class RecordVerifier {
     if (storedOrigin != null && origin != storedOrigin) {
       return const Verdict.reject(RejectReason.originChanged);
     }
-    if (await _conflicts(sig)) {
+    if (await _conflicts(sig, group)) {
       return const Verdict.reject(RejectReason.keyConflict);
     }
-    if (origin != null && origin != sig && await _conflicts(origin)) {
+    if (origin != null && origin != sig && await _conflicts(origin, group)) {
       return const Verdict.reject(RejectReason.keyConflict);
     }
     return Verdict.accept;
@@ -151,15 +172,25 @@ class RecordVerifier {
   /// device): the homeserver lists the device with another key, or we pinned
   /// another key for it from the server earlier (and the server no longer
   /// lists it). Unknown devices are no conflict (accepted as unverified).
-  Future<bool> _conflicts(RecordSignature s) async {
+  Future<bool> _conflicts(RecordSignature s, String group) async {
     final pins = await signing.keysFor(s.user, s.device);
     if (pins.any((p) => p.isServer && p.key == s.key)) return false;
     // Unknown, or only vouched for: ask the homeserver (a first-hand pin
     // upgrades a vouched-for key).
-    final current = (await _currentDevices(s.user))?[s.device];
+    final devices = await _currentDevices(s.user);
+    final current = devices?[s.device];
     if (current == s.key) return false;
     if (current != null) return true; // first-hand beats a vouched-for key
-    if (pins.any((p) => p.key == s.key)) return false; // vouched for
+    // Vouched for — only by an attestation of this record's group, and never
+    // against a server device list of the user that lacks the device.
+    final userListed = devices != null && devices.isNotEmpty;
+    if (pins.any(
+      (p) =>
+          p.key == s.key &&
+          attestationVouches(p, group: group, userHasServerKeys: userListed),
+    )) {
+      return false;
+    }
     return pins.any((p) => p.isServer);
   }
 
@@ -239,16 +270,46 @@ enum SigStatus {
 
 typedef SignatureState = ({SigStatus status, String? vouchedBy});
 
-/// The [SigStatus] of [sig] given every pinned key in [keys].
-SignatureState signatureStatus(RecordSignature? sig, Iterable<KnownKey> keys) {
+/// Whether the attested pin [k] vouches for a signature on a record of
+/// [group] (G18 review): it must come from a snapshot of **that** group, and
+/// — unless the account vouches for its own device (our own devices'
+/// bootstraps, our own backup) — the signer's account must have no
+/// first-hand (server) keys here: a homeserver device list that doesn't
+/// contain the device beats a peer's word that it exists. A server pin is
+/// never an attestation.
+bool attestationVouches(
+  KnownKey k, {
+  required String? group,
+  required bool userHasServerKeys,
+}) =>
+    !k.isServer &&
+    group != null &&
+    k.group == group &&
+    (k.attestedBy == k.user || !userHasServerKeys);
+
+/// The [SigStatus] of [sig] on a record of [group] given every pinned key in
+/// [keys] (pass all keys: whether the signer's account has first-hand keys
+/// at all decides whether an attestation may vouch, [attestationVouches]).
+SignatureState signatureStatus(
+  RecordSignature? sig,
+  Iterable<KnownKey> keys, {
+  String? group,
+}) {
   if (sig == null) return (status: SigStatus.legacy, vouchedBy: null);
   String? vouchedBy;
   var otherServerKey = false;
+  final userHasServerKeys = keys.any((k) => k.user == sig.user && k.isServer);
   for (final k in keys) {
     if (k.user != sig.user || k.device != sig.device) continue;
     if (k.key == sig.key) {
       if (k.isServer) return (status: SigStatus.verified, vouchedBy: null);
-      vouchedBy ??= k.attestedBy ?? '';
+      if (attestationVouches(
+        k,
+        group: group,
+        userHasServerKeys: userHasServerKeys,
+      )) {
+        vouchedBy ??= k.attestedBy ?? '';
+      }
     } else if (k.isServer) {
       otherServerKey = true;
     }

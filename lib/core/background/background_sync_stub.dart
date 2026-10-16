@@ -10,7 +10,7 @@ import 'background_scheduler.dart';
 bool get backgroundSyncSupported => false;
 
 /// App start, before the Matrix client / ledger DB are opened. No-op.
-Future<void> prepareBackgroundSync() async {}
+Future<void> prepareBackgroundSync({void Function()? onWaiting}) async {}
 
 /// Lets a background round delegate to the running app. No-op.
 void attachForegroundSync(ProviderContainer container) {}

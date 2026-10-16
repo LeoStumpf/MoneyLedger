@@ -213,7 +213,16 @@ class BackupService {
             relayedBy: backup.account ?? t.userId,
             trustAttestations: true,
           );
+          if (!_alive) return;
+          // G18 review: the group's meta was refused → nothing restored; roll
+          // the cleared left-group tombstone (and anything else) back.
+          if (await groups.getGroup(gid) == null) {
+            throw const _GroupNotRestored();
+          }
         });
+      } on _GroupNotRestored {
+        debugPrint('[backup] $gid not restored: its group meta was refused');
+        continue;
       } catch (e) {
         if (!_alive) return restored;
         debugPrint('[backup] restore of $gid failed, rolled back: $e');
@@ -228,6 +237,12 @@ class BackupService {
     }
     return restored;
   }
+}
+
+/// Aborts (rolls back) a group's restore transaction whose group meta was
+/// refused — e.g. so its left-group tombstone isn't cleared for nothing.
+class _GroupNotRestored implements Exception {
+  const _GroupNotRestored();
 }
 
 /// Some groups of a backup couldn't be restored (each was rolled back as a

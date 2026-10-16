@@ -737,6 +737,13 @@ Future<void> importCsvWithPreview(BuildContext context, WidgetRef ref) async {
         ),
       ),
     );
+  } on CsvImportException catch (e) {
+    // G18 review: nothing was imported (all-or-nothing).
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l.importFailed(l.csvImportInvalidRow(e.row, e.problem))),
+      ),
+    );
   } catch (e) {
     messenger.showSnackBar(
       SnackBar(content: Text(l.importFailed(e.toString()))),

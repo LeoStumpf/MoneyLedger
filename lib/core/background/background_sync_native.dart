@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
@@ -37,11 +38,12 @@ bool get backgroundSyncSupported => Platform.isAndroid;
 
 /// App start (`main()`), **before** the Matrix client / ledger DB are opened:
 /// registers the app with the [AppIsolateGate] (waiting for a running
-/// background round to close its stores) and initializes WorkManager.
-Future<void> prepareBackgroundSync() async {
+/// background round to close its stores — meanwhile [onWaiting] shows
+/// "Finishing background sync…", G18 review) and initializes WorkManager.
+Future<void> prepareBackgroundSync({void Function()? onWaiting}) async {
   if (!backgroundSyncSupported) return;
   try {
-    await AppIsolateGate.instance.claim();
+    await AppIsolateGate.instance.claim(onWaiting: onWaiting);
   } catch (e) {
     debugPrint('[bg-gate] claim failed: $e');
   }
@@ -57,6 +59,17 @@ Future<void> prepareBackgroundSync() async {
 /// digests (5 s debounce) go out while WorkManager keeps the process awake.
 void attachForegroundSync(ProviderContainer container) {
   if (!backgroundSyncSupported) return;
+  // G18 review: the background side never treats a registered app as stale,
+  // so the app gives its slot back when its engine detaches (the activity is
+  // finishing — e.g. backed out of; the isolate ends right after). Otherwise
+  // the dead app's mapping would keep every round skipped until the process
+  // dies.
+  _lifecycle ??= AppLifecycleListener(
+    onDetach: () {
+      debugPrint('[bg-gate] app detached — releasing the app slot');
+      AppIsolateGate.instance.release();
+    },
+  );
   AppIsolateGate.instance.onSyncRequest = () async {
     final client = await container
         .read(matrixClientProvider.future)
@@ -67,6 +80,8 @@ void attachForegroundSync(ProviderContainer container) {
     await Future<void>.delayed(const Duration(seconds: 7));
   };
 }
+
+AppLifecycleListener? _lifecycle;
 
 BackgroundScheduler createPlatformBackgroundScheduler() =>
     backgroundSyncSupported
@@ -144,10 +159,12 @@ void backgroundSyncDispatcher() {
 Future<BackgroundRoundResult?> runBackgroundTask() async {
   final gate = BackgroundIsolateGate();
   if (await gate.appAlive()) {
+    // A registered app that doesn't answer is busy (or detaching): never
+    // touch the stores then — skip; the next periodic run retries.
     final ok = await gate.delegateToApp(_delegateTimeout);
     debugPrint(
-      '[bg] app is running — delegated to it '
-      '(${ok ? 'done' : 'no answer'})',
+      '[bg] app is registered — delegated to it '
+      '(${ok ? 'done' : 'no answer: round skipped'})',
     );
     return null;
   }

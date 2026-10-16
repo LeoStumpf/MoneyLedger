@@ -201,6 +201,42 @@ Attestations relayed by another member for a known group are ignored. A `server`
 5. **Disagreement between honest devices.** An honest device that accepted M's fabricated-device version as "unverified", while another device that knew a conflicting pin rejected it, can end up holding different versions. The `rejected` digest map stops the repair loop and both sides surface it in the UI. Divergence beats accepting a provable forgery. It is **not auto-resolved** — it lasts until the record is edited again (a newer verifiable version wins everywhere).
 6. **Legacy (pre-G6) rows can't be relayed** (G35, decided: no migration). Unsigned rows stay readable locally but are refused by every peer, so an old group can't onboard a new member or a new device (unsigned meta → whole snapshot refused; unsigned records → the group arrives incomplete). The app is unreleased and only the test groups have such rows, so there is no "re-sign as migrated" step; the test groups are recreated before the release. The receiver logs `[g6] refused unsigned …` and the groups page shows a dismissible hint naming the group and the sender (`RecordGate.onRefused` → `SyncHealth.reportLegacyRefused`).
 
+**G18 security review (pre-release) — changes to the above.**
+
+- **Attestations are group-scoped.** `known_device_keys` gained
+  `attested_group` (schema v9, part of the PK): a snapshot's `device_keys`
+  vouch only for records of **that** snapshot's group. Before, a stranger's
+  throwaway TOFU bootstrap could pin an invented device of X account-wide and
+  make a forged version in another group show as "vouched". Also, a peer's
+  attestation never vouches for a device of an account whose first-hand
+  device list we hold without that device (`attestationVouches`); an account
+  vouching for its **own** device (our own devices' bootstraps, our own
+  backup) still counts. Residual risk 2 (malicious inviter) is therefore
+  limited to the inviter's own group and to accounts we have no first-hand
+  device list for. The pre-v9 (account-wide) attestations were dropped by the
+  migration.
+- **Snapshots only touch their own group.** Every nested entry of a
+  bootstrap / restored group must name the snapshot's group
+  (`snapshotEntries`); the sender gate only ever checked the outer group.
+- **Signer rule (defence in depth).** The signer of an expense / payment /
+  meta version must claim a participant of the record's group (removed: only
+  versions not newer than the removal) or be the relaying account —
+  otherwise the version is dropped (`signer_not_member`, transient). Known
+  limitation: after **unclaiming** (detaching) an account, versions it signed
+  are only accepted from that account itself — a device that never held them
+  (a new member) doesn't get them via others' relays (documented in
+  `docs/open-points.md`).
+- **Refusals are exact.** A refusal blocks exactly the refused version
+  (clock + G27 hash, `rejected_versions.version_hash`); the digest `rejected`
+  map carries `"<ms>:<hash8>"`. A far-future clock is checked before
+  anything else and never recorded. §6.1/§6.3 "refused at or above the clock"
+  is superseded.
+- **Content validation.** Invalid expenses / payments (split / amount rules,
+  `record_validation.dart`) are refused as `invalid_record` (recorded).
+- **Membership.** A non-member can no longer self-claim, join as new or
+  rejoin (§6.1 `member_self_claim` is moot): an active member assigns the
+  slot (invite / claim).
+
 **Status (G35 review).** Risks 1–3 and 5 are accepted for v1 and listed in `docs/open-points.md`. 1 and 2 **need cross-signing** (future item: set up cross-signing for in-app accounts, then treat SSK-signed devices as verified and, optionally, refuse unknown devices of accounts that have it); G11's opt-in verified-only sync narrows 3 for outbound data only.
 
 ## 6. Reception policy

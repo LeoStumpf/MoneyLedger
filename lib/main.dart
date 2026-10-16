@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'app.dart';
 import 'core/background/background_sync.dart';
+import 'core/background/background_wait_app.dart';
 import 'core/demo/demo_mode.dart';
 import 'core/matrix/crypto_status.dart';
 import 'core/demo/demo_overrides.dart';
@@ -62,8 +63,11 @@ Future<void> main() async {
   // G31: take the app's slot before the Matrix store / ledger DB are opened —
   // a periodic background sync round running in this process (Android
   // WorkManager) is asked to stop and close its stores first, so the two
-  // never write the same Olm/sync state concurrently. No-op on web.
-  await prepareBackgroundSync();
+  // never write the same Olm/sync state concurrently — meanwhile a small
+  // "Finishing background sync…" screen is shown (G18 review). No-op on web.
+  await prepareBackgroundSync(
+    onWaiting: () => runApp(const BackgroundSyncWaitApp()),
+  );
   // Initialize the vodozemac crypto backend BEFORE any Matrix client is built.
   // The Matrix SDK only enables E2EE when vod.isInitialized() is true (see
   // client.dart), so without this, sendToDeviceEncrypted is a silent no-op.

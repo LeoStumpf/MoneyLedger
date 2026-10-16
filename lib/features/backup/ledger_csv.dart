@@ -23,8 +23,8 @@
 /// `ledger_backup.dart`, for a lossless copy).
 library;
 
-import 'dart:convert';
-
+import '../../core/l10n/formatting.dart' show parseLocalizedDecimal;
+import '../../core/sync/record_validation.dart';
 import '../../models/expense_category.dart' show normalizeNote;
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
@@ -84,9 +84,7 @@ String buildGroupCsv(
   final rows = <List<String>>[header];
   for (final e in expenses) {
     if (e.deleted) continue;
-    final splits = (jsonDecode(e.splitsJson) as Map).map(
-      (k, v) => MapEntry(k as String, (v as num).toInt()),
-    );
+    final splits = tryParseSplit(e.splitsJson) ?? const <String, int>{};
     // Share per column, keyed by the column participant's id.
     final shareByColName = <String, String>{};
     for (final m in cols) {
@@ -150,8 +148,14 @@ class ParsedExpenseRow {
   /// [sharesByName]. See [paymentRecipient].
   final bool isPayment;
 
+  /// G18 review: why a cell of this row couldn't be read (an amount / share
+  /// that isn't a finite, non-negative number of at most 2 decimals' worth
+  /// of cents), or null. The import refuses the whole file then.
+  final String? problem;
+
   const ParsedExpenseRow({
     this.isPayment = false,
+    this.problem,
     required this.id,
     required this.createdAt,
     required this.updatedAt,
@@ -234,12 +238,19 @@ ParsedCsv parseGroupCsv(String csv) {
     groupName ??= at(iGroup).isEmpty ? null : at(iGroup);
 
     final shares = <String, int>{};
+    String? problem;
     for (final c in shareCols) {
       final v = at(c).trim();
       if (v.isEmpty) continue;
       final cents = _parseMoney(v);
-      if (cents != null) shares[header[c]] = cents;
+      if (cents != null) {
+        shares[header[c]] = cents;
+      } else {
+        problem ??= 'share "$v" of ${header[c]}';
+      }
     }
+    final amount = _parseMoney(at(iAmt));
+    if (amount == null) problem ??= 'amount "${at(iAmt)}"';
     final created = DateTime.tryParse(at(iDate))?.millisecondsSinceEpoch;
     final updated = int.tryParse(at(iUpd).trim());
     rows.add(
@@ -250,7 +261,8 @@ ParsedCsv parseGroupCsv(String csv) {
         updatedAt: updated ?? created ?? 0,
         description: at(iDesc),
         currency: at(iCur).isEmpty ? 'EUR' : at(iCur),
-        amountCents: _parseMoney(at(iAmt)) ?? 0,
+        amountCents: amount ?? 0,
+        problem: problem,
         paidByName: at(iPaid),
         sharesByName: shares,
         category: at(iCat).trim().isEmpty ? null : at(iCat).trim(),
@@ -269,9 +281,14 @@ ParsedCsv parseGroupCsv(String csv) {
 // ── money helpers ──────────────────────────────────────────────────────────
 String _money(int cents) => (cents / 100).toStringAsFixed(2);
 
+/// A money cell in cents: finite, non-negative, at most [kMaxAmountCents].
+/// Machine format is `1234.50`; a spreadsheet's `1,234.56` / `12,50` /
+/// `1.234,56` is tolerated (well-formed grouping only — G18 review).
 int? _parseMoney(String s) {
-  final d = double.tryParse(s.trim().replaceAll(',', '.'));
-  return d == null ? null : (d * 100).round();
+  final d = parseLocalizedDecimal(s);
+  if (d == null || d < 0 || d > kMaxAmountCents / 100) return null;
+  final cents = (d * 100).round();
+  return cents <= kMaxAmountCents ? cents : null;
 }
 
 // ── minimal RFC4180 CSV encode/decode ────────────────────────────────────────

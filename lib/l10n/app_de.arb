@@ -438,5 +438,12 @@
   "debugRunBackgroundSyncBody": "Plant eine Hintergrundrunde in {seconds} s ein – schließe die App, um sie ohne App zu testen.",
   "debugRunBackgroundSyncQueued": "Hintergrundrunde eingeplant.",
   "authInProgressTitle": "Die Anmeldung läuft noch…",
-  "authInProgressHint": "Der vorherige Versuch wartet noch auf den Server. Klappt er, wirst du automatisch angemeldet – sonst versuche es gleich noch einmal."
+  "authInProgressHint": "Der vorherige Versuch wartet noch auf den Server. Klappt er, wirst du automatisch angemeldet – sonst versuche es gleich noch einmal.",
+  "inviteWhoIs": "Wer ist {userId} in dieser Gruppe?",
+  "inviteAsNewParticipant": "Eine neue Person",
+  "amountPreview": "= {amount}",
+  "amountMustBePositive": "Gib einen Betrag größer als 0 ein",
+  "amountTooLarge": "Dieser Betrag ist zu groß",
+  "finishingBackgroundSync": "Hintergrund-Synchronisierung wird abgeschlossen …",
+  "csvImportInvalidRow": "Zeile {row}: {problem}"
 }

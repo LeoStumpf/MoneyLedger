@@ -214,8 +214,8 @@ void main() {
     await net.settle();
     final carolRow = await c.read(expensesDaoProvider).getExpenseById(e.id);
     expect(carolRow, isNotNull);
-    final carolKeys = await c.read(signingDaoProvider).keysFor(alice, 'D1');
-    final status = signatureStatus(carolRow!.sig, carolKeys);
+    final carolKeys = await c.read(signingDaoProvider).allKeys();
+    final status = signatureStatus(carolRow!.sig, carolKeys, group: groupId);
     expect(status.status, SigStatus.vouched);
     expect(status.vouchedBy, bob);
   });

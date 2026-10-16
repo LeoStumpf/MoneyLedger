@@ -193,6 +193,41 @@ void main() {
       expect(find.text('Failed: Bad state: db closed'), findsOneWidget);
     });
 
+    // G18 review: the inviter decides which participant the invited account
+    // becomes (a local person or a new participant).
+    for (final (choice, expected) in [('Cash', 'p-uuid'), ('new', null)]) {
+      testWidgets('invite asks who the account is → $choice', (tester) async {
+        final adder = _RecordingAdder();
+        await tester.pumpWidget(
+          testApp(
+            const GroupMembersPage(roomId: 'g1'),
+            overrides: [
+              ...overridesFor([
+                claimed('@alice:x.org', name: 'Alice'),
+                local('p-uuid', 'Cash'),
+              ], '@alice:x.org'),
+              memberAdderProvider.overrideWith(() => adder),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.share_outlined));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), '@bob:y.org');
+        await tester.tap(find.text('Invite'));
+        await tester.pumpAndSettle();
+        expect(find.text('Who is @bob:y.org in this group?'), findsOneWidget);
+        await tester.tap(
+          choice == 'new'
+              ? find.byKey(const Key('inviteAsNew'))
+              : find.text(choice).last,
+        );
+        await tester.pumpAndSettle();
+        expect(adder.invites, [('@bob:y.org', expected)]);
+      });
+    }
+
     testWidgets('a cancelled action shows no stale error', (tester) async {
       await tester.pumpWidget(
         testApp(
@@ -228,4 +263,18 @@ class _FailingAdder extends MemberAdder {
   Future<void> rename(String groupId, String participantId, String name) async {
     state = AsyncError(StateError('db closed'), StackTrace.current);
   }
+}
+
+class _RecordingAdder extends MemberAdder {
+  final invites = <(String, String?)>[];
+
+  @override
+  AsyncValue<void> build() => const AsyncData(null);
+
+  @override
+  Future<void> invite(
+    String groupId,
+    String matrixId, {
+    String? participantId,
+  }) async => invites.add((matrixId, participantId));
 }

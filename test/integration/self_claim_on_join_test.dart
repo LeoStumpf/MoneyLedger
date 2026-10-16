@@ -1,7 +1,8 @@
-/// Self-claim on join (virtual users, M6): a sharer invites a Matrix account
-/// without assigning them a slot; the invitee receives the whole group and then
-/// links themselves to an existing local participant (or joins as new) — no
-/// duplicate participant, history preserved.
+/// Joining a group (virtual users, M6; G18 review): the **inviter** decides
+/// which participant an invited Matrix account becomes — an existing local
+/// person (history kept, no duplicate) or a new participant. The invitee then
+/// receives the group as an active member. A non-member can no longer make
+/// itself a participant (self-claim / join-as-new / rejoin): peers refuse it.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,7 +43,83 @@ void main() {
     return groups.first.roomId;
   }
 
-  test('an invited user self-claims an existing local participant', () async {
+  test(
+    'the inviter assigns an existing local participant to the invitee',
+    () async {
+      final net = FakeMatrixNetwork();
+      final alice = makeUser(net, '@alice:x.org');
+      final bob = makeUser(net, '@bob:y.org');
+      await net.settle();
+
+      final groupId = await createGroupAs(alice, 'Trip', 'EUR');
+      await alice.read(memberAdderProvider.notifier).addLocal(groupId, 'Bobby');
+      await net.settle();
+      final bobby = (await alice.read(membersDaoProvider).getMembers(groupId))
+          .firstWhere((m) => m.displayName == 'Bobby');
+
+      // Alice invites Bob's account as "Bobby".
+      await alice
+          .read(memberAdderProvider.notifier)
+          .invite(groupId, '@bob:y.org', participantId: bobby.userId);
+      expect(alice.read(memberAdderProvider).hasError, isFalse);
+      await net.settle();
+
+      for (final c in [alice, bob]) {
+        final self = await c
+            .read(membersDaoProvider)
+            .memberByMatrixId(groupId, '@bob:y.org');
+        expect(self?.userId, bobby.userId);
+        expect(self?.displayName, 'Bobby');
+        expect(self?.isActive, isTrue);
+        expect(
+          await c.read(membersDaoProvider).getMembers(groupId),
+          hasLength(2), // alice + bobby, no dupe
+        );
+      }
+
+      // Bob is a full member: his records reach Alice.
+      await bob
+          .read(expenseAdderProvider.notifier)
+          .addExpense(
+            roomId: groupId,
+            description: 'Taxi',
+            amountCents: 1000,
+            currency: 'EUR',
+            paidBy: bobby.userId,
+            splits: {bobby.userId: 500, '@alice:x.org': 500},
+          );
+      await net.settle();
+      expect(
+        (await alice.read(expensesDaoProvider).getExpensesForRoom(groupId)).map(
+          (e) => e.description,
+        ),
+        contains('Taxi'),
+      );
+    },
+  );
+
+  test('without a pick the invitee becomes a new participant', () async {
+    final net = FakeMatrixNetwork();
+    final alice = makeUser(net, '@alice:x.org');
+    final bob = makeUser(net, '@bob:y.org');
+    await net.settle();
+
+    final groupId = await createGroupAs(alice, 'Trip', 'EUR');
+    await alice
+        .read(memberAdderProvider.notifier)
+        .invite(groupId, '@bob:y.org');
+    await net.settle();
+
+    for (final c in [alice, bob]) {
+      final self = await c
+          .read(membersDaoProvider)
+          .memberByMatrixId(groupId, '@bob:y.org');
+      expect(self?.isActive, isTrue);
+    }
+  });
+
+  // G18 review: the old invitee-driven flow is refused by peers.
+  test("a non-member's self-claim / join-as-new is refused by peers", () async {
     final net = FakeMatrixNetwork();
     final alice = makeUser(net, '@alice:x.org');
     final bob = makeUser(net, '@bob:y.org');
@@ -51,75 +128,34 @@ void main() {
     final groupId = await createGroupAs(alice, 'Trip', 'EUR');
     await alice.read(memberAdderProvider.notifier).addLocal(groupId, 'Bobby');
     await net.settle();
-
-    // Alice invites Bob's account — shares the group, assigns no slot.
+    // Bob somehow holds the group (e.g. an old slot-less invite) …
     await alice
         .read(memberAdderProvider.notifier)
-        .invite(groupId, '@bob:y.org');
-    expect(alice.read(memberAdderProvider).hasError, isFalse);
+        .claim(
+          groupId,
+          (await alice.read(membersDaoProvider).getMembers(groupId))
+              .firstWhere((m) => m.displayName == 'Bobby')
+              .userId,
+          '@bob:y.org',
+        );
     await net.settle();
-
-    // Bob received the group but is nobody yet.
-    expect(
-      await bob
-          .read(membersDaoProvider)
-          .memberByMatrixId(groupId, '@bob:y.org'),
-      isNull,
-    );
-    final bobby = (await bob.read(membersDaoProvider).getMembers(groupId))
-        .firstWhere((m) => m.displayName == 'Bobby');
-    expect(bobby.matrixId, isNull);
-
-    // Bob recognises himself as "Bobby" and self-claims.
-    await bob
-        .read(memberAdderProvider.notifier)
-        .selfClaim(groupId, bobby.userId);
-    expect(bob.read(memberAdderProvider).hasError, isFalse);
-    await net.settle();
-
-    // Bob is now that participant (same ledger identity)...
-    final bobSelf = await bob
+    final bobby = await alice
         .read(membersDaoProvider)
         .memberByMatrixId(groupId, '@bob:y.org');
-    expect(bobSelf?.userId, bobby.userId);
-    expect(bobSelf?.displayName, 'Bobby');
-
-    // ...and Alice sees the claim with no duplicate participant.
-    final aliceBobby = await alice
-        .read(membersDaoProvider)
-        .memberByMatrixId(groupId, '@bob:y.org');
-    expect(aliceBobby?.userId, bobby.userId);
-    expect(aliceBobby?.displayName, 'Bobby');
-    final aliceMembers = await alice
-        .read(membersDaoProvider)
-        .getMembers(groupId);
-    expect(aliceMembers, hasLength(2)); // alice + bobby, no dupe
-  });
-
-  test('an invited user can join as a brand-new participant', () async {
-    final net = FakeMatrixNetwork();
-    final alice = makeUser(net, '@alice:x.org');
-    final bob = makeUser(net, '@bob:y.org');
-    await net.settle();
-
-    final groupId = await createGroupAs(alice, 'Trip', 'EUR');
+    // … and is removed again.
     await alice
-        .read(memberAdderProvider.notifier)
-        .invite(groupId, '@bob:y.org');
+        .read(memberRemoverProvider.notifier)
+        .remove(groupId, bobby!.userId);
     await net.settle();
 
+    // Joining as a new participant on his own: Alice refuses.
     await bob.read(memberAdderProvider.notifier).joinAsNew(groupId, 'Bob');
-    expect(bob.read(memberAdderProvider).hasError, isFalse);
     await net.settle();
-
-    final bobSelf = await bob
-        .read(membersDaoProvider)
-        .memberByMatrixId(groupId, '@bob:y.org');
-    expect(bobSelf?.displayName, 'Bob');
-    // Alice learns about the new participant.
-    final aliceBob = await alice
-        .read(membersDaoProvider)
-        .memberByMatrixId(groupId, '@bob:y.org');
-    expect(aliceBob?.displayName, 'Bob');
+    final aliceView = await alice.read(membersDaoProvider).getMembers(groupId);
+    expect(
+      aliceView.where((m) => m.matrixId == '@bob:y.org' && m.isActive),
+      isEmpty,
+    );
+    expect(aliceView, hasLength(2));
   });
 }

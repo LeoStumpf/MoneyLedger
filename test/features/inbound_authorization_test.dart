@@ -131,31 +131,65 @@ void main() {
       );
     });
 
-    test('self-claim of an existing unclaimed participant is allowed', () {
+    // G18 review: a non-member can never make itself a participant — no
+    // self-claim of a local person, no join-as-new, no rejoin after removal.
+    test(
+      'self-claim of an unclaimed participant by a non-member is refused',
+      () {
+        expect(
+          _auth(
+            type: memberEventType,
+            sender: '@bob:y.org',
+            content: const {
+              'participant_id': 'p-bobby',
+              'matrix_id': '@bob:y.org',
+              'status': 'active',
+            },
+            members: members,
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    test('join-as-new (a fresh participant for yourself) is refused', () {
       expect(
         _auth(
           type: memberEventType,
           sender: '@bob:y.org',
           content: const {
-            'participant_id': 'p-bobby',
+            'participant_id': 'p-new',
             'matrix_id': '@bob:y.org',
+            'status': 'active',
           },
           members: members,
         ),
-        isTrue,
+        isFalse,
       );
     });
 
-    test('join-as-new (a fresh participant for yourself) is allowed', () {
-      expect(
-        _auth(
-          type: memberEventType,
-          sender: '@bob:y.org',
-          content: const {'participant_id': 'p-new', 'matrix_id': '@bob:y.org'},
-          members: members,
-        ),
-        isTrue,
-      );
+    test('a removed member can neither reactivate itself nor rejoin with a '
+        'fresh participant', () {
+      final withRemoved = [
+        ...members,
+        _m('p-carol', matrixId: '@carol:z.org', status: 'removed'),
+      ];
+      for (final pid in ['p-carol', 'p-again']) {
+        expect(
+          _auth(
+            type: memberEventType,
+            sender: '@carol:z.org',
+            content: {
+              'participant_id': pid,
+              'matrix_id': '@carol:z.org',
+              'status': 'active',
+            },
+            members: withRemoved,
+          ),
+          isFalse,
+          reason: pid,
+        );
+      }
     });
 
     test('hijacking a participant another account owns is rejected', () {

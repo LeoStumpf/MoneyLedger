@@ -100,6 +100,8 @@ void main() {
         find.widgetWithText(TextFormField, 'Amount'),
         '20',
       );
+      // G18 review: "Add" is enabled only once a positive amount is in.
+      await tester.pump();
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
       // Bounded pumps rather than pumpAndSettle: the in-button progress spinner
       // is a perpetual animation, so pumpAndSettle would never return. (Don't
@@ -169,6 +171,41 @@ void main() {
         '@alice:x.org': 61725,
         '@bob:x.org': 61725,
       });
+    });
+
+    // G18 review (findings 6, 12, 14).
+    testWidgets('German: "1.234" reads as 1.234,00 (live preview); 0 and '
+        'absurd amounts are refused', (tester) async {
+      final (db, net) = await seedGroup();
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          locale: const Locale('de'),
+          overrides: [
+            ...signingUiOverrides(),
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      final amount = find.widgetWithText(TextFormField, 'Betrag');
+      FilledButton add() =>
+          tester.widget<FilledButton>(find.byKey(const Key('submitExpense')));
+
+      await tester.enterText(amount, '1.234');
+      await tester.pump();
+      expect(find.text('= 1.234,00\u00a0CHF'), findsOneWidget);
+      expect(add().onPressed, isNotNull);
+
+      for (final bad in ['0', '0,00', '-5', '100000000000000']) {
+        await tester.enterText(amount, bad);
+        await tester.pump();
+        expect(add().onPressed, isNull, reason: bad);
+        expect(find.textContaining('= '), findsNothing, reason: bad);
+      }
     });
 
     testWidgets('the payer dropdown sets paid_by', (tester) async {
@@ -618,6 +655,7 @@ void main() {
     }
 
     Future<void> submit(WidgetTester tester, String label) async {
+      await tester.pump(); // the amount enables the button (G18 review)
       await tester.tap(find.widgetWithText(FilledButton, label));
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 25));

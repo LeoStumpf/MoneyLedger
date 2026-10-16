@@ -8,6 +8,47 @@ import 'package:money_ledger/features/expenses/split_calculator.dart';
 int _sum(Map<String, int> m) => m.values.fold(0, (a, b) => a + b);
 
 void main() {
+  // G18 review (finding 16): Dart's sort isn't stable beyond 32 elements —
+  // the leftover cents must still go to the first ids in insertion order.
+  test('ties go by insertion order with many weighted participants', () {
+    // Equal weights tie on the fractional remainder: the extra cents must go
+    // to the earliest of them (failed with Dart's unstable sort, e.g. n=34,
+    // total=1: the cent went to a later weight-2 participant).
+    for (final n in [34, 40, 65]) {
+      final weights = {for (var i = 0; i < n; i++) 'p$i': i.isEven ? 1 : 2};
+      for (final total in [1, 7, 100, 999]) {
+        final r = splitByShares(total, weights);
+        expect(r.values.fold<int>(0, (a, b) => a + b), total);
+        for (final w in [1, 2]) {
+          final shares = [
+            for (var i = 0; i < n; i++)
+              if (weights['p$i'] == w) r['p$i']!,
+          ];
+          for (var i = 1; i < shares.length; i++) {
+            expect(
+              shares[i],
+              lessThanOrEqualTo(shares[i - 1]),
+              reason: 'n=$n total=$total weight=$w #$i',
+            );
+          }
+        }
+      }
+    }
+  });
+
+  test('ties go by insertion order with many participants', () {
+    for (final n in [33, 40, 64, 100]) {
+      final ids = [for (var i = 0; i < n; i++) 'p$i'];
+      final total = n * 2 + n ~/ 2; // every share 2.5 (or 2.x): equal fracs
+      final r = splitEqually(total, ids);
+      expect(r.values.fold<int>(0, (a, b) => a + b), total);
+      final extra = total - 2 * n;
+      for (var i = 0; i < n; i++) {
+        expect(r['p$i'], i < extra ? 3 : 2, reason: 'n=$n, p$i');
+      }
+    }
+  });
+
   group('splitEqually', () {
     test('divides evenly when it divides evenly', () {
       expect(splitEqually(900, ['a', 'b', 'c']), {

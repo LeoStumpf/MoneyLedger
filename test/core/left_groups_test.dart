@@ -9,11 +9,12 @@ import 'package:money_ledger/features/expenses/ledger_syncer.dart';
 
 const me = '@bob:y.org';
 
-Map<String, dynamic> rec(String? mxid, String status, int at) => {
-  'matrix_id': mxid,
-  'status': status,
-  'updated_at': at,
-};
+Map<String, dynamic> rec(
+  String? mxid,
+  String status,
+  int at, {
+  String group = 'g',
+}) => {'group': group, 'matrix_id': mxid, 'status': status, 'updated_at': at};
 
 void main() {
   group('classifyPeerViewOfMe', () {
@@ -70,6 +71,13 @@ void main() {
       expect(accepts(bootstrapEventType, [rec(me, 'active', 90)]), isFalse);
       expect(accepts(bootstrapEventType, [rec(me, 'removed', 200)]), isFalse);
       expect(accepts(bootstrapEventType, const []), isFalse);
+    });
+    // G18 review: only the snapshot's own member entries count.
+    test("an entry of another group doesn't lift the tombstone", () {
+      expect(
+        accepts(bootstrapEventType, [rec(me, 'active', 200, group: 'other')]),
+        isFalse,
+      );
     });
     test('every other record type is dropped', () {
       for (final t in [

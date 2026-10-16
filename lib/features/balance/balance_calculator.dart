@@ -1,4 +1,4 @@
-import 'dart:convert';
+import '../../core/sync/record_validation.dart';
 import '../../models/expense_model.dart';
 
 /// Returns a simplified list of who owes whom and how much (in cents).
@@ -33,8 +33,12 @@ Map<String, Map<String, int>> netBalances(
       byCurrency.putIfAbsent(currency, () => <String, int>{});
 
   for (final e in expenses) {
+    // G18 review: a malformed split (never accepted from peers any more, but
+    // a row could predate the check) is skipped instead of throwing.
+    final splits = tryParseSplit(e.splitsJson);
+    if (splits == null) continue;
     final balance = ledgerFor(e.currency);
-    for (final MapEntry(key: debtor, value: share) in splitsOf(e).entries) {
+    for (final MapEntry(key: debtor, value: share) in splits.entries) {
       if (debtor == e.paidBy) {
         balance[debtor] = balance[debtor] ?? 0;
         continue;
@@ -68,9 +72,10 @@ Map<String, int> netBalanceOf(
   };
 }
 
-/// The `{participantId: cents}` split of [e].
-Map<String, int> splitsOf(ExpenseModel e) => (jsonDecode(e.splitsJson) as Map)
-    .map((k, v) => MapEntry(k as String, (v as num).toInt()));
+/// The `{participantId: cents}` split of [e] — empty when malformed (never
+/// throws, G18 review).
+Map<String, int> splitsOf(ExpenseModel e) =>
+    tryParseSplit(e.splitsJson) ?? const {};
 
 /// What one expense means for [participant] (G17, the "you lent / you
 /// borrowed" line): [net] > 0 = lent (others owe them that much from this

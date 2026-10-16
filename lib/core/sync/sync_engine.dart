@@ -497,7 +497,8 @@ class SyncEngine {
   }
 
   void _onMessage(TransportMessage msg) {
-    if (!_alive) return;
+    // G18 review: a plaintext payload's sender isn't authenticated.
+    if (!_alive || !msg.encrypted) return;
     switch (msg.type) {
       case digestEventType:
         _onDigest(msg);
@@ -941,7 +942,7 @@ Map<String, dynamic> buildDigestContent(
   List<ExpenseModel> expenses,
   List<SettlementModel> settlements, {
   required bool reply,
-  Map<String, Map<String, int>> rejected = const {},
+  Map<String, Map<String, RecordVersion>> rejected = const {},
 }) => {
   ..._digestHeader(group, members, reply: reply, rejected: rejected),
   'expenses': {
@@ -958,7 +959,7 @@ Map<String, dynamic> _digestHeader(
   List<MemberModel> members, {
   required bool reply,
   bool last = false,
-  Map<String, Map<String, int>> rejected = const {},
+  Map<String, Map<String, RecordVersion>> rejected = const {},
 }) => {
   'v': protocolVersion,
   'group': group.roomId,
@@ -1012,7 +1013,7 @@ List<Map<String, dynamic>> buildDigestMessages(
   int? bits,
   Set<int> detail = const {},
   Set<String> detailIds = const {},
-  Map<String, Map<String, int>> rejected = const {},
+  Map<String, Map<String, RecordVersion>> rejected = const {},
 }) {
   if (bits == null) {
     final flat = buildDigestContent(
@@ -1084,17 +1085,34 @@ List<Map<String, dynamic>> buildDigestMessages(
 }
 
 /// The digest's `rejected` map (G6) from [SigningDao.rejectedForGroup]'s
-/// kind → id → clock: `{expenses: {id: T}, settlements: {…}, members:
-/// {participantId: T}, meta: T}`.
+/// kind → id → refused version: `{expenses: {id: "T:hash8"}, settlements:
+/// {…}, members: {participantId: "T:hash8"}, meta: "T:hash8"}`. G18 review:
+/// entries name the **exact** refused version (clock + G27 hash prefix, like
+/// the record entries); a bare clock (older peers) matches any version at
+/// that clock.
 Map<String, dynamic> digestRejectedMap(
-  Map<String, Map<String, int>> byKind,
-) => {
-  if (byKind['expense'] case final m? when m.isNotEmpty) 'expenses': m,
-  if (byKind['settlement'] case final m? when m.isNotEmpty) 'settlements': m,
-  if (byKind['member'] case final m? when m.isNotEmpty) 'members': m,
-  if (byKind['meta'] case final m? when m.isNotEmpty)
-    'meta': m.values.reduce((a, b) => a > b ? a : b),
-};
+  Map<String, Map<String, RecordVersion>> byKind,
+) {
+  Map<String, String> enc(Map<String, RecordVersion> m) => {
+    for (final MapEntry(:key, :value) in m.entries)
+      key: encodeDigestVersion(value),
+  };
+  return {
+    if (byKind['expense'] case final m? when m.isNotEmpty) 'expenses': enc(m),
+    if (byKind['settlement'] case final m? when m.isNotEmpty)
+      'settlements': enc(m),
+    if (byKind['member'] case final m? when m.isNotEmpty) 'members': enc(m),
+    if (byKind['meta'] case final m? when m.isNotEmpty)
+      'meta': encodeDigestVersion(
+        m.values.reduce((a, b) => compareVersions(a, b) >= 0 ? a : b),
+      ),
+  };
+}
+
+/// Whether [a] and [b] are the same version: same clock and, when both
+/// hashes are known, the same hash (prefix).
+bool _sameVersion(RecordVersion a, RecordVersion b) =>
+    a.at == b.at && compareVersions(a, b) == 0;
 
 class DigestDiff {
   /// Records our side must re-send because the sender lacks them or has an
@@ -1164,13 +1182,14 @@ class DigestDiff {
 
 /// Pure digest comparison (plain Dart, unit-testable without a DB).
 ///
-/// G6: [localRejected] (kind → id → clock, from [SigningDao.rejectedForGroup])
-/// are the versions *we* refused, `remote['rejected']` (digest format, see
-/// [digestRejectedMap]) the ones the *sender* refused. A refused version is
-/// "seen": we never re-send a record the sender refused at (or above) our
-/// clock, a sender holding exactly what we refused isn't "newer", and both
-/// count as matching for rule 4 — the two sides agree to disagree instead of
-/// looping.
+/// G6: [localRejected] (kind → id → version, from
+/// [SigningDao.rejectedForGroup]) are the versions *we* refused,
+/// `remote['rejected']` (digest format, see [digestRejectedMap]) the ones the
+/// *sender* refused. A refused version is "seen": we never re-send a version
+/// the sender refused, a sender holding exactly what we refused isn't
+/// "newer", and both count as matching for rule 4 — the two sides agree to
+/// disagree instead of looping. G18 review: only the **exact** refused
+/// version (clock + hash) counts — any other version is repaired as usual.
 ///
 /// G27: versions compare by clock, then content hash (`compareVersions`) —
 /// the `local*Hashes` maps / [localMetaHash] hold our full hashes, the
@@ -1190,34 +1209,33 @@ DigestDiff compareDigest({
   Map<String, String> localExpenseHashes = const {},
   required Map<String, int> localSettlements,
   Map<String, String> localSettlementHashes = const {},
-  Map<String, Map<String, int>> localRejected = const {},
+  Map<String, Map<String, RecordVersion>> localRejected = const {},
   required Map<String, dynamic> remote,
 }) {
   final remoteRejected = remote['rejected'] is Map
       ? remote['rejected'] as Map
       : const {};
-  Map<String, int> rejectedSection(Object? raw) => {
+  Map<String, RecordVersion> rejectedSection(Object? raw) => {
     if (raw is Map)
       for (final e in raw.entries)
-        if (e.key is String && e.value is int) e.key as String: e.value as int,
+        if (e.key is String) e.key as String: ?parseDigestVersion(e.value),
   };
   final theirRejected = {
     'expense': rejectedSection(remoteRejected['expenses']),
     'settlement': rejectedSection(remoteRejected['settlements']),
     'member': rejectedSection(remoteRejected['members']),
   };
-  int? ourRejected(String kind, String id) => localRejected[kind]?[id];
 
-  /// We may skip sending our [local] version: the sender refused it.
-  bool theyRefused(String kind, String id, int local) {
+  /// We may skip sending our [local] version: the sender refused exactly it.
+  bool theyRefused(String kind, String id, RecordVersion local) {
     final r = theirRejected[kind]![id];
-    return r != null && r >= local;
+    return r != null && _sameVersion(local, r);
   }
 
-  /// The sender's [remoteAt] isn't news: we refused that version already.
-  bool weRefused(String kind, String id, int remoteAt) {
-    final r = ourRejected(kind, id);
-    return r != null && remoteAt <= r;
+  /// The sender's version [theirs] isn't news: we refused exactly it.
+  bool weRefused(String kind, String id, RecordVersion theirs) {
+    final r = localRejected[kind]?[id];
+    return r != null && _sameVersion(theirs, r);
   }
 
   Map<String, RecordVersion> versions(
@@ -1262,11 +1280,11 @@ DigestDiff compareDigest({
       if (!scope(id)) continue;
       final theirs = parseDigestVersion(remoteMap[id]);
       final c = theirs == null ? 1 : compareVersions(mine, theirs);
-      if (c > 0 && !theyRefused(kind, id, mine.at)) {
+      if (c > 0 && !theyRefused(kind, id, mine)) {
         toSend.add(id);
         differing.add(id);
       }
-      if (theirs != null && c < 0 && !weRefused(kind, id, theirs.at)) {
+      if (theirs != null && c < 0 && !weRefused(kind, id, theirs)) {
         theirsNewer = true;
         differing.add(id);
       }
@@ -1274,7 +1292,7 @@ DigestDiff compareDigest({
     for (final MapEntry(:key, :value) in remoteMap.entries) {
       if (local.containsKey(key) || !scope(key)) continue;
       final theirs = parseDigestVersion(value);
-      if (theirs != null && weRefused(kind, key, theirs.at)) continue;
+      if (theirs != null && weRefused(kind, key, theirs)) continue;
       theirsNewer = true;
       differing.add(key);
     }
@@ -1301,15 +1319,15 @@ DigestDiff compareDigest({
   );
   final RecordVersion localMeta = (at: localMetaUpdatedAt, hash: localMetaHash);
   final metaCmp = compareVersions(localMeta, remoteMeta);
-  final theirMetaRefused = remoteRejected['meta'] as int?;
-  final ourMetaRefused = localRejected['meta']?.values.fold<int?>(
+  final theirMetaRefused = parseDigestVersion(remoteRejected['meta']);
+  final ourMetaRefused = localRejected['meta']?.values.fold<RecordVersion?>(
     null,
-    (a, b) => a == null || b > a ? b : a,
+    (a, b) => a == null || compareVersions(b, a) > 0 ? b : a,
   );
   final metaTheyRefused =
-      theirMetaRefused != null && theirMetaRefused >= localMetaUpdatedAt;
+      theirMetaRefused != null && _sameVersion(localMeta, theirMetaRefused);
   final metaWeRefused =
-      ourMetaRefused != null && remoteMeta.at <= ourMetaRefused;
+      ourMetaRefused != null && _sameVersion(remoteMeta, ourMetaRefused);
   final sendGroupMeta = metaCmp > 0 && !metaTheyRefused;
   if (metaCmp < 0 && !metaWeRefused) senderHasNewer = true;
   final metaMatches =
@@ -1320,34 +1338,44 @@ DigestDiff compareDigest({
   var membersIdentical = true;
   final remoteMembers = (remote['members'] as Map? ?? const {});
   final groupId = remote['group'];
+
+  /// The full content hash of a gossiped member entry ('' if unparsable).
+  String remoteMemberHash(String pid, Map r) {
+    if (groupId is! String) return '';
+    final m = memberFromPayload({
+      ...Map<String, dynamic>.from(r),
+      'group': groupId,
+      'participant_id': pid,
+    });
+    return m == null ? '' : memberVersionHash(m);
+  }
+
   for (final entry in localMembers.entries) {
     final r = remoteMembers[entry.key] as Map?;
     final remoteAt = r?['updated_at'] as int? ?? 0;
     final localHash = localMemberHashes[entry.key] ?? '';
-    var remoteHash = '';
-    if (r != null && localHash.isNotEmpty && groupId is String) {
-      final m = memberFromPayload({
-        ...Map<String, dynamic>.from(r),
-        'group': groupId,
-        'participant_id': entry.key,
-      });
-      if (m != null) remoteHash = memberVersionHash(m);
-    }
+    final remoteHash = r == null ? '' : remoteMemberHash(entry.key, r);
+    final RecordVersion mine = (at: entry.value.updatedAt, hash: localHash);
+    final RecordVersion theirs = (at: remoteAt, hash: remoteHash);
     final c = compareVersions(
-      (at: entry.value.updatedAt, hash: localHash),
-      (at: remoteAt, hash: remoteHash),
+      mine,
+      localHash.isEmpty ? (at: remoteAt, hash: '') : theirs,
     );
     final same = r != null && r['status'] == entry.value.status && c == 0;
     final agreedToDisagree =
-        (r != null && c < 0 && weRefused('member', entry.key, remoteAt)) ||
-        ((r == null || c > 0) &&
-            theyRefused('member', entry.key, entry.value.updatedAt));
+        (r != null && c < 0 && weRefused('member', entry.key, theirs)) ||
+        ((r == null || c > 0) && theyRefused('member', entry.key, mine));
     if (!same && !agreedToDisagree) membersIdentical = false;
   }
   for (final MapEntry(:key, :value) in remoteMembers.entries) {
     if (localMembers.containsKey(key)) continue;
-    final at = value is Map ? value['updated_at'] as int? ?? 0 : 0;
-    if (key is String && weRefused('member', key, at)) continue;
+    if (key is String && value is Map) {
+      final RecordVersion theirs = (
+        at: value['updated_at'] as int? ?? 0,
+        hash: remoteMemberHash(key, value),
+      );
+      if (weRefused('member', key, theirs)) continue;
+    }
     membersIdentical = false;
   }
 

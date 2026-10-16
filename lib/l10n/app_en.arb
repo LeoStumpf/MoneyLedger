@@ -1345,5 +1345,33 @@
   "authInProgressHint": "The previous attempt is still waiting for the server. If it succeeds you're signed in automatically — otherwise try again in a moment.",
   "@authInProgressHint": {
     "description": "G36 hint for authInProgressTitle"
+  },
+  "inviteWhoIs": "Who is {userId} in this group?",
+  "@inviteWhoIs": {
+    "description": "G18: inviter picks the participant an invited account becomes",
+    "placeholders": {
+      "userId": {}
+    }
+  },
+  "inviteAsNewParticipant": "A new participant",
+  "amountPreview": "= {amount}",
+  "@amountPreview": {
+    "description": "G18: live preview of the parsed amount under an amount field, e.g. '= 1.234,00 €'",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "amountMustBePositive": "Enter an amount greater than 0",
+  "amountTooLarge": "That amount is too large",
+  "finishingBackgroundSync": "Finishing background sync…",
+  "csvImportInvalidRow": "Row {row}: {problem}",
+  "@csvImportInvalidRow": {
+    "description": "G18: a CSV row the import refuses (nothing is imported); problem is technical text",
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "problem": {}
+    }
   }
 }

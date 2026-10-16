@@ -29,7 +29,12 @@ class MatrixLedgerTransport implements LedgerTransport {
   MatrixLedgerTransport._(this._client) {
     _inbox = BufferedInbox(currentRecipient: () => _client.userID ?? '');
     _sub = _client.onToDeviceEvent.stream
-        .where((e) => e.type.startsWith(moneyLedgerTypePrefix))
+        .where(
+          (e) => isAcceptedLedgerEvent(
+            type: e.type,
+            encrypted: e.encryptedContent != null,
+          ),
+        )
         .listen(
           (e) => _inbox.add(
             TransportMessage(
@@ -37,6 +42,7 @@ class MatrixLedgerTransport implements LedgerTransport {
               type: e.type,
               content: e.content,
               senderDevice: e.encryptedContent?['sender_key'] as String?,
+              encrypted: true,
             ),
           ),
         );

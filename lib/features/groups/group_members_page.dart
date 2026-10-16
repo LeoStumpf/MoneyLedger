@@ -52,7 +52,7 @@ class GroupMembersPage extends ConsumerWidget {
             tooltip: l.inviteByMatrixId,
             onPressed: busy || iAmRemoved
                 ? null
-                : () => _showInviteDialog(context, ref),
+                : () => _showInviteDialog(context, ref, all),
           ),
         ],
       ),
@@ -151,9 +151,16 @@ class GroupMembersPage extends ConsumerWidget {
     );
   }
 
-  /// Shares the group with a Matrix account without assigning them a slot — the
-  /// invitee then self-claims an existing participant on their own device.
-  Future<void> _showInviteDialog(BuildContext context, WidgetRef ref) async {
+  /// Invites a Matrix account into the group (G18 review): the inviter picks
+  /// which participant the account is — an unclaimed local person (history
+  /// kept) or a new participant — and the account receives the group as that
+  /// active participant. (A slot-less invite would leave the invitee unable
+  /// to join: peers refuse membership changes a non-member makes itself.)
+  Future<void> _showInviteDialog(
+    BuildContext context,
+    WidgetRef ref,
+    List<MemberModel> members,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
     final mxid = await showTextPrompt(
@@ -166,8 +173,38 @@ class GroupMembersPage extends ConsumerWidget {
       confirmLabel: l.invite,
       accept: (id) => id.startsWith('@') && id.contains(':'),
     );
-    if (mxid == null) return;
-    await ref.read(memberAdderProvider.notifier).invite(roomId, mxid);
+    if (mxid == null || !context.mounted) return;
+    final unclaimed = members
+        .where((m) => m.isActive && m.matrixId == null)
+        .toList();
+    String? participantId;
+    if (unclaimed.isNotEmpty) {
+      // `null` from the dialog = dismissed; '' = a new participant.
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          key: const Key('inviteWhoIs'),
+          title: Text(l.inviteWhoIs(mxid)),
+          children: [
+            for (final m in unclaimed)
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(ctx).pop(m.userId),
+                child: Text(m.label),
+              ),
+            SimpleDialogOption(
+              key: const Key('inviteAsNew'),
+              onPressed: () => Navigator.of(ctx).pop(''),
+              child: Text(l.inviteAsNewParticipant),
+            ),
+          ],
+        ),
+      );
+      if (choice == null) return;
+      participantId = choice.isEmpty ? null : choice;
+    }
+    await ref
+        .read(memberAdderProvider.notifier)
+        .invite(roomId, mxid, participantId: participantId);
     final error = ref.read(memberAdderProvider).error;
     messenger.showSnackBar(
       SnackBar(

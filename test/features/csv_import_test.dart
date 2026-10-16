@@ -49,7 +49,7 @@ void main() {
     String desc = 'Dinner',
     int amount = 4200,
     int updatedAt = 1000,
-    Map<String, int> split = const {'pa': 2100, 'pb': 2100},
+    Map<String, int>? split,
   }) => ExpenseModel(
     id: id,
     roomId: 'g1',
@@ -57,8 +57,9 @@ void main() {
     amountCents: amount,
     currency: 'EUR',
     paidBy: 'pa',
+    // Default: halves that sum to the amount (G18 review: import validates).
     splitsJson:
-        '{${split.entries.map((e) => '"${e.key}":${e.value}').join(',')}}',
+        '{${(split ?? {'pa': amount - amount ~/ 2, 'pb': amount ~/ 2}).entries.map((e) => '"${e.key}":${e.value}').join(',')}}',
     createdAt: 1760000000000,
     updatedAt: updatedAt,
   );
@@ -341,4 +342,64 @@ void main() {
     expect(r.unmatched, ['Dee']);
     expect(r.ambiguous, ['Bo']);
   });
+
+  // G18 review (findings 8, 13).
+  group('G18 review', () {
+    test('a far-future Updated At is clamped to now on import', () async {
+      final before = DateTime.now().millisecondsSinceEpoch;
+      await import(
+        buildGroupCsv(grp, members, [exp(updatedAt: 9000000000000000)]),
+      );
+      final e = (await c.read(expensesDaoProvider).getExpenseById('e1'))!;
+      expect(e.updatedAt, inInclusiveRange(before, before + 60000));
+      // …so a normal later edit still wins.
+      expect(e.createdAt, lessThanOrEqualTo(e.updatedAt));
+    });
+
+    test(
+      'an invalid row aborts the whole import — nothing is written',
+      () async {
+        final good = buildGroupCsv(grp, members, [
+          exp(id: 'ok'),
+          exp(id: 'bad', amount: 4200, split: const {'pa': 1}),
+        ]);
+        await expectLater(import(good), throwsA(isA<CsvImportException>()));
+        expect(await c.read(groupsDaoProvider).getAllGroups(), isEmpty);
+        expect(await c.read(membersDaoProvider).getMembers('g1'), isEmpty);
+        expect(await c.read(expensesDaoProvider).getExpenseById('ok'), isNull);
+      },
+    );
+
+    test(
+      'unreadable / negative money cells are refused, grouping is read',
+      () async {
+        String withAmount(String cell, {String share = ''}) {
+          final lines = const LineSplitter().convert(
+            buildGroupCsv(grp, members, [exp()]),
+          );
+          final header = _row(lines[0]);
+          final row = _row(lines[1]);
+          row[header.indexOf('Amount')] = cell;
+          if (share.isNotEmpty) row[header.indexOf('Alex')] = share;
+          return '${lines[0]}\r\n${row.map(_q).join(',')}';
+        }
+
+        for (final bad in ['-42.00', 'NaN', '12,34.5', '1e5', 'abc']) {
+          await expectLater(
+            import(withAmount(bad)),
+            throwsA(isA<CsvImportException>()),
+            reason: bad,
+          );
+        }
+        final parsed = parseGroupCsv(withAmount('4,200.00', share: '2,100.00'));
+        expect(parsed.rows.single.problem, isNull);
+        expect(parsed.rows.single.amountCents, 420000);
+        expect(parsed.rows.single.sharesByName['Alex'], 210000);
+        expect(parseGroupCsv(withAmount('-1')).rows.single.problem, isNotNull);
+      },
+    );
+  });
 }
+
+List<String> _row(String line) => line.split(',');
+String _q(String f) => f.contains(',') ? '"$f"' : f;

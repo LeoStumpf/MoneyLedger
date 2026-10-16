@@ -378,6 +378,37 @@ void main() {
       );
     });
 
+    // G18 review (findings 6, 14): no zero payments; a live preview.
+    testWidgets('a zero amount is refused, a valid one previewed', (
+      tester,
+    ) async {
+      final db = openTestDatabase();
+      addTearDown(db.close);
+      await pumpPage(tester, db, FakeMatrixNetwork());
+
+      await tester.tap(find.byKey(const Key('recordPayment')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('paymentFrom')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bob').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('paymentTo')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Alice').last);
+      await tester.pumpAndSettle();
+      FilledButton record() => tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Record'),
+      );
+      await tester.enterText(find.byKey(const Key('paymentAmount')), '0');
+      await tester.pump();
+      expect(record().onPressed, isNull);
+      expect(find.text('Enter an amount greater than 0'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('paymentAmount')), '1,234');
+      await tester.pump();
+      expect(record().onPressed, isNotNull);
+      expect(find.text('= CHF\u00a01,234.00'), findsOneWidget);
+    });
+
     testWidgets('same payer and recipient cannot be recorded', (tester) async {
       final db = openTestDatabase();
       addTearDown(db.close);

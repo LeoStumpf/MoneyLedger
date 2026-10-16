@@ -24,9 +24,20 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
   (inbound isn't refused) and stay "unverified".
 - **Malicious inviter.** A new member trusts the inviter's bootstrap
   (TOFU, as before) including its `device_keys` attestations, so the inviter
-  could vouch for fake keys ("vouched" in the details). Not fixable without
-  cross-signing either (a vouched key can't be checked against anything
-  first-hand once its device has signed out).
+  could vouch for fake keys ("vouched" in the details). *Narrowed (G18
+  review):* attestations are scoped to the group whose snapshot carried them,
+  and a peer's attestation never vouches for a device missing from an
+  account's first-hand device list we hold. What remains (the inviter's own
+  group, accounts we never got a device list for) needs cross-signing.
+- **TOFU group creation.** Anyone can still bootstrap a *new* group onto our
+  device (that's how invites work); since G18 such a snapshot can only write
+  into its own group, never into one we know. Unwanted groups can be deleted.
+- **Signer rule vs. unclaim (G18 review).** Versions of a group are only
+  accepted when their signer claims a participant there (or relays them
+  itself). After an account is **detached** (unclaim), the versions it signed
+  stay on devices that hold them, but a device that never had them (a new
+  member) won't accept them from others' relays — its balances can then
+  differ. Detach rarely, or have someone re-save those records.
 - **Homeserver.** A user's homeserver can add devices for that user (the
   Matrix E2EE trust model). *Mitigated, opt-in (G11):* with "Only sync with
   verified devices" a device we never emoji-verified gets nothing from us,
@@ -51,9 +62,11 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
   backup still restores them as legacy (G5).
 - **Size.** Signatures roughly double a record's wire size (~0.86 KB per
   record in a bootstrap) — handled by chunked bootstraps (G14, below).
-- **Refusal granularity is the clock.** A refused version at `T` also blocks
-  any other version of that record stamped exactly `T` (G27 compares hashes
-  only between versions that pass the gate).
+- **Refusals are per version, one row per record (G18 review).** A refusal
+  blocks exactly the refused version (clock + hash). Only the highest refused
+  version per record is remembered — a peer still holding an *older* refused
+  version re-offers it each digest cycle (re-verified and refused again; one
+  message per cycle, not a tight loop).
 
 ### Scalability (G14) — measured ceilings
 Real limit: Synapse refuses to-device content > **65 536 bytes** per device
@@ -237,7 +250,17 @@ Durable constraints of the current design — not bugs, but worth knowing.
 - **Trust model — membership-gated relays, signed authorship (G6).** The
   relaying sender must be a group member; each version's author is proven by
   its device signature. Digest member gossip is verified per entry, and
-  digests from non-participants are ignored (rule 8). Residual risks above.
+  digests from non-participants are ignored (rule 8). Since the G18 review a
+  non-member can't make itself a participant (invites assign the slot), a
+  removal sticks, plaintext to-device events are dropped, and invalid
+  content is refused. Residual risks above.
+- **Background gate (G18 review).** A background round never treats a
+  registered app as stale: an app that doesn't answer is assumed busy and the
+  round is skipped. The app releases its slot when its engine detaches; if it
+  dies without that (crash), rounds stay skipped until the process restarts —
+  the safe side. Conversely the app waits for a running round (showing
+  "Finishing background sync…") and only proceeds after `maxWait` (2 min) if
+  a round answers but never finishes (logged).
 - **Wall-clock LWW.** Merges are whole-record last-writer-wins on `updated_at`
   (ms epoch), ties broken by the content hash (G27 — deterministic, but not
   "fair": the higher hash wins, whoever wrote it). Inbound `updated_at` is

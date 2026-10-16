@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../sync/record_version.dart';
 import '../app_database.dart';
 
 part 'signing_dao.g.dart';
@@ -15,12 +16,17 @@ class KnownKey {
   final String source;
   final String? attestedBy;
 
+  /// G18 review: the group whose snapshot attested this key — an attested
+  /// key only vouches for records of that group. Null for a first-hand pin.
+  final String? group;
+
   const KnownKey({
     required this.user,
     required this.device,
     required this.key,
     required this.source,
     this.attestedBy,
+    this.group,
   });
 
   bool get isServer => source == keySourceServer;
@@ -38,6 +44,9 @@ class RefusedVersion {
   final String reason;
   final String relayedBy;
   final String? claimedSigner;
+
+  /// The refused version's G27 content hash ('' = unknown).
+  final String versionHash;
   const RefusedVersion({
     required this.groupId,
     required this.kind,
@@ -46,7 +55,10 @@ class RefusedVersion {
     required this.reason,
     required this.relayedBy,
     this.claimedSigner,
+    this.versionHash = '',
   });
+
+  RecordVersion get version => (at: updatedAt, hash: versionHash);
 }
 
 /// The G6 signing bookkeeping: the device-key history and refused versions.
@@ -88,11 +100,13 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
     });
   }
 
-  /// Stores bindings vouched for by [attestedBy] (never downgrades a
-  /// first-hand pin of the same key).
+  /// Stores bindings vouched for by [attestedBy] in the snapshot of [group]
+  /// — they vouch for that group's records only (G18 review). A first-hand
+  /// pin of the same key is a separate row and always wins.
   Future<void> pinAttestedKeys(
     Map<String, Map<String, String>> devices,
     String attestedBy, {
+    required String group,
     int? now,
   }) async {
     if (devices.isEmpty) return;
@@ -109,6 +123,7 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
               source: keySourceAttested,
               attestedBy: Value(attestedBy),
               firstSeenAt: at,
+              attestedGroup: Value(group),
             ),
             mode: InsertMode.insertOrIgnore,
           );
@@ -123,6 +138,10 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
             ..where((t) => t.userId.equals(user) & t.deviceId.equals(device)))
           .get()
           .then((rows) => rows.map(_toKey).toList());
+
+  /// Every pinned key (tests / tooling; the UI streams [watchAllKeys]).
+  Future<List<KnownKey>> allKeys() =>
+      select(knownDeviceKeys).get().then((r) => r.map(_toKey).toList());
 
   /// The whole key history — small (members' devices); the UI derives each
   /// record's signature status from it.
@@ -162,50 +181,90 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
     key: r.ed25519Key,
     source: r.source,
     attestedBy: r.attestedBy,
+    group: r.attestedGroup.isEmpty ? null : r.attestedGroup,
   );
 
   // ── refused versions ──────────────────────────────────────────────────────
 
-  /// The highest refused clock of record [recordId] ([kind]) in [groupId].
+  /// The refused version of record [recordId] ([kind]) in [groupId], if any.
+  Future<RecordVersion?> rejectedVersion(
+    String groupId,
+    String kind,
+    String recordId,
+  ) => _rejectedRow(
+    groupId,
+    kind,
+    recordId,
+  ).then((r) => r == null ? null : (at: r.updatedAt, hash: r.versionHash));
+
+  /// The clock of the refused version of [recordId], if any.
   Future<int?> rejectedClock(String groupId, String kind, String recordId) =>
+      rejectedVersion(groupId, kind, recordId).then((v) => v?.at);
+
+  Future<RejectedVersion?> _rejectedRow(
+    String groupId,
+    String kind,
+    String recordId,
+  ) =>
       (select(rejectedVersions)..where(
             (t) =>
                 t.groupId.equals(groupId) &
                 t.kind.equals(kind) &
                 t.recordId.equals(recordId),
           ))
-          .getSingleOrNull()
-          .then((r) => r?.updatedAt);
+          .getSingleOrNull();
 
-  /// Records a refused version (keeps the highest clock per record).
-  Future<void> recordRejected(RefusedVersion v, {int? now}) {
-    final row = RejectedVersionsCompanion.insert(
-      groupId: v.groupId,
-      kind: v.kind,
-      recordId: v.recordId,
-      updatedAt: v.updatedAt,
-      reason: v.reason,
-      relayedBy: v.relayedBy,
-      claimedSigner: Value(v.claimedSigner),
-      rejectedAt: now ?? DateTime.now().millisecondsSinceEpoch,
-    );
-    return into(rejectedVersions).insert(
-      row,
-      onConflict: DoUpdate(
-        (_) => row,
-        where: (old) => old.updatedAt.isSmallerThanValue(v.updatedAt),
-      ),
-    );
-  }
+  /// Records a refused version. One row per record: the **highest** refused
+  /// version (clock, then G27 hash) is kept.
+  Future<void> recordRejected(RefusedVersion v, {int? now}) =>
+      transaction(() async {
+        final old = await _rejectedRow(v.groupId, v.kind, v.recordId);
+        if (old != null &&
+            compareVersions(v.version, (
+                  at: old.updatedAt,
+                  hash: old.versionHash,
+                )) <
+                0) {
+          return;
+        }
+        await into(rejectedVersions).insertOnConflictUpdate(
+          RejectedVersionsCompanion.insert(
+            groupId: v.groupId,
+            kind: v.kind,
+            recordId: v.recordId,
+            updatedAt: v.updatedAt,
+            reason: v.reason,
+            relayedBy: v.relayedBy,
+            claimedSigner: Value(v.claimedSigner),
+            rejectedAt: now ?? DateTime.now().millisecondsSinceEpoch,
+            versionHash: Value(v.versionHash),
+          ),
+        );
+      });
 
-  /// kind → record id → highest refused clock, for [groupId]'s digest.
-  Future<Map<String, Map<String, int>>> rejectedForGroup(String groupId) =>
-      (select(
-        rejectedVersions,
-      )..where((t) => t.groupId.equals(groupId))).get().then((rows) {
-        final out = <String, Map<String, int>>{};
+  /// Forgets the refusal of one record (a restore the user started stored
+  /// that version after all — G18 review).
+  Future<void> clearRejected(String groupId, String kind, String recordId) =>
+      (delete(rejectedVersions)..where(
+            (t) =>
+                t.groupId.equals(groupId) &
+                t.kind.equals(kind) &
+                t.recordId.equals(recordId),
+          ))
+          .go();
+
+  /// kind → record id → refused version, for [groupId]'s digest.
+  Future<Map<String, Map<String, RecordVersion>>> rejectedForGroup(
+    String groupId,
+  ) => (select(rejectedVersions)..where((t) => t.groupId.equals(groupId)))
+      .get()
+      .then((rows) {
+        final out = <String, Map<String, RecordVersion>>{};
         for (final r in rows) {
-          (out[r.kind] ??= {})[r.recordId] = r.updatedAt;
+          (out[r.kind] ??= {})[r.recordId] = (
+            at: r.updatedAt,
+            hash: r.versionHash,
+          );
         }
         return out;
       });
@@ -234,6 +293,7 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
                     reason: r.reason,
                     relayedBy: r.relayedBy,
                     claimedSigner: r.claimedSigner,
+                    versionHash: r.versionHash,
                   ),
           );
 }
