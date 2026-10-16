@@ -1,0 +1,327 @@
+/// Full backup codec (G5): build / parse / validate, file name, and the pure
+/// nudge logic. No DB.
+library;
+
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/features/backup/ledger_backup.dart';
+import 'package:money_ledger/models/expense_model.dart';
+import 'package:money_ledger/models/group_model.dart';
+import 'package:money_ledger/models/member_model.dart';
+
+void main() {
+  const g1 = GroupModel(
+    roomId: 'g1',
+    name: 'Trip',
+    currency: 'EUR',
+    updatedAt: 1000,
+  );
+  const g2 = GroupModel(
+    roomId: 'g2',
+    name: 'Flat',
+    currency: 'CHF',
+    updatedAt: 2000,
+  );
+  MemberModel member(
+    String gid,
+    String pid,
+    String name, {
+    String? mxid,
+    String status = 'active',
+  }) => MemberModel(
+    groupId: gid,
+    userId: pid,
+    displayName: name,
+    matrixId: mxid,
+    status: status,
+    updatedAt: 10,
+  );
+  final snapshot = GroupSnapshot(
+    group: g1,
+    members: [
+      member('g1', '@me:x', 'Me', mxid: '@me:x'),
+      member('g1', 'local-1', 'Kim'),
+      member('g1', 'gone', 'Old', status: 'removed'),
+    ],
+    expenses: const [
+      ExpenseModel(
+        id: 'e1',
+        roomId: 'g1',
+        description: 'Dinner',
+        amountCents: 4200,
+        currency: 'EUR',
+        paidBy: '@me:x',
+        splitsJson: '{"@me:x":2100,"local-1":2100}',
+        createdAt: 100,
+        updatedAt: 150,
+      ),
+      ExpenseModel(
+        id: 'e2',
+        roomId: 'g1',
+        description: 'Deleted',
+        amountCents: 100,
+        currency: 'EUR',
+        paidBy: '@me:x',
+        splitsJson: '{"@me:x":100}',
+        createdAt: 100,
+        updatedAt: 300,
+        deleted: true,
+      ),
+    ],
+    settlements: const [
+      SettlementModel(
+        id: 's1',
+        roomId: 'g1',
+        amountCents: 2100,
+        currency: 'EUR',
+        fromUser: 'local-1',
+        toUser: '@me:x',
+        createdAt: 200,
+        updatedAt: 200,
+      ),
+    ],
+  );
+  final empty = GroupSnapshot(
+    group: g2,
+    members: [member('g2', '@me:x', 'Me', mxid: '@me:x')],
+    expenses: const [],
+    settlements: const [],
+  );
+
+  String build() => buildBackupJson(
+    account: '@me:x',
+    exportedAt: 1760000000000,
+    groups: [snapshot, empty],
+  );
+
+  group('buildBackupJson / parseBackup', () {
+    test('round-trips header, groups, members, records and tombstones', () {
+      final b = parseBackup(build());
+      expect(b.version, backupVersion);
+      expect(b.account, '@me:x');
+      expect(b.exportedAt, 1760000000000);
+      // Sorted by name: Flat, Trip.
+      expect(b.groups.map((g) => g['group']), ['g2', 'g1']);
+
+      final trip = b.groups[1];
+      expect(trip['name'], 'Trip');
+      expect(trip['currency'], 'EUR');
+      expect(trip['updated_at'], 1000);
+      final members = trip['members'] as List;
+      expect(members, hasLength(3));
+      final kim = members.firstWhere((m) => m['participant_id'] == 'local-1');
+      expect(kim['matrix_id'], isNull);
+      expect(kim['name'], 'Kim');
+      expect(
+        members.firstWhere((m) => m['participant_id'] == 'gone')['status'],
+        'removed',
+      );
+      final expenses = trip['expenses'] as List;
+      expect(expenses.map((e) => e['id']), ['e1', 'e2']);
+      expect(expenses[1]['deleted'], isTrue);
+      expect(expenses[0]['split'], {'@me:x': 2100, 'local-1': 2100});
+      final s = (trip['settlements'] as List).single;
+      expect(s['from'], 'local-1');
+      expect(s['to'], '@me:x');
+      expect(s['updated_at'], 200);
+    });
+
+    test('the file is self-describing JSON', () {
+      final raw = jsonDecode(build()) as Map;
+      expect(raw['format'], 'moneyledger-backup');
+      expect(raw['version'], 1);
+    });
+
+    test('summary counts live records and active members only', () {
+      final trip = parseBackup(build()).groups[1];
+      final s = summarizeBackupGroup(trip);
+      expect(s.groupId, 'g1');
+      expect(s.name, 'Trip');
+      expect(s.expenseCount, 1); // e2 is a tombstone
+      expect(s.settlementCount, 1);
+      expect(s.memberCount, 2); // "Old" was removed
+    });
+
+    test('an account-less backup parses with a null account', () {
+      final b = parseBackup(
+        buildBackupJson(account: null, exportedAt: 1, groups: const []),
+      );
+      expect(b.account, isNull);
+      expect(b.groups, isEmpty);
+    });
+  });
+
+  group('parseBackup rejects', () {
+    void expectKind(String text, BackupErrorKind kind) => expect(
+      () => parseBackup(text),
+      throwsA(isA<BackupFormatException>().having((e) => e.kind, 'kind', kind)),
+    );
+
+    test('garbage and non-JSON (e.g. a CSV) as not a backup', () {
+      expectKind('', BackupErrorKind.notABackup);
+      expectKind('Date,Description\n2026,x', BackupErrorKind.notABackup);
+      expectKind('\u0000ÿ binary', BackupErrorKind.notABackup);
+    });
+
+    test('JSON without the format marker as not a backup', () {
+      expectKind('[1,2,3]', BackupErrorKind.notABackup);
+      expectKind('{"version":1,"groups":[]}', BackupErrorKind.notABackup);
+      expectKind(
+        '{"format":"other-app","version":1}',
+        BackupErrorKind.notABackup,
+      );
+    });
+
+    test('a newer version, reporting that version', () {
+      final text = jsonEncode({
+        'format': backupFormat,
+        'version': backupVersion + 1,
+        'groups': [],
+      });
+      expect(
+        () => parseBackup(text),
+        throwsA(
+          isA<BackupFormatException>()
+              .having((e) => e.kind, 'kind', BackupErrorKind.newerVersion)
+              .having((e) => e.version, 'version', backupVersion + 1),
+        ),
+      );
+    });
+
+    test('broken content as malformed', () {
+      String doc(Object? groups, {Object? version = 1}) => jsonEncode({
+        'format': backupFormat,
+        'version': version,
+        'groups': groups,
+      });
+      expectKind(doc([], version: 'one'), BackupErrorKind.malformed);
+      expectKind(doc([], version: 0), BackupErrorKind.malformed);
+      expectKind(doc('nope'), BackupErrorKind.malformed);
+      expectKind(doc([42]), BackupErrorKind.malformed);
+      expectKind(
+        doc([
+          {'name': 'no id'},
+        ]),
+        BackupErrorKind.malformed,
+      );
+      expectKind(
+        doc([
+          {'group': 'g1', 'expenses': 'x'},
+        ]),
+        BackupErrorKind.malformed,
+      );
+      // A record routed to another group would land in the wrong ledger.
+      expectKind(
+        doc([
+          {
+            'group': 'g1',
+            'expenses': [
+              {'id': 'e1', 'group': 'g2', 'updated_at': 1},
+            ],
+          },
+        ]),
+        BackupErrorKind.malformed,
+      );
+      expectKind(
+        doc([
+          {
+            'group': 'g1',
+            'members': [
+              {'group': 'g1', 'updated_at': 1},
+            ],
+          },
+        ]),
+        BackupErrorKind.malformed,
+      );
+      expectKind(
+        doc([
+          {
+            'group': 'g1',
+            'settlements': [
+              {'id': 's1', 'group': 'g1'},
+            ],
+          },
+        ]),
+        BackupErrorKind.malformed,
+      );
+    });
+  });
+
+  test('backupFileName uses the local date', () {
+    expect(
+      backupFileName(DateTime(2026, 3, 7, 23, 59)),
+      'moneyledger-backup-2026-03-07.json',
+    );
+  });
+
+  group('nudge (G5)', () {
+    const solo = GroupModel(roomId: 's', name: 'Solo', currency: 'EUR');
+    const shared = GroupModel(roomId: 'p', name: 'Shared', currency: 'EUR');
+    const locals = GroupModel(roomId: 'l', name: 'Locals', currency: 'EUR');
+    const left = GroupModel(roomId: 'r', name: 'Peer left', currency: 'EUR');
+    final members = [
+      member('s', '@me:x', 'Me', mxid: '@me:x'),
+      member('p', '@me:x', 'Me', mxid: '@me:x'),
+      member('p', '@bo:x', 'Bo', mxid: '@bo:x'),
+      member('l', '@me:x', 'Me', mxid: '@me:x'),
+      member('l', 'kim', 'Kim'),
+      member('r', '@me:x', 'Me', mxid: '@me:x'),
+      member('r', '@al:x', 'Al', mxid: '@al:x', status: 'removed'),
+    ];
+
+    test('unprotected = no other active claimed member', () {
+      final u = unprotectedGroups(
+        groups: [solo, shared, locals, left],
+        members: members,
+        myMxid: '@me:x',
+      );
+      expect(u.map((g) => g.roomId), ['s', 'l', 'r']);
+    });
+
+    const day = 24 * 60 * 60 * 1000;
+    const now = 100 * day;
+    test('shows without any backup, hides with no unprotected group', () {
+      expect(
+        shouldShowBackupNudge(
+          unprotectedCount: 1,
+          lastBackupAt: null,
+          snoozedUntil: null,
+          now: now,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldShowBackupNudge(
+          unprotectedCount: 0,
+          lastBackupAt: null,
+          snoozedUntil: null,
+          now: now,
+        ),
+        isFalse,
+      );
+    });
+
+    test('a backup within 30 days hides it; an older one does not', () {
+      bool show(int last) => shouldShowBackupNudge(
+        unprotectedCount: 2,
+        lastBackupAt: last,
+        snoozedUntil: null,
+        now: now,
+      );
+      expect(show(now - 29 * day), isFalse);
+      expect(show(now - 30 * day), isTrue);
+    });
+
+    test('a snooze hides it until it expires', () {
+      bool show(int until) => shouldShowBackupNudge(
+        unprotectedCount: 1,
+        lastBackupAt: null,
+        snoozedUntil: until,
+        now: now,
+      );
+      expect(show(now + 1), isFalse);
+      expect(show(now), isTrue);
+    });
+  });
+}

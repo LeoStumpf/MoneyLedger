@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
+import 'package:money_ledger/features/backup/backup_providers.dart';
 import 'package:money_ledger/features/auth/sso_provider.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
@@ -80,6 +81,7 @@ List<dynamic> testOverrides({
   Stream<List<SettlementModel>>? settlementsStream,
   List<DebtEntry> debts = const [],
   List<MemberModel> members = const [],
+  int? lastBackupAt,
 }) => [
   isLoggedInProvider.overrideWith((ref) => isLoggedIn),
   // loginFlowsLoading: future never completes, simulating homeserver
@@ -104,6 +106,11 @@ List<dynamic> testOverrides({
     (ref, groupId) =>
         const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null),
   ),
+  // Backup (G5): never backed up, not snoozed, no members — the nudge stays
+  // hidden and nothing opens a database.
+  lastBackupAtProvider.overrideWith((_) => Stream.value(lastBackupAt)),
+  backupNudgeSnoozedUntilProvider.overrideWith((_) => Stream.value(null)),
+  allMembersProvider.overrideWith((_) => Stream.value(const [])),
   // Never touch the app_links plugin in widget tests.
   ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
 ];

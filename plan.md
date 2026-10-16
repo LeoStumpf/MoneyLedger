@@ -78,11 +78,11 @@ or loses their phone **and** has no group peers online loses everything; even wi
 peers, only groups that have peers are recoverable — solo/local-only groups
 (all participants virtual) are gone. CSV backup is manual and lossy (no
 settlements/tombstones).
-- [ ] Onboarding / settings: explain "your data lives only on your devices"
+- [x] Onboarding / settings: explain "your data lives only on your devices"
       and recommend a second device or regular export
-- [ ] Full-fidelity backup format (JSON/zip: settlements, tombstones, stable
+- [x] Full-fidelity backup format (JSON/zip: settlements, tombstones, stable
       participant ids) — export + import, reuse `bootstrap` codec
-- [ ] Optional: periodic "you haven't backed up in N days" nudge for groups
+- [x] Optional: periodic "you haven't backed up in N days" nudge for groups
       with no claimed peer
 
 ### G6. Per-record cryptographic authorship 🟠 (trust model)
@@ -160,8 +160,8 @@ SAS exists for visibility only; replication still reaches unverified devices.
 Documented in CLAUDE.md: no settlements / tombstones, participant identity by
 display name (collision merges, rename splits). Largely superseded by the
 full-fidelity backup in G5 — keep CSV as the human-readable export only.
-- [ ] Add settlements as a second section or separate file (if G5 isn't done)
-- [ ] Warn on import when a name matches multiple/zero existing participants
+- [x] Add settlements as a second section or separate file (if G5 isn't done)
+- [x] Warn on import when a name matches multiple/zero existing participants
 
 ### G14. Scalability limits 🟡 (not urgent)
 - Digest is O(records/group) — fine to ~1,000 records, then hits to-device size
@@ -232,6 +232,8 @@ against SDK 36 natively (the G1 gradle override could go).
 - [ ] Assess the matrix SDK major upgrade (API changes in to-device/encryption,
       DB init) — do it only if low-risk; rebuild web wasm
 - [ ] Upgrade file_picker to 10.x; drop the compileSdk override if no longer needed
+- [ ] CI: `actions/checkout@v4` runs on deprecated Node 20 → bump to a Node-24
+      major (and check subosito/flutter-action); first CI run green (7 min)
 
 ### G23. Same ref-after-await pattern in group mutators 🟡
 `lib/features/groups/group_provider.dart` (GroupCreator, MemberAdder, MemberRemover)
@@ -370,6 +372,16 @@ stale crypto identity (broken sessions) and is a privacy concern.
       (Drift watch stream hangs under the widget-test clock) — document in
       CLAUDE.md testing notes / provide a helper
 
+### G34. Backup follow-ups (found in G5) 🟡
+- [ ] Nudge ignores a second device of the same account (would also protect
+      solo groups) — needs the device list
+- [ ] Restore of a group where peers have us `removed` (newer) → read-only
+      history again; manual two-device test
+- [ ] Saved-file snackbar shows the proposed name, not Android's actual one
+      (`… (1).json`); leave dialog's backup snackbar shows behind the dialog
+- [ ] Optional per-group JSON backup in the group ⋮ menu
+- [ ] Optional: encrypted backup (passphrase) — file is plaintext JSON today
+
 ### G18. Final release review 🟡
 - [ ] `/code-review` over all of Phase G; fix findings
 - [ ] `./build.sh` green; release APK on emulator + phone
@@ -407,8 +419,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G12 — app identity, i18n EN+DE, privacy/about (+ G21 licensing)
 - [x] G32+G17 — disable Android auto-backup; design pass (icons, theme, polish)
 - [x] G15 — test/tooling debt, offline demo, CI
-- [ ] G5 — full-fidelity backup
-- [ ] G13 — CSV improvements
+- [x] G5 — full-fidelity backup
+- [x] G13 — CSV improvements (with G5)
 - [ ] G6 — signed records (any member may edit; every version signed by its editor)
 - [ ] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [ ] G14 — digest size measurement
@@ -416,6 +428,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [ ] G27 — LWW tie-break
 - [ ] G33 — design follow-ups (settlement title, test display names)
+- [ ] G34 — backup follow-ups
 - [ ] *(G32+ — newly discovered points)*
 - [ ] G18 — final release review
 

@@ -120,4 +120,87 @@ void main() {
       expect(parsed.participantNames, ['Alex', 'Sam']);
     });
   });
+
+  group('payments (G13)', () {
+    const payment = SettlementModel(
+      id: 's1',
+      roomId: 'g1',
+      amountCents: 2100,
+      currency: 'EUR',
+      fromUser: 'pb',
+      toUser: 'pa',
+      createdAt: 1760000100000,
+      updatedAt: 1760000200000,
+    );
+
+    test('a payment is a readable row: payer, recipient share = amount', () {
+      final csv = buildGroupCsv(testGroup, members, [expense()], [payment]);
+      final lines = csv.split('\r\n');
+      expect(
+        lines.first,
+        'Date,Type,Description,Currency,Amount,Paid By,Alex,Sam,'
+        'Expense ID,Group,Group ID,Updated At',
+      );
+      expect(lines[1], contains(',Expense,Dinner,EUR,42.00,Alex,21.00,21.00,'));
+      expect(lines[2], contains(',Payment,Payment,EUR,21.00,Sam,21.00,,s1,'));
+    });
+
+    test('payments round-trip; deleted ones are skipped', () {
+      final csv = buildGroupCsv(
+        testGroup,
+        members,
+        [expense()],
+        [
+          payment,
+          const SettlementModel(
+            id: 's2',
+            roomId: 'g1',
+            amountCents: 5,
+            currency: 'EUR',
+            fromUser: 'pa',
+            toUser: 'pb',
+            createdAt: 1,
+            updatedAt: 2,
+            deleted: true,
+          ),
+        ],
+      );
+      final rows = parseGroupCsv(csv).rows;
+      expect(rows, hasLength(2));
+      expect(rows[0].isPayment, isFalse);
+      expect(rows[0].paymentRecipient, isNull);
+      final p = rows[1];
+      expect(p.isPayment, isTrue);
+      expect(p.id, 's1');
+      expect(p.paidByName, 'Sam');
+      expect(p.paymentRecipient, 'Alex');
+      expect(p.amountCents, 2100);
+      expect(p.updatedAt, 1760000200000);
+    });
+
+    test('a pre-G13 CSV without a Type column is all expenses', () {
+      const old =
+          'Date,Description,Currency,Amount,Paid By,Alex,Sam,'
+          'Expense ID,Group,Group ID,Updated At\r\n'
+          '2025-10-09T10:00:00.000,Dinner,EUR,42.00,Alex,21.00,21.00,'
+          'e1,Trip,g1,1760000050000';
+      final parsed = parseGroupCsv(old);
+      expect(parsed.participantNames, ['Alex', 'Sam']);
+      final r = parsed.rows.single;
+      expect(r.isPayment, isFalse);
+      expect(r.description, 'Dinner');
+      expect(r.sharesByName, {'Alex': 2100, 'Sam': 2100});
+    });
+
+    test('a payment row with several shares is treated as an expense', () {
+      const csv =
+          'Date,Type,Description,Currency,Amount,Paid By,Alex,Sam,'
+          'Expense ID,Group,Group ID,Updated At\r\n'
+          '2025-10-09T10:00:00.000,Payment,Odd,EUR,2.00,Alex,1.00,1.00,'
+          'x1,Trip,g1,1';
+      final r = parseGroupCsv(csv).rows.single;
+      expect(r.isPayment, isTrue);
+      expect(r.paymentRecipient, isNull);
+    });
+  });
 }

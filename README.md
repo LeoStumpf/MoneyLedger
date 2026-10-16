@@ -27,7 +27,14 @@ and sees only ciphertext.
 - **Custom splits**: equal (pick who), exact amounts, shares/weights, or
   percentages — always summing to the total exactly.
 - Multi-currency **balances** with greedy debt simplification, plus settlements.
-- **CSV export/import** for backup and sharing (idempotent merge-by-id).
+- **Full backup / restore**: *Settings* (gear) → *Back up all groups* writes one
+  JSON file with every group (participants, expenses, payments, deletions);
+  *Restore from backup* previews and merges it back (idempotent, newer entries
+  win). Your data lives only on your devices — the groups page nudges you when
+  a group exists nowhere else and you haven't backed up for 30 days. The file
+  is plain text, not encrypted.
+- **CSV export/import** per group (expenses + payments) for spreadsheets and
+  sharing, with an import preview that warns about unknown / duplicate names.
 - **In-app registration** (open / dummy-UIA homeservers) and **SSO** login.
 - **Device verification** (SAS emoji) and a sync-health indicator.
 - **English + German** UI (follows the device language, English fallback),
@@ -210,7 +217,8 @@ To add or change a string, edit **both** ARB files and run `flutter gen-l10n`
 (also run automatically by `flutter pub get` / `flutter run` / `flutter build`);
 the generated `lib/l10n/app_localizations*.dart` files are committed. Use it in
 widgets as `context.l10n.myKey` (`import 'core/l10n/l10n.dart'`). The CSV
-export stays machine format (dot decimals, ISO dates) in every language.
+export and the JSON backup stay machine format (dot decimals, ISO dates) in
+every language.
 
 ## Architecture & contributing
 

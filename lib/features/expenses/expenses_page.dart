@@ -9,7 +9,8 @@ import '../../core/sync/sync_status_provider.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../backup/csv_export.dart';
-import '../backup/csv_files.dart';
+import '../backup/backup_files.dart';
+import '../backup/backup_ui.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/empty_state.dart';
@@ -384,7 +385,7 @@ class ExpensesPage extends ConsumerWidget {
       kind: kind,
       groupName: group?.name ?? l.thisGroup,
       warning: warning,
-      onExport: () => _exportCsv(context, ref),
+      onBackup: () => exportFullBackup(context, ref),
     );
     if (!confirmed) return;
     final exiter = ref.read(groupExiterProvider.notifier);
@@ -448,7 +449,12 @@ class ExpensesPage extends ConsumerWidget {
         expenses,
         roomId,
       );
-      await saveCsvFile(csvFileName(group.name), csv);
+      final saved = await saveTextFile(
+        csvFileName(group.name),
+        csv,
+        LedgerFileKind.csv,
+      );
+      if (!saved) return; // dialog cancelled
       messenger.showSnackBar(
         SnackBar(content: Text(l.exportedFile(csvFileName(group.name)))),
       );

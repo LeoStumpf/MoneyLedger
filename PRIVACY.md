@@ -20,7 +20,7 @@ MoneyLedger server that could receive your data.
 | Where your ledger lives | On the devices of the group's members |
 | What the homeserver can read | Nothing of the ledger — only encrypted messages and their metadata |
 | Analytics, crash reporting, ads, tracking | None |
-| Leaves the device | Encrypted sync messages to your homeserver; a CSV file only when you export one |
+| Leaves the device | Encrypted sync messages to your homeserver; a CSV or backup file only when you export one |
 
 ## Your ledger stays on your devices
 
@@ -54,20 +54,24 @@ On Android, MoneyLedger can sync about every 15 minutes while the app is closed
 encrypted messages to your homeserver and shows no notifications. You can turn
 it off in Settings. The web version syncs only while its tab is open.
 
-## CSV export and import
+## Export, backup and import
 
-Exporting a group writes a CSV file with its expenses, the participants' names
-and the amounts — only when you ask for it. Where that file goes is your
-choice; it is not encrypted, and MoneyLedger has no visibility into it
-afterwards. Importing reads only the file you pick.
+Exporting a group writes a CSV file with its expenses, payments, the
+participants' names and the amounts; "Back up all groups" (Settings) writes one
+JSON file with every group of your account, including the participants' Matrix
+IDs and deleted entries. Both happen only when you ask for it. Where the file
+goes is your choice; it is plain text, not encrypted, and MoneyLedger has no
+visibility into it afterwards. Importing or restoring reads only the file you
+pick.
 
 ## Device backups
 
 MoneyLedger opts out of Android's automatic app backup and device-to-device
 transfer. Your ledger and your Matrix session (including its encryption keys)
 are never copied into a Google backup or onto another phone by Android. On a
-new device, sign in and MoneyLedger restores your groups from your other
-devices and the other members; a CSV export is your own offline backup.
+new device, sign in and your groups are restored from your other devices and
+the other members; for groups only you use, a backup file (Settings → Back up
+all groups) is your own offline copy.
 
 ## Deleting your data
 

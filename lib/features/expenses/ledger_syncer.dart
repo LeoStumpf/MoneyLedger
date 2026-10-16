@@ -482,7 +482,7 @@ class LedgerSyncer {
 
   /// New-member bootstrap: a single payload carrying the group meta, full member
   /// list, and the whole ledger. Each nested record carries its own `group` id.
-  @visibleForTesting
+  /// Also the merge of a full backup restore (G5, `BackupService.restore`).
   static Future<void> processBootstrap(
     Map<String, dynamic> content,
     GroupsDao groupDao,

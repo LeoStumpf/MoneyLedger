@@ -22,6 +22,7 @@ class OnboardingPage extends ConsumerWidget {
     ),
     (Icons.lock_outline, l.onboardingSyncTitle, l.onboardingSyncBody),
     (Icons.group_add_outlined, l.onboardingAddTitle, l.onboardingAddBody),
+    (Icons.backup_outlined, l.onboardingBackupTitle, l.onboardingBackupBody),
   ];
 
   Future<void> _getStarted(BuildContext context, WidgetRef ref) async {
@@ -45,7 +46,7 @@ class OnboardingPage extends ConsumerWidget {
     final l = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    // G17: one designed page — logo hero, three feature cards, and the
+    // G17: one designed page — logo hero, four feature cards (G5: backup), and the
     // button pinned below the scrollable content.
     return Scaffold(
       body: SafeArea(

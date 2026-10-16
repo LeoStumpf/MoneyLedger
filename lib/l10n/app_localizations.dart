@@ -776,17 +776,17 @@ abstract class AppLocalizations {
   /// **'\"{group}\" and all its expenses will be permanently removed from this device.'**
   String deleteGroupBody(Object group);
 
-  /// No description provided for @exportBackupTip.
+  /// No description provided for @backupBeforeExitTip.
   ///
   /// In en, this message translates to:
-  /// **'Tip: export a CSV backup first.'**
-  String get exportBackupTip;
+  /// **'Tip: back up all groups first (Settings → Back up all groups).'**
+  String get backupBeforeExitTip;
 
-  /// No description provided for @exportBackupFirst.
+  /// No description provided for @backupBeforeExit.
   ///
   /// In en, this message translates to:
-  /// **'Export a CSV backup first'**
-  String get exportBackupFirst;
+  /// **'Back up all groups first'**
+  String get backupBeforeExit;
 
   /// No description provided for @leave.
   ///
@@ -1541,13 +1541,13 @@ abstract class AppLocalizations {
   /// No description provided for @privacyCsvTitle.
   ///
   /// In en, this message translates to:
-  /// **'CSV export and import'**
+  /// **'Export, backup and import'**
   String get privacyCsvTitle;
 
   /// No description provided for @privacyCsvBody.
   ///
   /// In en, this message translates to:
-  /// **'Exporting a group writes a CSV file with its expenses, the participants\' names and the amounts — only when you ask for it. Where that file goes is your choice; it is not encrypted, and MoneyLedger has no visibility into it afterwards. Importing reads only the file you pick.'**
+  /// **'Exporting a group writes a CSV file with its expenses, payments, the participants\' names and the amounts; \"Back up all groups\" writes one JSON file with every group of your account, including the participants\' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice; it is plain text, not encrypted, and MoneyLedger has no visibility into it afterwards. Importing or restoring reads only the file you pick.'**
   String get privacyCsvBody;
 
   /// No description provided for @privacyBackupTitle.
@@ -1559,7 +1559,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyBackupBody.
   ///
   /// In en, this message translates to:
-  /// **'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; a CSV export is your own offline backup.'**
+  /// **'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.'**
   String get privacyBackupBody;
 
   /// No description provided for @privacyDeleteTitle.
@@ -1867,6 +1867,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{from} pays you'**
   String debtPaysYou(String from);
+
+  /// No description provided for @backupSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup'**
+  String get backupSectionTitle;
+
+  /// No description provided for @backupExportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up all groups'**
+  String get backupExportTitle;
+
+  /// No description provided for @backupExportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Saves every group — with payments and deleted entries — to one file. The file is not encrypted: keep it somewhere safe.'**
+  String get backupExportBody;
+
+  /// No description provided for @backupRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from backup'**
+  String get backupRestoreTitle;
+
+  /// No description provided for @backupRestoreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Merges a backup file into this device. Newer entries win; nothing is duplicated.'**
+  String get backupRestoreBody;
+
+  /// No description provided for @lastBackupAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Last backup: {date}'**
+  String lastBackupAt(String date);
+
+  /// No description provided for @lastBackupNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Last backup: never'**
+  String get lastBackupNever;
+
+  /// No description provided for @backupSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup saved: {fileName}'**
+  String backupSaved(String fileName);
+
+  /// No description provided for @backupNotABackup.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is not a MoneyLedger backup.'**
+  String get backupNotABackup;
+
+  /// No description provided for @backupNewerVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'This backup was made by a newer version of MoneyLedger (format {version}). Update the app to restore it.'**
+  String backupNewerVersion(int version);
+
+  /// No description provided for @backupMalformed.
+  ///
+  /// In en, this message translates to:
+  /// **'This backup file is damaged and can\'t be restored.'**
+  String get backupMalformed;
+
+  /// No description provided for @restorePreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore backup?'**
+  String get restorePreviewTitle;
+
+  /// No description provided for @restoreBackupFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup from {date}'**
+  String restoreBackupFrom(String date);
+
+  /// No description provided for @restoreOtherAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'This backup was made by {account}. Its groups will be added to the account you are signed in with.'**
+  String restoreOtherAccount(String account);
+
+  /// No description provided for @groupsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 group} other{{count} groups}}'**
+  String groupsCount(int count);
+
+  /// No description provided for @expensesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 expense} other{{count} expenses}}'**
+  String expensesCount(int count);
+
+  /// No description provided for @paymentsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 payment} other{{count} payments}}'**
+  String paymentsCount(int count);
+
+  /// No description provided for @restoreNewGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No new groups} =1{1 new group} other{{count} new groups}}'**
+  String restoreNewGroups(int count);
+
+  /// No description provided for @restoreChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Everything in this backup is already on this device.} =1{1 entry will be added or updated.} other{{count} entries will be added or updated.}}'**
+  String restoreChanges(int count);
+
+  /// No description provided for @restoreTagNew.
+  ///
+  /// In en, this message translates to:
+  /// **'new'**
+  String get restoreTagNew;
+
+  /// No description provided for @restoreTagLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'left earlier — comes back'**
+  String get restoreTagLeft;
+
+  /// No description provided for @restoreTagChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change} other{{count} changes}}'**
+  String restoreTagChanges(int count);
+
+  /// No description provided for @restoreTagUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'up to date'**
+  String get restoreTagUpToDate;
+
+  /// No description provided for @restoreLeftNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups you left or deleted come back on this device. If another member removed you, the group stays read-only.'**
+  String get restoreLeftNote;
+
+  /// No description provided for @restoreAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get restoreAction;
+
+  /// No description provided for @restoredGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Restored 1 group} other{Restored {count} groups}}'**
+  String restoredGroups(int count);
+
+  /// No description provided for @restoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore failed: {error}'**
+  String restoreFailed(String error);
+
+  /// No description provided for @backupNudgeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up your groups'**
+  String get backupNudgeTitle;
+
+  /// No description provided for @backupNudgeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 group exists only on this device. If you lose it, the group is gone — save a backup file.} other{{count} groups exist only on this device. If you lose it, they are gone — save a backup file.}}'**
+  String backupNudgeBody(int count);
+
+  /// No description provided for @backupNudgeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get backupNudgeLater;
+
+  /// No description provided for @backupNudgeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up now'**
+  String get backupNudgeAction;
+
+  /// No description provided for @onboardingBackupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep a copy'**
+  String get onboardingBackupTitle;
+
+  /// No description provided for @onboardingBackupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else stores your ledger. Groups with other members are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).'**
+  String get onboardingBackupBody;
+
+  /// No description provided for @csvPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import CSV?'**
+  String get csvPreviewTitle;
+
+  /// No description provided for @csvPreviewNewGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates the new group “{name}”.'**
+  String csvPreviewNewGroup(String name);
+
+  /// No description provided for @csvPreviewExistingGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Merges into your group “{name}”. Newer entries win.'**
+  String csvPreviewExistingGroup(String name);
+
+  /// No description provided for @csvPreviewUnmatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found in the group — will be added as new people: {names}'**
+  String csvPreviewUnmatched(String names);
+
+  /// No description provided for @csvPreviewAmbiguous.
+  ///
+  /// In en, this message translates to:
+  /// **'Several participants have the same name — the active one is used: {names}'**
+  String csvPreviewAmbiguous(String names);
+
+  /// No description provided for @csvImportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get csvImportAction;
+
+  /// No description provided for @csvImportEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This CSV contains no expenses or payments.'**
+  String get csvImportEmpty;
+
+  /// No description provided for @importedExpensesAndPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {expenses} and {payments}'**
+  String importedExpensesAndPayments(String expenses, String payments);
 }
 
 class _AppLocalizationsDelegate

@@ -3,9 +3,9 @@ import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import 'ledger_csv.dart';
 
-/// Reads a group's meta, participants and expenses from Drift and renders the
-/// human-readable per-group CSV (see [buildGroupCsv]). Returns an empty string
-/// if the group doesn't exist. The DB read is the testable seam; the file
+/// Reads a group's meta, participants, expenses and payments from Drift and
+/// renders the human-readable per-group CSV (see [buildGroupCsv]). Returns an
+/// empty string if the group doesn't exist. The DB read is the testable seam; the file
 /// save/share around it lives in the UI layer.
 Future<String> buildGroupCsvForExport(
   GroupsDao groupsDao,
@@ -17,7 +17,8 @@ Future<String> buildGroupCsvForExport(
   if (group == null) return '';
   final members = await membersDao.getMembers(groupId);
   final expenses = await expensesDao.getAllExpensesForGroup(groupId);
-  return buildGroupCsv(group, members, expenses);
+  final settlements = await expensesDao.getAllSettlementsForGroup(groupId);
+  return buildGroupCsv(group, members, expenses, settlements);
 }
 
 /// A filesystem-friendly file name for a group's CSV export.

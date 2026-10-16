@@ -205,7 +205,7 @@ void main() {
 
     expect(find.text('Leave group?'), findsOneWidget);
     expect(find.text('You still owe €12.50.'), findsOneWidget);
-    expect(find.text('Export a CSV backup first'), findsOneWidget);
+    expect(find.text('Back up all groups first'), findsOneWidget);
 
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();

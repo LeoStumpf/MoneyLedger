@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/l10n/l10n.dart';
 import '../auth/auth_provider.dart';
 import '../onboarding/onboarding_provider.dart';
-import '../backup/csv_files.dart';
-import '../backup/csv_import.dart';
+import '../backup/backup_providers.dart';
+import '../backup/backup_ui.dart';
 import '../expenses/ledger_syncer.dart';
 import '../../core/background/background_sync_provider.dart';
 import '../../core/sync/self_recovery.dart';
@@ -117,32 +117,8 @@ class GroupsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _importCsv(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-    final String? text;
-    try {
-      text = await pickCsvText();
-    } catch (e) {
-      // The picked file couldn't be read (G15: never fail silently).
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.importFailed(e.toString()))),
-      );
-      return;
-    }
-    if (text == null) return; // cancelled
-    final count = await ref.read(csvImporterProvider.notifier).importCsv(text);
-    final error = ref.read(csvImporterProvider).error;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          error != null
-              ? l.importFailed(error.toString())
-              : l.importedExpenses(count),
-        ),
-      ),
-    );
-  }
+  Future<void> _importCsv(BuildContext context, WidgetRef ref) =>
+      importCsvWithPreview(context, ref);
 }
 
 class _GroupsBody extends ConsumerWidget {
@@ -200,6 +176,7 @@ class _GroupsBody extends ConsumerWidget {
           for (final g in groups) ref.watch(groupOverviewProvider(g.roomId)),
         ];
         final totals = balanceTotals(overviews.map((o) => o.myBalance));
+        final nudge = ref.watch(backupNudgeProvider);
         return ListView(
           padding: const EdgeInsets.fromLTRB(
             Insets.page,
@@ -210,6 +187,10 @@ class _GroupsBody extends ConsumerWidget {
           children: [
             ContentWidth(child: _TotalsCard(totals: totals)),
             const SizedBox(height: Insets.l),
+            if (nudge > 0) ...[
+              ContentWidth(child: BackupNudgeCard(count: nudge)),
+              const SizedBox(height: Insets.m),
+            ],
             for (var i = 0; i < groups.length; i++)
               ContentWidth(
                 child: Padding(
@@ -517,9 +498,10 @@ class BalanceSummaryText extends StatelessWidget {
   }
 }
 
-/// Settings sheet (G31 sync settings, G12 about): explains when this device
-/// syncs and, on Android, toggles the periodic background sync for the
-/// signed-in account; links to the About page.
+/// Settings sheet (G31 sync settings, G5 backup, G12 about): explains when
+/// this device syncs and, on Android, toggles the periodic background sync for
+/// the signed-in account; backs up / restores all groups; links to the About
+/// page.
 class SyncSettingsSheet extends ConsumerWidget {
   const SyncSettingsSheet({super.key});
 
@@ -555,6 +537,8 @@ class SyncSettingsSheet extends ConsumerWidget {
                 title: Text(l.noBackgroundSyncTitle),
                 subtitle: Text(l.noBackgroundSyncBody),
               ),
+            const Divider(),
+            const BackupSettingsSection(),
             const Divider(),
             ListTile(
               key: const Key('aboutTile'),

@@ -436,10 +436,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get exportBackupTip => 'Tipp: Exportiere vorher eine CSV-Sicherung.';
+  String get backupBeforeExitTip =>
+      'Tipp: Sichere vorher alle Gruppen (Einstellungen → Alle Gruppen sichern).';
 
   @override
-  String get exportBackupFirst => 'Vorher CSV-Sicherung exportieren';
+  String get backupBeforeExit => 'Vorher alle Gruppen sichern';
 
   @override
   String get leave => 'Verlassen';
@@ -895,18 +896,18 @@ class AppLocalizationsDe extends AppLocalizations {
       'Unter Android kann MoneyLedger etwa alle 15 Minuten synchronisieren, während die App geschlossen ist (nur mit Netzwerkverbindung und nicht bei niedrigem Akku). Dafür werden dieselben verschlüsselten Nachrichten an deinen Homeserver genutzt; es werden keine Benachrichtigungen angezeigt. Du kannst das in den Einstellungen abschalten. Die Web-Version synchronisiert nur, solange ihr Tab geöffnet ist.';
 
   @override
-  String get privacyCsvTitle => 'CSV-Export und -Import';
+  String get privacyCsvTitle => 'Export, Sicherung und Import';
 
   @override
   String get privacyCsvBody =>
-      'Beim Export einer Gruppe entsteht eine CSV-Datei mit ihren Ausgaben, den Namen der Personen und den Beträgen – nur, wenn du das auslöst. Wohin die Datei geht, entscheidest du; sie ist nicht verschlüsselt, und MoneyLedger hat danach keinen Einblick mehr. Beim Import wird nur die Datei gelesen, die du auswählst.';
+      'Beim Export einer Gruppe entsteht eine CSV-Datei mit ihren Ausgaben, Zahlungen, den Namen der Personen und den Beträgen; „Alle Gruppen sichern“ schreibt eine JSON-Datei mit allen Gruppen deines Kontos, inklusive der Matrix-IDs der Personen und gelöschter Einträge. Beides passiert nur, wenn du es auslöst. Wohin die Datei geht, entscheidest du; sie ist reiner Text, nicht verschlüsselt, und MoneyLedger hat danach keinen Einblick mehr. Beim Import oder Wiederherstellen wird nur die Datei gelesen, die du auswählst.';
 
   @override
   String get privacyBackupTitle => 'Gerätesicherungen';
 
   @override
   String get privacyBackupBody =>
-      'MoneyLedger nimmt nicht an der automatischen App-Sicherung und Geräteübertragung von Android teil. Dein Kassenbuch und deine Matrix-Sitzung (inklusive ihrer Schlüssel) werden von Android nie in eine Google-Sicherung oder auf ein anderes Telefon kopiert. Auf einem neuen Gerät meldest du dich an und deine Gruppen werden von deinen anderen Geräten und den anderen Mitgliedern wiederhergestellt; ein CSV-Export ist deine eigene Offline-Sicherung.';
+      'MoneyLedger nimmt nicht an der automatischen App-Sicherung und Geräteübertragung von Android teil. Dein Kassenbuch und deine Matrix-Sitzung (inklusive ihrer Schlüssel) werden von Android nie in eine Google-Sicherung oder auf ein anderes Telefon kopiert. Auf einem neuen Gerät meldest du dich an und deine Gruppen werden von deinen anderen Geräten und den anderen Mitgliedern wiederhergestellt; für Gruppen, die nur du nutzt, ist eine Sicherungsdatei (Einstellungen → Alle Gruppen sichern) deine eigene Offline-Kopie.';
 
   @override
   String get privacyDeleteTitle => 'Deine Daten löschen';
@@ -1095,5 +1096,224 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String debtPaysYou(String from) {
     return '$from zahlt an dich';
+  }
+
+  @override
+  String get backupSectionTitle => 'Sicherung';
+
+  @override
+  String get backupExportTitle => 'Alle Gruppen sichern';
+
+  @override
+  String get backupExportBody =>
+      'Speichert alle Gruppen – mit Zahlungen und gelöschten Einträgen – in einer Datei. Die Datei ist nicht verschlüsselt: Bewahre sie sicher auf.';
+
+  @override
+  String get backupRestoreTitle => 'Aus Sicherung wiederherstellen';
+
+  @override
+  String get backupRestoreBody =>
+      'Führt eine Sicherungsdatei mit diesem Gerät zusammen. Neuere Einträge gewinnen, nichts wird doppelt angelegt.';
+
+  @override
+  String lastBackupAt(String date) {
+    return 'Letzte Sicherung: $date';
+  }
+
+  @override
+  String get lastBackupNever => 'Letzte Sicherung: noch nie';
+
+  @override
+  String backupSaved(String fileName) {
+    return 'Sicherung gespeichert: $fileName';
+  }
+
+  @override
+  String get backupNotABackup => 'Diese Datei ist keine MoneyLedger-Sicherung.';
+
+  @override
+  String backupNewerVersion(int version) {
+    return 'Diese Sicherung stammt von einer neueren MoneyLedger-Version (Format $version). Aktualisiere die App, um sie wiederherzustellen.';
+  }
+
+  @override
+  String get backupMalformed =>
+      'Diese Sicherungsdatei ist beschädigt und kann nicht wiederhergestellt werden.';
+
+  @override
+  String get restorePreviewTitle => 'Sicherung wiederherstellen?';
+
+  @override
+  String restoreBackupFrom(String date) {
+    return 'Sicherung vom $date';
+  }
+
+  @override
+  String restoreOtherAccount(String account) {
+    return 'Diese Sicherung stammt von $account. Ihre Gruppen werden dem Konto hinzugefügt, mit dem du angemeldet bist.';
+  }
+
+  @override
+  String groupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Gruppen',
+      one: '1 Gruppe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String expensesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Ausgaben',
+      one: '1 Ausgabe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String paymentsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Zahlungen',
+      one: '1 Zahlung',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreNewGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count neue Gruppen',
+      one: '1 neue Gruppe',
+      zero: 'Keine neuen Gruppen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Einträge werden hinzugefügt oder aktualisiert.',
+      one: '1 Eintrag wird hinzugefügt oder aktualisiert.',
+      zero: 'Alles aus dieser Sicherung ist schon auf diesem Gerät.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get restoreTagNew => 'neu';
+
+  @override
+  String get restoreTagLeft => 'früher verlassen – kommt zurück';
+
+  @override
+  String restoreTagChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Änderungen',
+      one: '1 Änderung',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get restoreTagUpToDate => 'aktuell';
+
+  @override
+  String get restoreLeftNote =>
+      'Gruppen, die du verlassen oder gelöscht hast, kommen auf diesem Gerät zurück. Hat dich ein anderes Mitglied entfernt, bleibt die Gruppe schreibgeschützt.';
+
+  @override
+  String get restoreAction => 'Wiederherstellen';
+
+  @override
+  String restoredGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Gruppen wiederhergestellt',
+      one: '1 Gruppe wiederhergestellt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreFailed(String error) {
+    return 'Wiederherstellen fehlgeschlagen: $error';
+  }
+
+  @override
+  String get backupNudgeTitle => 'Sichere deine Gruppen';
+
+  @override
+  String backupNudgeBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Gruppen gibt es nur auf diesem Gerät. Geht es verloren, sind sie weg – speichere eine Sicherung.',
+      one:
+          '1 Gruppe gibt es nur auf diesem Gerät. Geht es verloren, ist die Gruppe weg – speichere eine Sicherung.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get backupNudgeLater => 'Später';
+
+  @override
+  String get backupNudgeAction => 'Jetzt sichern';
+
+  @override
+  String get onboardingBackupTitle => 'Leg eine Kopie an';
+
+  @override
+  String get onboardingBackupBody =>
+      'Niemand sonst speichert deine Daten. Gruppen mit anderen Mitgliedern liegen auch auf deren Geräten. Für Gruppen, die nur du nutzt, melde dich auf einem zweiten Gerät an oder speichere ab und zu eine Sicherung (Einstellungen → Alle Gruppen sichern).';
+
+  @override
+  String get csvPreviewTitle => 'CSV importieren?';
+
+  @override
+  String csvPreviewNewGroup(String name) {
+    return 'Legt die neue Gruppe „$name“ an.';
+  }
+
+  @override
+  String csvPreviewExistingGroup(String name) {
+    return 'Wird mit deiner Gruppe „$name“ zusammengeführt. Neuere Einträge gewinnen.';
+  }
+
+  @override
+  String csvPreviewUnmatched(String names) {
+    return 'Nicht in der Gruppe gefunden – werden als neue Personen hinzugefügt: $names';
+  }
+
+  @override
+  String csvPreviewAmbiguous(String names) {
+    return 'Mehrere Personen heißen gleich – die aktive wird verwendet: $names';
+  }
+
+  @override
+  String get csvImportAction => 'Importieren';
+
+  @override
+  String get csvImportEmpty =>
+      'Diese CSV enthält keine Ausgaben oder Zahlungen.';
+
+  @override
+  String importedExpensesAndPayments(String expenses, String payments) {
+    return '$expenses und $payments importiert';
   }
 }

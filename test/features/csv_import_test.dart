@@ -4,7 +4,9 @@ library;
 
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:money_ledger/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/backup/csv_import.dart';
 import 'package:money_ledger/features/backup/ledger_csv.dart';
@@ -70,8 +72,10 @@ void main() {
     });
   });
 
-  Future<int> import(String csv) =>
-      c.read(csvImporterProvider.notifier).importCsv(csv);
+  Future<int> import(String csv) => c
+      .read(csvImporterProvider.notifier)
+      .importCsv(csv)
+      .then((r) => r.expenses);
 
   test(
     'import into an empty DB creates the group, participants and expenses',
@@ -171,5 +175,130 @@ void main() {
         .map((m) => m.displayName)
         .toSet();
     expect(names, containsAll(['Alex', 'Sam']));
+  });
+
+  group('payments + name warnings (G13)', () {
+    const payment = SettlementModel(
+      id: 's1',
+      roomId: 'g1',
+      amountCents: 2100,
+      currency: 'EUR',
+      fromUser: 'pb',
+      toUser: 'pa',
+      createdAt: 1760000100000,
+      updatedAt: 1760000200000,
+    );
+
+    test('payments import as settlements, idempotently', () async {
+      final csv = buildGroupCsv(grp, members, [exp()], [payment]);
+      final r1 = await c.read(csvImporterProvider.notifier).importCsv(csv);
+      expect(r1, (expenses: 1, payments: 1));
+      await c.read(csvImporterProvider.notifier).importCsv(csv);
+
+      final pid = {
+        for (final m in await c.read(membersDaoProvider).getMembers('g1'))
+          m.displayName: m.userId,
+      };
+      final s = await c
+          .read(expensesDaoProvider)
+          .getAllSettlementsForGroup('g1');
+      expect(s, hasLength(1));
+      expect(s.single.id, 's1');
+      expect(s.single.fromUser, pid['Sam']);
+      expect(s.single.toUser, pid['Alex']);
+      expect(s.single.amountCents, 2100);
+      expect(s.single.updatedAt, 1760000200000);
+      expect(
+        await c.read(expensesDaoProvider).getExpensesForRoom('g1'),
+        hasLength(1),
+      );
+    });
+
+    test('preview of a new group lists no name warnings', () async {
+      final p = await c
+          .read(csvImporterProvider.notifier)
+          .preview(buildGroupCsv(grp, members, [exp()], [payment]));
+      expect(p.isNewGroup, isTrue);
+      expect(p.groupName, 'Trip');
+      expect(p.expenseCount, 1);
+      expect(p.paymentCount, 1);
+      expect(p.unmatched, isEmpty);
+      expect(p.ambiguous, isEmpty);
+    });
+
+    test('preview into an existing group warns about unknown and duplicate '
+        'names', () async {
+      // Existing group with two "Alex" participants and no "Sam".
+      await c
+          .read(groupsDaoProvider)
+          .upsertGroupLww(
+            const GroupsCompanion(
+              roomId: Value('g1'),
+              name: Value('Trip'),
+              currency: Value('EUR'),
+              updatedAt: Value(1),
+            ),
+          );
+      for (final (pid, status) in [('a1', 'removed'), ('a2', 'active')]) {
+        await c
+            .read(membersDaoProvider)
+            .upsertMemberLww(
+              MembersCompanion(
+                groupId: const Value('g1'),
+                userId: Value(pid),
+                displayName: const Value('Alex'),
+                status: Value(status),
+                updatedAt: const Value(1),
+              ),
+            );
+      }
+      final csv = buildGroupCsv(grp, members, [exp()]);
+      final p = await c.read(csvImporterProvider.notifier).preview(csv);
+      expect(p.isNewGroup, isFalse);
+      expect(p.unmatched, ['Sam']);
+      expect(p.ambiguous, ['Alex']);
+
+      // The import does what the preview said: the active Alex is used, Sam
+      // becomes a new local person.
+      await import(csv);
+      final e =
+          (await c.read(expensesDaoProvider).getExpensesForRoom('g1')).single;
+      expect(e.paidBy, 'a2');
+      final names = (await c.read(membersDaoProvider).getMembers('g1')).map(
+        (m) => m.displayName,
+      );
+      expect(names.where((n) => n == 'Sam'), hasLength(1));
+    });
+  });
+
+  test('resolveCsvNames matches by label, prefers active participants', () {
+    const ms = [
+      MemberModel(
+        groupId: 'g',
+        userId: 'x1',
+        displayName: 'Bo',
+        status: 'removed',
+        updatedAt: 1,
+      ),
+      MemberModel(
+        groupId: 'g',
+        userId: 'x2',
+        displayName: 'Bo',
+        status: 'active',
+        updatedAt: 1,
+      ),
+      MemberModel(
+        groupId: 'g',
+        userId: '@cy:x',
+        displayName: '',
+        matrixId: '@cy:x',
+        status: 'active',
+        updatedAt: 1,
+      ),
+    ];
+    final r = resolveCsvNames(['Bo', '@cy:x', 'Dee', ''], ms);
+    expect(r.pidByName, {'Bo': 'x2', '@cy:x': '@cy:x'});
+    expect(r.unmatched, ['Dee']);
+    expect(r.ambiguous, ['Bo']);
   });
 }

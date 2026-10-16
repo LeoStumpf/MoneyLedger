@@ -1,12 +1,21 @@
-/// Human-readable per-group CSV (Phase D). One row per (non-deleted) expense
-/// with a decimal **share column per participant** (header = display name) for
-/// the spreadsheet view, plus trailing machine columns (`Expense ID`, `Group`,
-/// `Group ID`, `Updated At`) so an import can merge by id via last-writer-wins.
+/// Human-readable per-group CSV (Phase D, G13). One row per (non-deleted)
+/// expense **and payment** with a decimal **share column per participant**
+/// (header = display name) for the spreadsheet view, plus trailing machine
+/// columns (`Expense ID`, `Group`, `Group ID`, `Updated At`) so an import can
+/// merge by id via last-writer-wins.
+///
+/// The `Type` column says `Expense` or `Payment`. A payment (settlement) row
+/// reads like an expense the payer covered entirely for the recipient:
+/// `Paid By` = who paid, the recipient's share column = the amount — so the
+/// sheet's per-person sums still add up to the balances. Its id sits in the
+/// `Expense ID` column. A CSV without a `Type` column (written before G13) is
+/// all expenses.
 ///
 /// Pure Dart (models + strings only) — no DB, no Flutter — so it is fully
 /// unit-testable. Participant identity travels **by display name**, not by id:
 /// the import resolves names to participants (or creates local ones).
-/// Settlements and tombstones are intentionally not represented.
+/// Tombstones are intentionally not represented (see the full JSON backup,
+/// `ledger_backup.dart`, for a lossless copy).
 library;
 
 import 'dart:convert';
@@ -17,6 +26,7 @@ import '../../models/member_model.dart';
 
 // Fixed column headers (the share columns sit between [_paidBy] and [_expenseId]).
 const _date = 'Date';
+const _type = 'Type';
 const _description = 'Description';
 const _currency = 'Currency';
 const _amount = 'Amount';
@@ -29,14 +39,19 @@ const _updatedAt = 'Updated At';
 String _nameOf(MemberModel m) =>
     m.displayName.isNotEmpty ? m.displayName : (m.matrixId ?? m.userId);
 
+/// `Type` column values.
+const csvTypeExpense = 'Expense';
+const csvTypePayment = 'Payment';
+
 /// Builds the CSV text for one group. Participant columns cover every member
 /// (active or removed) so historical splits are represented; rows are the
-/// non-deleted expenses.
+/// non-deleted expenses, then the non-deleted [settlements] (payments).
 String buildGroupCsv(
   GroupModel group,
   List<MemberModel> members,
-  List<ExpenseModel> expenses,
-) {
+  List<ExpenseModel> expenses, [
+  List<SettlementModel> settlements = const [],
+]) {
   // Stable participant column order; map id -> column name.
   final cols = [...members]..sort((a, b) => _nameOf(a).compareTo(_nameOf(b)));
   final colNames = cols.map(_nameOf).toList();
@@ -44,6 +59,7 @@ String buildGroupCsv(
 
   final header = [
     _date,
+    _type,
     _description,
     _currency,
     _amount,
@@ -69,6 +85,7 @@ String buildGroupCsv(
     }
     rows.add([
       DateTime.fromMillisecondsSinceEpoch(e.createdAt).toIso8601String(),
+      csvTypeExpense,
       e.description,
       e.currency,
       _money(e.amountCents),
@@ -78,6 +95,23 @@ String buildGroupCsv(
       group.name,
       group.roomId,
       '${e.updatedAt}',
+    ]);
+  }
+  for (final s in settlements) {
+    if (s.deleted) continue;
+    final toName = nameById[s.toUser] ?? s.toUser;
+    rows.add([
+      DateTime.fromMillisecondsSinceEpoch(s.createdAt).toIso8601String(),
+      csvTypePayment,
+      csvTypePayment,
+      s.currency,
+      _money(s.amountCents),
+      nameById[s.fromUser] ?? s.fromUser,
+      for (final n in colNames) n == toName ? _money(s.amountCents) : '',
+      s.id,
+      group.name,
+      group.roomId,
+      '${s.updatedAt}',
     ]);
   }
   return rows.map(_encodeRow).join('\r\n');
@@ -94,7 +128,12 @@ class ParsedExpenseRow {
   final String paidByName;
   final Map<String, int> sharesByName; // display name -> cents
 
+  /// A `Payment` row (settlement): [paidByName] paid the single recipient in
+  /// [sharesByName]. See [paymentRecipient].
+  final bool isPayment;
+
   const ParsedExpenseRow({
+    this.isPayment = false,
     required this.id,
     required this.createdAt,
     required this.updatedAt,
@@ -104,6 +143,13 @@ class ParsedExpenseRow {
     required this.paidByName,
     required this.sharesByName,
   });
+}
+
+extension ParsedPayment on ParsedExpenseRow {
+  /// The recipient of a well-formed payment row (exactly one share), else
+  /// null — a malformed payment row is imported as an expense.
+  String? get paymentRecipient =>
+      isPayment && sharesByName.length == 1 ? sharesByName.keys.first : null;
 }
 
 class ParsedCsv {
@@ -137,6 +183,7 @@ ParsedCsv parseGroupCsv(String csv) {
   int idx(String name) => header.indexOf(name);
 
   final iDate = idx(_date);
+  final iType = idx(_type);
   final iDesc = idx(_description);
   final iCur = idx(_currency);
   final iAmt = idx(_amount);
@@ -175,6 +222,7 @@ ParsedCsv parseGroupCsv(String csv) {
     final updated = int.tryParse(at(iUpd).trim());
     rows.add(
       ParsedExpenseRow(
+        isPayment: at(iType).trim().toLowerCase() == 'payment',
         id: at(iId).isEmpty ? null : at(iId),
         createdAt: created ?? updated ?? 0,
         updatedAt: updated ?? created ?? 0,

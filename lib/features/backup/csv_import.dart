@@ -11,33 +11,155 @@ import 'ledger_csv.dart';
 
 part 'csv_import.g.dart';
 
+/// Which participant each CSV name resolves to, and the names worth a warning
+/// before importing (G13).
+class CsvNameResolution {
+  /// name → participant id, for names matching an existing participant.
+  final Map<String, String> pidByName;
+
+  /// Names matching no participant: a new local person will be created.
+  final List<String> unmatched;
+
+  /// Names matching several participants: the active (else first) one is used.
+  final List<String> ambiguous;
+  const CsvNameResolution({
+    required this.pidByName,
+    required this.unmatched,
+    required this.ambiguous,
+  });
+}
+
+/// Resolves [names] (share columns + payers of a CSV) against the group's
+/// existing [members] by display label. Pure — shared by the preview and the
+/// import, so the warning matches what the import does.
+CsvNameResolution resolveCsvNames(
+  Iterable<String> names,
+  List<MemberModel> members,
+) {
+  final byName = <String, List<MemberModel>>{};
+  for (final m in members) {
+    byName.putIfAbsent(csvParticipantLabel(m), () => []).add(m);
+  }
+  final pidByName = <String, String>{};
+  final unmatched = <String>[];
+  final ambiguous = <String>[];
+  for (final name in {...names}..removeWhere((n) => n.isEmpty)) {
+    final matches = byName[name];
+    if (matches == null) {
+      unmatched.add(name);
+      continue;
+    }
+    if (matches.length > 1) ambiguous.add(name);
+    pidByName[name] = (matches.firstWhere(
+      (m) => m.isActive,
+      orElse: () => matches.first,
+    )).userId;
+  }
+  return CsvNameResolution(
+    pidByName: pidByName,
+    unmatched: unmatched,
+    ambiguous: ambiguous,
+  );
+}
+
+/// The name a participant has in a CSV (its share-column header).
+String csvParticipantLabel(MemberModel m) =>
+    m.displayName.isNotEmpty ? m.displayName : (m.matrixId ?? m.userId);
+
+Set<String> _referencedNames(ParsedCsv parsed) => {
+  ...parsed.participantNames,
+  for (final r in parsed.rows) r.paidByName,
+};
+
+/// What importing a CSV would do — shown for confirmation first (G13).
+class CsvImportPreview {
+  final String groupName;
+  final bool isNewGroup;
+  final int expenseCount;
+  final int paymentCount;
+
+  /// Names that will become new local participants (only listed for an
+  /// existing group — in a new group everyone is new).
+  final List<String> unmatched;
+
+  /// Names matching several existing participants.
+  final List<String> ambiguous;
+  const CsvImportPreview({
+    required this.groupName,
+    required this.isNewGroup,
+    required this.expenseCount,
+    required this.paymentCount,
+    required this.unmatched,
+    required this.ambiguous,
+  });
+
+  bool get isEmpty => expenseCount == 0 && paymentCount == 0;
+}
+
+/// The outcome of an import.
+typedef CsvImportResult = ({int expenses, int payments});
+
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///
-/// Merge semantics (Phase D): the group is resolved by `Group ID` (created if
-/// absent), participants are resolved **by display name** (an unknown name
-/// becomes a new local participant), and each expense is **LWW-upserted by id**
-/// using the row's `Updated At` clock — so re-importing a backup is idempotent
-/// and merging into an existing group lets the newer copy win.
+/// Merge semantics (Phase D, G13): the group is resolved by `Group ID`
+/// (created if absent), participants are resolved **by display name**
+/// ([resolveCsvNames] — an unknown name becomes a new local participant), and
+/// each expense / payment is **LWW-upserted by id** using the row's
+/// `Updated At` clock — so re-importing a backup is idempotent and merging
+/// into an existing group lets the newer copy win.
 @riverpod
 class CsvImporter extends _$CsvImporter {
   @override
   FutureOr<void> build() {}
 
-  /// Imports [csv]; returns the number of expense rows written. On failure the
-  /// notifier state carries the error.
-  Future<int> importCsv(String csv) async {
-    state = const AsyncLoading();
-    var count = 0;
-    state = await AsyncValue.guard(() async {
-      count = await _doImport(csv);
-    });
-    return count;
+  /// Parses [csv] and compares it with the local group, without writing.
+  Future<CsvImportPreview> preview(String csv) async {
+    final groupsDao = ref.read(groupsDaoProvider);
+    final membersDao = ref.read(membersDaoProvider);
+    final parsed = parseGroupCsv(csv);
+    final existing = parsed.groupId == null
+        ? null
+        : await groupsDao.getGroup(parsed.groupId!);
+    final names = existing == null
+        ? null
+        : resolveCsvNames(
+            _referencedNames(parsed),
+            await membersDao.getMembers(existing.roomId),
+          );
+    final payments = parsed.rows.where((r) => r.paymentRecipient != null);
+    return CsvImportPreview(
+      groupName: existing?.name ?? parsed.groupName ?? '',
+      isNewGroup: existing == null,
+      expenseCount: parsed.rows.length - payments.length,
+      paymentCount: payments.length,
+      unmatched: names?.unmatched ?? const [],
+      ambiguous: names?.ambiguous ?? const [],
+    );
   }
 
-  Future<int> _doImport(String csv) async {
-    final parsed = parseGroupCsv(csv);
-    if (parsed.rows.isEmpty && parsed.participantNames.isEmpty) return 0;
+  /// Imports [csv]; returns the number of expense / payment rows written.
+  /// Throws on failure (the notifier state carries the error too, while
+  /// mounted).
+  Future<CsvImportResult> importCsv(String csv) async {
+    state = const AsyncLoading();
+    try {
+      final result = await _doImport(csv);
+      if (ref.mounted) state = const AsyncData(null);
+      return result;
+    } catch (e, st) {
+      if (ref.mounted) state = AsyncError(e, st);
+      rethrow;
+    }
+  }
 
+  Future<CsvImportResult> _doImport(String csv) async {
+    final parsed = parseGroupCsv(csv);
+    if (parsed.rows.isEmpty && parsed.participantNames.isEmpty) {
+      return (expenses: 0, payments: 0);
+    }
+
+    // Captured before the first await (G19).
+    final db = ref.read(appDatabaseProvider);
     final groupsDao = ref.read(groupsDaoProvider);
     final membersDao = ref.read(membersDaoProvider);
     final expensesDao = ref.read(expensesDaoProvider);
@@ -47,6 +169,7 @@ class CsvImporter extends _$CsvImporter {
     //    existing group's meta (LWW upsert only creates it when absent).
     final groupId = parsed.groupId ?? const Uuid().v7();
     final existing = await groupsDao.getGroup(groupId);
+    if (db.isClosed) return (expenses: 0, payments: 0);
     if (existing == null) {
       final currency = parsed.rows.isNotEmpty
           ? parsed.rows.first.currency
@@ -63,17 +186,13 @@ class CsvImporter extends _$CsvImporter {
 
     // 2) Resolve every referenced name to a participant id, creating local
     //    participants for names not already in the group (matched by name).
-    final members = await membersDao.getMembers(groupId);
-    final pidByName = <String, String>{};
-    for (final m in members) {
-      pidByName.putIfAbsent(_label(m), () => m.userId);
-    }
-    final names = <String>{
-      ...parsed.participantNames,
-      for (final r in parsed.rows) r.paidByName,
-    }..removeWhere((n) => n.isEmpty);
-    for (final name in names) {
-      if (pidByName.containsKey(name)) continue;
+    final resolution = resolveCsvNames(
+      _referencedNames(parsed),
+      await membersDao.getMembers(groupId),
+    );
+    final pidByName = {...resolution.pidByName};
+    for (final name in resolution.unmatched) {
+      if (db.isClosed) return (expenses: 0, payments: 0);
       final pid = const Uuid().v7();
       await membersDao.upsertMemberLww(
         MembersCompanion(
@@ -87,10 +206,31 @@ class CsvImporter extends _$CsvImporter {
       pidByName[name] = pid;
     }
 
-    // 3) LWW-upsert each expense by id.
-    var count = 0;
+    // 3) LWW-upsert each expense / payment by id.
+    var expenses = 0;
+    var payments = 0;
     for (final row in parsed.rows) {
+      if (db.isClosed) break;
       final id = row.id ?? const Uuid().v7();
+      final payer = pidByName[row.paidByName] ?? row.paidByName;
+      final recipient = row.paymentRecipient;
+      if (recipient != null) {
+        await expensesDao.upsertSettlementLww(
+          SettlementsCompanion(
+            id: Value(id),
+            roomId: Value(groupId),
+            amountCents: Value(row.amountCents),
+            currency: Value(row.currency),
+            fromUser: Value(payer),
+            toUser: Value(pidByName[recipient] ?? recipient),
+            createdAt: Value(row.createdAt),
+            updatedAt: Value(row.updatedAt),
+            deleted: const Value(false),
+          ),
+        );
+        payments++;
+        continue;
+      }
       final splits = <String, int>{
         for (final e in row.sharesByName.entries)
           if (pidByName[e.key] != null) pidByName[e.key]!: e.value,
@@ -102,18 +242,15 @@ class CsvImporter extends _$CsvImporter {
           description: Value(row.description),
           amountCents: Value(row.amountCents),
           currency: Value(row.currency),
-          paidBy: Value(pidByName[row.paidByName] ?? row.paidByName),
+          paidBy: Value(payer),
           splitsJson: Value(jsonEncode(splits)),
           createdAt: Value(row.createdAt),
           updatedAt: Value(row.updatedAt),
           deleted: const Value(false),
         ),
       );
-      count++;
+      expenses++;
     }
-    return count;
+    return (expenses: expenses, payments: payments);
   }
-
-  static String _label(MemberModel m) =>
-      m.displayName.isNotEmpty ? m.displayName : (m.matrixId ?? m.userId);
 }

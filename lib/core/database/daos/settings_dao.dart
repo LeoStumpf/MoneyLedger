@@ -50,6 +50,34 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
+  // ── backup (G5) ──────────────────────────────────────────────────────────
+
+  static const _lastBackupKey = 'last_backup_at';
+  static const _backupNudgeSnoozeKey = 'backup_nudge_snoozed_until';
+
+  Stream<int?> _watchInt(String key) =>
+      (select(appSettings)..where((t) => t.key.equals(key)))
+          .watchSingleOrNull()
+          .map((row) => row == null ? null : int.tryParse(row.value));
+
+  Future<void> _setInt(String key, int value) =>
+      into(appSettings).insertOnConflictUpdate(
+        AppSettingsCompanion(key: Value(key), value: Value('$value')),
+      );
+
+  /// When this account's ledger was last backed up to a file on this device
+  /// (ms epoch), or null if never.
+  Stream<int?> watchLastBackupAt() => _watchInt(_lastBackupKey);
+
+  Future<void> setLastBackupAt(int at) => _setInt(_lastBackupKey, at);
+
+  /// Until when the "back up your groups" nudge is snoozed (ms epoch).
+  Stream<int?> watchBackupNudgeSnoozedUntil() =>
+      _watchInt(_backupNudgeSnoozeKey);
+
+  Future<void> snoozeBackupNudge(int until) =>
+      _setInt(_backupNudgeSnoozeKey, until);
+
   // ── left-group tombstones (G9) ─────────────────────────────────────────────
 
   static const _leftGroupPrefix = 'left_group:';

@@ -13,6 +13,10 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
         (rows) => rows.map(_toModel).toList(),
       );
 
+  /// Every participant of every group — for cross-group views (G5 nudge).
+  Stream<List<MemberModel>> watchAllMembers() =>
+      select(members).watch().map((rows) => rows.map(_toModel).toList());
+
   /// Participant ids of the group's currently-active participants. NOTE: these
   /// are participant ids, not necessarily MXIDs — use [activeClaimedMatrixIds]
   /// for replication targets.

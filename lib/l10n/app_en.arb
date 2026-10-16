@@ -276,8 +276,8 @@
       "group": {}
     }
   },
-  "exportBackupTip": "Tip: export a CSV backup first.",
-  "exportBackupFirst": "Export a CSV backup first",
+  "backupBeforeExitTip": "Tip: back up all groups first (Settings → Back up all groups).",
+  "backupBeforeExit": "Back up all groups first",
   "leave": "Leave",
   "groupNameLabel": "Group name",
   "defaultCurrencyLabel": "Default currency",
@@ -504,10 +504,10 @@
   "privacyNoTrackingBody": "The app only talks to your homeserver — and, if you use single sign-on or sign up on the web, to the pages your homeserver sends you to in your browser. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
   "privacyBackgroundTitle": "Background sync on Android",
   "privacyBackgroundBody": "On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.",
-  "privacyCsvTitle": "CSV export and import",
-  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, the participants' names and the amounts — only when you ask for it. Where that file goes is your choice; it is not encrypted, and MoneyLedger has no visibility into it afterwards. Importing reads only the file you pick.",
+  "privacyCsvTitle": "Export, backup and import",
+  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, payments, the participants' names and the amounts; \"Back up all groups\" writes one JSON file with every group of your account, including the participants' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice; it is plain text, not encrypted, and MoneyLedger has no visibility into it afterwards. Importing or restoring reads only the file you pick.",
   "privacyBackupTitle": "Device backups",
-  "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; a CSV export is your own offline backup.",
+  "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.",
   "privacyDeleteTitle": "Deleting your data",
   "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members' devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
   "privacyContactTitle": "Contact",
@@ -635,6 +635,183 @@
   "@debtPaysYou": {
     "placeholders": {
       "from": {
+        "type": "String"
+      }
+    }
+  },
+  "backupSectionTitle": "Backup",
+  "backupExportTitle": "Back up all groups",
+  "backupExportBody": "Saves every group — with payments and deleted entries — to one file. The file is not encrypted: keep it somewhere safe.",
+  "backupRestoreTitle": "Restore from backup",
+  "backupRestoreBody": "Merges a backup file into this device. Newer entries win; nothing is duplicated.",
+  "lastBackupAt": "Last backup: {date}",
+  "@lastBackupAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "lastBackupNever": "Last backup: never",
+  "backupSaved": "Backup saved: {fileName}",
+  "@backupSaved": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "backupNotABackup": "This file is not a MoneyLedger backup.",
+  "backupNewerVersion": "This backup was made by a newer version of MoneyLedger (format {version}). Update the app to restore it.",
+  "@backupNewerVersion": {
+    "placeholders": {
+      "version": {
+        "type": "int"
+      }
+    }
+  },
+  "backupMalformed": "This backup file is damaged and can't be restored.",
+  "restorePreviewTitle": "Restore backup?",
+  "restoreBackupFrom": "Backup from {date}",
+  "@restoreBackupFrom": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "restoreOtherAccount": "This backup was made by {account}. Its groups will be added to the account you are signed in with.",
+  "@restoreOtherAccount": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsCount": "{count, plural, =1{1 group} other{{count} groups}}",
+  "@groupsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expensesCount": "{count, plural, =1{1 expense} other{{count} expenses}}",
+  "@expensesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "paymentsCount": "{count, plural, =1{1 payment} other{{count} payments}}",
+  "@paymentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restoreNewGroups": "{count, plural, =0{No new groups} =1{1 new group} other{{count} new groups}}",
+  "@restoreNewGroups": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restoreChanges": "{count, plural, =0{Everything in this backup is already on this device.} =1{1 entry will be added or updated.} other{{count} entries will be added or updated.}}",
+  "@restoreChanges": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restoreTagNew": "new",
+  "restoreTagLeft": "left earlier — comes back",
+  "restoreTagChanges": "{count, plural, =1{1 change} other{{count} changes}}",
+  "@restoreTagChanges": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restoreTagUpToDate": "up to date",
+  "restoreLeftNote": "Groups you left or deleted come back on this device. If another member removed you, the group stays read-only.",
+  "restoreAction": "Restore",
+  "restoredGroups": "{count, plural, =1{Restored 1 group} other{Restored {count} groups}}",
+  "@restoredGroups": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restoreFailed": "Restore failed: {error}",
+  "@restoreFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backupNudgeTitle": "Back up your groups",
+  "backupNudgeBody": "{count, plural, =1{1 group exists only on this device. If you lose it, the group is gone — save a backup file.} other{{count} groups exist only on this device. If you lose it, they are gone — save a backup file.}}",
+  "@backupNudgeBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backupNudgeLater": "Later",
+  "backupNudgeAction": "Back up now",
+  "onboardingBackupTitle": "Keep a copy",
+  "onboardingBackupBody": "Nobody else stores your ledger. Groups with other members are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).",
+  "csvPreviewTitle": "Import CSV?",
+  "csvPreviewNewGroup": "Creates the new group “{name}”.",
+  "@csvPreviewNewGroup": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "csvPreviewExistingGroup": "Merges into your group “{name}”. Newer entries win.",
+  "@csvPreviewExistingGroup": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "csvPreviewUnmatched": "Not found in the group — will be added as new people: {names}",
+  "@csvPreviewUnmatched": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "csvPreviewAmbiguous": "Several participants have the same name — the active one is used: {names}",
+  "@csvPreviewAmbiguous": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "csvImportAction": "Import",
+  "csvImportEmpty": "This CSV contains no expenses or payments.",
+  "importedExpensesAndPayments": "Imported {expenses} and {payments}",
+  "@importedExpensesAndPayments": {
+    "placeholders": {
+      "expenses": {
+        "type": "String"
+      },
+      "payments": {
         "type": "String"
       }
     }

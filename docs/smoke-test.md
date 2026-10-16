@@ -55,7 +55,7 @@ Expected results are in *italics*.
 | 3.1 | "New group" → name + currency → Create → *back on Groups, new group listed* | emu |
 | 3.2 | ⋮ → Edit group: rename + change default currency → *title/list updated; peer shows new name* | 2dev |
 | 3.3 | New expense after currency change → *uses the new currency (the form has no per-expense currency picker — the group default is used)* | emu |
-| 3.4 | ⋮ → Leave group (shared group, you are a member) → *warning "You are still owed …" + "Export a CSV backup first"; group disappears; peer sees you under "Former members"* | 2dev |
+| 3.4 | ⋮ → Leave group (shared group, you are a member) → *warning "You are still owed …" + "Back up all groups first"; group disappears; peer sees you under "Former members"* | 2dev |
 | 3.5 | Re-add the leaver from the peer → *group comes back on the leaver's device with full history* | 2dev |
 | 3.6 | ⋮ → Delete group (solo/local-only group, or every other claimed member left) → *balance warning; "Deleted …" snackbar; group gone from this device* | emu |
 | 3.7 | Removed by a peer → *banner "You were removed from this group", history read-only, "Delete from this device"* | 2dev |
@@ -108,14 +108,17 @@ Expected results are in *italics*.
 | 7.7 | New-device recovery: sign A in on a fresh device → *A's groups + history arrive via `resync_request{all}` from A's other device* | 2dev |
 | 7.8 | Leave on one of A's devices → *group also leaves A's other devices* | 2dev |
 
-## 8. CSV backup
+## 8. Backup (JSON) and CSV
 
 | # | Step → expected | How |
 |---|-----------------|-----|
 | 8.1 | Expenses ⋮ → Export CSV → *system save dialog ("<group>.csv"); saved to Downloads; "Exported …" snackbar* | phone |
-| 8.2 | Open the CSV in a sheet app → *one row per expense, decimal amounts, a share column per participant* | phone |
-| 8.3 | Groups → Import CSV → pick the same file → *no duplicate expenses/group (idempotent merge)* | phone |
+| 8.2 | Open the CSV in a sheet app → *one row per expense, then one per payment (Type "Payment"), decimal amounts, a share column per participant* | phone |
+| 8.3 | Groups → Import CSV → pick the same file → *preview "Merges into your group …"; no duplicate expenses/payments/group (idempotent merge)* | phone |
 | 8.4 | Import into a device that lacks the group → *group created with its participants (local by name)* | phone |
+| 8.5 | Settings (gear) → Back up all groups → *save dialog `moneyledger-backup-YYYY-MM-DD.json`; "Backup saved"; settings shows "Last backup: <today>"* | phone |
+| 8.6 | Settings → Restore from backup → pick that file → *preview "No new groups … already on this device"; Restore → "Restored N groups", nothing duplicated* | phone |
+| 8.7 | Solo group (no other Matrix member), no backup for 30 days → *"Back up your groups" card on the groups page; Later hides it for 30 days* | phone |
 
 ## 9. Devices & verification
 

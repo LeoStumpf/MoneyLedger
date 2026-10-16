@@ -433,10 +433,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get exportBackupTip => 'Tip: export a CSV backup first.';
+  String get backupBeforeExitTip =>
+      'Tip: back up all groups first (Settings → Back up all groups).';
 
   @override
-  String get exportBackupFirst => 'Export a CSV backup first';
+  String get backupBeforeExit => 'Back up all groups first';
 
   @override
   String get leave => 'Leave';
@@ -883,18 +884,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.';
 
   @override
-  String get privacyCsvTitle => 'CSV export and import';
+  String get privacyCsvTitle => 'Export, backup and import';
 
   @override
   String get privacyCsvBody =>
-      'Exporting a group writes a CSV file with its expenses, the participants\' names and the amounts — only when you ask for it. Where that file goes is your choice; it is not encrypted, and MoneyLedger has no visibility into it afterwards. Importing reads only the file you pick.';
+      'Exporting a group writes a CSV file with its expenses, payments, the participants\' names and the amounts; \"Back up all groups\" writes one JSON file with every group of your account, including the participants\' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice; it is plain text, not encrypted, and MoneyLedger has no visibility into it afterwards. Importing or restoring reads only the file you pick.';
 
   @override
   String get privacyBackupTitle => 'Device backups';
 
   @override
   String get privacyBackupBody =>
-      'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; a CSV export is your own offline backup.';
+      'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.';
 
   @override
   String get privacyDeleteTitle => 'Deleting your data';
@@ -1081,5 +1082,223 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String debtPaysYou(String from) {
     return '$from pays you';
+  }
+
+  @override
+  String get backupSectionTitle => 'Backup';
+
+  @override
+  String get backupExportTitle => 'Back up all groups';
+
+  @override
+  String get backupExportBody =>
+      'Saves every group — with payments and deleted entries — to one file. The file is not encrypted: keep it somewhere safe.';
+
+  @override
+  String get backupRestoreTitle => 'Restore from backup';
+
+  @override
+  String get backupRestoreBody =>
+      'Merges a backup file into this device. Newer entries win; nothing is duplicated.';
+
+  @override
+  String lastBackupAt(String date) {
+    return 'Last backup: $date';
+  }
+
+  @override
+  String get lastBackupNever => 'Last backup: never';
+
+  @override
+  String backupSaved(String fileName) {
+    return 'Backup saved: $fileName';
+  }
+
+  @override
+  String get backupNotABackup => 'This file is not a MoneyLedger backup.';
+
+  @override
+  String backupNewerVersion(int version) {
+    return 'This backup was made by a newer version of MoneyLedger (format $version). Update the app to restore it.';
+  }
+
+  @override
+  String get backupMalformed =>
+      'This backup file is damaged and can\'t be restored.';
+
+  @override
+  String get restorePreviewTitle => 'Restore backup?';
+
+  @override
+  String restoreBackupFrom(String date) {
+    return 'Backup from $date';
+  }
+
+  @override
+  String restoreOtherAccount(String account) {
+    return 'This backup was made by $account. Its groups will be added to the account you are signed in with.';
+  }
+
+  @override
+  String groupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count groups',
+      one: '1 group',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String expensesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count expenses',
+      one: '1 expense',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String paymentsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count payments',
+      one: '1 payment',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreNewGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new groups',
+      one: '1 new group',
+      zero: 'No new groups',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries will be added or updated.',
+      one: '1 entry will be added or updated.',
+      zero: 'Everything in this backup is already on this device.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get restoreTagNew => 'new';
+
+  @override
+  String get restoreTagLeft => 'left earlier — comes back';
+
+  @override
+  String restoreTagChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes',
+      one: '1 change',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get restoreTagUpToDate => 'up to date';
+
+  @override
+  String get restoreLeftNote =>
+      'Groups you left or deleted come back on this device. If another member removed you, the group stays read-only.';
+
+  @override
+  String get restoreAction => 'Restore';
+
+  @override
+  String restoredGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Restored $count groups',
+      one: 'Restored 1 group',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreFailed(String error) {
+    return 'Restore failed: $error';
+  }
+
+  @override
+  String get backupNudgeTitle => 'Back up your groups';
+
+  @override
+  String backupNudgeBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count groups exist only on this device. If you lose it, they are gone — save a backup file.',
+      one:
+          '1 group exists only on this device. If you lose it, the group is gone — save a backup file.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get backupNudgeLater => 'Later';
+
+  @override
+  String get backupNudgeAction => 'Back up now';
+
+  @override
+  String get onboardingBackupTitle => 'Keep a copy';
+
+  @override
+  String get onboardingBackupBody =>
+      'Nobody else stores your ledger. Groups with other members are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).';
+
+  @override
+  String get csvPreviewTitle => 'Import CSV?';
+
+  @override
+  String csvPreviewNewGroup(String name) {
+    return 'Creates the new group “$name”.';
+  }
+
+  @override
+  String csvPreviewExistingGroup(String name) {
+    return 'Merges into your group “$name”. Newer entries win.';
+  }
+
+  @override
+  String csvPreviewUnmatched(String names) {
+    return 'Not found in the group — will be added as new people: $names';
+  }
+
+  @override
+  String csvPreviewAmbiguous(String names) {
+    return 'Several participants have the same name — the active one is used: $names';
+  }
+
+  @override
+  String get csvImportAction => 'Import';
+
+  @override
+  String get csvImportEmpty => 'This CSV contains no expenses or payments.';
+
+  @override
+  String importedExpensesAndPayments(String expenses, String payments) {
+    return 'Imported $expenses and $payments';
   }
 }

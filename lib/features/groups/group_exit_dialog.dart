@@ -37,13 +37,14 @@ String? unsettledWarning(
 }
 
 /// Confirmation for leaving / deleting a group. Returns true to proceed.
-/// [onExport] (optional) offers the existing CSV export right in the dialog.
+/// [onBackup] (optional) offers the full backup (G5, "Back up all groups")
+/// right in the dialog.
 Future<bool> confirmGroupExit(
   BuildContext context, {
   required GroupExitKind kind,
   required String groupName,
   required String? warning,
-  Future<void> Function()? onExport,
+  Future<void> Function()? onBackup,
 }) async {
   final leave = kind == GroupExitKind.leave;
   final l = context.l10n;
@@ -73,15 +74,15 @@ Future<bool> confirmGroupExit(
             ),
           ],
           const SizedBox(height: 12),
-          if (onExport == null)
-            Text(l.exportBackupTip)
+          if (onBackup == null)
+            Text(l.backupBeforeExitTip)
           else
             // In the content, not the actions: three actions don't fit side
             // by side on a phone and stack awkwardly.
             TextButton.icon(
-              onPressed: onExport,
+              onPressed: onBackup,
               icon: const Icon(Icons.save_alt),
-              label: Text(l.exportBackupFirst),
+              label: Text(l.backupBeforeExit),
             ),
         ],
       ),

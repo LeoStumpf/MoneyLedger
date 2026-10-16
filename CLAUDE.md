@@ -158,11 +158,15 @@ lib/
       balance_calculator.dart  # Pure function: List<Expense> + settlements → List<DebtEntry>
       balance_provider.dart    # Riverpod: watches Drift streams, recomputes on change
       record_payment_dialog.dart # G28 "X paid Y" dialog (any two participants)
-    backup/                    # CSV export/import (Phase D) — see "Backup (CSV)" below
+    backup/                    # Full JSON backup (G5) + CSV export/import (Phase D, G13) — see "Backup" below
+      ledger_backup.dart       # Pure-Dart backup codec (buildBackupJson / parseBackup) + nudge logic
+      backup_service.dart      # BackupService: export all groups / preview / restore (DB seam)
+      backup_providers.dart    # last-backup + nudge providers (backupNudgeProvider)
+      backup_ui.dart           # settings-sheet section, restore + CSV preview dialogs, nudge card
       ledger_csv.dart          # Pure-Dart RFC4180 codec: buildGroupCsv / parseGroupCsv
       csv_export.dart          # DB → CSV seam (buildGroupCsvForExport) + csvFileName
-      csv_import.dart          # CsvImporter: LWW merge-by-id back into Drift
-      csv_files.dart           # file_picker glue (web download / native save+pick)
+      csv_import.dart          # CsvImporter: preview + LWW merge-by-id back into Drift; resolveCsvNames
+      backup_files.dart        # file_picker glue (native save+pick; web download via download/)
     onboarding/                # First-run intro (OnboardingPage) + onboarding_seen flag
     devices/                   # Device list + SAS verification UI (DevicesPage)
     about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
@@ -286,7 +290,7 @@ next to *Export CSV*) offers **Leave group** when this account is an active
 participant and another claimed account is active (`groupExitKind`), else
 **Delete group** (solo / local-only group, or we're no longer active). The
 confirmation warns (non-blocking) if our balance isn't settled and offers the
-CSV export. `GroupExiter.leave` marks our participant `removed` (LWW) and relays
+full backup (*Back up all groups*, G5). `GroupExiter.leave` marks our participant `removed` (LWW) and relays
 it to every claimed account (best-effort — peers see "X left"; our own other
 devices too, which then leave as well, see G26 below); `delete` sends nothing. Both then `AppDatabase.purgeGroup` (group, members,
 expenses, settlements incl. tombstones, peer sync states — one transaction) and
@@ -423,42 +427,118 @@ at the same revision (`peer_convergence.dart`, in-memory per peer; bootstrap /
 gossip / our own writes block the proof). `markInSync` is monotonic and always
 stamps our wall clock (never a peer's possibly skewed record clock).
 
-### Backup (CSV export/import — Phase D)
+### Backup (full JSON — G5)
+
+Ledger data exists only on members' devices, so a group nobody else has a copy
+of (solo, or only local people) is lost with the device. The **full backup** is
+the lossless answer: settings sheet (gear on the groups page) → *Back up all
+groups* writes **one JSON file for the whole account**, *Restore from backup*
+merges one back. `lib/features/backup/`: `ledger_backup.dart` is the pure codec
+(+ the nudge logic), `backup_service.dart` (`BackupService`,
+`backupServiceProvider`) the DB seam, `backup_ui.dart` the UI.
+
+**Format** (`moneyledger-backup-YYYY-MM-DD.json`, pretty-printed, plain text —
+**not encrypted**, the export tile and the privacy policy say so):
+
+```json
+{ "format": "moneyledger-backup", "version": 1, "exported_at": 1760000000000,
+  "account": "@alice:example.org",
+  "groups": [ <bootstrap payload per group, sorted by name> ] }
+```
+
+Each group is exactly a `com.moneyledger.bootstrap` payload
+(`buildBootstrapContent`): meta, every participant (stable id, matrix id,
+status), every expense + settlement **incl. tombstones**, all with `updated_at`.
+`parseBackup` throws `BackupFormatException(kind)` — `notABackup` (not JSON / no
+`format` marker, e.g. a CSV), `newerVersion` (version > `backupVersion`; bump
+it only for incompatible changes, keep old versions readable), `malformed`
+(missing group id, non-list sections, a record of another group, records
+without id / `updated_at`) — mapped to localized messages
+(`backupErrorMessage`).
+
+**Restore** = pick → `BackupService.preview` (per group: new / left earlier /
+N records that are absent or older locally / up to date; totals; *other
+account* warning when `account` ≠ the signed-in MXID) → confirm →
+`BackupService.restore`: per group, in one transaction, the syncer's own
+`LedgerSyncer.processBootstrap` (**LWW by stable id**, tombstones win when
+newer, inbound clock clamp) — idempotent, re-restoring is a no-op. User
+intent, so **no membership gate**; a group this account had **left/deleted**
+here gets its `LeftGroupTombstone` cleared first (else the syncer would keep
+dropping it). If the peers have us `removed` with a newer clock, digest gossip
+turns it into read-only history again (G26) — documented in the preview. After
+the restore every restored group gets a `SyncEngine.pokeGroup` (digest →
+normal anti-entropy repair with peers; best-effort). Backups of **another
+account** are allowed (warning): their groups land in this account's DB, where
+we may not be a participant ("not participating").
+
+**Nudges:** onboarding has a 4th card "Keep a copy". The settings sheet shows
+*Last backup: <date> / never* (`AppSettings` `last_backup_at`, device-local,
+per account, written after a successful save). The sheet's backup / restore
+tiles **close the sheet first** and run the flow on the navigator's context,
+so dialogs and snackbars aren't hidden under it. The groups page shows a
+dismissible `BackupNudgeCard` (`backupNudgeProvider`) when some group has **no
+other active claimed member** (`unprotectedGroups`) and there was no backup in
+`kBackupNudgeInterval` (30 days); *Later* snoozes it 30 days
+(`backup_nudge_snoozed_until`). A second device of our own would also protect
+those groups, but isn't detected (open point).
+
+**Files:** `backup_files.dart` (`saveTextFile` / `pickTextFile`,
+`LedgerFileKind.csv|backup`) — native: file_picker save dialog (returns false
+when cancelled → no `last_backup_at`); web: a Blob download
+(`download/web_download_web.dart`, file_picker 8 has no web `saveFile`).
+Backups are picked without an extension filter (Android doesn't map `.json`
+reliably); the parser rejects wrong files.
+
+### Backup (CSV export/import — Phase D, G13)
 
 A group can be exported to a **single human-readable CSV** and imported back
-(backup / sharing / migrating old room-era groups). `lib/features/backup/`:
-the codec `ledger_csv.dart` is pure Dart (models + strings, no DB/Flutter, fully
-unit-testable); `csv_export.dart` is the Drift-read seam; `csv_import.dart`
-(`CsvImporter`) is the merge; `csv_files.dart` wraps `file_picker` (manual-smoke
-only, like the SSO deep link). **Export** is on the expenses screen, **import**
-on the groups screen.
+(sharing / spreadsheets / migrating old room-era groups — the lossless backup
+is the JSON above). `lib/features/backup/`: the codec `ledger_csv.dart` is pure
+Dart (models + strings, no DB/Flutter, fully unit-testable); `csv_export.dart`
+is the Drift-read seam; `csv_import.dart` (`CsvImporter`) is the preview +
+merge; `backup_files.dart` wraps `file_picker` (manual-smoke only, like the SSO
+deep link). **Export** is on the expenses screen, **import** on the groups
+screen.
 
-**Format** — one row per **non-deleted** expense. Spreadsheet columns first, then
-a **decimal share column per participant** (header = display name), then trailing
-machine columns that drive the merge:
+**Format** — one row per **non-deleted** expense, then one per **non-deleted
+payment** (settlement). Spreadsheet columns first, then a **decimal share
+column per participant** (header = display name), then trailing machine
+columns that drive the merge:
 
 ```
-Date, Description, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
-2026-06-13T…, Dinner, EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
+Date, Type, Description, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
+2026-06-13T…, Expense, Dinner, EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
+2026-06-14T…, Payment, Payment, EUR, 21.00, Sam, 21.00, , …, <uuid>, Trip, <gid>, 1760000090000
 ```
+
+A **payment row** reads like an expense the payer covered entirely for the
+recipient: `Paid By` = from, the recipient's share column = the amount (so the
+sheet's per-person sums still match the balances); its settlement id sits in
+`Expense ID`. On import a `Payment` row with exactly one share becomes a
+settlement (else it is imported as an expense). A CSV **without** a `Type`
+column (pre-G13) is all expenses.
 
 Amounts are **decimal** in the sheet (`cents/100`, 2 dp) but **integer cents**
 everywhere else. The parser locates fixed columns by header name and treats any
 column between `Paid By` and `Expense ID` as a participant share column, so
 extra/missing optional columns are tolerated.
 
-**Merge** is idempotent: ensure the group by `Group ID` (LWW-upsert meta, create
-if absent — a CSV with no id mints a UUIDv7), resolve participants **by display
-name** (unknown name → new local participant), then **LWW-upsert each expense by
-`Expense ID`** using `Updated At` as the clock. Re-importing a backup never
-duplicates; merging into a live group lets the newer copy win.
+**Import** first shows a **preview** (`CsvImporter.preview` →
+`CsvImportPreviewDialog`): new vs. existing group, expense / payment counts,
+and warnings for names that match **no** participant of an existing group
+(→ a new local person will be created) or **several** (→ the active one, else
+the first, is used). Both preview and import resolve names with the pure
+`resolveCsvNames`. **Merge** is idempotent: ensure the group by `Group ID`
+(LWW-upsert meta, create if absent — a CSV with no id mints a UUIDv7), resolve
+participants **by display name**, then **LWW-upsert each expense / settlement
+by id** using `Updated At` as the clock. Re-importing never duplicates; merging
+into a live group lets the newer copy win.
 
-**Documented limitations** (acceptable for a human-readable backup): settlements
-and tombstones are **not** in the sheet — balances reconstruct from expenses
-only, and a deleted expense simply isn't exported (so it won't re-delete on a
-peer via CSV). Participant identity is **by name, not stable id** — a name
-collision merges two people and a rename splits one. A future full-fidelity
-format could add settlements, tombstones, and id-based identity.
+**Documented limitations** (acceptable for a human-readable export):
+tombstones are **not** in the sheet — a deleted record simply isn't exported
+(so it won't re-delete on a peer via CSV). Participant identity is **by name,
+not stable id** — a name collision merges two people and a rename splits one.
+Use the full JSON backup for a lossless copy.
 
 ### Settlements / recording payments (G28)
 

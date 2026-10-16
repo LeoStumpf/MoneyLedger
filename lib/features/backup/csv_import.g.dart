@@ -10,31 +10,34 @@ part of 'csv_import.dart';
 // ignore_for_file: type=lint, type=warning
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///
-/// Merge semantics (Phase D): the group is resolved by `Group ID` (created if
-/// absent), participants are resolved **by display name** (an unknown name
-/// becomes a new local participant), and each expense is **LWW-upserted by id**
-/// using the row's `Updated At` clock — so re-importing a backup is idempotent
-/// and merging into an existing group lets the newer copy win.
+/// Merge semantics (Phase D, G13): the group is resolved by `Group ID`
+/// (created if absent), participants are resolved **by display name**
+/// ([resolveCsvNames] — an unknown name becomes a new local participant), and
+/// each expense / payment is **LWW-upserted by id** using the row's
+/// `Updated At` clock — so re-importing a backup is idempotent and merging
+/// into an existing group lets the newer copy win.
 
 @ProviderFor(CsvImporter)
 final csvImporterProvider = CsvImporterProvider._();
 
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///
-/// Merge semantics (Phase D): the group is resolved by `Group ID` (created if
-/// absent), participants are resolved **by display name** (an unknown name
-/// becomes a new local participant), and each expense is **LWW-upserted by id**
-/// using the row's `Updated At` clock — so re-importing a backup is idempotent
-/// and merging into an existing group lets the newer copy win.
+/// Merge semantics (Phase D, G13): the group is resolved by `Group ID`
+/// (created if absent), participants are resolved **by display name**
+/// ([resolveCsvNames] — an unknown name becomes a new local participant), and
+/// each expense / payment is **LWW-upserted by id** using the row's
+/// `Updated At` clock — so re-importing a backup is idempotent and merging
+/// into an existing group lets the newer copy win.
 final class CsvImporterProvider
     extends $AsyncNotifierProvider<CsvImporter, void> {
   /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
   ///
-  /// Merge semantics (Phase D): the group is resolved by `Group ID` (created if
-  /// absent), participants are resolved **by display name** (an unknown name
-  /// becomes a new local participant), and each expense is **LWW-upserted by id**
-  /// using the row's `Updated At` clock — so re-importing a backup is idempotent
-  /// and merging into an existing group lets the newer copy win.
+  /// Merge semantics (Phase D, G13): the group is resolved by `Group ID`
+  /// (created if absent), participants are resolved **by display name**
+  /// ([resolveCsvNames] — an unknown name becomes a new local participant), and
+  /// each expense / payment is **LWW-upserted by id** using the row's
+  /// `Updated At` clock — so re-importing a backup is idempotent and merging
+  /// into an existing group lets the newer copy win.
   CsvImporterProvider._()
     : super(
         from: null,
@@ -54,15 +57,16 @@ final class CsvImporterProvider
   CsvImporter create() => CsvImporter();
 }
 
-String _$csvImporterHash() => r'3ddc6f3eae37ae956236a0ef69773c0cae9f1361';
+String _$csvImporterHash() => r'bced76728dcb22482b76dc37dc6ad6bae38a0b46';
 
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///
-/// Merge semantics (Phase D): the group is resolved by `Group ID` (created if
-/// absent), participants are resolved **by display name** (an unknown name
-/// becomes a new local participant), and each expense is **LWW-upserted by id**
-/// using the row's `Updated At` clock — so re-importing a backup is idempotent
-/// and merging into an existing group lets the newer copy win.
+/// Merge semantics (Phase D, G13): the group is resolved by `Group ID`
+/// (created if absent), participants are resolved **by display name**
+/// ([resolveCsvNames] — an unknown name becomes a new local participant), and
+/// each expense / payment is **LWW-upserted by id** using the row's
+/// `Updated At` clock — so re-importing a backup is idempotent and merging
+/// into an existing group lets the newer copy win.
 
 abstract class _$CsvImporter extends $AsyncNotifier<void> {
   FutureOr<void> build();
