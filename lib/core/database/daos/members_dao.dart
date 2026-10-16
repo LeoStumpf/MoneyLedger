@@ -3,7 +3,10 @@ import '../app_database.dart';
 import '../../../models/member_model.dart';
 import '../../../models/record_signature.dart';
 import '../../sync/record_validation.dart' show isValidMxid;
+import '../../sync/ledger_payloads.dart';
+import '../../sync/record_signing.dart' show RecordKind;
 import '../../sync/record_version.dart';
+import 'history_dao.dart';
 
 part 'members_dao.g.dart';
 
@@ -70,40 +73,48 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
   /// participant is a newer version (higher clock, or same clock + higher
   /// content hash). Lets concurrent add/remove of the same member converge
   /// deterministically across devices.
-  Future<void> upsertMemberLww(MembersCompanion member) =>
-      transaction(() async {
-        final old =
-            await (select(members)..where(
-                  (t) =>
-                      t.groupId.equals(member.groupId.value) &
-                      t.userId.equals(member.userId.value),
-                ))
-                .getSingleOrNull();
-        if (old != null &&
-            compareVersions(
-                  memberVersion(
-                    MemberModel(
-                      groupId: member.groupId.value,
-                      userId: member.userId.value,
-                      displayName: member.displayName.present
-                          ? member.displayName.value
-                          : '',
-                      matrixId: member.matrixId.present
-                          ? member.matrixId.value
-                          : null,
-                      status: member.status.present
-                          ? member.status.value
-                          : 'active',
-                      updatedAt: member.updatedAt.value,
-                    ),
-                  ),
-                  memberVersion(_toModel(old)),
-                ) <
-                0) {
-          return;
-        }
-        await into(members).insertOnConflictUpdate(member);
-      });
+  ///
+  /// G48: a different stored version is appended to `record_history`.
+  Future<void> upsertMemberLww(
+    MembersCompanion member, {
+    HistorySource source = HistorySource.local,
+  }) => transaction(() async {
+    SimpleSelectStatement<$MembersTable, Member> row() =>
+        select(members)..where(
+          (t) =>
+              t.groupId.equals(member.groupId.value) &
+              t.userId.equals(member.userId.value),
+        );
+    final old = await row().getSingleOrNull();
+    final version = memberVersion(
+      MemberModel(
+        groupId: member.groupId.value,
+        userId: member.userId.value,
+        displayName: member.displayName.present ? member.displayName.value : '',
+        matrixId: member.matrixId.present ? member.matrixId.value : null,
+        status: member.status.present ? member.status.value : 'active',
+        updatedAt: member.updatedAt.value,
+      ),
+    );
+    final oldVersion = old == null ? null : memberVersion(_toModel(old));
+    if (oldVersion != null && compareVersions(version, oldVersion) < 0) {
+      return;
+    }
+    await into(members).insertOnConflictUpdate(member);
+    if (oldVersion != null && compareVersions(version, oldVersion) == 0) {
+      return;
+    }
+    final stored = _toModel(await row().getSingle());
+    await appendRecordHistory(
+      attachedDatabase,
+      groupId: stored.groupId,
+      kind: RecordKind.member,
+      recordId: stored.userId,
+      version: memberVersion(stored),
+      content: memberPayload(stored),
+      source: source,
+    );
+  });
 
   static MemberModel _toModel(Member m) => MemberModel(
     groupId: m.groupId,

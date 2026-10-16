@@ -22,6 +22,9 @@ extension AppLocalizationsX on BuildContext {
 
   String date(int msEpoch) => formatDate(msEpoch, localeName);
 
+  /// Date + time (G48 restore points / change list).
+  String dateTime(int msEpoch) => formatDateTime(msEpoch, localeName);
+
   /// "Today" / "Yesterday" / a short weekday date — list section headers
   /// (G17).
   String dayHeader(int msEpoch, {DateTime? now}) =>

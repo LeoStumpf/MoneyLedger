@@ -11,11 +11,13 @@ import 'package:flutter/foundation.dart'
     show debugPrint, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/theme/app_theme.dart';
 import '../groups/group_provider.dart';
+import '../history/restore_points_page.dart' show kRestorePointsLocation;
 import 'backup_crypto.dart';
 import 'backup_files.dart';
 import 'backup_providers.dart';
@@ -59,6 +61,18 @@ class BackupSettingsSection extends ConsumerWidget {
           title: Text(l.backupRestoreTitle),
           subtitle: Text(l.backupRestoreBody),
           onTap: () => _closeSheetThen(context, ref, restoreFullBackup),
+        ),
+        // G48: on-device snapshots + "reset a group" explained.
+        ListTile(
+          key: const Key('restorePointsTile'),
+          leading: const Icon(Icons.history),
+          title: Text(l.restorePointsTitle),
+          subtitle: Text(l.restorePointsTileBody),
+          onTap: () => _closeSheetThen(
+            context,
+            ref,
+            (ctx, _) async => GoRouter.of(ctx).push(kRestorePointsLocation),
+          ),
         ),
       ],
     );
@@ -403,10 +417,8 @@ Future<String?> unlockEncryptedBackup(
 Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   final messenger = ScaffoldMessenger.of(context);
-  final service = ref.read(backupServiceProvider);
-  final engine = ref.read(syncEngineProvider);
+  final restorer = BackupRestorer.of(ref);
   final decrypt = ref.read(backupDecrypterProvider);
-  final me = ref.read(currentUserIdProvider);
   String? text;
   try {
     text = await ref.read(backupFilePickerProvider)();
@@ -425,14 +437,50 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
       if (text == null) return;
     }
     final backup = parseBackup(text);
-    final preview = await service.preview(backup, myMxid: me);
     if (!context.mounted) return;
+    await restorer.previewAndRestore(context, backup, encrypted: encrypted);
+  } on BackupFormatException catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(backupErrorMessage(e, l))));
+  } catch (e) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(l.restoreFailed(e.toString()))),
+    );
+  }
+}
+
+/// The account-bound part of a restore (G19: captured from `ref` before the
+/// first await): preview → confirm → merge → poke the restored groups. Shared
+/// by the file restore and the on-device snapshots (G48).
+class BackupRestorer {
+  BackupRestorer._(this.service, this.engine, this.me);
+
+  factory BackupRestorer.of(WidgetRef ref) => BackupRestorer._(
+    ref.read(backupServiceProvider),
+    ref.read(syncEngineProvider),
+    ref.read(currentUserIdProvider),
+  );
+
+  final BackupService service;
+  final SyncEngine engine;
+  final String me;
+
+  /// Shows the preview of [backup]; on confirm restores it. Returns whether
+  /// something was restored. Errors propagate (the caller shows them).
+  Future<bool> previewAndRestore(
+    BuildContext context,
+    LedgerBackup backup, {
+    bool encrypted = false,
+  }) async {
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final preview = await service.preview(backup, myMxid: me);
+    if (!context.mounted) return false;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) =>
           RestorePreviewDialog(preview: preview, encrypted: encrypted),
     );
-    if (ok != true) return;
+    if (ok != true) return false;
     List<String> restored;
     try {
       restored = await service.restore(backup);
@@ -450,7 +498,7 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
           ),
         ),
       );
-      return;
+      return e.restored.isNotEmpty;
     }
     for (final id in restored) {
       engine.pokeGroup(id);
@@ -458,12 +506,7 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
     messenger.showSnackBar(
       SnackBar(content: Text(l.restoredGroups(restored.length))),
     );
-  } on BackupFormatException catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(backupErrorMessage(e, l))));
-  } catch (e) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.restoreFailed(e.toString()))),
-    );
+    return true;
   }
 }
 

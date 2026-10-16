@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/ledger_syncer.dart';
+import '../../features/history/restore_points.dart';
 import '../background/background_sync_provider.dart';
 import '../session/local_adoption.dart';
 import 'sync_engine.dart';
@@ -38,6 +39,8 @@ class LedgerSyncHost extends ConsumerWidget {
     ref.watch(backgroundSyncSchedulingProvider);
     // G40: move a local-mode ledger into the account just connected.
     ref.watch(localLedgerAdoptionProvider);
+    // G48: prune the version history + the daily on-device snapshot.
+    ref.watch(restorePointsMaintenanceProvider);
     return child;
   }
 }

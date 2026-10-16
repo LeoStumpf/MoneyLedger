@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
+import '../../core/database/daos/history_dao.dart' show HistorySource;
 import '../../core/database/daos/members_dao.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/record_signing.dart';
@@ -287,7 +288,10 @@ class CsvImporter extends _$CsvImporter {
         ),
       );
       if (db.isClosed) return (expenses: 0, payments: 0);
-      await groupsDao.upsertGroupLww(groupCompanion(group));
+      await groupsDao.upsertGroupLww(
+        groupCompanion(group),
+        source: HistorySource.csvImport,
+      );
     }
     if (existing == null) {
       final currency = parsed.rows.isNotEmpty
@@ -303,7 +307,10 @@ class CsvImporter extends _$CsvImporter {
         ),
       );
       if (db.isClosed) return (expenses: 0, payments: 0);
-      await groupsDao.upsertGroupLww(groupCompanion(group));
+      await groupsDao.upsertGroupLww(
+        groupCompanion(group),
+        source: HistorySource.csvImport,
+      );
     }
 
     // 2) Resolve every referenced name to a participant id, creating local
@@ -326,7 +333,10 @@ class CsvImporter extends _$CsvImporter {
         ),
       );
       if (db.isClosed) return (expenses: 0, payments: 0);
-      await membersDao.upsertMemberLww(memberCompanion(member));
+      await membersDao.upsertMemberLww(
+        memberCompanion(member),
+        source: HistorySource.csvImport,
+      );
       pidByName[name] = pid;
     }
 
@@ -367,7 +377,10 @@ class CsvImporter extends _$CsvImporter {
           creating: stored == null,
         );
         if (db.isClosed) break;
-        await expensesDao.upsertSettlementLww(settlementCompanion(signed));
+        await expensesDao.upsertSettlementLww(
+          settlementCompanion(signed),
+          source: HistorySource.csvImport,
+        );
         payments++;
         continue;
       }
@@ -403,7 +416,10 @@ class CsvImporter extends _$CsvImporter {
         creating: stored == null,
       );
       if (db.isClosed) break;
-      await expensesDao.upsertExpenseLww(expenseCompanion(signed));
+      await expensesDao.upsertExpenseLww(
+        expenseCompanion(signed),
+        source: HistorySource.csvImport,
+      );
       expenses++;
     }
     return (expenses: expenses, payments: payments);

@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../features/history/group_reset_page.dart';
+import '../features/history/restore_points_page.dart';
 import '../features/about/about_page.dart';
 import '../features/local/local_setup_page.dart';
 import '../features/welcome/welcome_page.dart';
@@ -204,6 +206,14 @@ GoRouter router(Ref ref) {
         path: '/groups/:roomId/categories',
         builder: (_, s) =>
             GroupCategoriesPage(roomId: s.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: '/groups/:roomId/reset',
+        builder: (_, s) => GroupResetPage(roomId: s.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: kRestorePointsLocation,
+        builder: (_, _) => const RestorePointsPage(),
       ),
       GoRoute(
         path: '/groups/:roomId/members',

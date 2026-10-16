@@ -561,15 +561,15 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       schema v11
 
 ### G48. Automatic restore points + revert (git-like) 🟡
-- [ ] `record_history` table: every version a DAO writes (local or inbound)
+- [x] `record_history` table: every version a DAO writes (local or inbound)
       is appended (group, kind, id, updated_at, hash, content, source);
       retention ~90 days / size cap
-- [ ] "Reset group to <date/time>": per record the newest version ≤ T,
+- [x] "Reset group to <date/time>": per record the newest version ≤ T,
       records created later → tombstones; written as **new** versions
       (`nextLwwClock`, signed) so peers adopt the revert; diff preview first
-- [ ] Rotating on-device full snapshots (`buildBackupJson`, daily if changed;
+- [x] Rotating on-device full snapshots (`buildBackupJson`, daily if changed;
       keep 7 daily + 4 weekly), restore via the existing preview path
-- [ ] Settings: restore-point list, "Restore…" / "Reset group…"; EN+DE; tests
+- [x] Settings: restore-point list, "Restore…" / "Reset group…"; EN+DE; tests
 
 ### G49. Expense date 🟡
 - [ ] Date picker on the add/edit form (expenses can be back-dated); decide
@@ -634,6 +634,13 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       merge if it matters; duplicate names only blocked in the dialog
 - [ ] Offline demo seed: add a custom category (screenshots)
 
+### G58. Restore-point follow-ups (found in G48) 🟢
+- [ ] Snapshots also from Android background rounds (today: app start only)
+- [ ] Offline demo seed: back-fill history so the reset page isn't empty
+- [ ] Decide: snapshot restore "exactly this state" (overwrite newer content)?
+- [ ] Decide: encrypt snapshot files (plaintext like the DB today)
+- [ ] Concurrent resets by two members converge per record (mix) — merge UI?
+
 ---
 
 ## Execution queue (conductor process)
@@ -688,7 +695,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G45 — minimal Matrix footprint (sync filter, presence) — device smoke 7.12 moved to the end
 - [x] G46 — UX quick wins
 - [x] G47 — custom categories + dropdown
-- [ ] G48 — restore points + revert
+- [x] G48 — restore points + revert
 - [ ] G49 — expense date
 - [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
 - [ ] G51 — Nostr spike
@@ -696,7 +703,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
 - [ ] G55 — web glyph coverage without Google (found in G43)
-- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices
+- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15 (use `pixel-lock` for the Pixel)
+- [ ] G58 — restore-point follow-ups (found in G48)
 - [ ] G57 — custom-category follow-ups (found in G47)
 - [ ] G56 — UX follow-ups (found in G46)
 

@@ -3,6 +3,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'daos/expenses_dao.dart' show backfillVersionHashes;
+import 'daos/history_dao.dart' show backfillRecordHistory;
 
 part 'app_database.g.dart';
 
@@ -174,6 +175,34 @@ class PeerSyncStates extends Table {
   Set<Column> get primaryKey => {groupId, userId};
 }
 
+/// G48: the device-local version history of every ledger record — each
+/// version a DAO's LWW upsert actually **stored** (a new or different
+/// version, local or inbound), with the full payload as stored (signatures
+/// included). Backs "Reset group to an earlier state" (`group_reset.dart`).
+/// Never synced, never in a backup / digest; pruned by
+/// `HistoryDao.prune` (90 days + row cap, one base version per record is
+/// always kept). [kind] is a `RecordKind.wire` (`expense` / `settlement` /
+/// `member` / `meta`; [recordId] = participant id for a member, the group
+/// id for meta). [source] is a `HistorySource.wire`. [recordedAt] = when
+/// *this device* stored the version (its wall clock).
+@DataClassName('HistoryRow')
+@TableIndex(name: 'record_history_group', columns: {#groupId, #recordedAt})
+@TableIndex(
+  name: 'record_history_record',
+  columns: {#groupId, #kind, #recordId},
+)
+class RecordHistory extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get groupId => text()();
+  TextColumn get kind => text()();
+  TextColumn get recordId => text()();
+  IntColumn get updatedAt => integer()();
+  TextColumn get versionHash => text()();
+  TextColumn get content => text()();
+  TextColumn get source => text()();
+  IntColumn get recordedAt => integer()();
+}
+
 /// Device-local key/value flags (e.g. whether onboarding has been seen). Purely
 /// local — never replicated; only the ledger record types sync over to-device.
 class AppSettings extends Table {
@@ -194,6 +223,7 @@ class AppSettings extends Table {
     AppSettings,
     KnownDeviceKeys,
     RejectedVersions,
+    RecordHistory,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -274,10 +304,12 @@ class AppDatabase extends _$AppDatabase {
     await (delete(
       rejectedVersions,
     )..where((t) => t.groupId.equals(groupId))).go();
+    // G48: a left / deleted group's version history goes with it.
+    await (delete(recordHistory)..where((t) => t.groupId.equals(groupId))).go();
   });
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -403,6 +435,15 @@ class AppDatabase extends _$AppDatabase {
             "DELETE FROM rejected_versions WHERE kind = 'meta'",
           );
         }
+      }
+      // v12 (G48): the device-local version history. Every record stored so
+      // far gets one `initial` entry (its current version) — the base a
+      // later "reset group" goes back to; earlier states are unknown.
+      if (from < 12) {
+        await m.createTable(recordHistory);
+        await m.createIndex(recordHistoryGroup);
+        await m.createIndex(recordHistoryRecord);
+        await backfillRecordHistory(this);
       }
     },
     beforeOpen: (_) async {

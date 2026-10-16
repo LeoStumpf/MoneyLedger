@@ -9,6 +9,7 @@ import '../../core/database/app_database.dart';
 import '../../core/session/app_session.dart' show isLocalAccountId;
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
+import '../../core/database/daos/history_dao.dart' show HistorySource;
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
@@ -487,6 +488,7 @@ class LedgerSyncer {
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
       ),
+      source: HistorySource.inbound,
     );
   }
 
@@ -519,6 +521,7 @@ class LedgerSyncer {
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
       ),
+      source: HistorySource.inbound,
     );
   }
 
@@ -542,6 +545,7 @@ class LedgerSyncer {
         ),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
       ),
+      source: HistorySource.inbound,
     );
   }
 
@@ -570,6 +574,7 @@ class LedgerSyncer {
         ),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
       ),
+      source: HistorySource.inbound,
     );
   }
 

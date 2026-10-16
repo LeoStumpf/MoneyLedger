@@ -23,6 +23,7 @@ import '../../core/sync/sync_health.dart';
 import '../../models/expense_category.dart' show normalizeNote;
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart' show nextLwwClock;
+import '../history/snapshot_store.dart';
 
 part 'expenses_provider.g.dart';
 
@@ -42,9 +43,15 @@ final localDatabaseOpenerProvider = Provider<AppDatabase Function()>(
 /// [localDatabaseOpenerProvider] is closed (G41: after "Delete local data"
 /// and after an adoption). Returns whether they were deleted. Injectable
 /// with the opener.
-final localDatabaseDeleterProvider = Provider<Future<bool> Function()>(
-  (ref) => deleteLocalDatabase,
-);
+///
+/// G48: local mode's on-device snapshots are deleted with it.
+final localDatabaseDeleterProvider = Provider<Future<bool> Function()>((ref) {
+  final snapshots = ref.read(snapshotStoreFactoryProvider);
+  return () => deleteLedgerFilesAndSnapshots(
+    deleteLocalDatabase,
+    snapshots(localDatabaseName),
+  );
+});
 
 /// The **current account's** ledger database (Phase G4: one DB per Matrix
 /// account, see `account_database.dart`). Rebuilds when the signed-in account
@@ -102,8 +109,8 @@ Stream<List<SettlementModel>> settlementsForRoom(Ref ref, String roomId) {
 /// active when the user acted, even if the account switches (G4) or the
 /// autoDispose notifier is disposed mid-flight — and `ref` is never touched
 /// after an await.
-class _WriteContext {
-  _WriteContext(Ref ref)
+class LedgerWriteContext {
+  LedgerWriteContext(Ref ref)
     : db = ref.read(appDatabaseProvider),
       expenses = ref.read(expensesDaoProvider),
       members = ref.read(membersDaoProvider),
@@ -165,10 +172,10 @@ class ExpenseAdder extends _$ExpenseAdder {
   FutureOr<void> build() {}
 
   /// Runs one write: loading → result, with every dependency captured up
-  /// front (see [_WriteContext]). The final state is only set while this
+  /// front (see [LedgerWriteContext]). The final state is only set while this
   /// notifier is still mounted (the page may have been popped meanwhile).
-  Future<void> _run(Future<void> Function(_WriteContext w) body) async {
-    final w = _WriteContext(ref);
+  Future<void> _run(Future<void> Function(LedgerWriteContext w) body) async {
+    final w = LedgerWriteContext(ref);
     state = const AsyncLoading();
     final result = await AsyncValue.guard(() => body(w));
     if (ref.mounted) state = result;

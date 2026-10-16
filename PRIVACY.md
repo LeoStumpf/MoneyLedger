@@ -105,10 +105,24 @@ new device, sign in and your groups are restored from your other devices and
 the other members; for groups only you use, a backup file (Settings → Back up
 all groups) is your own offline copy.
 
+## Restore points on this device
+
+To let you undo mistakes, MoneyLedger keeps earlier versions of your groups'
+entries on this device for 90 days, and on Android once a day (when something
+changed) a copy of all your groups in the app's private storage — the last 7
+days plus 4 older weeks. These versions and copies are never sent anywhere,
+are not part of any backup file, and are excluded from Android's backups like
+all app data. Leaving or deleting a group removes its earlier versions at
+once; the daily copies still contain it until they rotate out (after about
+five weeks), so that a group deleted by mistake can be restored. Deleting
+local data, or uninstalling the app, removes all of them.
+
 ## Deleting your data
 
 - Leave or delete a group (group menu ⋮): it and all its records are removed
-  from this device. When you leave, the other members are told that you left.
+  from this device (the daily restore points keep it for about five weeks —
+  see "Restore points on this device"). When you leave, the other members are
+  told that you left.
 - Signing out keeps this account's ledger on the device, so it is back when you
   sign in again.
 - In local mode, Settings → *Delete local data* removes every local group from

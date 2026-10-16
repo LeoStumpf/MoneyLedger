@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
+import 'package:money_ledger/core/database/daos/history_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/database/daos/settings_dao.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
@@ -611,6 +612,8 @@ class _FailingSettlementsDao extends ExpensesDao {
   _FailingSettlementsDao(super.db);
 
   @override
-  Future<void> upsertSettlementLww(SettlementsCompanion settlement) =>
-      Future.error(StateError('disk full'));
+  Future<void> upsertSettlementLww(
+    SettlementsCompanion settlement, {
+    HistorySource source = HistorySource.local,
+  }) => Future.error(StateError('disk full'));
 }

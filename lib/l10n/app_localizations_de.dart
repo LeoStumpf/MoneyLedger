@@ -901,7 +901,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyDeleteBody =>
-      '• Gruppe verlassen oder löschen (Gruppenmenü ⋮): Sie wird samt allen Einträgen von diesem Gerät entfernt. Wenn du sie verlässt, erfahren die anderen Mitglieder davon.\n• Beim Abmelden bleibt das Kassenbuch dieses Kontos auf dem Gerät, damit es bei der nächsten Anmeldung wieder da ist.\n• Im lokalen Modus entfernt Einstellungen → Lokale Daten löschen alle lokalen Gruppen von diesem Gerät und beendet den lokalen Modus.\n• Wenn du die App deinstallierst (oder ihren Speicher löschst), wird alles entfernt, was sie auf dem Gerät gespeichert hat.\n• Kopien auf den Geräten anderer Mitglieder gehören ihnen: Sie behalten den Verlauf der Gruppe, einschließlich deiner Ausgaben darin.\n• Dein Matrix-Konto kannst du über deinen Homeserver deaktivieren.';
+      '• Gruppe verlassen oder löschen (Gruppenmenü ⋮): Sie wird samt allen Einträgen von diesem Gerät entfernt (die täglichen Wiederherstellungspunkte behalten sie etwa fünf Wochen – siehe oben). Wenn du sie verlässt, erfahren die anderen Mitglieder davon.\n• Beim Abmelden bleibt das Kassenbuch dieses Kontos auf dem Gerät, damit es bei der nächsten Anmeldung wieder da ist.\n• Im lokalen Modus entfernt Einstellungen → Lokale Daten löschen alle lokalen Gruppen von diesem Gerät und beendet den lokalen Modus.\n• Wenn du die App deinstallierst (oder ihren Speicher löschst), wird alles entfernt, was sie auf dem Gerät gespeichert hat.\n• Kopien auf den Geräten anderer Mitglieder gehören ihnen: Sie behalten den Verlauf der Gruppe, einschließlich deiner Ausgaben darin.\n• Dein Matrix-Konto kannst du über deinen Homeserver deaktivieren.';
 
   @override
   String get privacyContactTitle => 'Kontakt';
@@ -2052,4 +2052,221 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get groupCategories => 'Diese Gruppe';
+
+  @override
+  String get restorePointsTitle => 'Wiederherstellungspunkte';
+
+  @override
+  String get restorePointsTileBody =>
+      'Automatische Kopien auf diesem Gerät, Änderungen rückgängig machen';
+
+  @override
+  String get restorePointsIntro =>
+      'Einmal am Tag, wenn sich etwas geändert hat, legt MoneyLedger eine Kopie all deiner Gruppen auf diesem Gerät ab – die letzten 7 Tage und 4 ältere Wochen. Diese Kopien verlassen dein Gerät nie.';
+
+  @override
+  String get restorePointsHowItWorks =>
+      'Wiederherstellen holt Gruppen und Einträge zurück, die hier fehlen (z. B. eine gelöschte Gruppe). Um Änderungen innerhalb einer Gruppe rückgängig zu machen: Gruppe öffnen → ⋮ → Auf früheren Stand zurücksetzen.';
+
+  @override
+  String get restorePointsEmpty =>
+      'Noch keine Wiederherstellungspunkte. Einmal am Tag wird einer angelegt, wenn sich etwas geändert hat.';
+
+  @override
+  String get restorePointsWebUnsupported =>
+      'Die Browser-Version legt keine automatischen Kopien an. Du kannst eine Gruppe trotzdem auf einen früheren Stand zurücksetzen (Gruppe → ⋮) und eine Sicherungsdatei speichern.';
+
+  @override
+  String restorePointGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Gruppen',
+      one: '1 Gruppe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restorePointEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Einträge',
+      one: '1 Eintrag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get restorePointRestore => 'Wiederherstellen';
+
+  @override
+  String restorePointsLoadFailed(String error) {
+    return 'Wiederherstellungspunkte konnten nicht gelesen werden: $error';
+  }
+
+  @override
+  String get groupResetMenu => 'Auf früheren Stand zurücksetzen…';
+
+  @override
+  String get groupResetTitle => 'Gruppe zurücksetzen';
+
+  @override
+  String get groupResetIntro =>
+      'Wähle eine Änderung, um sie und alles danach rückgängig zu machen. Ausgaben, Zahlungen und die Gruppeneinstellungen gehen auf den Stand zurück, den sie davor auf diesem Gerät hatten. Mitglieder bleiben, wie sie sind. Alle in der Gruppe bekommen das Ergebnis als normale Änderung – und du kannst ein Zurücksetzen genauso wieder rückgängig machen.';
+
+  @override
+  String get groupResetLocalIntro =>
+      'Wähle eine Änderung, um sie und alles danach rückgängig zu machen. Ausgaben, Zahlungen und die Gruppeneinstellungen gehen auf den Stand davor zurück. Mitglieder bleiben, wie sie sind. Du kannst ein Zurücksetzen genauso wieder rückgängig machen.';
+
+  @override
+  String get groupResetRetention =>
+      'Änderungen werden 90 Tage auf diesem Gerät aufbewahrt.';
+
+  @override
+  String get groupResetEmpty =>
+      'Noch nichts, wohin du zurück kannst – Änderungen erscheinen hier, sobald sie passieren.';
+
+  @override
+  String get groupResetReadOnly =>
+      'Du wurdest aus dieser Gruppe entfernt, deshalb kann sie nicht zurückgesetzt werden.';
+
+  @override
+  String changeAdded(int count) {
+    return '$count hinzugefügt';
+  }
+
+  @override
+  String changeEdited(int count) {
+    return '$count geändert';
+  }
+
+  @override
+  String changeDeleted(int count) {
+    return '$count gelöscht';
+  }
+
+  @override
+  String changeOther(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Gruppen- oder Mitgliederänderungen',
+      one: '1 Gruppen- oder Mitgliederänderung',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get changeByYou => 'von dir';
+
+  @override
+  String changeBy(String names) {
+    return 'von $names';
+  }
+
+  @override
+  String get changeUndoFromHere => 'Ab hier rückgängig';
+
+  @override
+  String get changeEarliest => 'Ältester Stand auf diesem Gerät';
+
+  @override
+  String resetPreviewTitle(String time) {
+    return 'Auf den Stand vor $time zurück?';
+  }
+
+  @override
+  String resetPreviewRestored(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Einträge kommen zurück',
+      one: '1 Eintrag kommt zurück',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resetPreviewReverted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Änderungen werden rückgängig gemacht',
+      one: '1 Änderung wird rückgängig gemacht',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resetPreviewRemoved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Einträge werden entfernt',
+      one: '1 Eintrag wird entfernt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resetPreviewMeta =>
+      'Gruppenname, Währung und Kategorien gehen ebenfalls zurück.';
+
+  @override
+  String resetPreviewSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count frühere Versionen sind unbrauchbar und bleiben, wie sie sind.',
+      one: '1 frühere Version ist unbrauchbar und bleibt, wie sie ist.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resetPreviewNothing =>
+      'Nichts zu ändern – die Gruppe sieht schon so aus.';
+
+  @override
+  String get resetPreviewShared =>
+      'Alle in der Gruppe bekommen diese Änderungen.';
+
+  @override
+  String resetPreviewMore(int count) {
+    return '…und $count weitere';
+  }
+
+  @override
+  String get resetEffectRestored => 'kommt zurück';
+
+  @override
+  String get resetEffectReverted => 'wird zurückgeändert';
+
+  @override
+  String get resetEffectRemoved => 'wird entfernt';
+
+  @override
+  String get resetConfirm => 'Zurücksetzen';
+
+  @override
+  String resetDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Gruppe zurückgesetzt ($count Änderungen)',
+      one: 'Gruppe zurückgesetzt (1 Änderung)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get privacyRestorePointsTitle =>
+      'Wiederherstellungspunkte auf diesem Gerät';
+
+  @override
+  String get privacyRestorePointsBody =>
+      'Damit du Fehler rückgängig machen kannst, bewahrt MoneyLedger frühere Versionen der Einträge deiner Gruppen 90 Tage lang auf diesem Gerät auf, und unter Android einmal am Tag (wenn sich etwas geändert hat) eine Kopie all deiner Gruppen im privaten Speicher der App – die letzten 7 Tage und 4 ältere Wochen. Diese Versionen und Kopien werden nie irgendwohin gesendet, sind in keiner Sicherungsdatei enthalten und wie alle App-Daten von den Android-Backups ausgenommen. Wenn du eine Gruppe verlässt oder löschst, werden ihre früheren Versionen sofort entfernt; die täglichen Kopien enthalten sie noch, bis sie herausrotiert sind (nach etwa fünf Wochen), damit eine versehentlich gelöschte Gruppe wiederhergestellt werden kann. „Lokale Daten löschen“ oder das Deinstallieren der App entfernt alles.';
 }

@@ -151,6 +151,9 @@ Expected results are in *italics*.
 | 8.10 | Group ⋮ → Back up this group → *file `moneyledger-backup-<group>-YYYY-MM-DD.json` with only that group; "Last backup" unchanged* | emu |
 | 8.11 | Leave/Delete group dialog → "Back up all groups first" → *passphrase dialog over it; the result ("Backup saved …") shows inside the leave dialog* | emu |
 | 8.12 | A second own device that is verified (or synced with this one in the last 30 days) → *no backup nudge for solo groups* | phone |
+| 8.13 | (G48) Device B deletes two expenses and edits one in a shared group → on A: group ⋮ → *Reset to an earlier state…* → newest entry "N deleted · by B" → *Undo from here* → *preview "2 entries come back · 1 change is undone"*; Reset → *"Group reset (3 changes)"*; on B the entries are back within seconds, "Last edited by A" | phone + emu |
+| 8.14 | (G48, Android) App start on a day with changes → `files/snapshots/money_ledger_<hash>/YYYY-MM-DD.json` appears (`adb -s <serial> shell run-as io.github.leostumpf.moneyledger ls -R files/snapshots`); Settings → *Restore points* lists it ("1 group · N entries"); Restore → *the normal restore preview* (no change = "already on this device") | phone |
+| 8.15 | (G48) Delete a solo group, then Settings → Restore points → yesterday's point → Restore → *the group is back* | emu |
 
 ## 9. Devices & verification
 

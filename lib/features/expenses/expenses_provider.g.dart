@@ -473,7 +473,7 @@ final class ExpenseAdderProvider
   ExpenseAdder create() => ExpenseAdder();
 }
 
-String _$expenseAdderHash() => r'73691c9c4afc0134ff47c1ad40ef41a2e92f6293';
+String _$expenseAdderHash() => r'476ffc2a272f3671650a011f58c27ea37fc860b1';
 
 abstract class _$ExpenseAdder extends $AsyncNotifier<void> {
   FutureOr<void> build();

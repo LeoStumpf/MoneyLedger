@@ -188,6 +188,7 @@ lib/
         members_dao.dart       # Participants (id + name + optional matrixId; LWW; activeClaimedMatrixIds)
         sync_states_dao.dart   # PeerSyncStates: per-(group,peer) anti-entropy bookkeeping
         signing_dao.dart       # G6: KnownDeviceKeys (device-key history) + RejectedVersions
+        history_dao.dart       # G48: record_history (version history) — append helper, HistorySource, prune, floor
         settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, left-group tombstones, G16 archive, per account); never synced
     matrix/
       record_crypto.dart          # G6 ports: RecordCrypto (sign/verify), DeviceKeyDirectory, SignerId
@@ -253,6 +254,10 @@ lib/
     welcome/                   # G39 WelcomePage: first-open explanation + 3 choices; revisit = "How it works"
     local/                     # G40 LocalSetupPage (name), local_mode_ui.dart (chip, sheet, settings, delete)
     onboarding/                # Post-login / local-start intro (OnboardingPage) + onboarding_seen flag
+    history/                   # G48 restore points: group_history.dart (pure: change batches + reset plan),
+                               #   group_reset.dart (GroupResetService), group_reset_page.dart,
+                               #   restore_points.dart (daily maintenance, snapshots), snapshot_policy.dart (pure
+                               #   rotation), snapshot_store*.dart (native files / none on web), restore_points_page.dart
     devices/                   # Device list + SAS verification UI (DevicesPage, member device sheet,
                                #   IncomingVerificationListener) — G11
     about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
@@ -316,7 +321,7 @@ buttons). Until then the optimistic form (generic SSO + password) is shown.
 
 **Device verification (Phase F + G11).** `DeviceGateway` (`core/matrix/device_gateway.dart`, matrix-free port; real adapter `matrix_device_gateway.dart`) lists the user's own devices **and (G11) another member's** (`userDevices`), runs an SAS (emoji) verification **over to-device messages** — with our own other devices and with another member's device alike (no rooms needed) — and streams **incoming** requests (`incomingVerifications`, answered app-wide by `IncomingVerificationListener` in `App`'s builder: "Accept / Decline" → the same emoji dialog). The client must advertise `verificationMethods: {emoji, numbers}` (`buildMatrixClient`) — without it the SDK ignores every request (it was missing before G11, so SAS never worked). `askSSSS` (account has cross-signing from another client, keys not cached) is skipped automatically: the app does no cross-signing. `DevicesPage` (`/devices`) shows own devices; the **members page** shows — **only while verified-only sync is on** (G46: otherwise it's technical noise) — a subtle "N unverified devices" line under a member (red "Not reachable — no verified device" when none is verified) and ⋮ → *Devices* opens their device list with *Verify*. The real adapter imports `package:matrix/matrix.dart` **`hide DeviceInfo`** plus `package:matrix/encryption.dart`. **SAS emoji names (G36)** are localized: `SasEmoji.number` (the SDK's `KeyVerificationEmoji.number`, 0–63) → `sasEmojiName(number, languageCode)` from `features/devices/sas_emoji_names.dart`, an EN+DE table generated once from the Matrix spec's `data-definitions/sas-emoji.json` (Apache-2.0 — THIRD_PARTY_NOTICES + an in-app license entry in `main.dart`); unknown number → the SDK's English name.
 - **The app keeps its own verified-device record** (`AppSettings` `verified_device:<mxid>|<device>` → Ed25519 key, per account, device-local; `SettingsDao.markDeviceVerified`, written by `recordingTrust` on SAS success whether or not the dialog is still open). Reason: in a roomless app the SDK evicts other users' device lists from memory on every `updateUserDeviceKeys` that doesn't name them and re-stores them with `verified: false` — a peer's SAS result would not survive. "Verified" = SDK flag **or** our record for the exact (user, device, **current key**) (`isDeviceTrusted`; a changed key voids it). Own devices: the SDK flag persists too.
-- **Opt-in enforcement (G11): "Only sync with verified devices"** (settings sheet, per account, device-local `verified_only_sync`, default **off**; turning it on asks first and explains). Every app sender — `_WriteContext` / `_GroupWriteContext` / `SyncEngine` (replication, member bootstraps, digests, resync answers) — wraps the transport in `PolicyTransport` (`core/sync/delivery_policy.dart`) built from the **same** account DB it writes to; each send reads `SettingsDao.deliveryPolicy()` (fails closed if unreadable) and passes it to `sendToUsers(…, policy:)` → pure `planDeviceSend` withholds unverified devices (own and peers'). `SendResult.unverifiedUsers` (⊆ `unreachableUsers`: has devices, none verified) feeds `SyncHealthState.unverifiedPeers`; the cloud tooltip (`pendingPeerHint`) says "X has no verified device" instead of "Waiting for X". Withholding is not a failure. **Inbound is not refused** when the setting is on: refusals in G6 are permanent (`rejected_versions`) and would not heal after verifying later, and a member's legitimate new device would silently lose edits; the setting is about where *our* data goes. The record details dialog shows "You (haven't) verified this device" for the signing device of others (`signerVerifiedByMe`). Limits: only what *this* device sends is restricted — a peer's own devices still sync among themselves unless the peer turns it on too; a new own device can't self-restore from a device with the setting on until verified. **G36:** the settings subtitle and the confirm dialog say exactly that ("only limits what this device sends", "a new login of yours can't restore … until you verify it").
+- **Opt-in enforcement (G11): "Only sync with verified devices"** (settings sheet, per account, device-local `verified_only_sync`, default **off**; turning it on asks first and explains). Every app sender — `LedgerWriteContext` / `_GroupWriteContext` / `SyncEngine` (replication, member bootstraps, digests, resync answers) — wraps the transport in `PolicyTransport` (`core/sync/delivery_policy.dart`) built from the **same** account DB it writes to; each send reads `SettingsDao.deliveryPolicy()` (fails closed if unreadable) and passes it to `sendToUsers(…, policy:)` → pure `planDeviceSend` withholds unverified devices (own and peers'). `SendResult.unverifiedUsers` (⊆ `unreachableUsers`: has devices, none verified) feeds `SyncHealthState.unverifiedPeers`; the cloud tooltip (`pendingPeerHint`) says "X has no verified device" instead of "Waiting for X". Withholding is not a failure. **Inbound is not refused** when the setting is on: refusals in G6 are permanent (`rejected_versions`) and would not heal after verifying later, and a member's legitimate new device would silently lose edits; the setting is about where *our* data goes. The record details dialog shows "You (haven't) verified this device" for the signing device of others (`signerVerifiedByMe`). Limits: only what *this* device sends is restricted — a peer's own devices still sync among themselves unless the peer turns it on too; a new own device can't self-restore from a device with the setting on until verified. **G36:** the settings subtitle and the confirm dialog say exactly that ("only limits what this device sends", "a new login of yours can't restore … until you verify it").
 - Tests: pure planner/policy (`test/core/device_plan_test.dart`), `SettingsDao`, `SyncHealth`/`pendingPeerHint`, `withTrust`/`peerDeviceTrust`/`recordingTrust`, an end-to-end fake-relay test (`test/integration/verified_only_sync_test.dart`) and widget tests (`test/verified_only_ui_test.dart`). The SDK SAS round-trip itself is manual-smoke (`docs/smoke-test.md` §9).
 
 ### Participant identity (virtual users)
@@ -1036,6 +1041,81 @@ modal progress dialog (`DartArgon2id` yields to the event loop). Test seams:
 `backupKdfParamsProvider` (cheap params), `backupDecrypterProvider`,
 `backupFilePickerProvider`.
 
+### Restore points + reset group (G48)
+
+Undo for mistakes (and, later, for link-mode groups where anyone with the link
+can delete everything). Two layers, both device-local, never synced, never in
+a backup file / digest:
+
+- **Version history** (`record_history`, schema **v12**, `history_dao.dart`):
+  the four DAO LWW upserts (`upsertExpenseLww` / `upsertSettlementLww` /
+  `upsertMemberLww` / `upsertGroupLww`) append the version they **stored** in
+  the same transaction — only when it is a different version (new record,
+  other clock or G27 hash); re-writing the same version (`pendingSign` →
+  signed) or a losing older one appends nothing. Row: group, kind
+  (`RecordKind.wire`), record id, `updated_at`, version hash, the wire payload
+  as stored (`expensePayload` & co., signatures incl.), `source`
+  (`HistorySource`: local / inbound / restore / revert / import / initial —
+  callers pass it: `RecordGate` → inbound, or restore when `acceptUnsigned`;
+  CSV import → import; reset → revert; default local) and `recorded_at`
+  (this device's clock, `historyClock` — tests replace it). The v12 migration
+  backfills one `initial` entry per stored record. `purgeGroup` (leave /
+  delete) drops the group's history. **Retention** (`HistoryDao.prune`, run
+  at app start by `restorePointsMaintenanceProvider`, watched in
+  `LedgerSyncHost`): entries older than 90 days go, except the newest one per
+  record before the cutoff (its **base** — so the state at any point ≥ the
+  cutoff stays exact); over `kHistoryMaxRows` (20 000) the cutoff moves
+  forward; the cutoff is stored as `history_floor` (`AppSettings`).
+- **Reset group to an earlier state** (group ⋮ → *Reset to an earlier
+  state…*, `/groups/:id/reset`, `GroupResetPage`; disabled for read-only
+  groups): the history is clustered into **change batches** (pure
+  `changeBatches`: entries < 10 min apart; per record added / edited /
+  deleted, group-or-member changes, who signed them / "by you"); *Undo from
+  here* = reset to the state **before** that batch (`beforeId` = its first
+  entry id) — "how it looked on this device then". A batch is resettable only
+  if the group's meta has an earlier entry and it starts at/after the floor.
+  Pure `planGroupReset` per expense / payment: the newest entry before the
+  point; none or deleted then + live now → tombstone (*removed*); live then +
+  deleted now → *restored*; other content → *reverted*; a record the history
+  never saw (legacy adoption, demo seed) is left alone; an earlier version
+  breaking today's content rules is skipped. Meta (name, currency, custom
+  categories) is reset too. **Participants are never reset** (a removal must
+  stick, G26; claims / "me" must not move; participants are never deleted, so
+  old expenses still resolve). Every planned write is a **new version**:
+  `nextLwwClock(stored)`, the creator's `origin` kept, signed by this device
+  via the shared `LedgerWriteContext` (formerly `_WriteContext` in
+  `expenses_provider.dart`; `pendingSign` without a key, local mode), all
+  stored in one transaction (source revert), relayed like normal edits
+  (≤ `kResetLiveRelayMax` = 25; more → only the group poke / digest), and the
+  group is poked. Preview dialog first (`ResetPreviewDialog`: N come back /
+  M undone / K removed, first entries by name). A reset is itself undoable the
+  same way. Tests: `test/database/record_history_test.dart`,
+  `schema_v12_migration_test.dart`, `test/features/group_history_test.dart`,
+  `test/integration/group_reset_sync_test.dart` (peer adopts the revert),
+  `test/history_ui_test.dart`.
+- **Rotating snapshots** (`restore_points.dart`): at app start, once per
+  local day (`snapshot_checked_day`), the whole ledger is exported like the
+  full backup (`BackupService.exportJson`, `account` = the ledger identity,
+  so local mode's file restores like local mode's backup, G41); written only
+  if its SHA-256 differs from the last snapshot's (`snapshot_fingerprint`;
+  computed with `exported_at: 0`) and the ledger has a group, to
+  `<app support>/snapshots/<ledger DB name>/YYYY-MM-DD.json` (temp file +
+  rename, `FileSnapshotStore`); rotation (pure `snapshotsToKeep`): the 7
+  newest + the newest of each of the next 4 older calendar weeks.
+  **Web: none** (`snapshotStoreFactoryProvider` → null; the page says so —
+  the in-DB history still allows resets, a backup file covers the rest);
+  the offline demo neither. Settings → *Restore points* (`/restore-points`,
+  `RestorePointsPage`) lists them (date, groups, entries) → *Restore* = the
+  normal restore (`BackupRestorer.previewAndRestore`, shared with the file
+  restore: preview → confirm → LWW merge → poke). An LWW restore brings back
+  **missing** groups / records (deleted group, wiped DB), not older content
+  of changed records — that's the group reset. Local mode: its snapshots are
+  deleted with its ledger (`localDatabaseDeleterProvider` →
+  `deleteLedgerFilesAndSnapshots`, after *Delete local data* and after an
+  adoption). Android backup stays off (G32); PRIVACY.md + the in-app
+  `privacyRestorePoints*` text say what is kept and for how long. Tests:
+  `test/features/restore_points_test.dart`. Limits: `docs/open-points.md`.
+
 ### Backup (CSV export/import — Phase D, G13)
 
 A group can be exported to a **single human-readable CSV** and imported back
@@ -1399,7 +1479,7 @@ returns crashes the closing animation.
 
 **Auth errors (G20):** login / SSO callback / register pages never show raw exception text. `MatrixAuthGateway` translates failures into plain port types (`auth_gateway.dart`): `AuthServerException(errcode, retryAfterMs)`, `AuthNetworkException(host)` (a transport error: **one** message "Can't reach <host>" whose hint covers "server down / wrong address / you're offline" — G43 removed the matrix.org probe that told them apart, it contacted a third party; an unwrapped raw network error → host-less `authUnreachableNoHostTitle`), `NotAHomeserverException` (`checkHomeserver` failed with a non-network error). The pure `describeAuthError(error, action:)` (`features/auth/auth_errors.dart`; falls back to matching the error text) maps them to `AuthErrorMessage{title, hint, detail}`, rendered by `AuthErrorCard` with the raw text behind a collapsed **Details**. All English strings live in `AuthErrorStrings` (one place, for G12). **Timeouts (G30):** `checkHomeserver` is capped at `kHomeserverCheckTimeout` (10 s), login/register requests at `kAuthRequestTimeout` (20 s) via the pure `withAuthTimeout` → `AuthTimeoutException` (a `TimeoutException`, wrapped as `AuthNetworkException`) → "The server took too long to respond". The SDK call isn't cancelled — a late success still signs in (**adopted**, G36). **Single flight (G36):** `AuthSingleFlight` (`auth_gateway.dart`) wraps each login / token login / registration (`operation`) and every raw homeserver request inside it (`track`) in `MatrixAuthGateway`; while an operation **or a timed-out request** is still running, a new attempt throws `AuthInProgressException` → "Still signing in…" (`AuthErrorKind.inProgress`) instead of starting a parallel `client.login` (two devices / session race). `FakeAuthGateway` uses the same guard (`pendingRequest`, `requestTimeout`, `requestsStarted`); tests: `test/features/auth_single_flight_test.dart`. Web sign-up fallback: `RegistrationRequiresWebException.signUpUrl` comes from the pure `resolveSignUpUrl` (`sign_up_url.dart`): OIDC auth metadata (MAS with `prompt=create` → `<issuer>register`, else `account_management_uri`) → `.well-known` `org.matrix.msc2965.authentication.account` → matrix.org: `app.element.io/#/register` → homeserver URL.
 
-**Async work vs. account switch / dispose (G19):** on an account switch Riverpod 3 closes the old ledger DB **eagerly** (when `appDatabaseProvider` rebuilds), but dependents like `SyncEngine`/`LedgerSyncer` are only disposed on the next scheduler flush — so in-flight async work can outlive both its DB and its `Ref`. Rules: (1) capture the DB + DAOs (and transport/health notifier) **before the first await** — `SyncEngine`/`LedgerSyncer` read them in their constructor, `ExpenseAdder` via `_WriteContext`, the group mutators (`GroupCreator`/`MemberAdder`/`MemberRemover`/`GroupExiter`) via `_GroupWriteContext` (G23) — never re-read DAO providers after an await; (2) after **every** await check `_alive` (`!_disposed && !_db.isClosed`; `AppDatabase.isClosed` is set by `close()`) and bail silently; (3) in notifiers, only set `state` / use `ref` after an await when `ref.mounted`; (4) errors caught after the DB closed are expected — don't log them or report them to `SyncHealth` (its `report*` also no-op when unmounted). Regression tests: `test/integration/account_switch_sync_test.dart`, `test/features/group_mutators_lifecycle_test.dart`.
+**Async work vs. account switch / dispose (G19):** on an account switch Riverpod 3 closes the old ledger DB **eagerly** (when `appDatabaseProvider` rebuilds), but dependents like `SyncEngine`/`LedgerSyncer` are only disposed on the next scheduler flush — so in-flight async work can outlive both its DB and its `Ref`. Rules: (1) capture the DB + DAOs (and transport/health notifier) **before the first await** — `SyncEngine`/`LedgerSyncer` read them in their constructor, `ExpenseAdder` (and the G48 `GroupResetService`) via `LedgerWriteContext`, the group mutators (`GroupCreator`/`MemberAdder`/`MemberRemover`/`GroupExiter`) via `_GroupWriteContext` (G23) — never re-read DAO providers after an await; (2) after **every** await check `_alive` (`!_disposed && !_db.isClosed`; `AppDatabase.isClosed` is set by `close()`) and bail silently; (3) in notifiers, only set `state` / use `ref` after an await when `ref.mounted`; (4) errors caught after the DB closed are expected — don't log them or report them to `SyncHealth` (its `report*` also no-op when unmounted). Regression tests: `test/integration/account_switch_sync_test.dart`, `test/features/group_mutators_lifecycle_test.dart`.
 
 **Timeouts/backoff in tests (G15):** production timers that a test must
 observe come from an injectable `TimerFactory` provider

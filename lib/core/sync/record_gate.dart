@@ -5,6 +5,7 @@ import '../../models/member_model.dart';
 import '../../models/record_signature.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
+import '../database/daos/history_dao.dart' show HistorySource;
 import '../database/daos/members_dao.dart';
 import '../database/daos/signing_dao.dart';
 import 'ledger_payloads.dart';
@@ -97,6 +98,10 @@ class RecordGate {
     String relayedBy,
   )?
   onRefused;
+
+  /// G48: how stored versions are labelled in the version history.
+  HistorySource get _historySource =>
+      acceptUnsigned ? HistorySource.restore : HistorySource.inbound;
 
   int get _ceiling => _clock() + kSignedClockSkewTolerance.inMilliseconds;
 
@@ -321,7 +326,7 @@ class RecordGate {
         : expenseCompanion(
             e.withSigning(),
           ).copyWith(updatedAt: Value(_clamp(e.updatedAt)));
-    await expenses.upsertExpenseLww(row);
+    await expenses.upsertExpenseLww(row, source: _historySource);
     await _clearRefusal(e.roomId, RecordKind.expense, e.id, version);
     return true;
   }
@@ -396,7 +401,7 @@ class RecordGate {
         : settlementCompanion(
             s.withSigning(),
           ).copyWith(updatedAt: Value(_clamp(s.updatedAt)));
-    await expenses.upsertSettlementLww(row);
+    await expenses.upsertSettlementLww(row, source: _historySource);
     await _clearRefusal(s.roomId, RecordKind.settlement, s.id, version);
     return true;
   }
@@ -457,6 +462,7 @@ class RecordGate {
     final row = memberCompanion(m);
     await members.upsertMemberLww(
       v.accepted ? row : row.copyWith(updatedAt: Value(_clamp(m.updatedAt))),
+      source: _historySource,
     );
     await _clearRefusal(m.groupId, RecordKind.member, m.userId, version);
     return true;
@@ -524,6 +530,7 @@ class RecordGate {
     final row = groupCompanion(g);
     await groups.upsertGroupLww(
       v.accepted ? row : row.copyWith(updatedAt: Value(_clamp(g.updatedAt))),
+      source: _historySource,
     );
     await _clearRefusal(g.roomId, RecordKind.meta, g.roomId, version);
     return true;

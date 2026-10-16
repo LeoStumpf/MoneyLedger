@@ -5,7 +5,10 @@ import '../app_database.dart';
 import '../../../models/expense_category.dart';
 import '../../../models/group_model.dart';
 import '../../../models/record_signature.dart';
+import '../../sync/ledger_payloads.dart';
+import '../../sync/record_signing.dart' show RecordKind;
 import '../../sync/record_version.dart';
+import 'history_dao.dart';
 
 part 'groups_dao.g.dart';
 
@@ -22,29 +25,47 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
   /// Last-writer-wins upsert with the G27 tie-break (same rule as
   /// `ExpensesDao.upsertExpenseLww`): skipped only when the stored meta is a
   /// newer version (higher clock, or same clock + higher content hash).
-  Future<void> upsertGroupLww(GroupsCompanion group) => transaction(() async {
+  /// G48: a different stored version is appended to `record_history`.
+  Future<void> upsertGroupLww(
+    GroupsCompanion group, {
+    HistorySource source = HistorySource.local,
+  }) => transaction(() async {
     final old = await (select(
       groups,
     )..where((t) => t.roomId.equals(group.roomId.value))).getSingleOrNull();
-    if (old != null &&
-        compareVersions(
-              groupMetaVersion(
-                GroupModel(
-                  roomId: group.roomId.value,
-                  name: group.name.present ? group.name.value : '',
-                  currency: group.currency.present ? group.currency.value : '',
-                  updatedAt: group.updatedAt.value,
-                  categories: group.categoriesJson.present
-                      ? decodeCategories(group.categoriesJson.value)
-                      : const [],
-                ),
-              ),
-              groupMetaVersion(_toModel(old)),
-            ) <
-            0) {
+    final version = groupMetaVersion(
+      GroupModel(
+        roomId: group.roomId.value,
+        name: group.name.present ? group.name.value : '',
+        currency: group.currency.present ? group.currency.value : '',
+        updatedAt: group.updatedAt.value,
+        categories: group.categoriesJson.present
+            ? decodeCategories(group.categoriesJson.value)
+            : const [],
+      ),
+    );
+    final oldVersion = old == null ? null : groupMetaVersion(_toModel(old));
+    if (oldVersion != null && compareVersions(version, oldVersion) < 0) {
       return;
     }
     await into(groups).insertOnConflictUpdate(group);
+    if (oldVersion != null && compareVersions(version, oldVersion) == 0) {
+      return;
+    }
+    final stored = _toModel(
+      await (select(
+        groups,
+      )..where((t) => t.roomId.equals(group.roomId.value))).getSingle(),
+    );
+    await appendRecordHistory(
+      attachedDatabase,
+      groupId: stored.roomId,
+      kind: RecordKind.meta,
+      recordId: stored.roomId,
+      version: groupMetaVersion(stored),
+      content: groupMetaPayload(stored),
+      source: source,
+    );
   });
 
   Future<GroupModel?> getGroup(String roomId) =>

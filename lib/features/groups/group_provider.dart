@@ -69,7 +69,7 @@ Map<String, String> participantNames(Ref ref, String groupId) {
 }
 
 /// Everything one group/member mutation needs, captured **before the first
-/// await** (G23 — same pattern as `ExpenseAdder`'s `_WriteContext`, G19): the
+/// await** (G23 — same pattern as `ExpenseAdder`'s `LedgerWriteContext`, G19): the
 /// account DB + DAOs, the transport and this device's MXID. A mutation thus
 /// always targets the account that was active when the user acted, and `ref`
 /// is never touched after an await (the auto-dispose notifier may be disposed

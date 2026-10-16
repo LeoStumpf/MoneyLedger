@@ -42,6 +42,12 @@ String formatDate(int msEpoch, String locale) => DateFormat.yMMMd(
   locale,
 ).format(DateTime.fromMillisecondsSinceEpoch(msEpoch));
 
+/// A short localized date + time (G48): `Jun 13, 2026 14:05` (en) /
+/// `13. Juni 2026 14:05` (de).
+String formatDateTime(int msEpoch, String locale) => DateFormat.yMMMd(
+  locale,
+).add_Hm().format(DateTime.fromMillisecondsSinceEpoch(msEpoch));
+
 /// A day header for a dated list (G17): `Wed, Oct 15` (en) / `Mi., 15. Okt.`
 /// (de) within [now]'s year, with the year otherwise. "Today" / "Yesterday"
 /// are decided by the caller ([calendarDaysAgo]).

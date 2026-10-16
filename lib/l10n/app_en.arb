@@ -522,7 +522,7 @@
   "privacyBackupTitle": "Device backups",
   "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.",
   "privacyDeleteTitle": "Deleting your data",
-  "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members' devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
+  "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the other members are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members' devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
   "privacyContactTitle": "Contact",
   "privacyContactBody": "Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.",
   "youAreOwedAmount": "You are owed {amount}",
@@ -1758,5 +1758,244 @@
   "groupCategories": "This group",
   "@groupCategories": {
     "description": "Section header in the category selector: the group's own categories (G47)"
+  },
+  "restorePointsTitle": "Restore points",
+  "@restorePointsTitle": {
+    "description": "Settings tile + page title: on-device snapshots (G48)"
+  },
+  "restorePointsTileBody": "Automatic copies on this device, undo changes",
+  "@restorePointsTileBody": {
+    "description": "Settings tile subtitle (G48)"
+  },
+  "restorePointsIntro": "Once a day, when something changed, MoneyLedger keeps a copy of all your groups on this device — the last 7 days plus 4 older weeks. These copies never leave this device.",
+  "@restorePointsIntro": {
+    "description": "Restore points page intro (G48)"
+  },
+  "restorePointsHowItWorks": "Restoring brings back groups and entries that are missing here (e.g. a deleted group). To undo changes inside a group, open the group → ⋮ → Reset to an earlier state.",
+  "@restorePointsHowItWorks": {
+    "description": "Restore points page: what a restore does vs. a group reset (G48)"
+  },
+  "restorePointsEmpty": "No restore points yet. One is made once a day when something changed.",
+  "@restorePointsEmpty": {
+    "description": "Restore points page: none yet (G48)"
+  },
+  "restorePointsWebUnsupported": "The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → ⋮) and back up to a file.",
+  "@restorePointsWebUnsupported": {
+    "description": "Restore points page on web (G48)"
+  },
+  "restorePointGroups": "{count, plural, =1{1 group} other{{count} groups}}",
+  "@restorePointGroups": {
+    "description": "Restore point subtitle part (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restorePointEntries": "{count, plural, =1{1 entry} other{{count} entries}}",
+  "@restorePointEntries": {
+    "description": "Restore point subtitle part (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restorePointRestore": "Restore",
+  "@restorePointRestore": {
+    "description": "Button on a restore point (G48)"
+  },
+  "restorePointsLoadFailed": "Couldn't read the restore points: {error}",
+  "@restorePointsLoadFailed": {
+    "description": "Error on the restore points page (G48)",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "groupResetMenu": "Reset to an earlier state…",
+  "@groupResetMenu": {
+    "description": "Group ⋮ menu item (G48)"
+  },
+  "groupResetTitle": "Reset group",
+  "@groupResetTitle": {
+    "description": "Reset page title (G48)"
+  },
+  "groupResetIntro": "Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. Members stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.",
+  "@groupResetIntro": {
+    "description": "Reset page intro (G48)"
+  },
+  "groupResetLocalIntro": "Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. Members stay as they are. You can undo a reset the same way.",
+  "@groupResetLocalIntro": {
+    "description": "Reset page intro in local mode (G48)"
+  },
+  "groupResetRetention": "Changes are kept on this device for 90 days.",
+  "@groupResetRetention": {
+    "description": "Reset page footer (G48)"
+  },
+  "groupResetEmpty": "Nothing to go back to yet — changes show up here as they happen.",
+  "@groupResetEmpty": {
+    "description": "Reset page: no resettable change (G48)"
+  },
+  "groupResetReadOnly": "You were removed from this group, so it can't be reset.",
+  "@groupResetReadOnly": {
+    "description": "Reset page for a read-only group (G48)"
+  },
+  "changeAdded": "{count} added",
+  "@changeAdded": {
+    "description": "Change batch part (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "changeEdited": "{count} edited",
+  "@changeEdited": {
+    "description": "Change batch part (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "changeDeleted": "{count} deleted",
+  "@changeDeleted": {
+    "description": "Change batch part (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "changeOther": "{count, plural, =1{1 group or member change} other{{count} group or member changes}}",
+  "@changeOther": {
+    "description": "Change batch part (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "changeByYou": "by you",
+  "@changeByYou": {
+    "description": "Change batch: written on this device (G48)"
+  },
+  "changeBy": "by {names}",
+  "@changeBy": {
+    "description": "Change batch: who changed it (G48)",
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "changeUndoFromHere": "Undo from here",
+  "@changeUndoFromHere": {
+    "description": "Button on a change batch (G48)"
+  },
+  "changeEarliest": "Earliest state on this device",
+  "@changeEarliest": {
+    "description": "Marker on the oldest change batch (G48)"
+  },
+  "resetPreviewTitle": "Go back to before {time}?",
+  "@resetPreviewTitle": {
+    "description": "Reset preview dialog title (G48)",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "resetPreviewRestored": "{count, plural, =1{1 entry comes back} other{{count} entries come back}}",
+  "@resetPreviewRestored": {
+    "description": "Reset preview line (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resetPreviewReverted": "{count, plural, =1{1 change is undone} other{{count} changes are undone}}",
+  "@resetPreviewReverted": {
+    "description": "Reset preview line (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resetPreviewRemoved": "{count, plural, =1{1 entry is removed} other{{count} entries are removed}}",
+  "@resetPreviewRemoved": {
+    "description": "Reset preview line (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resetPreviewMeta": "Group name, currency and categories go back too.",
+  "@resetPreviewMeta": {
+    "description": "Reset preview line (G48)"
+  },
+  "resetPreviewSkipped": "{count, plural, =1{1 earlier version can't be used and stays as it is.} other{{count} earlier versions can't be used and stay as they are.}}",
+  "@resetPreviewSkipped": {
+    "description": "Reset preview line (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resetPreviewNothing": "Nothing to change — the group already looks like that.",
+  "@resetPreviewNothing": {
+    "description": "Reset preview: no change (G48)"
+  },
+  "resetPreviewShared": "Everyone in the group gets these changes.",
+  "@resetPreviewShared": {
+    "description": "Reset preview note (G48)"
+  },
+  "resetPreviewMore": "…and {count} more",
+  "@resetPreviewMore": {
+    "description": "Reset preview: list truncated (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resetEffectRestored": "comes back",
+  "@resetEffectRestored": {
+    "description": "Reset preview item label (G48)"
+  },
+  "resetEffectReverted": "changed back",
+  "@resetEffectReverted": {
+    "description": "Reset preview item label (G48)"
+  },
+  "resetEffectRemoved": "removed",
+  "@resetEffectRemoved": {
+    "description": "Reset preview item label (G48)"
+  },
+  "resetConfirm": "Reset",
+  "@resetConfirm": {
+    "description": "Reset preview confirm button (G48)"
+  },
+  "resetDone": "{count, plural, =1{Group reset (1 change)} other{Group reset ({count} changes)}}",
+  "@resetDone": {
+    "description": "Snackbar after a reset (G48)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "privacyRestorePointsTitle": "Restore points on this device",
+  "@privacyRestorePointsTitle": {
+    "description": "Privacy policy section title (G48)"
+  },
+  "privacyRestorePointsBody": "To let you undo mistakes, MoneyLedger keeps earlier versions of your groups' entries on this device for 90 days, and on Android once a day (when something changed) a copy of all your groups in the app's private storage — the last 7 days plus 4 older weeks. These versions and copies are never sent anywhere, are not part of any backup file, and are excluded from Android's backups like all app data. Leaving or deleting a group removes its earlier versions at once; the daily copies still contain it until they rotate out (after about five weeks), so that a group deleted by mistake can be restored. Deleting local data, or uninstalling the app, removes all of them.",
+  "@privacyRestorePointsBody": {
+    "description": "Privacy policy section body (G48)"
   }
 }

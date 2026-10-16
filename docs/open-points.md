@@ -213,6 +213,42 @@ peers'), and SAS works with other members' devices (members page). Open:
   one file are independent: a failing group is rolled back and reported, the
   others restore.
 
+### Restore points / reset group (G48) — limits
+- **Version history** (`record_history`, device-local): every version a DAO
+  stores is appended (local, inbound, restore, revert, CSV import). Kept
+  90 days + a 20 000-row soft cap; one **base** version per record survives
+  pruning, so every reset point at/after the pruning floor is exact. Points
+  before the floor (or before the group arrived on this device, or before the
+  v12 migration) aren't offered. Rows written outside the DAOs (pre-G4 legacy
+  adoption, the offline demo seed) have no history and are never touched by a
+  reset. Upsert cost: one extra insert (+ a JSON encode) per **changed**
+  version — measured within noise of the 3 000-upsert bench (≈ 0.7 ms per
+  upsert in the test VM either way).
+- **Reset = "how it looked on this device"**: a version that reached this
+  device late is placed by when *we* stored it, not by its `updated_at`. A
+  peer that never had a record can't be reset into having had it — the reset
+  writes new versions everybody adopts (LWW), it never rewrites history.
+- **Members are never reset** (removal must stick — G26; claims / "me" must
+  not move). Restored expenses may name a participant that is removed now —
+  balances show them under former members, as for any old expense. Group
+  meta (name, currency, custom categories) *is* reset.
+- **Concurrent edits**: a record a peer edits with a newer clock after our
+  preview keeps the peer's version (LWW). Two members resetting at once
+  converge per record by LWW, possibly to a mix — reset again if needed.
+- **Big resets** (> 25 writes) aren't relayed record by record; the group is
+  poked and the digest exchange (anti-entropy) carries them (a few seconds
+  later on peers).
+- **Snapshots** (`snapshots/<db name>/YYYY-MM-DD.json` in the app support
+  dir, plaintext JSON like the DB itself, app-private, Android backup off):
+  daily at app start if the ledger changed, 7 daily + 4 weekly. **Not on
+  web** (no file system; the in-DB history still allows resetting a group, a
+  backup file covers the rest). A snapshot restore is the normal LWW restore
+  — it brings back groups / records that are *missing* (deleted group, DB
+  wiped / corrupted), not older content of records changed since (that's the
+  group reset). Background rounds (G31) don't snapshot; a phone where the app
+  is never opened gets none. A left/deleted group stays in the snapshots
+  until they rotate out (≈ 5 weeks, said in the privacy texts).
+
 ### Real-device smoke tests
 Flows that can only be verified on a real device + homeserver, not in
 `flutter test` or the web build (`docs/smoke-test.md`):

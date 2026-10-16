@@ -2,7 +2,10 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/expense_model.dart';
 import '../../../models/record_signature.dart';
+import '../../sync/ledger_payloads.dart';
+import '../../sync/record_signing.dart' show RecordKind;
 import '../../sync/record_version.dart';
+import 'history_dao.dart';
 
 part 'expenses_dao.g.dart';
 
@@ -33,63 +36,115 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
   /// inbound versions resolve deterministically. The companion must set
   /// `id` and `updatedAt`. G18 review 2: a row of **another group** with the
   /// same id is left alone (the write is dropped).
-  Future<void> upsertExpenseLww(ExpensesCompanion expense) =>
-      transaction(() async {
-        final old = await (select(
-          expenses,
-        )..where((t) => t.id.equals(expense.id.value))).getSingleOrNull();
-        // G18 review 2 (last guard): an id stored for another group is never
-        // moved / overwritten by a version of this group.
-        if (old != null &&
-            expense.roomId.present &&
-            old.roomId != expense.roomId.value) {
-          return;
-        }
-        final incoming = _expenseFromCompanion(expense);
-        final hash = computeExpenseVersionHash(incoming);
-        if (old != null &&
-            compareVersions((
-                  at: incoming.updatedAt,
-                  hash: hash,
-                ), expenseVersion(_toExpenseModel(old))) <
-                0) {
-          return;
-        }
-        // G37: cache the hash — only when the companion carries the whole
-        // content (a partial one keeps stored columns the hash didn't see).
-        await into(expenses).insertOnConflictUpdate(
-          expense.copyWith(
-            versionHash: Value(_completeExpense(expense) ? hash : null),
-          ),
-        );
-      });
+  ///
+  /// G48: a write that stores a **different** version (new record, other
+  /// clock or content hash) is also appended to `record_history` (same
+  /// transaction) with [source]; re-writing the same version (e.g. its
+  /// signature landing) appends nothing.
+  Future<void> upsertExpenseLww(
+    ExpensesCompanion expense, {
+    HistorySource source = HistorySource.local,
+  }) => transaction(() async {
+    final old = await (select(
+      expenses,
+    )..where((t) => t.id.equals(expense.id.value))).getSingleOrNull();
+    // G18 review 2 (last guard): an id stored for another group is never
+    // moved / overwritten by a version of this group.
+    if (old != null &&
+        expense.roomId.present &&
+        old.roomId != expense.roomId.value) {
+      return;
+    }
+    final incoming = _expenseFromCompanion(expense);
+    final hash = computeExpenseVersionHash(incoming);
+    final version = (at: incoming.updatedAt, hash: hash);
+    final oldVersion = old == null
+        ? null
+        : expenseVersion(_toExpenseModel(old));
+    if (oldVersion != null && compareVersions(version, oldVersion) < 0) {
+      return;
+    }
+    // G37: cache the hash — only when the companion carries the whole
+    // content (a partial one keeps stored columns the hash didn't see).
+    final complete = _completeExpense(expense);
+    await into(expenses).insertOnConflictUpdate(
+      expense.copyWith(versionHash: Value(complete ? hash : null)),
+    );
+    if (oldVersion != null && compareVersions(version, oldVersion) == 0) {
+      return;
+    }
+    // G48: the version as stored (a partial companion merged with the
+    // old row → read it back).
+    final stored = complete && _signingComplete(expense)
+        ? _expenseFromCompanion(expense)
+        : _toExpenseModel(
+            await (select(
+              expenses,
+            )..where((t) => t.id.equals(expense.id.value))).getSingle(),
+          );
+    await appendRecordHistory(
+      attachedDatabase,
+      groupId: stored.roomId,
+      kind: RecordKind.expense,
+      recordId: stored.id,
+      // A complete companion's content hash is `hash` already.
+      version: (
+        at: stored.updatedAt,
+        hash: complete ? hash : computeExpenseVersionHash(stored),
+      ),
+      content: expensePayload(stored),
+      source: source,
+    );
+  });
 
-  Future<void> upsertSettlementLww(SettlementsCompanion settlement) =>
-      transaction(() async {
-        final old = await (select(
-          settlements,
-        )..where((t) => t.id.equals(settlement.id.value))).getSingleOrNull();
-        if (old != null &&
-            settlement.roomId.present &&
-            old.roomId != settlement.roomId.value) {
-          return;
-        }
-        final incoming = _settlementFromCompanion(settlement);
-        final hash = computeSettlementVersionHash(incoming);
-        if (old != null &&
-            compareVersions((
-                  at: incoming.updatedAt,
-                  hash: hash,
-                ), settlementVersion(_toSettlementModel(old))) <
-                0) {
-          return;
-        }
-        await into(settlements).insertOnConflictUpdate(
-          settlement.copyWith(
-            versionHash: Value(_completeSettlement(settlement) ? hash : null),
-          ),
-        );
-      });
+  Future<void> upsertSettlementLww(
+    SettlementsCompanion settlement, {
+    HistorySource source = HistorySource.local,
+  }) => transaction(() async {
+    final old = await (select(
+      settlements,
+    )..where((t) => t.id.equals(settlement.id.value))).getSingleOrNull();
+    if (old != null &&
+        settlement.roomId.present &&
+        old.roomId != settlement.roomId.value) {
+      return;
+    }
+    final incoming = _settlementFromCompanion(settlement);
+    final hash = computeSettlementVersionHash(incoming);
+    final version = (at: incoming.updatedAt, hash: hash);
+    final oldVersion = old == null
+        ? null
+        : settlementVersion(_toSettlementModel(old));
+    if (oldVersion != null && compareVersions(version, oldVersion) < 0) {
+      return;
+    }
+    final complete = _completeSettlement(settlement);
+    await into(settlements).insertOnConflictUpdate(
+      settlement.copyWith(versionHash: Value(complete ? hash : null)),
+    );
+    if (oldVersion != null && compareVersions(version, oldVersion) == 0) {
+      return;
+    }
+    final stored = complete && _signingCompleteSettlement(settlement)
+        ? _settlementFromCompanion(settlement)
+        : _toSettlementModel(
+            await (select(
+              settlements,
+            )..where((t) => t.id.equals(settlement.id.value))).getSingle(),
+          );
+    await appendRecordHistory(
+      attachedDatabase,
+      groupId: stored.roomId,
+      kind: RecordKind.settlement,
+      recordId: stored.id,
+      version: (
+        at: stored.updatedAt,
+        hash: complete ? hash : computeSettlementVersionHash(stored),
+      ),
+      content: settlementPayload(stored),
+      source: source,
+    );
+  });
 
   Future<List<ExpenseModel>> getExpensesForRoom(String roomId) =>
       (select(expenses)
@@ -230,6 +285,9 @@ ExpenseModel _expenseFromCompanion(ExpensesCompanion c) => ExpenseModel(
   deleted: _v(c.deleted, false),
   category: _v(c.category, null),
   note: _v(c.note, null),
+  sig: RecordSignature.decode(_v(c.sig, null)),
+  origin: RecordSignature.decode(_v(c.origin, null)),
+  pendingSign: _v(c.pendingSign, false),
 );
 
 SettlementModel _settlementFromCompanion(SettlementsCompanion c) =>
@@ -243,7 +301,18 @@ SettlementModel _settlementFromCompanion(SettlementsCompanion c) =>
       createdAt: _v(c.createdAt, 0),
       updatedAt: c.updatedAt.value,
       deleted: _v(c.deleted, false),
+      sig: RecordSignature.decode(_v(c.sig, null)),
+      origin: RecordSignature.decode(_v(c.origin, null)),
+      pendingSign: _v(c.pendingSign, false),
     );
+
+/// G48: whether [c] sets every signing column (with [_completeExpense] the
+/// companion then *is* the stored row).
+bool _signingComplete(ExpensesCompanion c) =>
+    c.sig.present && c.origin.present && c.pendingSign.present;
+
+bool _signingCompleteSettlement(SettlementsCompanion c) =>
+    c.sig.present && c.origin.present && c.pendingSign.present;
 
 /// G37: whether [c] sets every column the expense content hash covers.
 bool _completeExpense(ExpensesCompanion c) =>

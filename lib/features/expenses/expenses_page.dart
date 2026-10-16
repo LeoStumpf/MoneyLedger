@@ -46,6 +46,7 @@ enum _GroupMenuAction {
   archive,
   export,
   backup,
+  reset,
   exit,
 }
 
@@ -170,6 +171,9 @@ class ExpensesPage extends ConsumerWidget {
                     ),
                     _GroupMenuAction.export => _exportCsv(context, ref),
                     _GroupMenuAction.backup => _backupGroup(context, ref),
+                    _GroupMenuAction.reset => context.push(
+                      '/groups/$roomId/reset',
+                    ),
                     _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
                   },
                   itemBuilder: (_) => [
@@ -229,6 +233,18 @@ class ExpensesPage extends ConsumerWidget {
                         key: const Key('backupGroupMenuItem'),
                         leading: const Icon(Icons.backup_outlined),
                         title: Text(l.backupThisGroup),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    // G48: back to an earlier state (not for a read-only
+                    // group — peers would refuse our versions).
+                    PopupMenuItem(
+                      value: _GroupMenuAction.reset,
+                      enabled: canEdit,
+                      child: ListTile(
+                        key: const Key('resetGroupMenuItem'),
+                        leading: const Icon(Icons.history),
+                        title: Text(l.groupResetMenu),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),

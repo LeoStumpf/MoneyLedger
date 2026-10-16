@@ -891,7 +891,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyDeleteBody =>
-      '• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
+      '• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
 
   @override
   String get privacyContactTitle => 'Contact';
@@ -2029,4 +2029,218 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupCategories => 'This group';
+
+  @override
+  String get restorePointsTitle => 'Restore points';
+
+  @override
+  String get restorePointsTileBody =>
+      'Automatic copies on this device, undo changes';
+
+  @override
+  String get restorePointsIntro =>
+      'Once a day, when something changed, MoneyLedger keeps a copy of all your groups on this device — the last 7 days plus 4 older weeks. These copies never leave this device.';
+
+  @override
+  String get restorePointsHowItWorks =>
+      'Restoring brings back groups and entries that are missing here (e.g. a deleted group). To undo changes inside a group, open the group → ⋮ → Reset to an earlier state.';
+
+  @override
+  String get restorePointsEmpty =>
+      'No restore points yet. One is made once a day when something changed.';
+
+  @override
+  String get restorePointsWebUnsupported =>
+      'The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → ⋮) and back up to a file.';
+
+  @override
+  String restorePointGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count groups',
+      one: '1 group',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restorePointEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries',
+      one: '1 entry',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get restorePointRestore => 'Restore';
+
+  @override
+  String restorePointsLoadFailed(String error) {
+    return 'Couldn\'t read the restore points: $error';
+  }
+
+  @override
+  String get groupResetMenu => 'Reset to an earlier state…';
+
+  @override
+  String get groupResetTitle => 'Reset group';
+
+  @override
+  String get groupResetIntro =>
+      'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. Members stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.';
+
+  @override
+  String get groupResetLocalIntro =>
+      'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. Members stay as they are. You can undo a reset the same way.';
+
+  @override
+  String get groupResetRetention =>
+      'Changes are kept on this device for 90 days.';
+
+  @override
+  String get groupResetEmpty =>
+      'Nothing to go back to yet — changes show up here as they happen.';
+
+  @override
+  String get groupResetReadOnly =>
+      'You were removed from this group, so it can\'t be reset.';
+
+  @override
+  String changeAdded(int count) {
+    return '$count added';
+  }
+
+  @override
+  String changeEdited(int count) {
+    return '$count edited';
+  }
+
+  @override
+  String changeDeleted(int count) {
+    return '$count deleted';
+  }
+
+  @override
+  String changeOther(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count group or member changes',
+      one: '1 group or member change',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get changeByYou => 'by you';
+
+  @override
+  String changeBy(String names) {
+    return 'by $names';
+  }
+
+  @override
+  String get changeUndoFromHere => 'Undo from here';
+
+  @override
+  String get changeEarliest => 'Earliest state on this device';
+
+  @override
+  String resetPreviewTitle(String time) {
+    return 'Go back to before $time?';
+  }
+
+  @override
+  String resetPreviewRestored(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries come back',
+      one: '1 entry comes back',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resetPreviewReverted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes are undone',
+      one: '1 change is undone',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resetPreviewRemoved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries are removed',
+      one: '1 entry is removed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resetPreviewMeta =>
+      'Group name, currency and categories go back too.';
+
+  @override
+  String resetPreviewSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count earlier versions can\'t be used and stay as they are.',
+      one: '1 earlier version can\'t be used and stays as it is.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resetPreviewNothing =>
+      'Nothing to change — the group already looks like that.';
+
+  @override
+  String get resetPreviewShared => 'Everyone in the group gets these changes.';
+
+  @override
+  String resetPreviewMore(int count) {
+    return '…and $count more';
+  }
+
+  @override
+  String get resetEffectRestored => 'comes back';
+
+  @override
+  String get resetEffectReverted => 'changed back';
+
+  @override
+  String get resetEffectRemoved => 'removed';
+
+  @override
+  String get resetConfirm => 'Reset';
+
+  @override
+  String resetDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Group reset ($count changes)',
+      one: 'Group reset (1 change)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get privacyRestorePointsTitle => 'Restore points on this device';
+
+  @override
+  String get privacyRestorePointsBody =>
+      'To let you undo mistakes, MoneyLedger keeps earlier versions of your groups\' entries on this device for 90 days, and on Android once a day (when something changed) a copy of all your groups in the app\'s private storage — the last 7 days plus 4 older weeks. These versions and copies are never sent anywhere, are not part of any backup file, and are excluded from Android\'s backups like all app data. Leaving or deleting a group removes its earlier versions at once; the daily copies still contain it until they rotate out (after about five weeks), so that a group deleted by mistake can be restored. Deleting local data, or uninstalling the app, removes all of them.';
 }

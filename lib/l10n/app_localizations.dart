@@ -1547,7 +1547,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyDeleteBody.
   ///
   /// In en, this message translates to:
-  /// **'• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
+  /// **'• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
   String get privacyDeleteBody;
 
   /// No description provided for @privacyContactTitle.
@@ -3247,6 +3247,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This group'**
   String get groupCategories;
+
+  /// Settings tile + page title: on-device snapshots (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Restore points'**
+  String get restorePointsTitle;
+
+  /// Settings tile subtitle (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic copies on this device, undo changes'**
+  String get restorePointsTileBody;
+
+  /// Restore points page intro (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Once a day, when something changed, MoneyLedger keeps a copy of all your groups on this device — the last 7 days plus 4 older weeks. These copies never leave this device.'**
+  String get restorePointsIntro;
+
+  /// Restore points page: what a restore does vs. a group reset (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring brings back groups and entries that are missing here (e.g. a deleted group). To undo changes inside a group, open the group → ⋮ → Reset to an earlier state.'**
+  String get restorePointsHowItWorks;
+
+  /// Restore points page: none yet (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'No restore points yet. One is made once a day when something changed.'**
+  String get restorePointsEmpty;
+
+  /// Restore points page on web (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → ⋮) and back up to a file.'**
+  String get restorePointsWebUnsupported;
+
+  /// Restore point subtitle part (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 group} other{{count} groups}}'**
+  String restorePointGroups(int count);
+
+  /// Restore point subtitle part (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry} other{{count} entries}}'**
+  String restorePointEntries(int count);
+
+  /// Button on a restore point (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get restorePointRestore;
+
+  /// Error on the restore points page (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the restore points: {error}'**
+  String restorePointsLoadFailed(String error);
+
+  /// Group ⋮ menu item (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to an earlier state…'**
+  String get groupResetMenu;
+
+  /// Reset page title (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Reset group'**
+  String get groupResetTitle;
+
+  /// Reset page intro (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. Members stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.'**
+  String get groupResetIntro;
+
+  /// Reset page intro in local mode (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. Members stay as they are. You can undo a reset the same way.'**
+  String get groupResetLocalIntro;
+
+  /// Reset page footer (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Changes are kept on this device for 90 days.'**
+  String get groupResetRetention;
+
+  /// Reset page: no resettable change (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to go back to yet — changes show up here as they happen.'**
+  String get groupResetEmpty;
+
+  /// Reset page for a read-only group (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'You were removed from this group, so it can\'t be reset.'**
+  String get groupResetReadOnly;
+
+  /// Change batch part (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count} added'**
+  String changeAdded(int count);
+
+  /// Change batch part (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count} edited'**
+  String changeEdited(int count);
+
+  /// Change batch part (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count} deleted'**
+  String changeDeleted(int count);
+
+  /// Change batch part (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 group or member change} other{{count} group or member changes}}'**
+  String changeOther(int count);
+
+  /// Change batch: written on this device (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'by you'**
+  String get changeByYou;
+
+  /// Change batch: who changed it (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'by {names}'**
+  String changeBy(String names);
+
+  /// Button on a change batch (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Undo from here'**
+  String get changeUndoFromHere;
+
+  /// Marker on the oldest change batch (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Earliest state on this device'**
+  String get changeEarliest;
+
+  /// Reset preview dialog title (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Go back to before {time}?'**
+  String resetPreviewTitle(String time);
+
+  /// Reset preview line (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry comes back} other{{count} entries come back}}'**
+  String resetPreviewRestored(int count);
+
+  /// Reset preview line (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change is undone} other{{count} changes are undone}}'**
+  String resetPreviewReverted(int count);
+
+  /// Reset preview line (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry is removed} other{{count} entries are removed}}'**
+  String resetPreviewRemoved(int count);
+
+  /// Reset preview line (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Group name, currency and categories go back too.'**
+  String get resetPreviewMeta;
+
+  /// Reset preview line (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 earlier version can\'t be used and stays as it is.} other{{count} earlier versions can\'t be used and stay as they are.}}'**
+  String resetPreviewSkipped(int count);
+
+  /// Reset preview: no change (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to change — the group already looks like that.'**
+  String get resetPreviewNothing;
+
+  /// Reset preview note (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone in the group gets these changes.'**
+  String get resetPreviewShared;
+
+  /// Reset preview: list truncated (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'…and {count} more'**
+  String resetPreviewMore(int count);
+
+  /// Reset preview item label (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'comes back'**
+  String get resetEffectRestored;
+
+  /// Reset preview item label (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'changed back'**
+  String get resetEffectReverted;
+
+  /// Reset preview item label (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'removed'**
+  String get resetEffectRemoved;
+
+  /// Reset preview confirm button (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get resetConfirm;
+
+  /// Snackbar after a reset (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Group reset (1 change)} other{Group reset ({count} changes)}}'**
+  String resetDone(int count);
+
+  /// Privacy policy section title (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'Restore points on this device'**
+  String get privacyRestorePointsTitle;
+
+  /// Privacy policy section body (G48)
+  ///
+  /// In en, this message translates to:
+  /// **'To let you undo mistakes, MoneyLedger keeps earlier versions of your groups\' entries on this device for 90 days, and on Android once a day (when something changed) a copy of all your groups in the app\'s private storage — the last 7 days plus 4 older weeks. These versions and copies are never sent anywhere, are not part of any backup file, and are excluded from Android\'s backups like all app data. Leaving or deleting a group removes its earlier versions at once; the daily copies still contain it until they rotate out (after about five weeks), so that a group deleted by mistake can be restored. Deleting local data, or uninstalling the app, removes all of them.'**
+  String get privacyRestorePointsBody;
 }
 
 class _AppLocalizationsDelegate

@@ -4370,6 +4370,559 @@ class RejectedVersionsCompanion extends UpdateCompanion<RejectedVersion> {
   }
 }
 
+class $RecordHistoryTable extends RecordHistory
+    with TableInfo<$RecordHistoryTable, HistoryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecordHistoryTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recordIdMeta = const VerificationMeta(
+    'recordId',
+  );
+  @override
+  late final GeneratedColumn<String> recordId = GeneratedColumn<String>(
+    'record_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _versionHashMeta = const VerificationMeta(
+    'versionHash',
+  );
+  @override
+  late final GeneratedColumn<String> versionHash = GeneratedColumn<String>(
+    'version_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recordedAtMeta = const VerificationMeta(
+    'recordedAt',
+  );
+  @override
+  late final GeneratedColumn<int> recordedAt = GeneratedColumn<int>(
+    'recorded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    groupId,
+    kind,
+    recordId,
+    updatedAt,
+    versionHash,
+    content,
+    source,
+    recordedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'record_history';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HistoryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('record_id')) {
+      context.handle(
+        _recordIdMeta,
+        recordId.isAcceptableOrUnknown(data['record_id']!, _recordIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordIdMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('version_hash')) {
+      context.handle(
+        _versionHashMeta,
+        versionHash.isAcceptableOrUnknown(
+          data['version_hash']!,
+          _versionHashMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_versionHashMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('recorded_at')) {
+      context.handle(
+        _recordedAtMeta,
+        recordedAt.isAcceptableOrUnknown(data['recorded_at']!, _recordedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HistoryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HistoryRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      recordId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}record_id'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      versionHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}version_hash'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      recordedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}recorded_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RecordHistoryTable createAlias(String alias) {
+    return $RecordHistoryTable(attachedDatabase, alias);
+  }
+}
+
+class HistoryRow extends DataClass implements Insertable<HistoryRow> {
+  final int id;
+  final String groupId;
+  final String kind;
+  final String recordId;
+  final int updatedAt;
+  final String versionHash;
+  final String content;
+  final String source;
+  final int recordedAt;
+  const HistoryRow({
+    required this.id,
+    required this.groupId,
+    required this.kind,
+    required this.recordId,
+    required this.updatedAt,
+    required this.versionHash,
+    required this.content,
+    required this.source,
+    required this.recordedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_id'] = Variable<String>(groupId);
+    map['kind'] = Variable<String>(kind);
+    map['record_id'] = Variable<String>(recordId);
+    map['updated_at'] = Variable<int>(updatedAt);
+    map['version_hash'] = Variable<String>(versionHash);
+    map['content'] = Variable<String>(content);
+    map['source'] = Variable<String>(source);
+    map['recorded_at'] = Variable<int>(recordedAt);
+    return map;
+  }
+
+  RecordHistoryCompanion toCompanion(bool nullToAbsent) {
+    return RecordHistoryCompanion(
+      id: Value(id),
+      groupId: Value(groupId),
+      kind: Value(kind),
+      recordId: Value(recordId),
+      updatedAt: Value(updatedAt),
+      versionHash: Value(versionHash),
+      content: Value(content),
+      source: Value(source),
+      recordedAt: Value(recordedAt),
+    );
+  }
+
+  factory HistoryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HistoryRow(
+      id: serializer.fromJson<int>(json['id']),
+      groupId: serializer.fromJson<String>(json['groupId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      recordId: serializer.fromJson<String>(json['recordId']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      versionHash: serializer.fromJson<String>(json['versionHash']),
+      content: serializer.fromJson<String>(json['content']),
+      source: serializer.fromJson<String>(json['source']),
+      recordedAt: serializer.fromJson<int>(json['recordedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupId': serializer.toJson<String>(groupId),
+      'kind': serializer.toJson<String>(kind),
+      'recordId': serializer.toJson<String>(recordId),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'versionHash': serializer.toJson<String>(versionHash),
+      'content': serializer.toJson<String>(content),
+      'source': serializer.toJson<String>(source),
+      'recordedAt': serializer.toJson<int>(recordedAt),
+    };
+  }
+
+  HistoryRow copyWith({
+    int? id,
+    String? groupId,
+    String? kind,
+    String? recordId,
+    int? updatedAt,
+    String? versionHash,
+    String? content,
+    String? source,
+    int? recordedAt,
+  }) => HistoryRow(
+    id: id ?? this.id,
+    groupId: groupId ?? this.groupId,
+    kind: kind ?? this.kind,
+    recordId: recordId ?? this.recordId,
+    updatedAt: updatedAt ?? this.updatedAt,
+    versionHash: versionHash ?? this.versionHash,
+    content: content ?? this.content,
+    source: source ?? this.source,
+    recordedAt: recordedAt ?? this.recordedAt,
+  );
+  HistoryRow copyWithCompanion(RecordHistoryCompanion data) {
+    return HistoryRow(
+      id: data.id.present ? data.id.value : this.id,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      recordId: data.recordId.present ? data.recordId.value : this.recordId,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      versionHash: data.versionHash.present
+          ? data.versionHash.value
+          : this.versionHash,
+      content: data.content.present ? data.content.value : this.content,
+      source: data.source.present ? data.source.value : this.source,
+      recordedAt: data.recordedAt.present
+          ? data.recordedAt.value
+          : this.recordedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryRow(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('kind: $kind, ')
+          ..write('recordId: $recordId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('versionHash: $versionHash, ')
+          ..write('content: $content, ')
+          ..write('source: $source, ')
+          ..write('recordedAt: $recordedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    groupId,
+    kind,
+    recordId,
+    updatedAt,
+    versionHash,
+    content,
+    source,
+    recordedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HistoryRow &&
+          other.id == this.id &&
+          other.groupId == this.groupId &&
+          other.kind == this.kind &&
+          other.recordId == this.recordId &&
+          other.updatedAt == this.updatedAt &&
+          other.versionHash == this.versionHash &&
+          other.content == this.content &&
+          other.source == this.source &&
+          other.recordedAt == this.recordedAt);
+}
+
+class RecordHistoryCompanion extends UpdateCompanion<HistoryRow> {
+  final Value<int> id;
+  final Value<String> groupId;
+  final Value<String> kind;
+  final Value<String> recordId;
+  final Value<int> updatedAt;
+  final Value<String> versionHash;
+  final Value<String> content;
+  final Value<String> source;
+  final Value<int> recordedAt;
+  const RecordHistoryCompanion({
+    this.id = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.recordId = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.versionHash = const Value.absent(),
+    this.content = const Value.absent(),
+    this.source = const Value.absent(),
+    this.recordedAt = const Value.absent(),
+  });
+  RecordHistoryCompanion.insert({
+    this.id = const Value.absent(),
+    required String groupId,
+    required String kind,
+    required String recordId,
+    required int updatedAt,
+    required String versionHash,
+    required String content,
+    required String source,
+    required int recordedAt,
+  }) : groupId = Value(groupId),
+       kind = Value(kind),
+       recordId = Value(recordId),
+       updatedAt = Value(updatedAt),
+       versionHash = Value(versionHash),
+       content = Value(content),
+       source = Value(source),
+       recordedAt = Value(recordedAt);
+  static Insertable<HistoryRow> custom({
+    Expression<int>? id,
+    Expression<String>? groupId,
+    Expression<String>? kind,
+    Expression<String>? recordId,
+    Expression<int>? updatedAt,
+    Expression<String>? versionHash,
+    Expression<String>? content,
+    Expression<String>? source,
+    Expression<int>? recordedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupId != null) 'group_id': groupId,
+      if (kind != null) 'kind': kind,
+      if (recordId != null) 'record_id': recordId,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (versionHash != null) 'version_hash': versionHash,
+      if (content != null) 'content': content,
+      if (source != null) 'source': source,
+      if (recordedAt != null) 'recorded_at': recordedAt,
+    });
+  }
+
+  RecordHistoryCompanion copyWith({
+    Value<int>? id,
+    Value<String>? groupId,
+    Value<String>? kind,
+    Value<String>? recordId,
+    Value<int>? updatedAt,
+    Value<String>? versionHash,
+    Value<String>? content,
+    Value<String>? source,
+    Value<int>? recordedAt,
+  }) {
+    return RecordHistoryCompanion(
+      id: id ?? this.id,
+      groupId: groupId ?? this.groupId,
+      kind: kind ?? this.kind,
+      recordId: recordId ?? this.recordId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      versionHash: versionHash ?? this.versionHash,
+      content: content ?? this.content,
+      source: source ?? this.source,
+      recordedAt: recordedAt ?? this.recordedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (recordId.present) {
+      map['record_id'] = Variable<String>(recordId.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (versionHash.present) {
+      map['version_hash'] = Variable<String>(versionHash.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (recordedAt.present) {
+      map['recorded_at'] = Variable<int>(recordedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecordHistoryCompanion(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('kind: $kind, ')
+          ..write('recordId: $recordId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('versionHash: $versionHash, ')
+          ..write('content: $content, ')
+          ..write('source: $source, ')
+          ..write('recordedAt: $recordedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4385,6 +4938,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RejectedVersionsTable rejectedVersions = $RejectedVersionsTable(
     this,
   );
+  late final $RecordHistoryTable recordHistory = $RecordHistoryTable(this);
+  late final Index recordHistoryGroup = Index(
+    'record_history_group',
+    'CREATE INDEX record_history_group ON record_history (group_id, recorded_at)',
+  );
+  late final Index recordHistoryRecord = Index(
+    'record_history_record',
+    'CREATE INDEX record_history_record ON record_history (group_id, kind, record_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4398,6 +4960,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     appSettings,
     knownDeviceKeys,
     rejectedVersions,
+    recordHistory,
+    recordHistoryGroup,
+    recordHistoryRecord,
   ];
 }
 
@@ -6643,6 +7208,289 @@ typedef $$RejectedVersionsTableProcessedTableManager =
       RejectedVersion,
       PrefetchHooks Function()
     >;
+typedef $$RecordHistoryTableCreateCompanionBuilder =
+    RecordHistoryCompanion Function({
+      Value<int> id,
+      required String groupId,
+      required String kind,
+      required String recordId,
+      required int updatedAt,
+      required String versionHash,
+      required String content,
+      required String source,
+      required int recordedAt,
+    });
+typedef $$RecordHistoryTableUpdateCompanionBuilder =
+    RecordHistoryCompanion Function({
+      Value<int> id,
+      Value<String> groupId,
+      Value<String> kind,
+      Value<String> recordId,
+      Value<int> updatedAt,
+      Value<String> versionHash,
+      Value<String> content,
+      Value<String> source,
+      Value<int> recordedAt,
+    });
+
+class $$RecordHistoryTableFilterComposer
+    extends Composer<_$AppDatabase, $RecordHistoryTable> {
+  $$RecordHistoryTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordId => $composableBuilder(
+    column: $table.recordId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get recordedAt => $composableBuilder(
+    column: $table.recordedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RecordHistoryTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecordHistoryTable> {
+  $$RecordHistoryTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordId => $composableBuilder(
+    column: $table.recordId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get recordedAt => $composableBuilder(
+    column: $table.recordedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RecordHistoryTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecordHistoryTable> {
+  $$RecordHistoryTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get recordId =>
+      $composableBuilder(column: $table.recordId, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get versionHash => $composableBuilder(
+    column: $table.versionHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<int> get recordedAt => $composableBuilder(
+    column: $table.recordedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$RecordHistoryTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecordHistoryTable,
+          HistoryRow,
+          $$RecordHistoryTableFilterComposer,
+          $$RecordHistoryTableOrderingComposer,
+          $$RecordHistoryTableAnnotationComposer,
+          $$RecordHistoryTableCreateCompanionBuilder,
+          $$RecordHistoryTableUpdateCompanionBuilder,
+          (
+            HistoryRow,
+            BaseReferences<_$AppDatabase, $RecordHistoryTable, HistoryRow>,
+          ),
+          HistoryRow,
+          PrefetchHooks Function()
+        > {
+  $$RecordHistoryTableTableManager(_$AppDatabase db, $RecordHistoryTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecordHistoryTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecordHistoryTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecordHistoryTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> groupId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> recordId = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<String> versionHash = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<int> recordedAt = const Value.absent(),
+              }) => RecordHistoryCompanion(
+                id: id,
+                groupId: groupId,
+                kind: kind,
+                recordId: recordId,
+                updatedAt: updatedAt,
+                versionHash: versionHash,
+                content: content,
+                source: source,
+                recordedAt: recordedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String groupId,
+                required String kind,
+                required String recordId,
+                required int updatedAt,
+                required String versionHash,
+                required String content,
+                required String source,
+                required int recordedAt,
+              }) => RecordHistoryCompanion.insert(
+                id: id,
+                groupId: groupId,
+                kind: kind,
+                recordId: recordId,
+                updatedAt: updatedAt,
+                versionHash: versionHash,
+                content: content,
+                source: source,
+                recordedAt: recordedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RecordHistoryTable, HistoryRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $RecordHistoryTable,
+                    HistoryRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RecordHistoryTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecordHistoryTable,
+      HistoryRow,
+      $$RecordHistoryTableFilterComposer,
+      $$RecordHistoryTableOrderingComposer,
+      $$RecordHistoryTableAnnotationComposer,
+      $$RecordHistoryTableCreateCompanionBuilder,
+      $$RecordHistoryTableUpdateCompanionBuilder,
+      (
+        HistoryRow,
+        BaseReferences<_$AppDatabase, $RecordHistoryTable, HistoryRow>,
+      ),
+      HistoryRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6663,4 +7511,6 @@ class $AppDatabaseManager {
       $$KnownDeviceKeysTableTableManager(_db, _db.knownDeviceKeys);
   $$RejectedVersionsTableTableManager get rejectedVersions =>
       $$RejectedVersionsTableTableManager(_db, _db.rejectedVersions);
+  $$RecordHistoryTableTableManager get recordHistory =>
+      $$RecordHistoryTableTableManager(_db, _db.recordHistory);
 }
