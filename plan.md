@@ -634,6 +634,7 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [ ] Members page: full MXID as subtitle — shorten / tuck away?
 - [ ] Groups app bar "Devices" icon → move into the settings sheet
 - [ ] "Add people" prompt also when I'm alone but the group already has expenses
+- [ ] Leaving a filled add-expense form with ← asks nothing (discard confirm?)
 
 ### G57. Custom-category follow-ups (found in G47) 🟢
 - [ ] Concurrent category edits lose one (whole meta is LWW) — per-category
@@ -669,7 +670,18 @@ Switching split modes or editing amounts today starts from blanks; make the
 ### G61. Split follow-ups (found in G59) 🟢
 - [ ] Try live auto-fill of open rows (Tricount-style) instead of the button
 - [ ] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
-- [ ] Check the new split rows at phone width (long names, Shares steppers)
+- [x] Check the new split rows at phone width (long names, Shares steppers)
+- [ ] Rows with long names sharing a prefix are indistinguishable
+      ("moneyledger-test-…" twice) — ellipsize in the middle / 2 lines
+
+### G62. Reset page empty after update / new group (found in DEV-H) 🟠
+`changeBatches` (`group_history.dart`) chains entries < 10 min apart; a batch
+is resettable only if the meta appeared in an *earlier* batch, so the first
+batch (v12 `initial` backfill, group creation, bootstrap) plus every change
+chained to it is never offered → "nothing to go back to".
+- [ ] Never merge `initial` / meta-creation entries with later changes (and/or
+      split batches when the editor changes); regression test with the
+      DEV-H repro (update → edits within 10 min → reset offered)
 
 ---
 
@@ -728,13 +740,14 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G48 — restore points + revert
 - [x] G49 — expense date
 - [x] G59 — smarter split defaults (prefill from current split, "fill the rest")
+- [ ] G62 — reset page empty after update / new group (found in DEV-H)
 - [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
 - [ ] G51 — Nostr spike
 - [ ] G52 — link groups implementation
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
 - [ ] G55 — web glyph coverage without Google (found in G43)
-- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel)
+- [x] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel) — done 2026-10-17: all pass; found G62
 - [ ] G58 — restore-point follow-ups (found in G48)
 - [ ] G60 — expense-date follow-ups (found in G49)
 - [ ] G61 — split follow-ups (found in G59)

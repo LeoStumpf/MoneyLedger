@@ -134,7 +134,7 @@ Expected results are in *italics*.
 | 7.9 | A adds an expense with B's app in the foreground → *A's cloud turns "Synced" within ~6 s (B's fast ack, G36)* | 2dev |
 | 7.10 | B (emulator): `svc wifi disable; svc data disable`, wait 1–3 min, enable one of them (network switch); A adds → *arrives on B without restarting the app* (G36) | 2dev |
 | 7.11 | Debug build only: Settings → "Run background sync now (debug)" → swipe the app away → *after ~15 s logcat shows a `[bg]` round*; release build → *no such entry* (G36) | emu |
-| 7.12 | Update an install from before G45 (account also used in Element) → *logcat `[g45] cleared sync data of the previous sync filter` once; sync, invite, SAS still work; Element shows the device not as online / presence unchanged*; `GET /_matrix/client/v3/user/<mxid>/filter/<id>` (id from logcat/SDK store) → *the minimal filter (`rooms: []`)* (G45) | 2dev |
+| 7.12 | Update an install from before G45 (account also used in Element) → *logcat `[g45] cleared sync data of the previous sync filter` once (debug/profile builds only — release builds log nothing, G44); sync, invite, SAS still work; Element shows the device not as online / presence unchanged*; `GET /_matrix/client/v3/user/<mxid>/filter/<id>` (id from logcat/SDK store) → *the minimal filter (`rooms: []`)* (G45) | 2dev |
 
 ## 8. Backup (JSON) and CSV
 
@@ -186,6 +186,55 @@ iOS Rust/XCFramework build that has never been done. `ios/Runner` is template
 level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
+
+**2026-10-17 (DEV-H, Phase H device pass)** · `2d496f5` (G59) · release APK
+`install -r` over the pre-G45 1.0.0 install on the phone (A, DE — data and
+session kept) and a fresh install on emu-5554 (`test-atd`, EN). **7.12:**
+the `[g45]` line can't show in a release build (G44 silences all logging —
+0 app lines in logcat); behaviour checked instead: sync after the update
+works (emu signed in as B → "Restoring…" → the phone's startup digest
+delivered both groups ≤ 5 s), expense emu → phone and phone → emu within
+seconds, invite of B into a new group "DevH Invite" → on the emu ≤ 6 s, SAS
+A → B's new device: same 7 emoji on both (📌 📌 🔔 ✂️ 🌙 🎩 🐱, Stecknadel /
+Glocke / Schere / Mond / Hut / Katze in DE) → "Device verified" on both,
+listed *Verifiziert*. `GET /presence/<mxid>/status` with a temporary curl
+login (logged out afterwards): A and B `offline` (matrix.org reports no
+`last_active_ago` at all, so this is weak evidence). Filter id check not
+done (would mean reading the SDK store). **G46:** emu local mode → new group
+opens directly ("Add people" CTA) → Android back → groups list; Settings →
+*Delete local data* → welcome choices; the `money_ledger_local` file is gone.
+Phone: new group opens directly too. **5.13/5.14:** phone *Neue Kategorie…*
+"Dog" + paw on a new expense → emu's selector lists it under *This group*;
+renamed to "Doggy" on the emu → phone shows "Doggy"; hidden on the emu →
+phone's selector no longer offers it, the old expense keeps "Doggy".
+**5.15:** phone expense dated Mon 12 Oct → emu lists it under "Mon, Oct 12";
+edit prefills the date on both. **G59** (phone, 1080 px): Exact prefilled
+2,50/2,50; clear B → "noch 2,50 € offen · Verteilen" + per-row *Rest hier
+eintragen* → *Verteilen* → 2,50/2,50 "Ergibt den Gesamtbetrag"; % → 50/50;
+Shares → steppers 1/1. Long names: both rows read "moneyledger-test-…" (Exact)
+/ "moneyledger…" (Shares) — only the avatar initials tell them apart.
+**8.13:** B (emu) deleted Hintergrund + Kino and edited Groceries → phone
+*Auf früheren Stand zurücksetzen…* → "1 geändert · 2 gelöscht · von
+moneyledger-test-b" → preview "2 Einträge kommen zurück · 1 Änderung wird
+rückgängig gemacht" → "Gruppe zurückgesetzt (3 Änderungen)" → emu shows them
+≤ 2 s, Groceries "Last edited by moneyledger-test-a". **Bug:** history entries
+less than 10 min apart chain into one batch, and the first batch (the v12
+backfill) is never resettable — so everything done within 10-minute gaps
+after the update (or after a group is created / bootstrapped) is not
+offered; the reset page was empty until a > 10 min pause. **8.14:** phone
+Settings → *Wiederherstellungspunkte* lists "17. Okt. 2026 01:16 · 2
+Gruppen · 5 Einträge", Restore → normal preview "Alles … schon auf diesem
+Gerät" (`run-as` fails on the release build; the file
+`files/snapshots/money_ledger_<hash>/2026-10-18.json` checked on the emu via
+`adb root`). **8.15:** emu: solo group "DevH Solo" + expense, emu clock set a
+day ahead (offline), app start → snapshot, delete the group → *Restore
+points* → Restore ("left earlier — comes back") → group back; clock and
+network restored afterwards. **G43:** `flutter build web --release
+--no-web-resources-cdn`, headless Chrome + net log: welcome → login
+untouched 15 s → only `127.0.0.1:8099` requests; *Check server* (matrix.org)
+→ only `matrix.org/.well-known/matrix/client` +
+`matrix-client.matrix.org/_matrix/client/v3/login` added (other hosts in
+the net log are Chrome's own, no page initiator).
 
 **2026-10-16 (G18 release check, v1.0.0+1)** · working tree on `e59fb91` +
 G18 docs/G37 test · `./build.sh` green (979 tests) · release APK signed with
