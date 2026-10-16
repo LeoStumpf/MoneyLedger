@@ -572,8 +572,14 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [x] Settings: restore-point list, "Restore…" / "Reset group…"; EN+DE; tests
 
 ### G49. Expense date 🟡
-- [ ] Date picker on the add/edit form (expenses can be back-dated); decide
+- [x] Date picker on the add/edit form (expenses can be back-dated); decide
       whether `created_at` or a new optional signed `date` field carries it
+      → new optional signed `date` (ISO `YYYY-MM-DD`, only when it differs
+      from the creation day; `created_at` is in the `origin` creation
+      statement and must never change); display date = `date ?? created_at`;
+      list grouped/sorted by it; CSV `Date` = display day + `Created At`
+      column; schema v13 (forgets expense refusals like v7); payments
+      undated (open point)
 
 ### G50. No-login link groups — design doc 🟠 (stop: needs Leo's sign-off)
 - [ ] `docs/design/no-login-sharing.md`: invite link / QR (group secret in
@@ -696,14 +702,14 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G46 — UX quick wins
 - [x] G47 — custom categories + dropdown
 - [x] G48 — restore points + revert
-- [ ] G49 — expense date
+- [x] G49 — expense date
 - [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
 - [ ] G51 — Nostr spike
 - [ ] G52 — link groups implementation
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
 - [ ] G55 — web glyph coverage without Google (found in G43)
-- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15 (use `pixel-lock` for the Pixel)
+- [ ] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15 (use `pixel-lock` for the Pixel)
 - [ ] G58 — restore-point follow-ups (found in G48)
 - [ ] G57 — custom-category follow-ups (found in G47)
 - [ ] G56 — UX follow-ups (found in G46)
