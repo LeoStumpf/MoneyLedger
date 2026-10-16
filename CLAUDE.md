@@ -137,7 +137,9 @@ lib/
       matrix_ledger_transport.dart # Real adapter — encrypted to-device send/receive (forClient)
       buffered_inbox.dart         # BufferedInbox: holds inbound payloads while nobody listens, replays
     sync/
-      ledger_payloads.dart     # Plain-Dart payload codec (protocol v1) + bootstrap builder
+      ledger_payloads.dart     # Plain-Dart payload codec (protocol v2) + bootstrap builder / parts (G14)
+      payload_budget.dart      # G14: to-device size limit, budget, encrypted-size estimate, size guard
+      record_version.dart      # G27: (updated_at, content hash) versions + tie-break; G14 digest buckets
       sync_engine.dart         # Anti-entropy: digest exchange + targeted repair + resync
       left_groups.dart         # LeftGroupTombstone + pure classifyPeerViewOfMe (G9 leave/delete)
       sync_status_provider.dart # groupSyncStatusProvider — drives the cloud icons
@@ -487,6 +489,55 @@ at the same revision (`peer_convergence.dart`, in-memory per peer; bootstrap /
 gossip / our own writes block the proof). `markInSync` is monotonic and always
 stamps our wall clock (never a peer's possibly skewed record clock).
 
+**LWW tie-break (G27).** A record *version* is `(updated_at, content hash)`
+(`record_version.dart`): SHA-256 hex of the canonical JSON of the content
+fields — the G6 signed body minus `origin` / `signer` (`expenseContent` &
+co. in `record_signing.dart`). Higher clock wins; **equal clock → higher hash
+wins**; equal clock + hash = same version (no-op). Signatures are excluded on
+purpose: the `pending_sign` and signed copy of a local write are the same
+version (the re-sign at the same clock must still land), and identical content
+written by two devices in the same ms just agrees. Applied in **every** LWW
+upsert — the DAOs (`upsert*Lww` read + compare + write in one transaction, so
+concurrent inbound versions resolve the same in any order; the same version is
+re-written) and `RecordGate` (a not-newer version is a no-op before
+verification) — and in the digests: entries are `"<ms>:<hash8>"` (first 8 hex
+chars; prefix order agrees with full-hash order), meta has `meta_hash`, members
+are hashed from their gossiped versions. A digest entry without a hash (bare
+int) compares by clock only. Refusals (`rejected_versions`) stay per clock: a
+refused version at `T` blocks every version stamped `T`.
+
+**Message size (G14).** Synapse refuses to-device content over **65 536
+bytes** per device (`MAX_TO_DEVICE_CONTENT_SIZE`, 413 — the SDK only logs it
+and drops it from its queue). Olm + base64 + the SDK envelope leave ≈ 48.4 KB
+of our JSON (`kHardMaxPayloadBytes`, `payload_budget.dart`); senders pack to
+`payloadBudgetProvider` (default `kMaxPayloadBytes` = 40 000; tests override
+it small), and both transports throw `PayloadTooLargeException` above the hard
+limit (the fake: above `FakeMatrixNetwork.maxPayloadBytes`). Measured
+(`test/core/payload_size_test.dart`, 4 members, signed records): ~0.86 KB per
+record in a bootstrap, ~64 B per digest entry → an unchunked bootstrap broke
+at **~52 records**, a flat digest at **~720**. Hence:
+- **Chunked bootstraps** (`buildBootstrapParts`): a snapshot over the budget
+  is sent as several `bootstrap` messages, each **self-contained** — signed
+  meta + **all** members + `device_keys` + a disjoint slice of the records
+  (`part`/`parts`, informational). Parts are idempotent and
+  order-independent: any part creates an unknown group (TOFU on its verified
+  meta), passes the G9 re-add check, and makes the sender a known active
+  member for the others. Used by `SyncEngine` (resync answers) and the group
+  mutators (`_GroupWriteContext.sendBootstrap`: add / invite / claim). The
+  backup file uses the unchunked `buildBootstrapContent`.
+- **Bucketed digests** (`buildDigestMessages`): flat when it fits, else
+  records hash by id (FNV-1a) into `2^bits` buckets (`bucket_bits` 4…11,
+  ~16 records per bucket); each message carries the header (meta, members,
+  rejected), `buckets` (12-char hash of every bucket, positional) and full
+  entries only for its `detail` buckets (spread over several messages when
+  needed). Exchange, bounded to three messages (SyncEngine rule 9):
+  primary summary → reply (same bits) detailing our *unresolved* (hash differs,
+  no entries) + differing buckets → one `final` detailing the same buckets
+  (never answered). Rule 4 (in sync) needs no unresolved bucket.
+- Ceilings now: ~80 members per group (all members ride in every part /
+  digest), ~30k records (2 048-bucket summary ≈ 31 KB). See
+  `docs/open-points.md` for the table and costs.
+
 ### Backup (full JSON — G5)
 
 Ledger data exists only on members' devices, so a group nobody else has a copy
@@ -787,7 +838,7 @@ wait for a Drift write with `eventually(condition, tester: tester)`
 
 ### Data Model & wire protocol (v2)
 
-Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** to avoid float errors. Every to-device payload carries `"v": 2` (protocol version; v2 = G6 signed records — v1 code never read `v`, so the bump is additive) and a `"group": "<groupId>"`. Record payloads carry a `created_at`, an `updated_at` LWW clock (ms epoch), and a `deleted` tombstone flag. Receivers apply **whole-record LWW** on `updated_at`. The codec lives in `lib/core/sync/ledger_payloads.dart`; event type constants in `lib/core/matrix/ledger_transport.dart`.
+Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** to avoid float errors. Every to-device payload carries `"v": 2` (protocol version; v2 = G6 signed records — v1 code never read `v`, so the bump is additive) and a `"group": "<groupId>"`. Record payloads carry a `created_at`, an `updated_at` LWW clock (ms epoch), and a `deleted` tombstone flag. Receivers apply **whole-record LWW** on `updated_at`, ties broken by the content hash (G27). The codec lives in `lib/core/sync/ledger_payloads.dart`; event type constants in `lib/core/matrix/ledger_transport.dart`.
 
 **`com.moneyledger.expense`** (settlement analogous). Edit = full re-send with a higher `updated_at`; delete = same with `deleted: true`. Every version carries `sig` (its editor's device signature); expenses/settlements also `origin` (the creator's, unchanged across edits) — see "Signed records (G6)":
 ```json
@@ -814,22 +865,25 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 
 **`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "sig" }`.
 
-**`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → updated_at`, **tombstones included**; the `members` map (keyed by participant id) doubles as membership/identity gossip — each entry is the full **signed** member version (verified like a member payload). `rejected` (optional, G6) lists versions the sender refused (`{expenses: {id: T}, settlements: {…}, members: {pid: T}, meta: T}`) so peers don't re-send them. A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
+**`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → "<updated_at>:<hash8>"` (G27; a bare int = clock only), **tombstones included**; `meta_hash` is the meta's hash8; the `members` map (keyed by participant id) doubles as membership/identity gossip — each entry is the full **signed** member version (verified like a member payload). `rejected` (optional, G6) lists versions the sender refused (`{expenses: {id: T}, settlements: {…}, members: {pid: T}, meta: T}`) so peers don't re-send them. A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
 ```json
 {
   "v": 2,
   "group": "<groupId>",
   "reply": false,
   "meta_updated_at": 1760000000000,
+  "meta_hash": "1f0c9a3e",
   "members": { "<participantId>": {"status": "active", "updated_at": 1759990000000, "name": "Alex", "matrix_id": "@alice:x.org", "sig": {"user": "…", "device": "…", "key": "…", "sig": "…"}} },
-  "expenses":    { "<uuid>": 1760000050000 },
-  "settlements": { "<uuid>": 1759995000000 },
+  "expenses":    { "<uuid>": "1760000050000:a1b2c3d4" },
+  "settlements": { "<uuid>": "1759995000000:0f9e8d7c" },
   "rejected":    { "expenses": { "<uuid>": 1760000090000 } }
 }
 ```
 
+**Bucketed digest (G14)** — when the flat digest exceeds the payload budget: same header plus `"bucket_bits": n`, `"buckets": ["<hash12>" | "", …]` (2^n entries, one per bucket; `""` = empty), `"detail": [bucket indices]`, and `expenses` / `settlements` holding only the entries of those buckets. A third message of an exchange carries `"final": true` (never answered). See "Message size (G14)" above and `SyncEngine` rule 9.
+
 **`com.moneyledger.resync_request`** — `{ "v": 2, "scope": "group", "group": "<groupId>" }` or `{ "v": 2, "scope": "all" }`. Handler replies with `bootstrap` payload(s) only if the requester is an active member of that group, or is the responder's own MXID (`scope: all` honored only for self — new-device recovery).
 
-**`com.moneyledger.bootstrap`** — whole-group snapshot (group meta + members + expenses + settlements), each record with `updated_at`/`deleted` and its signatures, **tombstones included** (so a stale device can't keep a live copy of a deleted record). `meta` is the signed group-meta payload (top-level `name`/`currency`/`updated_at` mirror it); `device_keys` (`{user: {device: key}}`) attests the signers' keys the sender pinned first-hand. Rows still `pending_sign` are left out. Each record is verified on its own; an unknown group is only created if its meta verifies. Sent when adding a member and in response to a `resync_request`.
+**`com.moneyledger.bootstrap`** — whole-group snapshot (group meta + members + expenses + settlements), each record with `updated_at`/`deleted` and its signatures, **tombstones included** (so a stale device can't keep a live copy of a deleted record). `meta` is the signed group-meta payload (top-level `name`/`currency`/`updated_at` mirror it); `device_keys` (`{user: {device: key}}`) attests the signers' keys the sender pinned first-hand. Rows still `pending_sign` are left out. Each record is verified on its own; an unknown group is only created if its meta verifies. Sent when adding a member and in response to a `resync_request`. **G14:** over the payload budget it is sent as several self-contained parts (`"part": i, "parts": n`, each with meta + all members + `device_keys` + a slice of the records).
 
 The receiver rules for digests (targeted repair, membership gossip, reply bounding, sync-status marking, unknown-group/removed-sender handling) are documented in full on `SyncEngine` (`lib/core/sync/sync_engine.dart`).

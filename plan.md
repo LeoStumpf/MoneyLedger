@@ -167,8 +167,8 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
 - Digest is O(records/group) — fine to ~1,000 records, then hits to-device size
   limits. Needs sharding (hash-bucketed digests) using the `"v"` field.
 - Wall-clock LWW: within the 5-min clamp a skewed clock can still win.
-- [ ] Add a test that measures digest size at 1k / 5k records to know the real ceiling
-- [ ] Bucketed digest design (only if real groups approach the limit)
+- [x] Add a test that measures digest size at 1k / 5k records to know the real ceiling
+- [x] Bucketed digest design (only if real groups approach the limit)
 
 ### G15. Test & tooling debt 🟡
 - [x] Test the `routerProvider` `refreshListenable` wiring (done in G25)
@@ -284,7 +284,7 @@ G7a: on the emulator the groups page showed first and onboarding replaced it
 
 ### G27. LWW has no tie-break on equal `updated_at` 🟡
 Two edits with the exact same ms clock stay divergent (digests see them as equal).
-- [ ] Deterministic tie-break (e.g. compare a content hash) in all LWW upserts + digest compare
+- [x] Deterministic tie-break (e.g. compare a content hash) in all LWW upserts + digest compare
 
 ### G28. Settling debts of local persons / payments received 🟠
 `balance_page.dart:71` only lets the debtor tap their own row. A local person's
@@ -410,6 +410,14 @@ trust is a per-device decision).
       until verified
 - [ ] SAS against Element sessions (Leo-only smoke 9.2/9.3)
 
+### G37. Scale follow-ups (found in G14) 🟢 (not urgent)
+Ceilings today: ~80 members per group (every bootstrap part / digest repeats
+all members), ~30k records (2,048-bucket summary). See CLAUDE.md "Message size".
+- [ ] Store the G27 version hash in a DB column if digest hashing (~150 ms /
+      5k records on desktop) is slow on phones — measure on the Pixel
+- [ ] A refused version costs one extra 3-message bucket exchange per cycle
+      (bounded); refusals are per clock (blocks other versions at the same ms)
+
 ### G18. Final release review 🟡
 - [ ] `/code-review` over all of Phase G; fix findings
 - [ ] `./build.sh` green; release APK on emulator + phone
@@ -451,14 +459,15 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G13 — CSV improvements (with G5)
 - [x] G6 — signed records (any member may edit; every version signed by its editor)
 - [x] G11 — verified-only replication (+ SAS emulator ↔ phone)
-- [ ] G14 — digest size measurement
+- [x] G14 — digest size measurement
 - [ ] G16 — nice-to-haves
 - [ ] G22 — dependency upgrades (matrix, file_picker)
-- [ ] G27 — LWW tie-break
+- [x] G27 — LWW tie-break
 - [ ] G33 — design follow-ups (settlement title, test display names)
 - [ ] G34 — backup follow-ups
 - [ ] G35 — signed-records follow-ups
 - [ ] G36 — verification follow-ups
+- [ ] G37 — scale follow-ups (optional)
 - [ ] *(G32+ — newly discovered points)*
 - [ ] G18 — final release review
 

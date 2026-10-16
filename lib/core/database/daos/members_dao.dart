@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/member_model.dart';
 import '../../../models/record_signature.dart';
+import '../../sync/record_version.dart';
 
 part 'members_dao.g.dart';
 
@@ -56,17 +57,45 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
         (rows) => rows.map(_toModel).toList(),
       );
 
-  /// Last-writer-wins upsert: writes only when no existing row has a newer
-  /// [updatedAt]. Lets concurrent add/remove of the same member converge
+  /// Last-writer-wins upsert with the G27 tie-break (same rule as
+  /// `ExpensesDao.upsertExpenseLww`): skipped only when the stored
+  /// participant is a newer version (higher clock, or same clock + higher
+  /// content hash). Lets concurrent add/remove of the same member converge
   /// deterministically across devices.
-  Future<void> upsertMemberLww(MembersCompanion member) => into(members).insert(
-    member,
-    onConflict: DoUpdate(
-      (_) => member,
-      where: (old) =>
-          old.updatedAt.isSmallerOrEqualValue(member.updatedAt.value),
-    ),
-  );
+  Future<void> upsertMemberLww(MembersCompanion member) =>
+      transaction(() async {
+        final old =
+            await (select(members)..where(
+                  (t) =>
+                      t.groupId.equals(member.groupId.value) &
+                      t.userId.equals(member.userId.value),
+                ))
+                .getSingleOrNull();
+        if (old != null &&
+            compareVersions(
+                  memberVersion(
+                    MemberModel(
+                      groupId: member.groupId.value,
+                      userId: member.userId.value,
+                      displayName: member.displayName.present
+                          ? member.displayName.value
+                          : '',
+                      matrixId: member.matrixId.present
+                          ? member.matrixId.value
+                          : null,
+                      status: member.status.present
+                          ? member.status.value
+                          : 'active',
+                      updatedAt: member.updatedAt.value,
+                    ),
+                  ),
+                  memberVersion(_toModel(old)),
+                ) <
+                0) {
+          return;
+        }
+        await into(members).insertOnConflictUpdate(member);
+      });
 
   static MemberModel _toModel(Member m) => MemberModel(
     groupId: m.groupId,

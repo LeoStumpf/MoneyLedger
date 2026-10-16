@@ -81,7 +81,10 @@ Map<String, Object?> originBody(
   'signer': _signer(signer),
 };
 
-Map<String, Object?> expenseBody(ExpenseModel e, SignerId signer) => {
+/// The **content** of an expense version — every field except the
+/// signatures (`origin`, `signer`). The signed body adds those; the G27
+/// version hash ([expenseVersionHash]) is computed over exactly this.
+Map<String, Object?> expenseContent(ExpenseModel e) => {
   't': RecordKind.expense.typeTag,
   'id': e.id,
   'group': e.roomId,
@@ -93,11 +96,15 @@ Map<String, Object?> expenseBody(ExpenseModel e, SignerId signer) => {
   'created_at': e.createdAt,
   'updated_at': e.updatedAt,
   'deleted': e.deleted,
+};
+
+Map<String, Object?> expenseBody(ExpenseModel e, SignerId signer) => {
+  ...expenseContent(e),
   'origin': e.origin?.toJson(),
   'signer': _signer(signer),
 };
 
-Map<String, Object?> settlementBody(SettlementModel s, SignerId signer) => {
+Map<String, Object?> settlementContent(SettlementModel s) => {
   't': RecordKind.settlement.typeTag,
   'id': s.id,
   'group': s.roomId,
@@ -108,11 +115,15 @@ Map<String, Object?> settlementBody(SettlementModel s, SignerId signer) => {
   'created_at': s.createdAt,
   'updated_at': s.updatedAt,
   'deleted': s.deleted,
+};
+
+Map<String, Object?> settlementBody(SettlementModel s, SignerId signer) => {
+  ...settlementContent(s),
   'origin': s.origin?.toJson(),
   'signer': _signer(signer),
 };
 
-Map<String, Object?> memberBody(MemberModel m, SignerId signer) => {
+Map<String, Object?> memberContent(MemberModel m) => {
   't': RecordKind.member.typeTag,
   'group': m.groupId,
   'participant_id': m.userId,
@@ -120,15 +131,23 @@ Map<String, Object?> memberBody(MemberModel m, SignerId signer) => {
   'matrix_id': m.matrixId,
   'status': m.status,
   'updated_at': m.updatedAt,
+};
+
+Map<String, Object?> memberBody(MemberModel m, SignerId signer) => {
+  ...memberContent(m),
   'signer': _signer(signer),
 };
 
-Map<String, Object?> groupMetaBody(GroupModel g, SignerId signer) => {
+Map<String, Object?> groupMetaContent(GroupModel g) => {
   't': RecordKind.meta.typeTag,
   'group': g.roomId,
   'name': g.name,
   'currency': g.currency,
   'updated_at': g.updatedAt,
+};
+
+Map<String, Object?> groupMetaBody(GroupModel g, SignerId signer) => {
+  ...groupMetaContent(g),
   'signer': _signer(signer),
 };
 

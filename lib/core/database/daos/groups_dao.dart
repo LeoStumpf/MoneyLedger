@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/group_model.dart';
 import '../../../models/record_signature.dart';
+import '../../sync/record_version.dart';
 
 part 'groups_dao.g.dart';
 
@@ -15,17 +16,30 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
   Future<List<GroupModel>> getAllGroups() =>
       select(groups).get().then((rows) => rows.map(_toModel).toList());
 
-  /// Last-writer-wins upsert: writes only when no existing row has a newer
-  /// [Groups.updatedAt]. The companion must set `updatedAt`. Lets concurrent
-  /// renames/currency changes converge deterministically across devices.
-  Future<void> upsertGroupLww(GroupsCompanion group) => into(groups).insert(
-    group,
-    onConflict: DoUpdate(
-      (_) => group,
-      where: (old) =>
-          old.updatedAt.isSmallerOrEqualValue(group.updatedAt.value),
-    ),
-  );
+  /// Last-writer-wins upsert with the G27 tie-break (same rule as
+  /// `ExpensesDao.upsertExpenseLww`): skipped only when the stored meta is a
+  /// newer version (higher clock, or same clock + higher content hash).
+  Future<void> upsertGroupLww(GroupsCompanion group) => transaction(() async {
+    final old = await (select(
+      groups,
+    )..where((t) => t.roomId.equals(group.roomId.value))).getSingleOrNull();
+    if (old != null &&
+        compareVersions(
+              groupMetaVersion(
+                GroupModel(
+                  roomId: group.roomId.value,
+                  name: group.name.present ? group.name.value : '',
+                  currency: group.currency.present ? group.currency.value : '',
+                  updatedAt: group.updatedAt.value,
+                ),
+              ),
+              groupMetaVersion(_toModel(old)),
+            ) <
+            0) {
+      return;
+    }
+    await into(groups).insertOnConflictUpdate(group);
+  });
 
   Future<GroupModel?> getGroup(String roomId) =>
       (select(groups)..where((t) => t.roomId.equals(roomId)))

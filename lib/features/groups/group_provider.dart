@@ -11,6 +11,7 @@ import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/delivery_policy.dart';
 import '../../core/sync/left_groups.dart';
+import '../../core/sync/payload_budget.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
@@ -78,6 +79,7 @@ class _GroupWriteContext {
       expenses = ref.read(expensesDaoProvider),
       settings = ref.read(settingsDaoProvider),
       signing = ref.read(signingDaoProvider),
+      budget = ref.read(payloadBudgetProvider),
       health = ref.read(syncHealthProvider.notifier),
       transport = withDeliveryPolicy(
         ref.read(ledgerTransportProvider.future),
@@ -92,6 +94,20 @@ class _GroupWriteContext {
   /// G6: signs every version a mutation writes with this device's key.
   late final LocalRecordSigner signer;
   final SigningDao signing;
+
+  /// G14: max JSON bytes per to-device message (bootstraps are chunked).
+  final int budget;
+
+  /// Sends the whole group to [to] as one or more self-contained bootstrap
+  /// parts (G14, [buildBootstrapParts]).
+  Future<void> sendBootstrap(String to, String groupId) async {
+    final parts = await buildBootstrap(groupId);
+    final t = await transport;
+    for (final part in parts) {
+      if (db.isClosed) return;
+      await t.sendToUsers({to}, bootstrapEventType, part);
+    }
+  }
 
   /// Signs [m] and saves it (LWW). Returns the stored (signed or
   /// `pendingSign`) version.
@@ -152,14 +168,14 @@ class _GroupWriteContext {
     }
   }
 
-  Future<Map<String, dynamic>> buildBootstrap(String groupId) async {
+  Future<List<Map<String, dynamic>>> buildBootstrap(String groupId) async {
     final group = await groups.getGroup(groupId);
     final ms = await members.getMembers(groupId);
     // Tombstones included: the new member must learn about deletions too,
     // or they would re-gossip dead records via anti-entropy.
     final es = await expenses.getAllExpensesForGroup(groupId);
     final ss = await expenses.getAllSettlementsForGroup(groupId);
-    return buildBootstrapContent(
+    return buildBootstrapParts(
       groupId,
       group,
       ms,
@@ -169,6 +185,7 @@ class _GroupWriteContext {
       deviceKeys: await signing.attestationsFor(
         snapshotSigners(group, ms, es, ss),
       ),
+      budget: budget,
     );
   }
 }
@@ -282,14 +299,8 @@ class MemberAdder extends _$MemberAdder {
           );
     final saved = await w.saveMember(member);
 
-    final transport = await w.transport;
-
     // 1) Bootstrap the new member with the full group state + ledger.
-    await transport.sendToUsers(
-      {userId},
-      bootstrapEventType,
-      await w.buildBootstrap(groupId),
-    );
+    await w.sendBootstrap(userId, groupId);
 
     // 2) Tell the existing active members about the new member.
     final others = (await w.members.activeClaimedMatrixIds(
@@ -302,14 +313,8 @@ class MemberAdder extends _$MemberAdder {
   /// participant — they receive the bootstrap and then pick which existing
   /// participant they are (self-claim on join, [selfClaim]). Use this to invite
   /// someone who already has a local placeholder in the ledger.
-  Future<void> invite(String groupId, String matrixId) => _run((w) async {
-    final transport = await w.transport;
-    await transport.sendToUsers(
-      {matrixId},
-      bootstrapEventType,
-      await w.buildBootstrap(groupId),
-    );
-  });
+  Future<void> invite(String groupId, String matrixId) =>
+      _run((w) => w.sendBootstrap(matrixId, groupId));
 
   /// Adds a Tricount-style local participant: a named person with no Matrix
   /// account (a fresh UUID participant id, `matrixId == null`). They are pure
@@ -362,12 +367,7 @@ class MemberAdder extends _$MemberAdder {
     final current = _find(await w.members.getMembers(groupId), participantId);
     if (current == null) return;
     final updated = await w.saveMember(_copyWith(current, matrixId: matrixId));
-    final transport = await w.transport;
-    await transport.sendToUsers(
-      {matrixId},
-      bootstrapEventType,
-      await w.buildBootstrap(groupId),
-    );
+    await w.sendBootstrap(matrixId, groupId);
     final targets = (await w.members.activeClaimedMatrixIds(groupId)).toSet();
     await w.sendMember(targets, updated);
   }

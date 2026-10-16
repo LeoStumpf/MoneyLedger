@@ -5,6 +5,7 @@ import 'package:matrix/matrix.dart';
 import 'package:vodozemac/vodozemac.dart' as vod;
 
 import 'buffered_inbox.dart';
+import '../sync/payload_budget.dart';
 import 'ledger_transport.dart';
 
 /// Real [LedgerTransport] backed by the Matrix SDK [Client]. The only place that
@@ -64,6 +65,9 @@ class MatrixLedgerTransport implements LedgerTransport {
     if (!_client.encryptionEnabled) {
       throw const TransportUnavailableException('encryption is not enabled');
     }
+    // G14: the homeserver refuses > 64 KiB per device (413) — fail loudly
+    // instead of letting the SDK drop it with a log line.
+    checkPayloadSize(type, content);
 
     // Roomless device tracking isn't persistent: the SDK evicts device lists for
     // users we share no encrypted room with. Re-resolve before each send (cheap,

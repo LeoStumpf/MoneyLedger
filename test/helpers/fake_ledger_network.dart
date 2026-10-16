@@ -28,6 +28,7 @@ import 'dart:async';
 import 'package:money_ledger/core/matrix/buffered_inbox.dart';
 import 'package:money_ledger/core/matrix/hmac_record_crypto.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
+import 'package:money_ledger/core/sync/payload_budget.dart';
 
 class FakeMatrixNetwork {
   FakeMatrixNetwork({this.bufferInbound = false});
@@ -50,6 +51,12 @@ class FakeMatrixNetwork {
   /// silently dropped — simulates a to-device message lost in transit, the
   /// exact failure anti-entropy must repair. Set back to null to "reconnect".
   bool Function(String sender, String target, String type)? dropWhere;
+
+  /// G14: max JSON bytes per payload, like the homeserver's 64 KiB
+  /// to-device limit — a larger send throws [PayloadTooLargeException]
+  /// (default: the real ceiling; tests with a small `payloadBudgetProvider`
+  /// lower it to prove the senders chunk).
+  int maxPayloadBytes = kHardMaxPayloadBytes;
 
   /// Bumped on every send and every delivery — [settle] waits until this stops
   /// moving.
@@ -80,6 +87,8 @@ class FakeMatrixNetwork {
     Map<String, dynamic> content,
     DeliveryPolicy policy,
   ) {
+    final bytes = encodedPayloadBytes(content);
+    if (bytes > maxPayloadBytes) throw PayloadTooLargeException(type, bytes);
     final sender = senderDevice.userId;
     _activity++;
     sent.add((sender: sender, targets: targets, type: type, content: content));

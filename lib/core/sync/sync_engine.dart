@@ -20,9 +20,11 @@ import '../matrix/transport_provider.dart';
 import 'delivery_policy.dart';
 import 'ledger_payloads.dart';
 import 'left_groups.dart';
+import 'payload_budget.dart';
 import 'record_gate.dart';
 import 'record_signing.dart';
 import 'record_verifier.dart';
+import 'record_version.dart';
 import 'self_recovery.dart';
 import 'sync_health.dart';
 
@@ -66,7 +68,7 @@ final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
 /// records the other side lacks — so a lost to-device message, however it was
 /// lost, is repaired by the next digest cycle instead of diverging forever.
 ///
-/// Digest receiver rules (protocol v1):
+/// Digest receiver rules (protocol v2):
 /// 1. Records where our copy is newer / the sender lacks them → re-send the
 ///    normal record payload to the sender (targeted repair; LedgerSyncer on
 ///    their side applies it LWW).
@@ -99,6 +101,23 @@ final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
 ///    refused: rule 1 doesn't re-send a record whose version the sender
 ///    already refused, and rule 4 treats such "agree to disagree" entries as
 ///    matching (see [compareDigest]) — so a refused version never loops.
+/// 9. (G14) **Bucketed digests.** A digest that doesn't fit one to-device
+///    message ([payloadBudgetProvider], see `payload_budget.dart`) is sent
+///    as bucket hashes ([buildDigestMessages]): `bucket_bits`, the hash of
+///    every bucket, and full entries only for its `detail` buckets. The
+///    receiver compares hashes; matching buckets are in sync, `detail`
+///    buckets are compared (rule 1 repairs within them), the rest are
+///    *unresolved*. Exchange (bounded to three messages):
+///    primary (summary, no detail) → reply detailing our unresolved +
+///    differing buckets (same bits) → one `final` digest detailing those
+///    same buckets, so the replier learns what it lacks too; `final` is never
+///    answered. A reply to a bucketed digest is always bucketed; a reply to a
+///    flat one is flat when it fits. Rule 4 needs no unresolved bucket.
+///
+/// G27: records compare by `(updated_at, content hash)` — digest entries are
+/// `"<updated_at>:<hash8>"` (plus `meta_hash`; members are hashed from their
+/// gossiped versions), so two versions with the same clock are seen as
+/// different and the higher hash wins everywhere (`record_version.dart`).
 class SyncEngine {
   final Ref _ref;
 
@@ -113,6 +132,9 @@ class SyncEngine {
   final SyncStatesDao _syncStates;
   final SettingsDao _settings;
   final SigningDao _signing;
+
+  /// G14: max JSON bytes per to-device message (captured, like the DAOs).
+  final int _budget;
 
   LedgerTransport? _transport;
 
@@ -132,7 +154,8 @@ class SyncEngine {
       _expenses = ref.read(expensesDaoProvider),
       _syncStates = ref.read(syncStatesDaoProvider),
       _settings = SettingsDao(ref.read(appDatabaseProvider)),
-      _signing = ref.read(signingDaoProvider);
+      _signing = ref.read(signingDaoProvider),
+      _budget = ref.read(payloadBudgetProvider);
 
   /// Whether async work may continue. Checked after **every** await: the
   /// engine may have been disposed (logout / account switch / container
@@ -481,6 +504,10 @@ class SyncEngine {
     String groupId, {
     String? onlyTo,
     bool reply = false,
+    bool last = false,
+    int? bits,
+    Set<int> detailBuckets = const {},
+    Set<String> detailIds = const {},
   }) async {
     final transport = _transport;
     if (transport == null || !_alive) return;
@@ -513,19 +540,25 @@ class SyncEngine {
       if (targets.isEmpty) return;
       final rejected = await _signing.rejectedForGroup(groupId);
       if (!_alive) return;
-      final result = await transport.sendToUsers(
-        targets,
-        digestEventType,
-        buildDigestContent(
-          group,
-          members,
-          expenses,
-          settlements,
-          reply: reply,
-          rejected: rejected,
-        ),
+      // G14: flat when it fits, else bucketed (possibly several messages).
+      final messages = buildDigestMessages(
+        group,
+        members,
+        expenses,
+        settlements,
+        reply: reply,
+        last: last,
+        budget: _budget,
+        bits: bits,
+        detail: detailBuckets,
+        detailIds: detailIds,
+        rejected: rejected,
       );
-      if (!_alive) return;
+      late SendResult result;
+      for (final m in messages) {
+        result = await transport.sendToUsers(targets, digestEventType, m);
+        if (!_alive) return;
+      }
       final now = DateTime.now().millisecondsSinceEpoch;
       // Only targets that had a device were actually sent to.
       for (final t in targets.difference(result.unreachableUsers)) {
@@ -622,12 +655,22 @@ class SyncEngine {
       // everything we had at this moment.
       final diff = compareDigest(
         localMetaUpdatedAt: group.updatedAt,
+        localMetaHash: groupMetaVersionHash(group),
         localMembers: {
           for (final m in members)
             m.userId: (status: m.status, updatedAt: m.updatedAt),
         },
+        localMemberHashes: {
+          for (final m in members) m.userId: memberVersionHash(m),
+        },
         localExpenses: {for (final e in expenses) e.id: e.updatedAt},
+        localExpenseHashes: {
+          for (final e in expenses) e.id: expenseVersionHash(e),
+        },
         localSettlements: {for (final s in settlements) s.id: s.updatedAt},
+        localSettlementHashes: {
+          for (final s in settlements) s.id: settlementVersionHash(s),
+        },
         localRejected: rejected,
         remote: content,
       );
@@ -693,9 +736,33 @@ class SyncEngine {
         if (!_alive) return;
       }
 
-      // Rule 3: always answer a primary digest; never answer a reply.
+      // Rule 3: always answer a primary digest. A reply to a bucketed digest
+      // is bucketed too (same bits), detailing the buckets we couldn't
+      // resolve and those that differ (rule 9).
+      final bits = diff.bucketBits;
       if (content['reply'] != true) {
-        await _sendDigest(groupId, onlyTo: msg.senderId, reply: true);
+        await _sendDigest(
+          groupId,
+          onlyTo: msg.senderId,
+          reply: true,
+          bits: bits,
+          detailBuckets: diff.unresolvedBuckets,
+          detailIds: diff.differingIds,
+        );
+      } else if (content['final'] != true &&
+          bits != null &&
+          diff.detailBuckets.isNotEmpty) {
+        // Rule 9: a bucketed reply that detailed buckets gets one `final`
+        // answer detailing the same buckets — so the replier learns what *it*
+        // lacks there (or that we agree). A `final` is never answered.
+        await _sendDigest(
+          groupId,
+          onlyTo: msg.senderId,
+          reply: true,
+          last: true,
+          bits: bits,
+          detailBuckets: diff.detailBuckets,
+        );
       }
     } catch (e) {
       if (_alive) debugPrint('[sync] digest handling failed for $groupId: $e');
@@ -759,7 +826,7 @@ class SyncEngine {
     final expenses = await _expenses.getAllExpensesForGroup(groupId);
     final settlements = await _expenses.getAllSettlementsForGroup(groupId);
     if (!_alive) return;
-    final content = buildBootstrapContent(
+    final parts = buildBootstrapParts(
       groupId,
       group,
       members,
@@ -768,14 +835,20 @@ class SyncEngine {
       deviceKeys: await _signing.attestationsFor(
         snapshotSigners(group, members, expenses, settlements),
       ),
+      budget: _budget,
     );
-    if (!_alive) return;
-    await _sendTracked(transport, {to}, bootstrapEventType, content);
+    // G14: one self-contained part per to-device message (any order).
+    for (final part in parts) {
+      if (!_alive) return;
+      await _sendTracked(transport, {to}, bootstrapEventType, part);
+    }
   }
 }
 
-/// Builds the per-group digest payload: `id → updatedAt` maps for every record
-/// **including tombstones**, plus the members map (which doubles as gossip).
+/// Builds the per-group **flat** digest payload: `id → "<updatedAt>:<hash8>"`
+/// maps for every record **including tombstones** (G27: the short content
+/// hash makes a same-clock divergence visible), the group meta's clock +
+/// hash, plus the members map (which doubles as gossip).
 @visibleForTesting
 Map<String, dynamic> buildDigestContent(
   GroupModel group,
@@ -785,10 +858,29 @@ Map<String, dynamic> buildDigestContent(
   required bool reply,
   Map<String, Map<String, int>> rejected = const {},
 }) => {
+  ..._digestHeader(group, members, reply: reply, rejected: rejected),
+  'expenses': {
+    for (final e in expenses) e.id: encodeDigestVersion(expenseVersion(e)),
+  },
+  'settlements': {
+    for (final s in settlements)
+      s.id: encodeDigestVersion(settlementVersion(s)),
+  },
+};
+
+Map<String, dynamic> _digestHeader(
+  GroupModel group,
+  List<MemberModel> members, {
+  required bool reply,
+  bool last = false,
+  Map<String, Map<String, int>> rejected = const {},
+}) => {
   'v': protocolVersion,
   'group': group.roomId,
   'reply': reply,
+  if (last) 'final': true,
   'meta_updated_at': group.updatedAt,
+  'meta_hash': groupMetaVersionHash(group).substring(0, kDigestHashChars),
   // G6: each entry is the full signed member version (verifiable gossip);
   // a row still waiting for its signature isn't gossiped yet.
   'members': {
@@ -802,10 +894,109 @@ Map<String, dynamic> buildDigestContent(
           if (m.sig != null) 'sig': m.sig!.toJson(),
         },
   },
-  'expenses': {for (final e in expenses) e.id: e.updatedAt},
-  'settlements': {for (final s in settlements) s.id: s.updatedAt},
   if (rejected.isNotEmpty) 'rejected': digestRejectedMap(rejected),
 };
+
+/// G14: the digest for a group as one or more to-device messages of at most
+/// [budget] bytes of JSON.
+///
+/// - **Flat** (the format of [buildDigestContent]) when it fits [budget] and
+///   no bucketed shape is required ([bits] == null).
+/// - Otherwise **bucketed**: the records are hashed into `2^bits` buckets by
+///   id (`record_version.dart`); every message carries the header (meta,
+///   members, rejected), `bucket_bits` and the hash of **every** bucket
+///   (`buckets`, a list indexed by bucket), plus the full entries of the
+///   buckets in its `detail` list — [detail] is spread over as many messages
+///   as needed (one message with an empty `detail` when there is none). A
+///   receiver compares bucket hashes first and needs entries only for the
+///   buckets that differ (see [compareDigest] and the [SyncEngine] rules).
+///
+/// [bits] defaults to [digestBucketBitsFor] the record count; a reply to a
+/// bucketed digest uses the sender's bits (bucket indices must agree).
+/// [last] marks the third message of a bucketed exchange (`final`, never
+/// answered).
+@visibleForTesting
+List<Map<String, dynamic>> buildDigestMessages(
+  GroupModel group,
+  List<MemberModel> members,
+  List<ExpenseModel> expenses,
+  List<SettlementModel> settlements, {
+  required bool reply,
+  required int budget,
+  bool last = false,
+  int? bits,
+  Set<int> detail = const {},
+  Set<String> detailIds = const {},
+  Map<String, Map<String, int>> rejected = const {},
+}) {
+  if (bits == null) {
+    final flat = buildDigestContent(
+      group,
+      members,
+      expenses,
+      settlements,
+      reply: reply,
+      rejected: rejected,
+    );
+    if (encodedPayloadBytes(flat) <= budget) return [flat];
+  }
+  final b = bits ?? digestBucketBitsFor(expenses.length + settlements.length);
+  final expVersions = {for (final e in expenses) e.id: expenseVersion(e)};
+  final setVersions = {for (final s in settlements) s.id: settlementVersion(s)};
+  final header = {
+    ..._digestHeader(
+      group,
+      members,
+      reply: reply,
+      last: last,
+      rejected: rejected,
+    ),
+    'bucket_bits': b,
+    'buckets': digestBucketHashes(
+      expenses: expVersions,
+      settlements: setVersions,
+      bits: b,
+    ),
+  };
+  // Entries per detail bucket.
+  final wanted = {...detail, for (final id in detailIds) digestBucketOf(id, b)};
+  final perBucket = <int, ({Map<String, String> e, Map<String, String> s})>{
+    for (final d in wanted.toList()..sort()) d: (e: {}, s: {}),
+  };
+  for (final MapEntry(key: id, value: v) in expVersions.entries) {
+    perBucket[digestBucketOf(id, b)]?.e[id] = encodeDigestVersion(v);
+  }
+  for (final MapEntry(key: id, value: v) in setVersions.entries) {
+    perBucket[digestBucketOf(id, b)]?.s[id] = encodeDigestVersion(v);
+  }
+  Map<String, dynamic> message(List<int> buckets) => {
+    ...header,
+    'detail': buckets,
+    'expenses': {for (final d in buckets) ...perBucket[d]!.e},
+    'settlements': {for (final d in buckets) ...perBucket[d]!.s},
+  };
+  if (perBucket.isEmpty) return [message(const [])];
+  final headerBytes = encodedPayloadBytes(message(const []));
+  final out = <Map<String, dynamic>>[];
+  var current = <int>[];
+  var size = headerBytes;
+  for (final MapEntry(key: d, value: entries) in perBucket.entries) {
+    // ~ `"<id>":"<ms>:<hash8>",` per entry + the bucket index.
+    final bytes =
+        8 +
+        encodedPayloadBytes({'e': entries.e, 's': entries.s}) -
+        encodedPayloadBytes(const {'e': {}, 's': {}});
+    if (current.isNotEmpty && size + bytes > budget) {
+      out.add(message(current));
+      current = [];
+      size = headerBytes;
+    }
+    current.add(d);
+    size += bytes;
+  }
+  out.add(message(current));
+  return out;
+}
 
 /// The digest's `rejected` map (G6) from [SigningDao.rejectedForGroup]'s
 /// kind → id → clock: `{expenses: {id: T}, settlements: {…}, members:
@@ -834,13 +1025,56 @@ class DigestDiff {
   /// Exact match between the digest and our local state.
   final bool identical;
 
+  /// G14: ids (expenses and settlements) whose versions differ between the
+  /// two sides (excluding "agree to disagree") — the buckets our reply must
+  /// detail.
+  final Set<String> differingIds;
+
+  /// G14: for a bucketed digest, the buckets whose hashes differ but whose
+  /// entries the sender didn't include (`detail`) — we can't tell yet who
+  /// lacks what there. Empty for a flat digest.
+  final Set<int> unresolvedBuckets;
+
+  /// G14: the bucket exponent of a bucketed digest, null for a flat one.
+  final int? bucketBits;
+
+  /// G14: the buckets the (bucketed) digest detailed.
+  final Set<int> detailBuckets;
+
   const DigestDiff({
     required this.expenseIdsToSend,
     required this.settlementIdsToSend,
     required this.sendGroupMeta,
     required this.senderHasNewer,
     required this.identical,
+    this.differingIds = const {},
+    this.unresolvedBuckets = const {},
+    this.bucketBits,
+    this.detailBuckets = const {},
   });
+}
+
+/// The bucket exponent + hashes + detail list of a bucketed digest, or null
+/// for a flat (or malformed bucketed) one.
+({int bits, List<String> hashes, Set<int> detail})? _bucketsOf(
+  Map<String, dynamic> remote,
+) {
+  final bits = remote['bucket_bits'];
+  final hashes = remote['buckets'];
+  if (bits is! int || bits < 0 || bits > 16 || hashes is! List) return null;
+  if (hashes.length != 1 << bits || hashes.any((h) => h is! String)) {
+    return null;
+  }
+  final rawDetail = remote['detail'];
+  return (
+    bits: bits,
+    hashes: hashes.cast<String>(),
+    detail: {
+      if (rawDetail is List)
+        for (final d in rawDetail)
+          if (d is int && d >= 0 && d < hashes.length) d,
+    },
+  );
 }
 
 /// Pure digest comparison (plain Dart, unit-testable without a DB).
@@ -852,12 +1086,25 @@ class DigestDiff {
 /// clock, a sender holding exactly what we refused isn't "newer", and both
 /// count as matching for rule 4 — the two sides agree to disagree instead of
 /// looping.
+///
+/// G27: versions compare by clock, then content hash (`compareVersions`) —
+/// the `local*Hashes` maps / [localMetaHash] hold our full hashes, the
+/// digest the first 8 hex chars. Without a hash (either side) an equal clock
+/// counts as the same version.
+///
+/// G14: a **bucketed** digest is compared bucket by bucket — buckets whose
+/// hash matches ours are in sync, `detail` buckets are compared entry by
+/// entry, the rest are [DigestDiff.unresolvedBuckets] (never identical).
 @visibleForTesting
 DigestDiff compareDigest({
   required int localMetaUpdatedAt,
+  String localMetaHash = '',
   required Map<String, ({String status, int updatedAt})> localMembers,
+  Map<String, String> localMemberHashes = const {},
   required Map<String, int> localExpenses,
+  Map<String, String> localExpenseHashes = const {},
   required Map<String, int> localSettlements,
+  Map<String, String> localSettlementHashes = const {},
   Map<String, Map<String, int>> localRejected = const {},
   required Map<String, dynamic> remote,
 }) {
@@ -888,31 +1135,63 @@ DigestDiff compareDigest({
     return r != null && remoteAt <= r;
   }
 
+  Map<String, RecordVersion> versions(
+    Map<String, int> clocks,
+    Map<String, String> hashes,
+  ) => {
+    for (final MapEntry(key: id, value: at) in clocks.entries)
+      id: (at: at, hash: hashes[id] ?? ''),
+  };
+  final localExp = versions(localExpenses, localExpenseHashes);
+  final localSet = versions(localSettlements, localSettlementHashes);
+
+  // G14: bucketed digest → which of our records are in scope.
+  final buckets = _bucketsOf(remote);
+  final unresolved = <int>{};
+  var scope = (String id) => true;
+  if (buckets != null) {
+    final ours = digestBucketHashes(
+      expenses: localExp,
+      settlements: localSet,
+      bits: buckets.bits,
+    );
+    for (var b = 0; b < ours.length; b++) {
+      if (ours[b] != buckets.hashes[b] && !buckets.detail.contains(b)) {
+        unresolved.add(b);
+      }
+    }
+    scope = (id) => buckets.detail.contains(digestBucketOf(id, buckets.bits));
+  }
+
   var senderHasNewer = false;
+  final differing = <String>{};
 
   (List<String>, bool) diffRecords(
     String kind,
-    Map<String, int> local,
+    Map<String, RecordVersion> local,
     Map<String, dynamic> remoteMap,
   ) {
     final toSend = <String>[];
     var theirsNewer = false;
-    for (final entry in local.entries) {
-      final remoteAt = remoteMap[entry.key] as int?;
-      if ((remoteAt == null || remoteAt < entry.value) &&
-          !theyRefused(kind, entry.key, entry.value)) {
-        toSend.add(entry.key);
+    for (final MapEntry(key: id, value: mine) in local.entries) {
+      if (!scope(id)) continue;
+      final theirs = parseDigestVersion(remoteMap[id]);
+      final c = theirs == null ? 1 : compareVersions(mine, theirs);
+      if (c > 0 && !theyRefused(kind, id, mine.at)) {
+        toSend.add(id);
+        differing.add(id);
       }
-      if (remoteAt != null &&
-          remoteAt > entry.value &&
-          !weRefused(kind, entry.key, remoteAt)) {
+      if (theirs != null && c < 0 && !weRefused(kind, id, theirs.at)) {
         theirsNewer = true;
+        differing.add(id);
       }
     }
     for (final MapEntry(:key, :value) in remoteMap.entries) {
-      if (local.containsKey(key)) continue;
-      if (value is int && weRefused(kind, key, value)) continue;
+      if (local.containsKey(key) || !scope(key)) continue;
+      final theirs = parseDigestVersion(value);
+      if (theirs != null && weRefused(kind, key, theirs.at)) continue;
       theirsNewer = true;
+      differing.add(key);
     }
     return (toSend, theirsNewer);
   }
@@ -921,17 +1200,22 @@ DigestDiff compareDigest({
   final remoteSettlements = (remote['settlements'] as Map? ?? const {});
   final (expensesToSend, expTheirs) = diffRecords(
     'expense',
-    localExpenses,
+    localExp,
     Map<String, dynamic>.from(remoteExpenses),
   );
   final (settlementsToSend, setTheirs) = diffRecords(
     'settlement',
-    localSettlements,
+    localSet,
     Map<String, dynamic>.from(remoteSettlements),
   );
   senderHasNewer = expTheirs || setTheirs;
 
-  final remoteMeta = remote['meta_updated_at'] as int? ?? 0;
+  final RecordVersion remoteMeta = (
+    at: remote['meta_updated_at'] as int? ?? 0,
+    hash: localMetaHash.isEmpty ? '' : remote['meta_hash'] as String? ?? '',
+  );
+  final RecordVersion localMeta = (at: localMetaUpdatedAt, hash: localMetaHash);
+  final metaCmp = compareVersions(localMeta, remoteMeta);
   final theirMetaRefused = remoteRejected['meta'] as int?;
   final ourMetaRefused = localRejected['meta']?.values.fold<int?>(
     null,
@@ -939,28 +1223,39 @@ DigestDiff compareDigest({
   );
   final metaTheyRefused =
       theirMetaRefused != null && theirMetaRefused >= localMetaUpdatedAt;
-  final metaWeRefused = ourMetaRefused != null && remoteMeta <= ourMetaRefused;
-  final sendGroupMeta = localMetaUpdatedAt > remoteMeta && !metaTheyRefused;
-  if (remoteMeta > localMetaUpdatedAt && !metaWeRefused) senderHasNewer = true;
+  final metaWeRefused =
+      ourMetaRefused != null && remoteMeta.at <= ourMetaRefused;
+  final sendGroupMeta = metaCmp > 0 && !metaTheyRefused;
+  if (metaCmp < 0 && !metaWeRefused) senderHasNewer = true;
   final metaMatches =
-      remoteMeta == localMetaUpdatedAt ||
-      (remoteMeta > localMetaUpdatedAt && metaWeRefused) ||
-      (remoteMeta < localMetaUpdatedAt && metaTheyRefused);
+      metaCmp == 0 ||
+      (metaCmp < 0 && metaWeRefused) ||
+      (metaCmp > 0 && metaTheyRefused);
 
   var membersIdentical = true;
   final remoteMembers = (remote['members'] as Map? ?? const {});
+  final groupId = remote['group'];
   for (final entry in localMembers.entries) {
     final r = remoteMembers[entry.key] as Map?;
     final remoteAt = r?['updated_at'] as int? ?? 0;
-    final same =
-        r != null &&
-        r['status'] == entry.value.status &&
-        remoteAt == entry.value.updatedAt;
+    final localHash = localMemberHashes[entry.key] ?? '';
+    var remoteHash = '';
+    if (r != null && localHash.isNotEmpty && groupId is String) {
+      final m = memberFromPayload({
+        ...Map<String, dynamic>.from(r),
+        'group': groupId,
+        'participant_id': entry.key,
+      });
+      if (m != null) remoteHash = memberVersionHash(m);
+    }
+    final c = compareVersions(
+      (at: entry.value.updatedAt, hash: localHash),
+      (at: remoteAt, hash: remoteHash),
+    );
+    final same = r != null && r['status'] == entry.value.status && c == 0;
     final agreedToDisagree =
-        (r != null &&
-            remoteAt > entry.value.updatedAt &&
-            weRefused('member', entry.key, remoteAt)) ||
-        ((r == null || remoteAt < entry.value.updatedAt) &&
+        (r != null && c < 0 && weRefused('member', entry.key, remoteAt)) ||
+        ((r == null || c > 0) &&
             theyRefused('member', entry.key, entry.value.updatedAt));
     if (!same && !agreedToDisagree) membersIdentical = false;
   }
@@ -978,10 +1273,15 @@ DigestDiff compareDigest({
     senderHasNewer: senderHasNewer,
     identical:
         !senderHasNewer &&
+        unresolved.isEmpty &&
         expensesToSend.isEmpty &&
         settlementsToSend.isEmpty &&
         !sendGroupMeta &&
         metaMatches &&
         membersIdentical,
+    differingIds: differing,
+    unresolvedBuckets: unresolved,
+    bucketBits: buckets?.bits,
+    detailBuckets: buckets?.detail ?? const {},
   );
 }

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/expense_model.dart';
 import '../../../models/record_signature.dart';
+import '../../sync/record_version.dart';
 
 part 'expenses_dao.g.dart';
 
@@ -24,29 +25,44 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
           .watch()
           .map((rows) => rows.map(_toSettlementModel).toList());
 
-  /// Last-writer-wins upsert: writes only when no existing row has a newer
-  /// [Expenses.updatedAt]. The companion must set `updatedAt`. Lets concurrent
-  /// edits/deletes of the same expense converge deterministically across
-  /// devices (same pattern as [MembersDao.upsertMemberLww]).
+  /// Last-writer-wins upsert: writes unless the stored row is a **newer
+  /// version** — a higher [Expenses.updatedAt], or the same clock with a
+  /// higher content hash (G27 tie-break, see `record_version.dart`). The same
+  /// version is re-written (idempotent; lets `pendingSign` → signed land at
+  /// the same clock). Read + write run in one transaction, so concurrent
+  /// inbound versions resolve deterministically. The companion must set
+  /// `id` and `updatedAt`.
   Future<void> upsertExpenseLww(ExpensesCompanion expense) =>
-      into(expenses).insert(
-        expense,
-        onConflict: DoUpdate(
-          (_) => expense,
-          where: (old) =>
-              old.updatedAt.isSmallerOrEqualValue(expense.updatedAt.value),
-        ),
-      );
+      transaction(() async {
+        final old = await (select(
+          expenses,
+        )..where((t) => t.id.equals(expense.id.value))).getSingleOrNull();
+        if (old != null &&
+            compareVersions(
+                  expenseVersion(_expenseFromCompanion(expense)),
+                  expenseVersion(_toExpenseModel(old)),
+                ) <
+                0) {
+          return;
+        }
+        await into(expenses).insertOnConflictUpdate(expense);
+      });
 
   Future<void> upsertSettlementLww(SettlementsCompanion settlement) =>
-      into(settlements).insert(
-        settlement,
-        onConflict: DoUpdate(
-          (_) => settlement,
-          where: (old) =>
-              old.updatedAt.isSmallerOrEqualValue(settlement.updatedAt.value),
-        ),
-      );
+      transaction(() async {
+        final old = await (select(
+          settlements,
+        )..where((t) => t.id.equals(settlement.id.value))).getSingleOrNull();
+        if (old != null &&
+            compareVersions(
+                  settlementVersion(_settlementFromCompanion(settlement)),
+                  settlementVersion(_toSettlementModel(old)),
+                ) <
+                0) {
+          return;
+        }
+        await into(settlements).insertOnConflictUpdate(settlement);
+      });
 
   Future<List<ExpenseModel>> getExpensesForRoom(String roomId) =>
       (select(expenses)
@@ -162,4 +178,34 @@ SettlementsCompanion settlementCompanion(SettlementModel s) =>
       sig: Value(s.sig?.encode()),
       origin: Value(s.origin?.encode()),
       pendingSign: Value(s.pendingSign),
+    );
+
+T _v<T>(Value<T> v, T fallback) => v.present ? v.value : fallback;
+
+/// The content fields of a (possibly partial) companion as a model — only
+/// what the G27 version hash covers.
+ExpenseModel _expenseFromCompanion(ExpensesCompanion c) => ExpenseModel(
+  id: c.id.value,
+  roomId: _v(c.roomId, ''),
+  description: _v(c.description, ''),
+  amountCents: _v(c.amountCents, 0),
+  currency: _v(c.currency, 'EUR'),
+  paidBy: _v(c.paidBy, ''),
+  splitsJson: _v(c.splitsJson, '{}'),
+  createdAt: _v(c.createdAt, 0),
+  updatedAt: c.updatedAt.value,
+  deleted: _v(c.deleted, false),
+);
+
+SettlementModel _settlementFromCompanion(SettlementsCompanion c) =>
+    SettlementModel(
+      id: c.id.value,
+      roomId: _v(c.roomId, ''),
+      amountCents: _v(c.amountCents, 0),
+      currency: _v(c.currency, 'EUR'),
+      fromUser: _v(c.fromUser, ''),
+      toUser: _v(c.toUser, ''),
+      createdAt: _v(c.createdAt, 0),
+      updatedAt: c.updatedAt.value,
+      deleted: _v(c.deleted, false),
     );

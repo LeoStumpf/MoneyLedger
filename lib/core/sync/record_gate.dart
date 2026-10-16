@@ -8,6 +8,7 @@ import '../database/daos/members_dao.dart';
 import '../database/daos/signing_dao.dart';
 import 'ledger_payloads.dart';
 import 'record_signing.dart';
+import 'record_version.dart';
 import 'record_verifier.dart';
 
 /// Applies inbound record versions to Drift **only if they verify** (G6).
@@ -15,10 +16,13 @@ import 'record_verifier.dart';
 /// backup restores.
 ///
 /// Per version:
-/// 1. Not newer than what we hold (`updated_at <= stored`) → no-op, nothing
-///    is verified (an unsigned relay of a legacy row we already hold at the
-///    same clock is therefore harmless).
-/// 2. Not newer than a version we already refused → dropped silently.
+/// 1. Not a newer version than what we hold → no-op, nothing is verified
+///    (an unsigned relay of a legacy row we already hold at the same clock is
+///    therefore harmless). "Newer" = higher `updated_at`, or the same clock
+///    with a higher content hash (G27 tie-break, `record_version.dart`);
+///    same clock + same hash is the same version.
+/// 2. Not newer than a version we already refused → dropped silently (by
+///    clock only: a refusal at `T` also blocks other versions stamped `T`).
 /// 3. [RecordVerifier] decides; a refused version is logged and — for the
 ///    recorded reasons — stored in `rejected_versions`, so our digest tells
 ///    peers to stop re-sending it (no repair loop).
@@ -107,7 +111,10 @@ class RecordGate {
     if (e == null) return false;
     final stored = await expenses.getExpenseById(e.id);
     if (!_isAlive()) return false;
-    if (stored != null && e.updatedAt <= stored.updatedAt) return false;
+    if (stored != null &&
+        !versionWins(expenseVersion(e), expenseVersion(stored))) {
+      return false;
+    }
     if (await _refusedBefore(e.roomId, RecordKind.expense, e.id, e.updatedAt)) {
       return false;
     }
@@ -140,7 +147,10 @@ class RecordGate {
     if (s == null) return false;
     final stored = await expenses.getSettlementById(s.id);
     if (!_isAlive()) return false;
-    if (stored != null && s.updatedAt <= stored.updatedAt) return false;
+    if (stored != null &&
+        !versionWins(settlementVersion(s), settlementVersion(stored))) {
+      return false;
+    }
     if (await _refusedBefore(
       s.roomId,
       RecordKind.settlement,
@@ -183,7 +193,10 @@ class RecordGate {
       m.groupId,
     )).where((x) => x.userId == m.userId).firstOrNull;
     if (!_isAlive()) return false;
-    if (current != null && m.updatedAt <= current.updatedAt) return false;
+    if (current != null &&
+        !versionWins(memberVersion(m), memberVersion(current))) {
+      return false;
+    }
     if (await _refusedBefore(
       m.groupId,
       RecordKind.member,
@@ -222,7 +235,10 @@ class RecordGate {
     if (g == null) return false;
     final stored = await groups.getGroup(g.roomId);
     if (!_isAlive()) return false;
-    if (stored != null && g.updatedAt <= stored.updatedAt) return false;
+    if (stored != null &&
+        !versionWins(groupMetaVersion(g), groupMetaVersion(stored))) {
+      return false;
+    }
     if (await _refusedBefore(
       g.roomId,
       RecordKind.meta,

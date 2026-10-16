@@ -116,6 +116,82 @@ Map<String, dynamic> buildBootstrapContent(
   if (deviceKeys.isNotEmpty) 'device_keys': deviceKeys,
 };
 
+/// G14: a bootstrap split into to-device-sized **parts**
+/// ([budget] bytes of JSON each, see `payload_budget.dart`). Every part is a
+/// complete, self-contained bootstrap of the same group: it repeats the
+/// signed group meta, **all** members and the `device_keys` attestations,
+/// and carries a disjoint slice of the expenses / settlements (tombstones
+/// included). So parts are idempotent and order-independent (each record is
+/// verified + merged LWW on its own): whichever part arrives first creates
+/// an unknown group (TOFU on its verified meta), passes the G9 re-add check
+/// (it lists us) and makes the sender an active member for the next parts.
+/// `part` / `parts` (1-based) are informational only.
+///
+/// A snapshot that fits [budget] is one part without `part` / `parts` —
+/// byte-identical to [buildBootstrapContent]. Rows still `pendingSign` are
+/// left out like there. The header (meta + members + keys) is assumed to fit
+/// (≈ 0.4 KB per member: fine up to ~80 members); each part gets at least
+/// one record regardless.
+List<Map<String, dynamic>> buildBootstrapParts(
+  String groupId,
+  GroupModel? group,
+  List<MemberModel> members,
+  List<ExpenseModel> expenses,
+  List<SettlementModel> settlements, {
+  Map<String, Map<String, String>> deviceKeys = const {},
+  required int budget,
+}) {
+  final full = buildBootstrapContent(
+    groupId,
+    group,
+    members,
+    expenses,
+    settlements,
+    deviceKeys: deviceKeys,
+  );
+  if (_jsonBytes(full) <= budget) return [full];
+  final header = {...full, 'expenses': const [], 'settlements': const []};
+  // `"part":NNNN,"parts":NNNN,` + slack.
+  final headerBytes = _jsonBytes(header) + 32;
+  final records = <(bool, Map<String, dynamic>, int)>[
+    for (final e in full['expenses'] as List)
+      (true, e as Map<String, dynamic>, _jsonBytes(e) + 1),
+    for (final s in full['settlements'] as List)
+      (false, s as Map<String, dynamic>, _jsonBytes(s) + 1),
+  ];
+  final slices = <List<(bool, Map<String, dynamic>, int)>>[];
+  var current = <(bool, Map<String, dynamic>, int)>[];
+  var size = headerBytes;
+  for (final r in records) {
+    if (current.isNotEmpty && size + r.$3 > budget) {
+      slices.add(current);
+      current = [];
+      size = headerBytes;
+    }
+    current.add(r);
+    size += r.$3;
+  }
+  if (current.isNotEmpty || slices.isEmpty) slices.add(current);
+  return [
+    for (final (i, slice) in slices.indexed)
+      {
+        ...header,
+        'part': i + 1,
+        'parts': slices.length,
+        'expenses': [
+          for (final r in slice)
+            if (r.$1) r.$2,
+        ],
+        'settlements': [
+          for (final r in slice)
+            if (!r.$1) r.$2,
+        ],
+      },
+  ];
+}
+
+int _jsonBytes(Object? json) => utf8.encode(jsonEncode(json)).length;
+
 /// Every (user, device, key) that signed something in a snapshot — the
 /// signers whose keys a bootstrap / backup attests.
 Set<({String user, String device, String key})> snapshotSigners(

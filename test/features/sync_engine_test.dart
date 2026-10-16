@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/sync/ledger_payloads.dart';
+import 'package:money_ledger/core/sync/record_version.dart';
 import 'package:money_ledger/core/sync/sync_engine.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
@@ -78,8 +79,15 @@ void main() {
       expect(content['group'], 'g1');
       expect(content['reply'], false);
       expect(content['meta_updated_at'], 7);
-      expect(content['expenses'], {'e1': 10, 'e2': 20}); // tombstone included
-      expect(content['settlements'], {'s1': 30});
+      // id → "<updatedAt>:<hash8>" (G27), tombstone included.
+      final exp = content['expenses'] as Map;
+      expect(exp.keys, {'e1', 'e2'});
+      expect(parseDigestVersion(exp['e1'])!.at, 10);
+      expect(parseDigestVersion(exp['e2'])!.at, 20);
+      expect(parseDigestVersion(exp['e1'])!.hash, hasLength(8));
+      final st = content['settlements'] as Map;
+      expect(parseDigestVersion(st['s1'])!.at, 30);
+      expect(content['meta_hash'], hasLength(8));
       expect(content['members'], {
         '@a:x.org': {
           'status': 'active',

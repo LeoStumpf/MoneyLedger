@@ -2,7 +2,7 @@
 
 Known gaps, risks, and durable design limitations. Resolved work is summarised at
 the bottom; the architecture itself is documented in [`CLAUDE.md`](../CLAUDE.md).
-Last reviewed: 2026-10-15. **The prioritised, actionable list (major/minor)
+Last reviewed: 2026-10-16. **The prioritised, actionable list (major/minor)
 lives in [`plan.md`](../plan.md) → Phase G**; this file keeps the background.
 
 ---
@@ -38,10 +38,40 @@ on receipt (see CLAUDE.md "Signed records (G6)" and
   members/devices (re-edit to sign). Unsigned member / meta rows of an old
   group likewise; group meta of such a group must be re-saved (edit) before a
   new member can be bootstrapped.
-- **Size.** Signatures roughly double a record's wire size — tighter single
-  message bootstrap ceiling (G14).
-- Same-clock different versions (two signed versions with one `updated_at`):
-  first stored wins (G27 tie-break still open).
+- **Size.** Signatures roughly double a record's wire size (~0.86 KB per
+  record in a bootstrap) — handled by chunked bootstraps (G14, below).
+- **Refusal granularity is the clock.** A refused version at `T` also blocks
+  any other version of that record stamped exactly `T` (G27 compares hashes
+  only between versions that pass the gate).
+
+### Scalability (G14) — measured ceilings
+Real limit: Synapse refuses to-device content > **65 536 bytes** per device
+(`MAX_TO_DEVICE_CONTENT_SIZE`, HTTP 413; not yet in the spec — matrix-spec
+PR #2340). Encrypted (Olm, base64) that leaves ≈ **48.4 KB** of our JSON per
+message; we pack to **40 KB** (`payload_budget.dart`). Measured
+(`test/core/payload_size_test.dart`, 4 members, signed v2 records):
+
+| records | flat digest | single bootstrap | bootstrap parts | bucketed summary |
+|---|---|---|---|---|
+| 100 | 8 KB | 89 KB | 3 | (flat) |
+| 1 000 | 66 KB | 860 KB | 24 | 2.6 KB (64 buckets) |
+| 5 000 | 322 KB | 4.3 MB | 117 | 9.3 KB (512 buckets) |
+
+Unchunked, a bootstrap broke at **~52 records** (new members / new devices of
+any real group would silently get nothing — the SDK only logs the 413) and a
+flat digest at **~720 records**. Now: chunked bootstraps + bucketed digests.
+Remaining ceilings / costs:
+- **Members per group** — every bootstrap part and every digest repeats all
+  members (~0.4 KB each, signed): fine to ~80 members.
+- **Records per group** — the bucket summary is capped at 2 048 buckets
+  (~31 KB): ~30k records. A full restore of 5k records is ~117 messages.
+- **Hashing cost** — every digest hashes every record (SHA-256 over
+  canonical JSON; ~150 ms per 5k records on desktop). Cache per-row hashes
+  (a DB column) if phones show it.
+- A refused version (G6) keeps its bucket's hash different, so each cycle
+  costs one extra three-message detail exchange for that bucket (bounded;
+  still counts as in sync).
+- **Wall-clock LWW**: within the 5-min clamp a skewed clock can still win.
 
 ### Device-verification enforcement (G11) — limits
 Opt-in "Only sync with verified devices" (per account, device-local, default
@@ -103,12 +133,12 @@ Durable constraints of the current design — not bugs, but worth knowing.
   its device signature. Digest member gossip is verified per entry, and
   digests from non-participants are ignored (rule 8). Residual risks above.
 - **Wall-clock LWW.** Merges are whole-record last-writer-wins on `updated_at`
-  (ms epoch). Inbound `updated_at` is clamped to `now + 5 min` so a skewed/hostile
-  future clock can't win every merge forever; within that window a later honest
-  clock still wins.
-- **Digest ceiling.** A digest is O(records in group) — fine to ~1,000
-  records/group under to-device size limits. The `"v"` protocol-version field on
-  every payload enables sharding later.
+  (ms epoch), ties broken by the content hash (G27 — deterministic, but not
+  "fair": the higher hash wins, whoever wrote it). Inbound `updated_at` is
+  clamped to `now + 5 min` so a skewed/hostile future clock can't win every
+  merge forever; within that window a later honest clock still wins.
+- **Message size.** One to-device message carries ≤ 64 KiB encrypted;
+  bootstraps are chunked and large digests bucketed (G14 above).
 - **Port boundary.** Sync/transport goes through `LedgerTransport`
   (`MatrixLedgerTransport`), auth through `AuthGateway` (`MatrixAuthGateway`), and
   device verification through `DeviceGateway` (`MatrixDeviceGateway`). The only
@@ -119,6 +149,11 @@ Durable constraints of the current design — not bugs, but worth knowing.
 ---
 
 ## Resolved
+
+- **G14 + G27 — message size + LWW tie-break** (2026-10-16): measured the
+  to-device ceiling; chunked bootstraps (were broken above ~52 records),
+  hash-bucketed digests (above ~720), a size guard in the transport; equal
+  `updated_at` now resolves by content hash in every upsert and digest.
 
 - **Phase F — public-release hardening** (2026-06-14): membership-gated inbound
   records + clock clamp; `SyncHealth` failure surfacing + retry; auth edge cases
