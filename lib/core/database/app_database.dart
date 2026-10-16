@@ -221,11 +221,24 @@ class AppDatabase extends _$AppDatabase {
   /// "Can't re-open a database after closing it".
   bool get isClosed => _closed;
 
+  Future<void>? _closing;
+
+  /// Idempotent: a second call (e.g. the provider's dispose after an explicit
+  /// close before deleting local data, G40) waits for the first.
   @override
   Future<void> close() {
     _closed = true;
-    return super.close();
+    return _closing ??= super.close();
   }
+
+  /// Deletes **every** row of this database (G40 "delete local data", and
+  /// the local ledger once it was adopted into an account) in one
+  /// transaction. The schema stays.
+  Future<void> wipeAll() => transaction(() async {
+    for (final table in allTables) {
+      await delete(table).go();
+    }
+  });
 
   /// Removes every local row of [groupId] — group meta, participants,
   /// expenses, settlements (tombstones included) and peer sync bookkeeping —

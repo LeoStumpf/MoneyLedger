@@ -8,6 +8,7 @@ import '../background/background_scheduler.dart';
 import '../background/background_sync_provider.dart';
 import '../database/app_database.dart';
 import '../matrix/transport_provider.dart';
+import '../session/device_prefs.dart';
 import 'demo_auth_gateway.dart';
 import 'demo_device_gateway.dart';
 import 'demo_mode.dart';
@@ -40,5 +41,9 @@ List<Override> demoOverrides({AppDatabase Function()? openDatabase}) {
     ),
     backgroundSyncSupportedProvider.overrideWithValue(false),
     ssoCallbackProvider.overrideWith((ref) => const Stream<Uri>.empty()),
+    // G39: the demo starts signed in — no welcome, no stored preferences.
+    devicePrefsStoreProvider.overrideWithValue(
+      InMemoryDevicePrefsStore({'welcome_seen': '1'}),
+    ),
   ];
 }

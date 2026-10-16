@@ -17,6 +17,8 @@ import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/core/router.dart';
+import 'package:money_ledger/core/session/app_session.dart';
+import 'package:money_ledger/core/session/device_prefs.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/auth/sso_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
@@ -47,9 +49,16 @@ void main() {
   late _Flags flags;
   late ProviderContainer c;
 
-  ProviderContainer makeContainer({Duration? timeout, ManualTimers? timers}) {
+  ProviderContainer makeContainer({
+    Duration? timeout,
+    ManualTimers? timers,
+    Map<String, String> prefs = const {'welcome_seen': '1'},
+  }) {
     final container = ProviderContainer(
       overrides: [
+        devicePrefsStoreProvider.overrideWithValue(
+          InMemoryDevicePrefsStore(prefs),
+        ),
         authGatewayProvider.overrideWith((ref) => gateway),
         loginFlowsProvider.overrideWith(
           (ref, input) => Future.value(LoginFlowsResult.empty),
@@ -62,8 +71,12 @@ void main() {
         accountDatabaseOpenerProvider.overrideWithValue(
           (_) => AppDatabase.forTesting(NativeDatabase.memory()),
         ),
+        localDatabaseOpenerProvider.overrideWithValue(
+          () => AppDatabase.forTesting(NativeDatabase.memory()),
+        ),
         onboardingSeenStreamProvider.overrideWith((ref) {
-          final account = ref.watch(accountUserIdProvider);
+          // The ledger's flag: an account's, or local mode's (G40).
+          final account = ref.watch(ledgerIdentityProvider);
           if (account == null) return Stream.value(true);
           return flags.of(account).stream;
         }),
@@ -231,7 +244,7 @@ void main() {
       flags.of('@alice:x.test').add(false);
       await flush(tester);
       expect(location(router), '/onboarding');
-      expect(find.text('Welcome to MoneyLedger'), findsOneWidget);
+      expect(find.text("You're all set"), findsOneWidget);
 
       flags.of('@alice:x.test').add(true);
       await flush(tester);
@@ -271,6 +284,62 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       await flush(tester);
       expect(location(router), '/groups');
+    });
+
+    testWidgets('G39/G40 first open: welcome → use without account → local '
+        'onboarding → groups; delete local data → login', (tester) async {
+      c = makeContainer(timeout: const Duration(minutes: 5), prefs: const {});
+      final router = await pumpApp(tester);
+      expect(location(router), '/welcome');
+      expect(find.text('Share expenses, fairly'), findsOneWidget);
+
+      // The welcome's "Use without an account".
+      await tester.runAsync(
+        () => c.read(devicePrefsProvider.notifier).markWelcomeSeen(),
+      );
+      router.go('/local-setup');
+      await flush(tester);
+      expect(location(router), '/local-setup');
+
+      await tester.runAsync(
+        () => c.read(devicePrefsProvider.notifier).startLocalProfile('Lea'),
+      );
+      await flush(tester);
+      expect(c.read(appSessionProvider), AppSessionKind.local);
+      expect(location(router), '/splash', reason: 'local flag loading');
+
+      flags.of(kLocalAccountId).add(false);
+      await flush(tester);
+      expect(location(router), '/onboarding');
+      expect(find.text('Everything stays on this device'), findsOneWidget);
+
+      flags.of(kLocalAccountId).add(true);
+      await flush(tester);
+      expect(location(router), '/groups');
+      // Login / welcome are not for local mode.
+      router.go('/login');
+      await flush(tester);
+      expect(location(router), '/groups');
+
+      // Settings → Connect a Matrix account → the login page, cancellable.
+      await tester.runAsync(
+        () => c.read(devicePrefsProvider.notifier).setConnecting(true),
+      );
+      await flush(tester);
+      expect(location(router), '/login');
+      await tester.runAsync(
+        () => c.read(devicePrefsProvider.notifier).setConnecting(false),
+      );
+      await flush(tester);
+      expect(location(router), '/groups');
+
+      // Leave local mode.
+      await tester.runAsync(
+        () => c.read(devicePrefsProvider.notifier).endLocalProfile(),
+      );
+      await flush(tester);
+      expect(location(router), '/login');
+      expect(gateway.requestsStarted, 0);
     });
   });
 }

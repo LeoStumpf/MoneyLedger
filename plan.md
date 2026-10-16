@@ -428,24 +428,24 @@ all members), ~30k records (2,048-bucket summary). See CLAUDE.md "Message size".
 Never implemented so far (only local *participants* exist; the app user always
 needs a Matrix login). Architecture already allows it (local-first Drift,
 transport is a port; the offline demo runs without Matrix).
-- [ ] "Use without account" on the welcome/login: asks for your name, opens a
+- [x] "Use without account" on the welcome/login: asks for your name, opens a
       device-local ledger DB (`money_ledger_local`), no Matrix client, no
       sync/background jobs; all groups local-only, other people = local
       participants; backup/CSV work as usual
-- [ ] Clear "local mode" indicator + explanation (nothing leaves this device;
+- [x] Clear "local mode" indicator + explanation (nothing leaves this device;
       back up!) in groups page / settings; features needing Matrix (add by
       Matrix ID, devices, verification, sync status) hidden or explained
-- [ ] Upgrade path: "Connect a Matrix account" later → sign in, local data is
+- [x] Upgrade path: "Connect a Matrix account" later → sign in, local data is
       adopted into that account's DB (reuse the G4 adoption mechanism), your
       local "me" participant becomes claimed by your MXID, groups can then
       invite Matrix members; local DB marked adopted
-- [ ] Sign out / switch back to local mode semantics defined + tested;
-      EN + DE; tests; verified on the fresh installs in G38
+- [x] Sign out / switch back to local mode semantics defined + tested;
+      EN + DE; tests; verified on a fresh install (emulator-5556); fresh-install recheck on phone/5554 in G38
 
 ### G39. First-open welcome before login (Leo, 2026-10-16) 🟠
 Today the intro (`OnboardingPage`) only appears *after* login (per-account
 flag). A first-time user lands on a bare Matrix login without knowing why.
-- [ ] Device-wide "welcome seen" flag (works signed out; native + web) and a
+- [x] Device-wide "welcome seen" flag (works signed out; native + web) and a
       short swipeable welcome before the login page: what MoneyLedger is
       (shared expense tracking, Splitwise/Tricount-style), free + open source
       (AGPL, link to the repo), no MoneyLedger server — data stays on your
@@ -456,9 +456,17 @@ flag). A first-time user lands on a bare Matrix login without knowing why.
       group's records, E2EE; the homeserver sees only ciphertext + who talks
       to whom; nothing else); CTA "Sign in" / "Create account" / "Use
       without account" (G40)
-- [ ] Post-login onboarding slimmed to what's still new (backup tip etc.),
+- [x] Post-login onboarding slimmed to what's still new (backup tip etc.),
       no repetition; "How it works" reachable again from About
-- [ ] EN + DE, design system, tests; verified on the fresh installs in G38
+- [x] EN + DE, design system, tests; verified on a fresh install (emulator-5556); fresh-install recheck on phone/5554 in G38
+
+### G41. Local-mode follow-ups (found in G40) 🟢
+- [ ] Restoring a backup made in local mode into a Matrix account: apply the
+      same adoption step as *Connect a Matrix account* (re-claim `local:self`
+      participant by the MXID, sign pending rows) instead of keeping rows
+      unsigned + the `local:self` claim
+- [ ] Remove the empty `money_ledger_local` DB file after deletion / adoption
+      (today it stays on disk, empty)
 
 ### G38. App id → `io.github.leostumpf.moneyledger` (Leo, 2026-10-16) 🟠
 Leo's naming scheme (ZoneCraft, timeLoggBook): `io.github.leostumpf.<name>`.
@@ -530,7 +538,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G36+ — verification follow-ups + robustness leftovers (G29/G30/G31/G33/G37)
 - [ ] G37 — scale follow-ups (optional)
 - [ ] *(G32+ — newly discovered points)*
-- [ ] G40+G39 — fully local mode (no Matrix account) + first-open welcome
+- [x] G40+G39 — fully local mode (no Matrix account) + first-open welcome
+- [ ] G41 — local-mode follow-ups (restore adoption, empty local DB file)
 - [ ] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
 - [~] G18 — final release review
 

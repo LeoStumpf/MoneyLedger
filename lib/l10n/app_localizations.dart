@@ -968,42 +968,6 @@ abstract class AppLocalizations {
   /// **'Remove'**
   String get remove;
 
-  /// No description provided for @onboardingWelcome.
-  ///
-  /// In en, this message translates to:
-  /// **'Welcome to MoneyLedger'**
-  String get onboardingWelcome;
-
-  /// No description provided for @onboardingTagline.
-  ///
-  /// In en, this message translates to:
-  /// **'Split expenses without a middleman.'**
-  String get onboardingTagline;
-
-  /// No description provided for @onboardingLocalTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Your data lives on your device'**
-  String get onboardingLocalTitle;
-
-  /// No description provided for @onboardingLocalBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Groups, expenses and balances are stored locally — there is no central MoneyLedger server holding your finances.'**
-  String get onboardingLocalBody;
-
-  /// No description provided for @onboardingSyncTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Members sync peer-to-peer'**
-  String get onboardingSyncTitle;
-
-  /// No description provided for @onboardingSyncBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Changes are shared directly between members over end-to-end-encrypted Matrix messages. The homeserver only relays ciphertext. Devices sync while the app runs and, on Android, periodically in the background.'**
-  String get onboardingSyncBody;
-
   /// No description provided for @onboardingAddTitle.
   ///
   /// In en, this message translates to:
@@ -1499,7 +1463,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyIntro.
   ///
   /// In en, this message translates to:
-  /// **'MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.'**
+  /// **'MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account, or use the app without any account (local mode) — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.'**
   String get privacyIntro;
 
   /// No description provided for @privacyLedgerTitle.
@@ -1583,7 +1547,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyDeleteBody.
   ///
   /// In en, this message translates to:
-  /// **'• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
+  /// **'• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
   String get privacyDeleteBody;
 
   /// No description provided for @privacyContactTitle.
@@ -2773,6 +2737,384 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Row {row}: {problem}'**
   String csvImportInvalidRow(int row, Object problem);
+
+  /// G39 welcome: jump to the last page
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get welcomeSkip;
+
+  /// G39 welcome: next page
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get welcomeNext;
+
+  /// G39 welcome: previous page
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get welcomeBack;
+
+  /// G39 "How it works": close
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get welcomeDone;
+
+  /// G39 welcome: page indicator (screen readers)
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page} of {count}'**
+  String welcomePageOf(int page, int count);
+
+  /// G39 welcome page 1 title
+  ///
+  /// In en, this message translates to:
+  /// **'Share expenses, fairly'**
+  String get welcomeIntroTitle;
+
+  /// G39 welcome page 1 body
+  ///
+  /// In en, this message translates to:
+  /// **'MoneyLedger keeps track of who paid what in a group — a trip, a shared flat, a dinner — and shows who owes whom, like Splitwise or Tricount. Split equally or unevenly, record payments, settle up.'**
+  String get welcomeIntroBody;
+
+  /// G39 welcome page 2 title
+  ///
+  /// In en, this message translates to:
+  /// **'Free, open source, no server'**
+  String get welcomeOpenTitle;
+
+  /// G39 welcome page 2 body
+  ///
+  /// In en, this message translates to:
+  /// **'MoneyLedger is free software (AGPL-3.0) — anyone can read its source code. There is no MoneyLedger server and no MoneyLedger account: your groups and expenses are stored only on your devices.'**
+  String get welcomeOpenBody;
+
+  /// G39 welcome: link to the public repository
+  ///
+  /// In en, this message translates to:
+  /// **'View the source code'**
+  String get welcomeSourceLink;
+
+  /// G39 welcome page 3 title; also the login page link
+  ///
+  /// In en, this message translates to:
+  /// **'What is Matrix?'**
+  String get welcomeMatrixTitle;
+
+  /// G39 welcome page 3 body
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other members of your groups — that is why you sign in.'**
+  String get welcomeMatrixBody;
+
+  /// G39 welcome page 4 title
+  ///
+  /// In en, this message translates to:
+  /// **'Who sees what'**
+  String get welcomePrivacyTitle;
+
+  /// G39 welcome page 4, point 1
+  ///
+  /// In en, this message translates to:
+  /// **'The members of a group get that group\'s expenses and payments on their devices — end-to-end encrypted.'**
+  String get welcomePrivacyMembers;
+
+  /// G39 welcome page 4, point 2
+  ///
+  /// In en, this message translates to:
+  /// **'Homeservers only relay encrypted messages: they see which accounts exchange them and when, never the content, and keep nothing once it is delivered.'**
+  String get welcomePrivacyServer;
+
+  /// G39 welcome page 4, point 3
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing else: no MoneyLedger server, no tracking, no ads.'**
+  String get welcomePrivacyNothingElse;
+
+  /// G39 welcome: choices page title
+  ///
+  /// In en, this message translates to:
+  /// **'How do you want to start?'**
+  String get welcomeStartTitle;
+
+  /// G39 welcome: choices page body
+  ///
+  /// In en, this message translates to:
+  /// **'With a Matrix account you can share groups with others and sync your devices. Without one, everything stays on this device.'**
+  String get welcomeStartBody;
+
+  /// G39 welcome choice
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Matrix'**
+  String get welcomeSignIn;
+
+  /// G39 welcome choice
+  ///
+  /// In en, this message translates to:
+  /// **'Create a Matrix account'**
+  String get welcomeCreateAccount;
+
+  /// G39/G40 welcome choice + login page link + local setup title
+  ///
+  /// In en, this message translates to:
+  /// **'Use without an account'**
+  String get welcomeUseLocal;
+
+  /// G39 welcome: hint under the local choice
+  ///
+  /// In en, this message translates to:
+  /// **'You can connect a Matrix account later — your groups come along.'**
+  String get welcomeUseLocalHint;
+
+  /// G39: About tile + title of the welcome pages read again
+  ///
+  /// In en, this message translates to:
+  /// **'How MoneyLedger works'**
+  String get howItWorksTitle;
+
+  /// G40 local setup point
+  ///
+  /// In en, this message translates to:
+  /// **'Your groups and expenses stay on this device only — nothing is sent anywhere.'**
+  String get localSetupStaysHere;
+
+  /// G40 local setup point
+  ///
+  /// In en, this message translates to:
+  /// **'Add the other people by name.'**
+  String get localSetupPeople;
+
+  /// G40 local setup point
+  ///
+  /// In en, this message translates to:
+  /// **'Back up regularly: if this device is lost or reset, the data is gone.'**
+  String get localSetupBackup;
+
+  /// G40 local setup point
+  ///
+  /// In en, this message translates to:
+  /// **'You can connect a Matrix account later to share your groups.'**
+  String get localSetupConnectLater;
+
+  /// G40 local setup: the local ledger was adopted into an account earlier
+  ///
+  /// In en, this message translates to:
+  /// **'Your earlier local groups were moved into {account} when you connected it — sign in with that account to see them. Local mode starts with an empty ledger.'**
+  String localSetupAdoptedNotice(Object account);
+
+  /// G40 local setup: name field
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get localSetupNameLabel;
+
+  /// G40 local setup: name helper
+  ///
+  /// In en, this message translates to:
+  /// **'How you appear in your groups'**
+  String get localSetupNameHelper;
+
+  /// G40: name required (local setup, add person in local mode)
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name'**
+  String get localSetupNameRequired;
+
+  /// G40 local setup: start button
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get localSetupStart;
+
+  /// G40: groups app bar indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Local only'**
+  String get localModeChip;
+
+  /// G40: explanation sheet / settings section title
+  ///
+  /// In en, this message translates to:
+  /// **'Local mode'**
+  String get localModeSheetTitle;
+
+  /// G40 explanation sheet
+  ///
+  /// In en, this message translates to:
+  /// **'You are using MoneyLedger without an account. Nothing leaves this device: nothing is synced, and the other people are only names in your groups.'**
+  String get localModeSheetBody;
+
+  /// G40 explanation sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Back up regularly (Settings → Back up all groups) — nobody else has a copy.'**
+  String get localModeBackupHint;
+
+  /// G40 explanation sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a Matrix account to share groups with others and sync your devices. Your local groups move into that account.'**
+  String get localModeConnectHint;
+
+  /// G40 settings section subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'No account — everything stays on this device.'**
+  String get localModeSettingsBody;
+
+  /// G40 settings: the local profile name
+  ///
+  /// In en, this message translates to:
+  /// **'Your name: {name}'**
+  String localProfileName(Object name);
+
+  /// G40 settings: name tile subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Used for new groups — rename yourself inside a group on its members page'**
+  String get localProfileNameHint;
+
+  /// G40: start the upgrade from local mode
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a Matrix account'**
+  String get connectMatrixAccount;
+
+  /// G40 settings tile subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Share your groups and sync your devices — your local data moves into the account'**
+  String get connectMatrixAccountBody;
+
+  /// G40: login page subtitle while connecting
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in — your local groups then move into this Matrix account'**
+  String get connectSignInSubtitle;
+
+  /// G40 settings: leave local mode
+  ///
+  /// In en, this message translates to:
+  /// **'Delete local data'**
+  String get deleteLocalData;
+
+  /// G40 settings tile subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Removes all groups from this device and ends local mode'**
+  String get deleteLocalDataBody;
+
+  /// G40 confirmation title
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all local data?'**
+  String get deleteLocalDataConfirmTitle;
+
+  /// G40 confirmation body
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Local mode ends.} =1{The group and all its expenses and payments are deleted from this device.} other{All {count} groups with their expenses and payments are deleted from this device.}} There is no other copy unless you saved a backup. This can\'t be undone.'**
+  String deleteLocalDataConfirmBody(int count);
+
+  /// G40 confirmation button
+  ///
+  /// In en, this message translates to:
+  /// **'Delete everything'**
+  String get deleteLocalDataConfirmAction;
+
+  /// G40 members page: own participant in local mode
+  ///
+  /// In en, this message translates to:
+  /// **'You (on this device)'**
+  String get localModeYouSubtitle;
+
+  /// G40 members page hint
+  ///
+  /// In en, this message translates to:
+  /// **'Local mode: people are added by name. Connect a Matrix account (Settings) to invite them.'**
+  String get localModeMembersHint;
+
+  /// G40 groups page banner after connecting
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Your local group now belongs to {account}.} other{Your {count} local groups now belong to {account}.}} You can invite members by their Matrix ID.'**
+  String localAdoptedBanner(int count, Object account);
+
+  /// Onboarding (after login / local start) title
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all set'**
+  String get onboardingReadyTitle;
+
+  /// Onboarding subtitle (Matrix)
+  ///
+  /// In en, this message translates to:
+  /// **'A few things worth knowing now that you are signed in.'**
+  String get onboardingReadyBody;
+
+  /// Onboarding subtitle (local mode)
+  ///
+  /// In en, this message translates to:
+  /// **'A few things worth knowing about local mode.'**
+  String get onboardingReadyLocalBody;
+
+  /// Onboarding card (Matrix)
+  ///
+  /// In en, this message translates to:
+  /// **'Syncs while you are away'**
+  String get onboardingBackgroundTitle;
+
+  /// Onboarding card (Matrix)
+  ///
+  /// In en, this message translates to:
+  /// **'Members\' devices exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).'**
+  String get onboardingBackgroundBody;
+
+  /// Onboarding card (local mode)
+  ///
+  /// In en, this message translates to:
+  /// **'Everything stays on this device'**
+  String get onboardingLocalOnlyTitle;
+
+  /// Onboarding card (local mode)
+  ///
+  /// In en, this message translates to:
+  /// **'No account, no sync: create groups and add the other people by name. The \"Local only\" chip on the groups page explains it again.'**
+  String get onboardingLocalOnlyBody;
+
+  /// Onboarding card (local mode)
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.'**
+  String get onboardingBackupLocalBody;
+
+  /// Onboarding card (local mode)
+  ///
+  /// In en, this message translates to:
+  /// **'Share later'**
+  String get onboardingConnectLaterTitle;
+
+  /// Onboarding card (local mode)
+  ///
+  /// In en, this message translates to:
+  /// **'Settings → Connect a Matrix account moves your groups into an account, so you can invite others and sync your devices.'**
+  String get onboardingConnectLaterBody;
+
+  /// Privacy policy section title (G40)
+  ///
+  /// In en, this message translates to:
+  /// **'Local mode (without an account)'**
+  String get privacyLocalTitle;
+
+  /// Privacy policy section body (G40)
+  ///
+  /// In en, this message translates to:
+  /// **'If you use MoneyLedger without a Matrix account, nothing leaves your device: no server is contacted and nothing is synced. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.'**
+  String get privacyLocalBody;
 }
 
 class _AppLocalizationsDelegate

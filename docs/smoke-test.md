@@ -26,11 +26,19 @@ Expected results are in *italics*.
 
 | # | Step → expected | How |
 |---|-----------------|-----|
-| 1.1 | Fresh install, launch → *login screen ("MoneyLedger / Sign in with your Matrix account"), homeserver prefilled `matrix.org`, no crash* | emu |
+| 1.1 | Fresh install, launch → *welcome (G39): 4 pages (what it is · free/open source/no server · what is Matrix · who sees what) + "How do you want to start?" with Sign in / Create a Matrix account / Use without an account*; Sign in → *login screen, homeserver prefilled `matrix.org`, no crash*; relaunch → *no welcome again* | emu |
 | 1.2 | Launcher label + icon → *app name and icon shown (currently `money_ledger` + Flutter default, see G12)* | emu |
-| 1.3 | First login of an account on this device → *onboarding "Welcome to MoneyLedger" shown once; "Get started" → Groups* | emu |
+| 1.3 | First login of an account on this device → *onboarding "You're all set" (invite / background sync / keep a copy — no repetition of the welcome) shown once; "Get started" → Groups* | emu |
 | 1.4 | Kill + relaunch → *goes straight to Groups (session restored, no onboarding, no hang on a slow sync)* | emu |
 | 1.5 | Airplane mode, relaunch → *Groups and all local data shown offline* | emu |
+
+| 1.6 | About → *How MoneyLedger works* and login → *What is Matrix?* → *the welcome pages again, no choices, Done goes back* (G39); device in German → *German texts* | emu |
+| 1.7 | Welcome → *Use without an account* → name → *local onboarding (Everything stays on this device / Keep a copy / Share later) → Groups with a "Local only" chip; no Devices / Sign out icons* (G40) | emu |
+| 1.8 | Local mode: create a group, *Add person* (name only — no Matrix ID field, no invite icon), expenses + a payment, balance, Back up all groups → *all works offline; no sync cloud; members page "You (on this device)"; logcat: no Matrix client / `[sync]` lines* | emu |
+| 1.9 | "Local only" chip → *sheet: nothing leaves this device, back up, connect an account* | emu |
+| 1.10 | Settings → *Connect a Matrix account* → login (close = cancel back to local) → sign in → *groups page banner "Your N local groups now belong to @…"; group members: you are the claimed member (MXID shown); logcat `[local] adopted N local group(s) … rows signed`* | emu |
+| 1.11 | After 1.10, another device of the same account → *the adopted group arrives (own-device digest → resync) with all entries; logcat there: no `[g6] refused`* | 2dev |
+| 1.12 | Signed out afterwards → *Use without an account* again → *setup page says the earlier local groups moved into @…; local mode starts empty*; Settings → *Delete local data* → confirm → *login page* | emu |
 
 ## 2. Login, registration, account switch
 
@@ -167,6 +175,32 @@ iOS Rust/XCFramework build that has never been done. `ios/Runner` is template
 level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
+
+**2026-10-16 (G39 welcome + G40 local mode)** · working tree on `cdb14e8` +
+G39/G40 · release APK. Spare emu-5556 (`zc-shot-phone`): uninstalled → fresh
+install (app locale DE): 1.1 welcome, 5 pages ("Ausgaben fair teilen" … "Wie
+möchtest du starten?") → 1.7 *Ohne Konto nutzen* → name "Lea" → local
+onboarding ("Alles bereit", 3 cards) → Groups with "Nur lokal" chip, no
+devices / sign-out icons. 1.8: group "G40Local", Max + Ina (name-only dialog,
+members hint, "Du (auf diesem Gerät)"), Pizza 30 € equal, Max → Lea 10 €
+payment, balance "Ina zahlt an dich 10 €", backup nudge shown → *Alle Gruppen
+sichern* (unencrypted) → `Download/moneyledger-backup-2026-10-16.json`, nudge
+gone; no sync cloud. Relaunch in local mode: logcat shows **no**
+`[client] buildMatrixClient` (first build of this pass still built one while
+the device prefs loaded — fixed: transport / device gateway wait for the
+prefs). App locale → EN: 1.6 About → *How MoneyLedger works* (4 pages, Done).
+1.10: Settings → *Connect a Matrix account* → Cancel (back to local) → again →
+signed in as test account B → logcat `[local] adopted 1 local group(s) into
+@…b… (6 rows signed)`, account onboarding, banner "Your local group now
+belongs to …". 1.11: emu-5554 (B's own device, app foreground) shows
+"G40Local · 3 members · You are owed €10.00", Pizza + payment, "Synced with
+all members"; **0** `refused` lines in its logcat (5556 logged the known
+G35 refusals of the pre-G6 "G7a" groups from 5554 — recreated in G38). 1.12:
+sign out → *Use without an account* → notice "Your earlier local groups were
+moved into @…b…", empty ledger → *Delete local data* → "Delete all local
+data?" → login page. 5556 signed out (device removed from B) and killed;
+final APK `install -r` on emu-5554 (session kept) and the phone. Screenshots
+`g40_*.png` (session scratchpad).
 
 **2026-10-16 (G36+ follow-ups)** · working tree on `78c5b46` + G36+ ·
 release APK via `adb install -r` on emu-5554 (B, EN) and phone (A, DE), no

@@ -232,6 +232,26 @@ kept (`legacy_cleanup_done = kept`), although adoption is single-account
 today: another claimed account can't adopt it anymore. A per-group adoption
 for further accounts would be needed to make use of it (test devices only).
 
+### Local mode / welcome (G39 / G40) — limits
+- A **backup made in local mode** restored into a Matrix account keeps its
+  rows unsigned (restored as legacy, G35 — peers refuse them if relayed) and
+  the user's participant stays claimed by `local:self` (not offered by the
+  "Which participant are you?" picker). The supported path is *Connect a
+  Matrix account* (adoption signs and re-claims). A restore that applies the
+  same adoption transform would fix it.
+- The adoption waits up to 30 s for the new device's signing key; if it isn't
+  ready, the sync engine signs the rows later — records edited in local mode
+  then have no creation statement ("added by" missing; they still verify).
+- A pending adoption (`local_adopt_into`) only runs when *that* account is
+  signed in; signing out before it ran and using another account leaves the
+  local ledger waiting for the first one (it is never lost, just not shown).
+- `vod.init()` still runs at every start, also in local mode (cheap; needed
+  as soon as an account is connected).
+- Existing installs: the device-wide `welcome_seen` flag starts unset, so a
+  user who signs out after the update sees the welcome once.
+- The local DB file stays on disk (empty) after *Delete local data* / an
+  adoption — rows are wiped, the file is reused by the next local profile.
+
 ### Smaller items
 - Balance page suggested payments are one line (G33 `NamesLine`): on a phone
   a long MXID-localpart name shrinks to a few characters ("mone… zahlt an

@@ -127,11 +127,22 @@ final class LoginStateProvider
 
 String _$loginStateHash() => r'a35f1701d3d18ac4ab1510bca7539034337afb7b';
 
+/// Whether a **Matrix** session is signed in. Always false in local mode
+/// (G40) without touching the Matrix client — a local-mode start never builds
+/// one; during "Connect a Matrix account" the real state is consulted.
+
 @ProviderFor(isLoggedIn)
 final isLoggedInProvider = IsLoggedInProvider._();
 
+/// Whether a **Matrix** session is signed in. Always false in local mode
+/// (G40) without touching the Matrix client — a local-mode start never builds
+/// one; during "Connect a Matrix account" the real state is consulted.
+
 final class IsLoggedInProvider extends $FunctionalProvider<bool, bool, bool>
     with $Provider<bool> {
+  /// Whether a **Matrix** session is signed in. Always false in local mode
+  /// (G40) without touching the Matrix client — a local-mode start never builds
+  /// one; during "Connect a Matrix account" the real state is consulted.
   IsLoggedInProvider._()
     : super(
         from: null,
@@ -165,7 +176,7 @@ final class IsLoggedInProvider extends $FunctionalProvider<bool, bool, bool>
   }
 }
 
-String _$isLoggedInHash() => r'a517a967b551e17d5537c8bd4aafdd7d7ab8cf9c';
+String _$isLoggedInHash() => r'bf36869fec477090c9519ac3539fe22a2da74312';
 
 /// The signed-in account's MXID, or `null` while signed out / still loading.
 /// Selects the per-account ledger database (`appDatabaseProvider`), so it only
@@ -220,7 +231,7 @@ final class AccountUserIdProvider
   }
 }
 
-String _$accountUserIdHash() => r'c48b55af220f09787c66082538f3ffa99d81f2a5';
+String _$accountUserIdHash() => r'99adff89149b569576b3d9d3a048101b0069e3fd';
 
 /// Resolves a homeserver (with .well-known discovery) and returns its login
 /// flows. Input can be a bare domain ("matrix.org"), a URL, or a Matrix ID.
@@ -343,7 +354,7 @@ final class AuthNotifierProvider
   }
 }
 
-String _$authNotifierHash() => r'd165011bb679e723cc42d055a961b3a352d6f81c';
+String _$authNotifierHash() => r'0f6ddd6a2113d4c4c3beb1f5b9bd692e5cc93752';
 
 abstract class _$AuthNotifier extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

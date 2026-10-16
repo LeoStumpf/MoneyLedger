@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/settings_dao.dart';
+import 'package:money_ledger/core/session/device_prefs.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/onboarding/onboarding_page.dart';
 import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
@@ -23,9 +24,39 @@ void main() {
     await tester.pumpWidget(_app(db));
     await tester.pumpAndSettle();
 
-    expect(find.text('Welcome to MoneyLedger'), findsOneWidget);
-    expect(find.textContaining('lives on your device'), findsOneWidget);
+    // G39: the app was explained before login — only what's new now.
+    expect(find.text("You're all set"), findsOneWidget);
+    expect(find.text('Add anyone — Matrix or not'), findsOneWidget);
+    expect(find.text('Syncs while you are away'), findsOneWidget);
+    expect(find.text('Keep a copy'), findsOneWidget);
+    expect(find.text('What is Matrix?'), findsNothing);
     expect(find.byKey(const Key('getStartedBtn')), findsOneWidget);
+  });
+
+  testWidgets('local mode (G40): what "local" means, backup, connect later', (
+    tester,
+  ) async {
+    final db = openTestDatabase();
+    addTearDown(db.close);
+    await tester.pumpWidget(
+      _app(
+        db,
+        overrides: [
+          devicePrefsStoreProvider.overrideWithValue(
+            InMemoryDevicePrefsStore({
+              'welcome_seen': '1',
+              'local_profile': '{"name":"Lea","created_at":1}',
+            }),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Everything stays on this device'), findsOneWidget);
+    expect(find.text('Keep a copy'), findsOneWidget);
+    expect(find.text('Share later'), findsOneWidget);
+    expect(find.text('Syncs while you are away'), findsNothing);
   });
 
   testWidgets('"Get started" marks onboarding seen and navigates to groups', (

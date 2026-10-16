@@ -543,26 +543,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get remove => 'Remove';
 
   @override
-  String get onboardingWelcome => 'Welcome to MoneyLedger';
-
-  @override
-  String get onboardingTagline => 'Split expenses without a middleman.';
-
-  @override
-  String get onboardingLocalTitle => 'Your data lives on your device';
-
-  @override
-  String get onboardingLocalBody =>
-      'Groups, expenses and balances are stored locally — there is no central MoneyLedger server holding your finances.';
-
-  @override
-  String get onboardingSyncTitle => 'Members sync peer-to-peer';
-
-  @override
-  String get onboardingSyncBody =>
-      'Changes are shared directly between members over end-to-end-encrypted Matrix messages. The homeserver only relays ciphertext. Devices sync while the app runs and, on Android, periodically in the background.';
-
-  @override
   String get onboardingAddTitle => 'Add anyone — Matrix or not';
 
   @override
@@ -862,7 +842,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyIntro =>
-      'MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.';
+      'MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account, or use the app without any account (local mode) — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.';
 
   @override
   String get privacyLedgerTitle => 'Your ledger stays on your devices';
@@ -911,7 +891,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyDeleteBody =>
-      '• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
+      '• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
 
   @override
   String get privacyContactTitle => 'Contact';
@@ -1730,4 +1710,245 @@ class AppLocalizationsEn extends AppLocalizations {
   String csvImportInvalidRow(int row, Object problem) {
     return 'Row $row: $problem';
   }
+
+  @override
+  String get welcomeSkip => 'Skip';
+
+  @override
+  String get welcomeNext => 'Next';
+
+  @override
+  String get welcomeBack => 'Back';
+
+  @override
+  String get welcomeDone => 'Done';
+
+  @override
+  String welcomePageOf(int page, int count) {
+    return 'Page $page of $count';
+  }
+
+  @override
+  String get welcomeIntroTitle => 'Share expenses, fairly';
+
+  @override
+  String get welcomeIntroBody =>
+      'MoneyLedger keeps track of who paid what in a group — a trip, a shared flat, a dinner — and shows who owes whom, like Splitwise or Tricount. Split equally or unevenly, record payments, settle up.';
+
+  @override
+  String get welcomeOpenTitle => 'Free, open source, no server';
+
+  @override
+  String get welcomeOpenBody =>
+      'MoneyLedger is free software (AGPL-3.0) — anyone can read its source code. There is no MoneyLedger server and no MoneyLedger account: your groups and expenses are stored only on your devices.';
+
+  @override
+  String get welcomeSourceLink => 'View the source code';
+
+  @override
+  String get welcomeMatrixTitle => 'What is Matrix?';
+
+  @override
+  String get welcomeMatrixBody =>
+      'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other members of your groups — that is why you sign in.';
+
+  @override
+  String get welcomePrivacyTitle => 'Who sees what';
+
+  @override
+  String get welcomePrivacyMembers =>
+      'The members of a group get that group\'s expenses and payments on their devices — end-to-end encrypted.';
+
+  @override
+  String get welcomePrivacyServer =>
+      'Homeservers only relay encrypted messages: they see which accounts exchange them and when, never the content, and keep nothing once it is delivered.';
+
+  @override
+  String get welcomePrivacyNothingElse =>
+      'Nothing else: no MoneyLedger server, no tracking, no ads.';
+
+  @override
+  String get welcomeStartTitle => 'How do you want to start?';
+
+  @override
+  String get welcomeStartBody =>
+      'With a Matrix account you can share groups with others and sync your devices. Without one, everything stays on this device.';
+
+  @override
+  String get welcomeSignIn => 'Sign in with Matrix';
+
+  @override
+  String get welcomeCreateAccount => 'Create a Matrix account';
+
+  @override
+  String get welcomeUseLocal => 'Use without an account';
+
+  @override
+  String get welcomeUseLocalHint =>
+      'You can connect a Matrix account later — your groups come along.';
+
+  @override
+  String get howItWorksTitle => 'How MoneyLedger works';
+
+  @override
+  String get localSetupStaysHere =>
+      'Your groups and expenses stay on this device only — nothing is sent anywhere.';
+
+  @override
+  String get localSetupPeople => 'Add the other people by name.';
+
+  @override
+  String get localSetupBackup =>
+      'Back up regularly: if this device is lost or reset, the data is gone.';
+
+  @override
+  String get localSetupConnectLater =>
+      'You can connect a Matrix account later to share your groups.';
+
+  @override
+  String localSetupAdoptedNotice(Object account) {
+    return 'Your earlier local groups were moved into $account when you connected it — sign in with that account to see them. Local mode starts with an empty ledger.';
+  }
+
+  @override
+  String get localSetupNameLabel => 'Your name';
+
+  @override
+  String get localSetupNameHelper => 'How you appear in your groups';
+
+  @override
+  String get localSetupNameRequired => 'Enter a name';
+
+  @override
+  String get localSetupStart => 'Start';
+
+  @override
+  String get localModeChip => 'Local only';
+
+  @override
+  String get localModeSheetTitle => 'Local mode';
+
+  @override
+  String get localModeSheetBody =>
+      'You are using MoneyLedger without an account. Nothing leaves this device: nothing is synced, and the other people are only names in your groups.';
+
+  @override
+  String get localModeBackupHint =>
+      'Back up regularly (Settings → Back up all groups) — nobody else has a copy.';
+
+  @override
+  String get localModeConnectHint =>
+      'Connect a Matrix account to share groups with others and sync your devices. Your local groups move into that account.';
+
+  @override
+  String get localModeSettingsBody =>
+      'No account — everything stays on this device.';
+
+  @override
+  String localProfileName(Object name) {
+    return 'Your name: $name';
+  }
+
+  @override
+  String get localProfileNameHint =>
+      'Used for new groups — rename yourself inside a group on its members page';
+
+  @override
+  String get connectMatrixAccount => 'Connect a Matrix account';
+
+  @override
+  String get connectMatrixAccountBody =>
+      'Share your groups and sync your devices — your local data moves into the account';
+
+  @override
+  String get connectSignInSubtitle =>
+      'Sign in — your local groups then move into this Matrix account';
+
+  @override
+  String get deleteLocalData => 'Delete local data';
+
+  @override
+  String get deleteLocalDataBody =>
+      'Removes all groups from this device and ends local mode';
+
+  @override
+  String get deleteLocalDataConfirmTitle => 'Delete all local data?';
+
+  @override
+  String deleteLocalDataConfirmBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'All $count groups with their expenses and payments are deleted from this device.',
+      one:
+          'The group and all its expenses and payments are deleted from this device.',
+      zero: 'Local mode ends.',
+    );
+    return '$_temp0 There is no other copy unless you saved a backup. This can\'t be undone.';
+  }
+
+  @override
+  String get deleteLocalDataConfirmAction => 'Delete everything';
+
+  @override
+  String get localModeYouSubtitle => 'You (on this device)';
+
+  @override
+  String get localModeMembersHint =>
+      'Local mode: people are added by name. Connect a Matrix account (Settings) to invite them.';
+
+  @override
+  String localAdoptedBanner(int count, Object account) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Your $count local groups now belong to $account.',
+      one: 'Your local group now belongs to $account.',
+    );
+    return '$_temp0 You can invite members by their Matrix ID.';
+  }
+
+  @override
+  String get onboardingReadyTitle => 'You\'re all set';
+
+  @override
+  String get onboardingReadyBody =>
+      'A few things worth knowing now that you are signed in.';
+
+  @override
+  String get onboardingReadyLocalBody =>
+      'A few things worth knowing about local mode.';
+
+  @override
+  String get onboardingBackgroundTitle => 'Syncs while you are away';
+
+  @override
+  String get onboardingBackgroundBody =>
+      'Members\' devices exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).';
+
+  @override
+  String get onboardingLocalOnlyTitle => 'Everything stays on this device';
+
+  @override
+  String get onboardingLocalOnlyBody =>
+      'No account, no sync: create groups and add the other people by name. The \"Local only\" chip on the groups page explains it again.';
+
+  @override
+  String get onboardingBackupLocalBody =>
+      'Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.';
+
+  @override
+  String get onboardingConnectLaterTitle => 'Share later';
+
+  @override
+  String get onboardingConnectLaterBody =>
+      'Settings → Connect a Matrix account moves your groups into an account, so you can invite others and sync your devices.';
+
+  @override
+  String get privacyLocalTitle => 'Local mode (without an account)';
+
+  @override
+  String get privacyLocalBody =>
+      'If you use MoneyLedger without a Matrix account, nothing leaves your device: no server is contacted and nothing is synced. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.';
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/session/app_session.dart';
 import '../../core/theme/app_theme.dart';
 import 'group_provider.dart';
 
@@ -18,9 +19,11 @@ Future<void> showAddPersonDialog(
 ) async {
   final messenger = ScaffoldMessenger.of(context);
   final l = context.l10n;
+  // G40: local mode has no Matrix accounts — a name only.
+  final local = ref.read(localModeActiveProvider);
   final result = await showDialog<({String name, String matrixId})>(
     context: context,
-    builder: (_) => const _AddPersonDialog(),
+    builder: (_) => _AddPersonDialog(nameOnly: local),
   );
   if (result == null) return;
 
@@ -50,7 +53,10 @@ Future<void> showAddPersonDialog(
 bool _isMatrixId(String s) => s.startsWith('@') && s.contains(':');
 
 class _AddPersonDialog extends StatefulWidget {
-  const _AddPersonDialog();
+  const _AddPersonDialog({this.nameOnly = false});
+
+  /// G40 local mode: no Matrix ID field; the name is required.
+  final bool nameOnly;
 
   @override
   State<_AddPersonDialog> createState() => _AddPersonDialogState();
@@ -79,7 +85,9 @@ class _AddPersonDialogState extends State<_AddPersonDialog> {
       if (mxid.isNotEmpty && !_isMatrixId(mxid)) {
         _mxidError = l.invalidMatrixId;
       } else if (name.isEmpty && mxid.isEmpty) {
-        _nameError = l.nameOrMatrixIdRequired;
+        _nameError = widget.nameOnly
+            ? l.localSetupNameRequired
+            : l.nameOrMatrixIdRequired;
       }
     });
     if (_nameError != null || _mxidError != null) return;
@@ -100,30 +108,33 @@ class _AddPersonDialogState extends State<_AddPersonDialog> {
               controller: _name,
               autofocus: true,
               textCapitalization: TextCapitalization.words,
+              onSubmitted: widget.nameOnly ? (_) => _submit() : null,
               decoration: InputDecoration(
                 labelText: l.nameLabel,
                 hintText: l.nameHint,
-                helperText: l.nameOptionalHelper,
+                helperText: widget.nameOnly ? null : l.nameOptionalHelper,
                 helperMaxLines: 2,
                 errorText: _nameError,
                 prefixIcon: const Icon(Icons.person_outline),
               ),
             ),
-            const SizedBox(height: Insets.m),
-            TextField(
-              key: const Key('addPersonMatrixId'),
-              controller: _mxid,
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              decoration: InputDecoration(
-                labelText: l.matrixIdOptionalLabel,
-                hintText: l.matrixIdOptionalHint,
-                hintMaxLines: 2,
-                errorText: _mxidError,
-                prefixIcon: const Icon(Icons.alternate_email),
+            if (!widget.nameOnly) ...[
+              const SizedBox(height: Insets.m),
+              TextField(
+                key: const Key('addPersonMatrixId'),
+                controller: _mxid,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: l.matrixIdOptionalLabel,
+                  hintText: l.matrixIdOptionalHint,
+                  hintMaxLines: 2,
+                  errorText: _mxidError,
+                  prefixIcon: const Icon(Icons.alternate_email),
+                ),
+                onSubmitted: (_) => _submit(),
               ),
-              onSubmitted: (_) => _submit(),
-            ),
+            ],
           ],
         ),
       ),

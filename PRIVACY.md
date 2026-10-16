@@ -6,8 +6,8 @@ _Last updated: 2026-10-16_
      whose text lives in lib/l10n/app_en.arb / app_de.arb (privacy* keys). -->
 
 MoneyLedger is an expense-sharing app without a central server. It has no
-account system of its own — you sign in with your Matrix account — shows no
-ads, contains no analytics or tracking, and does not sell or share your data.
+account system of its own — you sign in with your Matrix account, or use the
+app without any account (local mode) — shows no ads, contains no analytics or tracking, and does not sell or share your data.
 MoneyLedger is published by Leo Stumpf, an individual developer. There is no
 MoneyLedger server that could receive your data.
 
@@ -16,7 +16,7 @@ MoneyLedger server that could receive your data.
 | | |
 |---|---|
 | MoneyLedger server | None |
-| Account | Your existing Matrix account (on a homeserver you choose) |
+| Account | Your existing Matrix account (on a homeserver you choose) — or none at all (local mode) |
 | Where your ledger lives | On the devices of the group's members |
 | What the homeserver can read | Nothing of the ledger — only encrypted messages and their metadata |
 | Analytics, crash reporting, ads, tracking | None |
@@ -54,6 +54,16 @@ On Android, MoneyLedger can sync about every 15 minutes while the app is closed
 encrypted messages to your homeserver and shows no notifications. You can turn
 it off in Settings. The web version syncs only while its tab is open.
 
+## Local mode (without an account)
+
+If you use MoneyLedger without a Matrix account, nothing leaves your device: no
+server is contacted and nothing is synced. Your name, groups, expenses and
+payments are stored only in a local database on this device, plus a small
+preferences file (whether you saw the welcome, your local profile name).
+Deleting local data in the settings, or uninstalling the app, removes them. If
+you later connect a Matrix account, the local data moves into that account and
+from then on the sections above apply.
+
 ## Export, backup and import
 
 Exporting a group writes a CSV file with its expenses, payments, the
@@ -82,6 +92,8 @@ all groups) is your own offline copy.
   from this device. When you leave, the other members are told that you left.
 - Signing out keeps this account's ledger on the device, so it is back when you
   sign in again.
+- In local mode, Settings → *Delete local data* removes every local group from
+  this device and ends local mode.
 - Uninstalling the app (or clearing its storage) removes everything it stored
   on the device.
 - Copies on other members' devices are theirs: they keep the group's history,

@@ -339,12 +339,6 @@
     }
   },
   "remove": "Remove",
-  "onboardingWelcome": "Welcome to MoneyLedger",
-  "onboardingTagline": "Split expenses without a middleman.",
-  "onboardingLocalTitle": "Your data lives on your device",
-  "onboardingLocalBody": "Groups, expenses and balances are stored locally — there is no central MoneyLedger server holding your finances.",
-  "onboardingSyncTitle": "Members sync peer-to-peer",
-  "onboardingSyncBody": "Changes are shared directly between members over end-to-end-encrypted Matrix messages. The homeserver only relays ciphertext. Devices sync while the app runs and, on Android, periodically in the background.",
   "onboardingAddTitle": "Add anyone — Matrix or not",
   "onboardingAddBody": "Invite people by their Matrix ID, or add local participants by name and link an account later.",
   "getStarted": "Get started",
@@ -508,7 +502,7 @@
       "date": {}
     }
   },
-  "privacyIntro": "MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.",
+  "privacyIntro": "MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account, or use the app without any account (local mode) — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.",
   "privacyLedgerTitle": "Your ledger stays on your devices",
   "privacyLedgerBody": "Groups, participants, expenses and payments are stored only in a local database on each device signed in to a member's account. Every member of a group has a copy of that group's ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to all of its members.",
   "privacyHomeserverTitle": "What your Matrix homeserver sees",
@@ -522,7 +516,7 @@
   "privacyBackupTitle": "Device backups",
   "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.",
   "privacyDeleteTitle": "Deleting your data",
-  "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members' devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
+  "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device. When you leave, the other members are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members' devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
   "privacyContactTitle": "Contact",
   "privacyContactBody": "Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.",
   "youAreOwedAmount": "You are owed {amount}",
@@ -1373,5 +1367,282 @@
       },
       "problem": {}
     }
+  },
+  "welcomeSkip": "Skip",
+  "@welcomeSkip": {
+    "description": "G39 welcome: jump to the last page"
+  },
+  "welcomeNext": "Next",
+  "@welcomeNext": {
+    "description": "G39 welcome: next page"
+  },
+  "welcomeBack": "Back",
+  "@welcomeBack": {
+    "description": "G39 welcome: previous page"
+  },
+  "welcomeDone": "Done",
+  "@welcomeDone": {
+    "description": "G39 \"How it works\": close"
+  },
+  "welcomePageOf": "Page {page} of {count}",
+  "@welcomePageOf": {
+    "description": "G39 welcome: page indicator (screen readers)",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "welcomeIntroTitle": "Share expenses, fairly",
+  "@welcomeIntroTitle": {
+    "description": "G39 welcome page 1 title"
+  },
+  "welcomeIntroBody": "MoneyLedger keeps track of who paid what in a group — a trip, a shared flat, a dinner — and shows who owes whom, like Splitwise or Tricount. Split equally or unevenly, record payments, settle up.",
+  "@welcomeIntroBody": {
+    "description": "G39 welcome page 1 body"
+  },
+  "welcomeOpenTitle": "Free, open source, no server",
+  "@welcomeOpenTitle": {
+    "description": "G39 welcome page 2 title"
+  },
+  "welcomeOpenBody": "MoneyLedger is free software (AGPL-3.0) — anyone can read its source code. There is no MoneyLedger server and no MoneyLedger account: your groups and expenses are stored only on your devices.",
+  "@welcomeOpenBody": {
+    "description": "G39 welcome page 2 body"
+  },
+  "welcomeSourceLink": "View the source code",
+  "@welcomeSourceLink": {
+    "description": "G39 welcome: link to the public repository"
+  },
+  "welcomeMatrixTitle": "What is Matrix?",
+  "@welcomeMatrixTitle": {
+    "description": "G39 welcome page 3 title; also the login page link"
+  },
+  "welcomeMatrixBody": "Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other members of your groups — that is why you sign in.",
+  "@welcomeMatrixBody": {
+    "description": "G39 welcome page 3 body"
+  },
+  "welcomePrivacyTitle": "Who sees what",
+  "@welcomePrivacyTitle": {
+    "description": "G39 welcome page 4 title"
+  },
+  "welcomePrivacyMembers": "The members of a group get that group's expenses and payments on their devices — end-to-end encrypted.",
+  "@welcomePrivacyMembers": {
+    "description": "G39 welcome page 4, point 1"
+  },
+  "welcomePrivacyServer": "Homeservers only relay encrypted messages: they see which accounts exchange them and when, never the content, and keep nothing once it is delivered.",
+  "@welcomePrivacyServer": {
+    "description": "G39 welcome page 4, point 2"
+  },
+  "welcomePrivacyNothingElse": "Nothing else: no MoneyLedger server, no tracking, no ads.",
+  "@welcomePrivacyNothingElse": {
+    "description": "G39 welcome page 4, point 3"
+  },
+  "welcomeStartTitle": "How do you want to start?",
+  "@welcomeStartTitle": {
+    "description": "G39 welcome: choices page title"
+  },
+  "welcomeStartBody": "With a Matrix account you can share groups with others and sync your devices. Without one, everything stays on this device.",
+  "@welcomeStartBody": {
+    "description": "G39 welcome: choices page body"
+  },
+  "welcomeSignIn": "Sign in with Matrix",
+  "@welcomeSignIn": {
+    "description": "G39 welcome choice"
+  },
+  "welcomeCreateAccount": "Create a Matrix account",
+  "@welcomeCreateAccount": {
+    "description": "G39 welcome choice"
+  },
+  "welcomeUseLocal": "Use without an account",
+  "@welcomeUseLocal": {
+    "description": "G39/G40 welcome choice + login page link + local setup title"
+  },
+  "welcomeUseLocalHint": "You can connect a Matrix account later — your groups come along.",
+  "@welcomeUseLocalHint": {
+    "description": "G39 welcome: hint under the local choice"
+  },
+  "howItWorksTitle": "How MoneyLedger works",
+  "@howItWorksTitle": {
+    "description": "G39: About tile + title of the welcome pages read again"
+  },
+  "localSetupStaysHere": "Your groups and expenses stay on this device only — nothing is sent anywhere.",
+  "@localSetupStaysHere": {
+    "description": "G40 local setup point"
+  },
+  "localSetupPeople": "Add the other people by name.",
+  "@localSetupPeople": {
+    "description": "G40 local setup point"
+  },
+  "localSetupBackup": "Back up regularly: if this device is lost or reset, the data is gone.",
+  "@localSetupBackup": {
+    "description": "G40 local setup point"
+  },
+  "localSetupConnectLater": "You can connect a Matrix account later to share your groups.",
+  "@localSetupConnectLater": {
+    "description": "G40 local setup point"
+  },
+  "localSetupAdoptedNotice": "Your earlier local groups were moved into {account} when you connected it — sign in with that account to see them. Local mode starts with an empty ledger.",
+  "@localSetupAdoptedNotice": {
+    "description": "G40 local setup: the local ledger was adopted into an account earlier",
+    "placeholders": {
+      "account": {}
+    }
+  },
+  "localSetupNameLabel": "Your name",
+  "@localSetupNameLabel": {
+    "description": "G40 local setup: name field"
+  },
+  "localSetupNameHelper": "How you appear in your groups",
+  "@localSetupNameHelper": {
+    "description": "G40 local setup: name helper"
+  },
+  "localSetupNameRequired": "Enter a name",
+  "@localSetupNameRequired": {
+    "description": "G40: name required (local setup, add person in local mode)"
+  },
+  "localSetupStart": "Start",
+  "@localSetupStart": {
+    "description": "G40 local setup: start button"
+  },
+  "localModeChip": "Local only",
+  "@localModeChip": {
+    "description": "G40: groups app bar indicator"
+  },
+  "localModeSheetTitle": "Local mode",
+  "@localModeSheetTitle": {
+    "description": "G40: explanation sheet / settings section title"
+  },
+  "localModeSheetBody": "You are using MoneyLedger without an account. Nothing leaves this device: nothing is synced, and the other people are only names in your groups.",
+  "@localModeSheetBody": {
+    "description": "G40 explanation sheet"
+  },
+  "localModeBackupHint": "Back up regularly (Settings → Back up all groups) — nobody else has a copy.",
+  "@localModeBackupHint": {
+    "description": "G40 explanation sheet"
+  },
+  "localModeConnectHint": "Connect a Matrix account to share groups with others and sync your devices. Your local groups move into that account.",
+  "@localModeConnectHint": {
+    "description": "G40 explanation sheet"
+  },
+  "localModeSettingsBody": "No account — everything stays on this device.",
+  "@localModeSettingsBody": {
+    "description": "G40 settings section subtitle"
+  },
+  "localProfileName": "Your name: {name}",
+  "@localProfileName": {
+    "description": "G40 settings: the local profile name",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "localProfileNameHint": "Used for new groups — rename yourself inside a group on its members page",
+  "@localProfileNameHint": {
+    "description": "G40 settings: name tile subtitle"
+  },
+  "connectMatrixAccount": "Connect a Matrix account",
+  "@connectMatrixAccount": {
+    "description": "G40: start the upgrade from local mode"
+  },
+  "connectMatrixAccountBody": "Share your groups and sync your devices — your local data moves into the account",
+  "@connectMatrixAccountBody": {
+    "description": "G40 settings tile subtitle"
+  },
+  "connectSignInSubtitle": "Sign in — your local groups then move into this Matrix account",
+  "@connectSignInSubtitle": {
+    "description": "G40: login page subtitle while connecting"
+  },
+  "deleteLocalData": "Delete local data",
+  "@deleteLocalData": {
+    "description": "G40 settings: leave local mode"
+  },
+  "deleteLocalDataBody": "Removes all groups from this device and ends local mode",
+  "@deleteLocalDataBody": {
+    "description": "G40 settings tile subtitle"
+  },
+  "deleteLocalDataConfirmTitle": "Delete all local data?",
+  "@deleteLocalDataConfirmTitle": {
+    "description": "G40 confirmation title"
+  },
+  "deleteLocalDataConfirmBody": "{count, plural, =0{Local mode ends.} =1{The group and all its expenses and payments are deleted from this device.} other{All {count} groups with their expenses and payments are deleted from this device.}} There is no other copy unless you saved a backup. This can't be undone.",
+  "@deleteLocalDataConfirmBody": {
+    "description": "G40 confirmation body",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteLocalDataConfirmAction": "Delete everything",
+  "@deleteLocalDataConfirmAction": {
+    "description": "G40 confirmation button"
+  },
+  "localModeYouSubtitle": "You (on this device)",
+  "@localModeYouSubtitle": {
+    "description": "G40 members page: own participant in local mode"
+  },
+  "localModeMembersHint": "Local mode: people are added by name. Connect a Matrix account (Settings) to invite them.",
+  "@localModeMembersHint": {
+    "description": "G40 members page hint"
+  },
+  "localAdoptedBanner": "{count, plural, =1{Your local group now belongs to {account}.} other{Your {count} local groups now belong to {account}.}} You can invite members by their Matrix ID.",
+  "@localAdoptedBanner": {
+    "description": "G40 groups page banner after connecting",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "account": {}
+    }
+  },
+  "onboardingReadyTitle": "You're all set",
+  "@onboardingReadyTitle": {
+    "description": "Onboarding (after login / local start) title"
+  },
+  "onboardingReadyBody": "A few things worth knowing now that you are signed in.",
+  "@onboardingReadyBody": {
+    "description": "Onboarding subtitle (Matrix)"
+  },
+  "onboardingReadyLocalBody": "A few things worth knowing about local mode.",
+  "@onboardingReadyLocalBody": {
+    "description": "Onboarding subtitle (local mode)"
+  },
+  "onboardingBackgroundTitle": "Syncs while you are away",
+  "@onboardingBackgroundTitle": {
+    "description": "Onboarding card (Matrix)"
+  },
+  "onboardingBackgroundBody": "Members' devices exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).",
+  "@onboardingBackgroundBody": {
+    "description": "Onboarding card (Matrix)"
+  },
+  "onboardingLocalOnlyTitle": "Everything stays on this device",
+  "@onboardingLocalOnlyTitle": {
+    "description": "Onboarding card (local mode)"
+  },
+  "onboardingLocalOnlyBody": "No account, no sync: create groups and add the other people by name. The \"Local only\" chip on the groups page explains it again.",
+  "@onboardingLocalOnlyBody": {
+    "description": "Onboarding card (local mode)"
+  },
+  "onboardingBackupLocalBody": "Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.",
+  "@onboardingBackupLocalBody": {
+    "description": "Onboarding card (local mode)"
+  },
+  "onboardingConnectLaterTitle": "Share later",
+  "@onboardingConnectLaterTitle": {
+    "description": "Onboarding card (local mode)"
+  },
+  "onboardingConnectLaterBody": "Settings → Connect a Matrix account moves your groups into an account, so you can invite others and sync your devices.",
+  "@onboardingConnectLaterBody": {
+    "description": "Onboarding card (local mode)"
+  },
+  "privacyLocalTitle": "Local mode (without an account)",
+  "@privacyLocalTitle": {
+    "description": "Privacy policy section title (G40)"
+  },
+  "privacyLocalBody": "If you use MoneyLedger without a Matrix account, nothing leaves your device: no server is contacted and nothing is synced. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.",
+  "@privacyLocalBody": {
+    "description": "Privacy policy section body (G40)"
   }
 }

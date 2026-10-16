@@ -15,6 +15,7 @@ import 'package:matrix/matrix.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../features/auth/auth_provider.dart';
+import '../session/app_session.dart';
 import '../database/account_database.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/matrix_ledger_transport.dart';
@@ -71,6 +72,8 @@ void attachForegroundSync(ProviderContainer container) {
     },
   );
   AppIsolateGate.instance.onSyncRequest = () async {
+    // G40: local mode never builds a Matrix client (nothing to sync).
+    if (!container.read(matrixSessionWantedProvider)) return;
     final client = await container
         .read(matrixClientProvider.future)
         .timeout(const Duration(seconds: 10));

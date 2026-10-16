@@ -21,6 +21,10 @@ Widget _app({Locale locale = const Locale('en')}) {
         path: '/about/privacy',
         builder: (_, _) => const PrivacyPolicyPage(),
       ),
+      GoRoute(
+        path: '/how-it-works',
+        builder: (_, _) => const Scaffold(body: Text('how-it-works')),
+      ),
     ],
   );
   return ProviderScope(
@@ -32,6 +36,15 @@ Widget _app({Locale locale = const Locale('en')}) {
       routerConfig: router,
     ),
   );
+}
+
+/// The About list is longer than the test screen (G39 added a tile).
+Future<void> _tapTile(WidgetTester tester, String key) async {
+  final tile = find.byKey(Key(key));
+  await tester.scrollUntilVisible(tile, 100);
+  await tester.ensureVisible(tile);
+  await tester.pumpAndSettle();
+  await tester.tap(tile);
 }
 
 void main() {
@@ -60,12 +73,31 @@ void main() {
   testWidgets('privacy policy page (English)', (tester) async {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('privacyPolicyTile')));
+    await _tapTile(tester, 'privacyPolicyTile');
     await tester.pumpAndSettle();
 
     expect(find.text('Privacy policy'), findsOneWidget);
-    expect(find.text('What your Matrix homeserver sees'), findsOneWidget);
     expect(find.textContaining('Last updated: Oct 16, 2026'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('What your Matrix homeserver sees'),
+      200,
+    );
+    // G40: local mode has its own section.
+    await tester.scrollUntilVisible(
+      find.text('Local mode (without an account)'),
+      200,
+    );
+    expect(find.textContaining('nothing leaves your device'), findsOneWidget);
+  });
+
+  testWidgets('"How MoneyLedger works" opens the welcome pages again (G39)', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('howItWorksTile')));
+    await tester.pumpAndSettle();
+    expect(find.text('how-it-works'), findsOneWidget);
   });
 
   testWidgets('German locale', (tester) async {
@@ -73,7 +105,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Über MoneyLedger'), findsOneWidget);
     expect(find.text('Quellcode'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('privacyPolicyTile')));
+    await _tapTile(tester, 'privacyPolicyTile');
     await tester.pumpAndSettle();
     expect(find.text('Datenschutzerklärung'), findsOneWidget);
     expect(find.textContaining('Stand: 16. Okt. 2026'), findsOneWidget);

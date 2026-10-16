@@ -9,6 +9,7 @@ import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/session/app_session.dart';
 import '../../core/sync/delivery_policy.dart';
 import '../../core/sync/left_groups.dart';
 import '../../core/sync/payload_budget.dart';
@@ -230,10 +231,12 @@ class GroupCreator extends _$GroupCreator {
         await w.groups.upsertGroupLww(groupCompanion(group));
         // The creator is the first participant, claimed by their own account
         // (participant id == their MXID, the invariant for from-scratch users).
+        // G40 local mode: claimed by the local pseudo account, with a fresh
+        // participant id (it keeps that id once a Matrix account adopts it).
         await w.saveMember(
           MemberModel(
             groupId: groupId,
-            userId: me,
+            userId: isLocalAccountId(me) ? const Uuid().v7() : me,
             displayName: myName,
             matrixId: me,
             status: 'active',
@@ -288,10 +291,11 @@ class MemberAdder extends _$MemberAdder {
             status: 'active',
             updatedAt: nextLwwClock(existing.updatedAt),
           )
-        // Added by Matrix ID → a claimed participant (id == MXID for now).
+        // Added by Matrix ID → a claimed participant (id == MXID for now;
+        // G40: local mode's pseudo account gets a fresh id instead).
         : MemberModel(
             groupId: groupId,
-            userId: userId,
+            userId: isLocalAccountId(userId) ? const Uuid().v7() : userId,
             displayName: name,
             matrixId: userId,
             status: 'active',
@@ -531,7 +535,8 @@ Future<int> profileNameRefresh(Ref ref) async {
   try {
     final transport = await w.transport;
     final me = transport.userId;
-    if (me.isEmpty || db.isClosed) return 0;
+    // G40: local mode has no Matrix profiles to look up.
+    if (me.isEmpty || isLocalAccountId(me) || db.isClosed) return 0;
     final names = <String, String?>{}; // MXID → profile name (one lookup each)
     var renamed = 0;
     for (final group in await w.groups.getAllGroups()) {

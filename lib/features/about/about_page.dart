@@ -71,6 +71,14 @@ class AboutPage extends ConsumerWidget {
             ),
           ),
           const Divider(),
+          // G39: the welcome's explanation, to read again.
+          ListTile(
+            key: const Key('howItWorksTile'),
+            leading: const Icon(Icons.lightbulb_outline),
+            title: Text(l.howItWorksTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/how-it-works'),
+          ),
           ListTile(
             leading: const Icon(Icons.code),
             title: Text(l.aboutSourceCode),
@@ -133,6 +141,7 @@ class PrivacyPolicyPage extends StatelessWidget {
       (l.privacyHomeserverTitle, l.privacyHomeserverBody),
       (l.privacyNoTrackingTitle, l.privacyNoTrackingBody),
       (l.privacyBackgroundTitle, l.privacyBackgroundBody),
+      (l.privacyLocalTitle, l.privacyLocalBody),
       (l.privacyCsvTitle, l.privacyCsvBody),
       (l.privacyBackupTitle, l.privacyBackupBody),
       (l.privacyDeleteTitle, l.privacyDeleteBody),

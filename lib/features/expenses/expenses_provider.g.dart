@@ -17,6 +17,8 @@ part of 'expenses_provider.dart';
 /// (reads → no rows, writes → error) keeps the provider non-nullable for the
 /// many synchronous consumers; a widget still mounted during the logout
 /// transition sees an empty ledger, never another account's data.
+///
+/// G40: in local mode the device-local ledger ([localDatabaseName]) opens.
 
 @ProviderFor(appDatabase)
 final appDatabaseProvider = AppDatabaseProvider._();
@@ -30,6 +32,8 @@ final appDatabaseProvider = AppDatabaseProvider._();
 /// (reads → no rows, writes → error) keeps the provider non-nullable for the
 /// many synchronous consumers; a widget still mounted during the logout
 /// transition sees an empty ledger, never another account's data.
+///
+/// G40: in local mode the device-local ledger ([localDatabaseName]) opens.
 
 final class AppDatabaseProvider
     extends $FunctionalProvider<AppDatabase, AppDatabase, AppDatabase>
@@ -43,6 +47,8 @@ final class AppDatabaseProvider
   /// (reads → no rows, writes → error) keeps the provider non-nullable for the
   /// many synchronous consumers; a widget still mounted during the logout
   /// transition sees an empty ledger, never another account's data.
+  ///
+  /// G40: in local mode the device-local ledger ([localDatabaseName]) opens.
   AppDatabaseProvider._()
     : super(
         from: null,
@@ -76,7 +82,7 @@ final class AppDatabaseProvider
   }
 }
 
-String _$appDatabaseHash() => r'89cdb2f12afba3b064e66a850a0dda4596baf750';
+String _$appDatabaseHash() => r'8b1555d9ca6713468b29f7eacec7f527d23f3090';
 
 @ProviderFor(expensesDao)
 final expensesDaoProvider = ExpensesDaoProvider._();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/session/app_session.dart';
 import '../../core/database/daos/signing_dao.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/sync/record_signing.dart';
@@ -177,6 +178,8 @@ class RecordAttribution extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // G40: local mode signs nothing and everything is "you" — no footer.
+    if (ref.watch(localModeActiveProvider)) return const SizedBox.shrink();
     final l = context.l10n;
     final theme = Theme.of(context);
     final members =

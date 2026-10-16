@@ -3,27 +3,50 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/session/app_session.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/widgets/content_width.dart';
 import 'onboarding_provider.dart';
 
-/// One-time, first-run intro to MoneyLedger's decentralized model. Shown once
-/// (gated by the `onboarding_seen` flag); "Get started" marks it seen and routes
-/// to the groups list.
+/// One-time intro after the first sign-in (per account) / the first start of
+/// local mode (G25, G40). The app itself was explained by the welcome before
+/// login (G39), so this only covers what is new now: inviting people,
+/// background sync and keeping a copy — or, in local mode, what "local"
+/// means. "Get started" marks it seen and routes to the groups list.
 class OnboardingPage extends ConsumerWidget {
   const OnboardingPage({super.key});
 
-  static List<(IconData, String, String)> _points(AppLocalizations l) => [
-    (
-      Icons.phone_android_outlined,
-      l.onboardingLocalTitle,
-      l.onboardingLocalBody,
-    ),
-    (Icons.lock_outline, l.onboardingSyncTitle, l.onboardingSyncBody),
-    (Icons.group_add_outlined, l.onboardingAddTitle, l.onboardingAddBody),
-    (Icons.backup_outlined, l.onboardingBackupTitle, l.onboardingBackupBody),
-  ];
+  static List<(IconData, String, String)> _points(
+    AppLocalizations l, {
+    required bool local,
+  }) => local
+      ? [
+          (
+            Icons.phone_android_outlined,
+            l.onboardingLocalOnlyTitle,
+            l.onboardingLocalOnlyBody,
+          ),
+          (
+            Icons.backup_outlined,
+            l.onboardingBackupTitle,
+            l.onboardingBackupLocalBody,
+          ),
+          (
+            Icons.link,
+            l.onboardingConnectLaterTitle,
+            l.onboardingConnectLaterBody,
+          ),
+        ]
+      : [
+          (Icons.group_add_outlined, l.onboardingAddTitle, l.onboardingAddBody),
+          (Icons.sync, l.onboardingBackgroundTitle, l.onboardingBackgroundBody),
+          (
+            Icons.backup_outlined,
+            l.onboardingBackupTitle,
+            l.onboardingBackupBody,
+          ),
+        ];
 
   Future<void> _getStarted(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -44,10 +67,11 @@ class OnboardingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    final local = ref.watch(localModeActiveProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    // G17: one designed page — logo hero, four feature cards (G5: backup), and the
-    // button pinned below the scrollable content.
+    // G17: one designed page — logo hero, three cards, and the button
+    // pinned below the scrollable content.
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -68,13 +92,15 @@ class OnboardingPage extends ConsumerWidget {
                       const Center(child: BrandLogo(size: 96)),
                       const SizedBox(height: Insets.xl),
                       Text(
-                        l.onboardingWelcome,
+                        l.onboardingReadyTitle,
                         style: theme.textTheme.headlineMedium,
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: Insets.s),
                       Text(
-                        l.onboardingTagline,
+                        local
+                            ? l.onboardingReadyLocalBody
+                            : l.onboardingReadyBody,
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: scheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
@@ -82,7 +108,10 @@ class OnboardingPage extends ConsumerWidget {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: Insets.xxl),
-                      for (final (icon, title, body) in _points(l))
+                      for (final (icon, title, body) in _points(
+                        l,
+                        local: local,
+                      ))
                         Padding(
                           padding: const EdgeInsets.only(bottom: Insets.m),
                           child: Card(

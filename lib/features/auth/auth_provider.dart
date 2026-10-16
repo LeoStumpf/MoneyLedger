@@ -6,6 +6,8 @@ import '../../core/matrix/matrix_auth_gateway.dart';
 import '../../core/matrix/matrix_ledger_transport.dart';
 import '../../core/matrix/matrix_service.dart';
 import '../../core/matrix/matrix_sync_watchdog.dart';
+import '../../core/session/app_session.dart';
+import '../../core/session/device_prefs.dart';
 import '../../models/login_flows_result.dart';
 
 part 'auth_provider.g.dart';
@@ -70,8 +72,12 @@ Stream<bool> loginState(Ref ref) async* {
   yield* gateway.loginStateChanges;
 }
 
+/// Whether a **Matrix** session is signed in. Always false in local mode
+/// (G40) without touching the Matrix client — a local-mode start never builds
+/// one; during "Connect a Matrix account" the real state is consulted.
 @riverpod
 bool isLoggedIn(Ref ref) {
+  if (!ref.watch(matrixSessionWantedProvider)) return false;
   return ref.watch(loginStateProvider).value ?? false;
 }
 
@@ -81,6 +87,8 @@ bool isLoggedIn(Ref ref) {
 /// re-validating the login state doesn't reopen the DB.
 @Riverpod(keepAlive: true)
 String? accountUserId(Ref ref) {
+  // G40: local mode (no connect in progress) never consults Matrix.
+  if (!ref.watch(matrixSessionWantedProvider)) return null;
   final loggedIn = ref.watch(loginStateProvider).value ?? false;
   if (!loggedIn) return null;
   final id = ref.watch(authGatewayProvider).value?.userId;
@@ -121,6 +129,7 @@ class AuthNotifier extends _$AuthNotifier {
     });
     if (!ref.mounted) return;
     state = result;
+    await _afterSignIn();
     _refreshLoginState();
   }
 
@@ -138,6 +147,7 @@ class AuthNotifier extends _$AuthNotifier {
     });
     if (!ref.mounted) return;
     state = result;
+    await _afterSignIn();
     _refreshLoginState();
   }
 
@@ -157,6 +167,7 @@ class AuthNotifier extends _$AuthNotifier {
     });
     if (!ref.mounted) return;
     state = result;
+    await _afterSignIn();
     _refreshLoginState();
   }
 
@@ -169,6 +180,24 @@ class AuthNotifier extends _$AuthNotifier {
     if (!ref.mounted) return;
     state = result;
     _refreshLoginState();
+  }
+
+  /// G40: a sign-in that succeeded while a local profile is active is a
+  /// "Connect a Matrix account" — local mode ends and the local ledger is
+  /// queued for adoption into this account (`LocalLedgerAdoption`).
+  Future<void> _afterSignIn() async {
+    if (state.hasError || !ref.mounted) return;
+    final prefs = ref.read(devicePrefsProvider).value;
+    if (prefs?.localProfile == null) return;
+    final gateway = await ref.read(authGatewayProvider.future);
+    final mxid = gateway.userId;
+    if (mxid == null || mxid.isEmpty || !ref.mounted) return;
+    try {
+      await ref.read(devicePrefsProvider.notifier).beginLocalAdoption(mxid);
+    } catch (e) {
+      // Kept in memory for this run; retried on the next connect.
+      debugPrint('[local] could not store the pending adoption: $e');
+    }
   }
 
   /// Recompute [isLoggedInProvider] immediately after a login/logout instead of

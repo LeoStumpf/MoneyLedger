@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/router.dart' show kHowItWorksLocation, kLocalSetupLocation;
+import '../../core/session/app_session.dart';
+import '../local/local_mode_ui.dart' show cancelConnectAccount;
+import '../welcome/welcome_page.dart' show WelcomeTopic;
 import '../../core/platform/url_helper.dart';
 import '../../models/login_flows_result.dart';
 import 'auth_error_card.dart';
@@ -241,8 +245,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // launch. Discovery shows as the subtle spinner on the homeserver field.
     final authBusy = authState.isLoading;
     final l = context.l10n;
+    // G40: "Connect a Matrix account" from local mode — cancellable, and the
+    // local groups move into the account after signing in.
+    final connecting = ref.watch(connectingAccountProvider);
 
     return Scaffold(
+      appBar: connecting
+          ? AppBar(
+              title: Text(l.connectMatrixAccount),
+              leading: IconButton(
+                key: const Key('cancelConnect'),
+                icon: const Icon(Icons.close),
+                tooltip: l.cancel,
+                onPressed: authBusy ? null : () => cancelConnectAccount(ref),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -261,7 +279,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    l.signInSubtitle,
+                    connecting ? l.connectSignInSubtitle : l.signInSubtitle,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -426,6 +444,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     onPressed: () => context.push('/register'),
                     child: Text(l.createAccountLink),
                   ),
+                  // G39: the welcome's Matrix explanation, again.
+                  TextButton(
+                    key: const Key('whatIsMatrixLink'),
+                    onPressed: () => context.push(
+                      '$kHowItWorksLocation?topic=${WelcomeTopic.matrix.name}',
+                    ),
+                    child: Text(l.welcomeMatrixTitle),
+                  ),
+                  // G40: no account at all.
+                  if (!connecting)
+                    TextButton(
+                      key: const Key('useWithoutAccountLink'),
+                      onPressed: authBusy
+                          ? null
+                          : () => context.go(kLocalSetupLocation),
+                      child: Text(l.welcomeUseLocal),
+                    ),
                   TextButton(
                     key: const Key('aboutLink'),
                     onPressed: () => context.push('/about'),

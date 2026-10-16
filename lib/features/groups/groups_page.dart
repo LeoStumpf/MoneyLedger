@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/matrix/crypto_status.dart';
+import '../../core/session/app_session.dart';
+import '../../core/session/local_adoption.dart';
+import '../local/local_mode_ui.dart';
 import '../../core/l10n/l10n.dart';
 import '../auth/auth_provider.dart';
 import '../onboarding/onboarding_provider.dart';
@@ -36,6 +39,9 @@ class GroupsPage extends ConsumerWidget {
     ref.watch(profileNameRefreshProvider);
     final groupsAsync = ref.watch(ledgerGroupsProvider);
     final l = context.l10n;
+    // G40: no account — no devices, no sign-out (Settings → delete local
+    // data instead), a "Local only" indicator.
+    final local = ref.watch(localModeActiveProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -55,11 +61,14 @@ class GroupsPage extends ConsumerWidget {
             tooltip: l.importCsvTooltip,
             onPressed: () => _importCsv(context, ref),
           ),
-          IconButton(
-            icon: const Icon(Icons.devices),
-            tooltip: l.devicesTooltip,
-            onPressed: () => context.push('/devices'),
-          ),
+          if (local)
+            const LocalModeChip()
+          else
+            IconButton(
+              icon: const Icon(Icons.devices),
+              tooltip: l.devicesTooltip,
+              onPressed: () => context.push('/devices'),
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: l.settingsTooltip,
@@ -69,11 +78,12 @@ class GroupsPage extends ConsumerWidget {
               builder: (_) => const SyncSettingsSheet(),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _confirmSignOut(context, ref),
-            tooltip: l.signOut,
-          ),
+          if (!local)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () => _confirmSignOut(context, ref),
+              tooltip: l.signOut,
+            ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -84,8 +94,10 @@ class GroupsPage extends ConsumerWidget {
       body: Column(
         children: [
           // G33: E2EE failed to start (vodozemac init) — nothing can sync.
-          if (!ref.watch(cryptoAvailableProvider))
+          if (!local && !ref.watch(cryptoAvailableProvider))
             const _EncryptionUnavailableBanner(),
+          // G40: the local groups just moved into this account.
+          const _LocalAdoptedBanner(),
           // G35: a peer relayed unsigned (pre-G6) records we had to refuse.
           const _LegacyRefusalBanner(),
           Expanded(
@@ -257,6 +269,67 @@ class _LegacyRefusalBanner extends ConsumerWidget {
                   onPressed: () => ref
                       .read(syncHealthProvider.notifier)
                       .dismissLegacyRefusals(),
+                  child: Text(l.ok),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// G40: after "Connect a Matrix account" — says where the local groups went
+/// (dismissible, this run only).
+class _LocalAdoptedBanner extends ConsumerWidget {
+  const _LocalAdoptedBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final result = ref.watch(localAdoptionResultProvider);
+    final account = ref.watch(accountUserIdProvider);
+    if (result == null || result.groupIds.isEmpty || account == null) {
+      return const SizedBox.shrink();
+    }
+    final l = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      key: const Key('localAdoptedBanner'),
+      color: scheme.secondaryContainer,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Insets.page,
+            Insets.m,
+            Insets.page,
+            Insets.xs,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.move_up, color: scheme.onSecondaryContainer),
+                  const SizedBox(width: Insets.m),
+                  Expanded(
+                    child: Text(
+                      l.localAdoptedBanner(result.groupIds.length, account),
+                      style: TextStyle(color: scheme.onSecondaryContainer),
+                    ),
+                  ),
+                ],
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: const Key('localAdoptedDismiss'),
+                  onPressed: () => ref
+                      .read(localAdoptionResultProvider.notifier)
+                      .report(null),
                   child: Text(l.ok),
                 ),
               ),
@@ -789,6 +862,8 @@ class SyncSettingsSheet extends ConsumerWidget {
     final supported = ref.watch(backgroundSyncSupportedProvider);
     final enabled = ref.watch(backgroundSyncEnabledProvider).value ?? true;
     final schedulingError = ref.watch(backgroundSyncSchedulingErrorProvider);
+    // G40: local mode has nothing to sync — its own section instead.
+    final local = ref.watch(localModeActiveProvider);
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -796,68 +871,76 @@ class SyncSettingsSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ListTile(
-              title: Text(l.syncSettingsTitle),
-              subtitle: Text(l.syncSettingsBody),
-            ),
-            if (supported)
-              SwitchListTile(
-                key: const Key('backgroundSyncSwitch'),
-                secondary: const Icon(Icons.sync),
-                title: Text(l.backgroundSyncTitle),
-                subtitle: Text(l.backgroundSyncBody),
-                value: enabled,
-                onChanged: (v) =>
-                    ref.read(settingsDaoProvider).setBackgroundSyncEnabled(v),
-              ),
-            // G36: debug builds only — queue one background round for a
-            // manual test (never shown in release builds).
-            if (kDebugMode && supported)
+            if (local) ...[
+              const LocalModeSettingsSection(),
+            ] else ...[
               ListTile(
-                key: const Key('debugRunBackgroundSync'),
-                leading: const Icon(Icons.bug_report_outlined),
-                title: Text(l.debugRunBackgroundSync),
-                subtitle: Text(
-                  l.debugRunBackgroundSyncBody(
-                    kDebugBackgroundRunDelay.inSeconds,
+                title: Text(l.syncSettingsTitle),
+                subtitle: Text(l.syncSettingsBody),
+              ),
+              if (supported)
+                SwitchListTile(
+                  key: const Key('backgroundSyncSwitch'),
+                  secondary: const Icon(Icons.sync),
+                  title: Text(l.backgroundSyncTitle),
+                  subtitle: Text(l.backgroundSyncBody),
+                  value: enabled,
+                  onChanged: (v) =>
+                      ref.read(settingsDaoProvider).setBackgroundSyncEnabled(v),
+                ),
+              // G36: debug builds only — queue one background round for a
+              // manual test (never shown in release builds).
+              if (kDebugMode && supported)
+                ListTile(
+                  key: const Key('debugRunBackgroundSync'),
+                  leading: const Icon(Icons.bug_report_outlined),
+                  title: Text(l.debugRunBackgroundSync),
+                  subtitle: Text(
+                    l.debugRunBackgroundSyncBody(
+                      kDebugBackgroundRunDelay.inSeconds,
+                    ),
+                  ),
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.maybeOf(context);
+                    try {
+                      await ref
+                          .read(backgroundSchedulerProvider)
+                          .runOnce(delay: kDebugBackgroundRunDelay);
+                      messenger?.showSnackBar(
+                        SnackBar(content: Text(l.debugRunBackgroundSyncQueued)),
+                      );
+                    } catch (e) {
+                      messenger?.showSnackBar(
+                        SnackBar(
+                          content: Text(l.failedWithError(e.toString())),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              // G33: the OS refused to (un)register the task — say so.
+              if (supported && schedulingError != null)
+                ListTile(
+                  key: const Key('backgroundSyncError'),
+                  leading: Icon(
+                    Icons.error_outline,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  title: Text(
+                    l.backgroundSyncScheduleFailed(schedulingError.toString()),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
-                onTap: () async {
-                  final messenger = ScaffoldMessenger.maybeOf(context);
-                  try {
-                    await ref
-                        .read(backgroundSchedulerProvider)
-                        .runOnce(delay: kDebugBackgroundRunDelay);
-                    messenger?.showSnackBar(
-                      SnackBar(content: Text(l.debugRunBackgroundSyncQueued)),
-                    );
-                  } catch (e) {
-                    messenger?.showSnackBar(
-                      SnackBar(content: Text(l.failedWithError(e.toString()))),
-                    );
-                  }
-                },
-              ),
-            // G33: the OS refused to (un)register the task — say so.
-            if (supported && schedulingError != null)
-              ListTile(
-                key: const Key('backgroundSyncError'),
-                leading: Icon(
-                  Icons.error_outline,
-                  color: Theme.of(context).colorScheme.error,
+              if (!supported)
+                ListTile(
+                  leading: const Icon(Icons.sync_disabled),
+                  title: Text(l.noBackgroundSyncTitle),
+                  subtitle: Text(l.noBackgroundSyncBody),
                 ),
-                title: Text(
-                  l.backgroundSyncScheduleFailed(schedulingError.toString()),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            if (!supported)
-              ListTile(
-                leading: const Icon(Icons.sync_disabled),
-                title: Text(l.noBackgroundSyncTitle),
-                subtitle: Text(l.noBackgroundSyncBody),
-              ),
-            const VerifiedOnlySyncTile(),
+              const VerifiedOnlySyncTile(),
+            ],
             const Divider(),
             const BackupSettingsSection(),
             const Divider(),

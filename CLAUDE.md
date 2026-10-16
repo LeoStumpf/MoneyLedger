@@ -68,7 +68,8 @@ toolchain. No Android build in CI (Rust + NDK).
 nothing arrives), `DemoDeviceGateway`, no background sync, and the ledger in
 its own `money_ledger_offline_demo` DB, wiped + reseeded on every open by
 `seedDemoLedger` (3 groups, EUR/CHF, custom splits, payments, dates relative
-to now, all peers in sync). No Matrix client is ever built. Normal builds
+to now, all peers in sync), device prefs in memory (welcome seen — G39). No
+Matrix client is ever built. (Separate from the real local mode, G40.) Normal builds
 tree-shake it (`const bool.fromEnvironment`). Never import `test/` from `lib/`.
 Smoke test: `test/core/demo_mode_test.dart`. Used for README/store screenshots.
 
@@ -118,6 +119,10 @@ lib/
     theme/           # G17 design tokens: app_theme.dart, app_colors.dart (LedgerColors)
     widgets/         # G17 PersonAvatar/AvatarStack, ContentWidth, EmptyState, BrandLogo
     router.dart      # go_router + routerRedirect() pure function (generated: router.g.dart)
+    session/         # G39/G40: who uses the app — device_prefs.dart (device-wide flags: welcome seen,
+                     #   local profile, connect/adoption state; file / localStorage store),
+                     #   app_session.dart (kLocalAccountId, localModeActive, ledgerIdentity, appSession,
+                     #   welcomeStatus), local_transport.dart (LocalOnlyTransport), local_adoption.dart
     l10n/
       l10n.dart        # context.l10n / context.money() / context.date() + re-exports
       formatting.dart  # pure intl helpers: formatMoney, formatDate, parseAmountCents (`,`/`.`)
@@ -153,6 +158,7 @@ lib/
       record_signing.dart      # G6: signed bodies (canonical JSON), message, sign*, LocalRecordSigner
       record_verifier.dart     # G6: RecordVerifier (accept / refuse) + signatureStatus (display)
       record_gate.dart         # G6: RecordGate — the only inbound apply path (live, bootstrap, gossip, restore)
+      pending_signer.dart      # G6/G40: signPendingRows — signs pendingSign rows (engine + local adoption)
   models/
     expense_model.dart         # Plain Dart models (ExpenseModel, SettlementModel)
     group_model.dart           # Plain Dart model (GroupModel)
@@ -189,7 +195,9 @@ lib/
       csv_export.dart          # DB → CSV seam (buildGroupCsvForExport) + csvFileName
       csv_import.dart          # CsvImporter: preview + LWW merge-by-id back into Drift; resolveCsvNames
       backup_files.dart        # file_picker glue (save dialog / browser download + pick)
-    onboarding/                # First-run intro (OnboardingPage) + onboarding_seen flag
+    welcome/                   # G39 WelcomePage: first-open explanation + 3 choices; revisit = "How it works"
+    local/                     # G40 LocalSetupPage (name), local_mode_ui.dart (chip, sheet, settings, delete)
+    onboarding/                # Post-login / local-start intro (OnboardingPage) + onboarding_seen flag
     devices/                   # Device list + SAS verification UI (DevicesPage, member device sheet,
                                #   IncomingVerificationListener) — G11
     about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
@@ -255,7 +263,8 @@ Expenses (`paid_by`, `split` keys) and settlements (`from`/`to`) reference the
 **participant id**, so linking/detaching a Matrix account (claim/unclaim) or
 removing a member never rewrites history. Replication targets
 `MembersDao.activeClaimedMatrixIds`; "who am I in this group" is
-`currentParticipant` (the participant whose `matrixId` is this device's MXID);
+`currentParticipant` (the participant whose `matrixId` is this device's MXID —
+in local mode the pseudo account `kLocalAccountId`, see "Local mode (G40)");
 the UI resolves ids → names via `participantNames(groupId)`
 (`group_provider.dart`).
 
@@ -279,6 +288,9 @@ returns `AppDatabase.signedOut(SignedOutExecutor())` (reads → no rows, writes 
 login/logout transition would otherwise send a spurious empty-DB `resync_request`
 (G24). `AppSettings` lives in the per-account DB, so the **onboarding
 flag is per account** (signed out, `onboardingSeenStream` reports `true`).
+**G40:** `appDatabaseProvider` actually watches `ledgerIdentityProvider` (the
+MXID, or `kLocalAccountId` in local mode → `money_ledger_local` via
+`localDatabaseOpenerProvider`; never collides with `money_ledger_<16 hex>`).
 
 **Legacy migration.** Pre-G4 installs kept everything in one global
 `money_ledger_db`. On every open of a per-account DB, drift's `beforeOpen` runs
@@ -300,6 +312,99 @@ the legacy DB — G18 review) (`canDeleteLegacy` — or it claimed none);
 otherwise it is kept for that account (only a manual recovery could use it)
 and re-checked on later starts. The per-account DB is marked
 `legacy_cleanup_done` (`deleted` / `absent`) once settled.
+
+### Welcome (G39)
+
+A first-time user sees the **welcome before anything else** (`WelcomePage`,
+`/welcome`): four swipeable explanation pages — what MoneyLedger does
+(Splitwise/Tricount-style), free + open source (AGPL, repo link) with no
+MoneyLedger server, what Matrix is and why one signs in (identity + E2EE relay),
+who sees what (members get the group's records E2EE; homeservers see
+ciphertext + who talks to whom; nothing else) — then three choices: **Sign in
+with Matrix** (`/login`), **Create a Matrix account** (`/register`), **Use
+without an account** (`/local-setup`, G40). Illustrations: `BrandLogo` /
+Material icons in a soft circle with three satellite icons (`_Hero`). Any
+choice sets the **device-wide** flag `welcome_seen` in `DevicePrefs`
+(`lib/core/session/device_prefs.dart`): a tiny JSON map that works with no
+ledger DB open — native `device_prefs.json` in the app support dir (temp file +
+rename), web one `localStorage` entry (`device_prefs_store_{io,web}.dart`,
+conditional export); no new dependency. `devicePrefsProvider` (AsyncNotifier)
+loads it; an unreadable store → `DevicePrefs.unreadable` (welcome counts as
+seen — never strands the user; logged). Tests: `devicePrefsStoreProvider` →
+`InMemoryDevicePrefsStore` (`testOverrides` does it; `localProfile:` /
+`connecting:` params put a widget test in local mode). Revisit mode
+(`/how-it-works`, public page; `?topic=matrix` opens at a page): About →
+*How MoneyLedger works*, login page → *What is Matrix?* — same pages, no
+choices, *Done* pops. The post-login **onboarding** (per ledger DB, unchanged
+gate) is slimmed to what's new: Matrix → invite people, background sync, keep
+a copy; local mode → everything stays here, keep a copy, share later.
+
+### Local mode (G40)
+
+**Use the app without any Matrix account.** `/local-setup` (`LocalSetupPage`)
+asks for a name → `DevicePrefs.localProfile` `{name, created_at}`. While a
+local profile is active (`localModeActiveProvider`, `app_session.dart`):
+- **No Matrix at all:** `matrixSessionWantedProvider` is false →
+  `isLoggedInProvider` / `accountUserIdProvider` return false / null **without
+  reading `loginStateProvider`**, so `matrixClientProvider` is never built (also
+  false while the prefs load). `ledgerTransportProvider` returns a
+  `LocalOnlyTransport` (sends reach nothing, nothing arrives, `crypto.identity`
+  null); `deviceGatewayProvider` throws (device lists = unavailable, no
+  incoming verification); `SyncEngine` / `LedgerSyncer` return from `start()`
+  for `kLocalAccountId` (no digests, no new-device resync); background sync is
+  cancelled (`backgroundSyncSchedulingProvider`) and the foreground
+  `onSyncRequest` is a no-op. `vod.init()` still runs in `main()` (cheap; needed
+  the moment an account is connected). `test/features/local_mode_test.dart`
+  pins "no Matrix client / send / schedule".
+- **"Me":** this device's identity is the reserved pseudo account
+  **`kLocalAccountId` = `local:self`** (not an MXID — no `@` — so it never
+  collides and every Matrix-only path skips it). The transport's `userId` is
+  it, so `currentUserIdProvider`, `currentParticipant`, `claimedBy`,
+  `groupExitKind` (→ always *Delete*), the backup nudge (every local group is
+  unprotected) etc. work unchanged: the user's own participant in each local
+  group is **claimed by `local:self`** with a fresh UUIDv7 participant id
+  (`GroupCreator` / `_applyAdd`); `LocalOnlyTransport.profileName(local:self)`
+  = the profile name. Other people are local participants.
+- **Signing:** nothing can be signed → every local write is stored
+  `pendingSign` immediately (`LocalRecordSigner` sees no identity); the
+  attribution footer is hidden in local mode.
+- **UI:** groups app bar shows the **"Local only" chip** (`LocalModeChip` →
+  sheet: nothing leaves the device, back up, connect an account) instead of
+  Devices + Sign out; the settings sheet replaces sync settings with
+  `LocalModeSettingsSection` (name, *Connect a Matrix account*, *Delete local
+  data*); no sync cloud on the group page; members page: no invite, name-only
+  *Add person*, no devices / link / detach, self = "You (on this device)" +
+  hint card; router sends `/devices` to `/groups`. Backup / CSV / restore work
+  as usual (the backup's `account` is `local:self`).
+- **Connect a Matrix account** (upgrade): `setConnecting(true)` (persisted, so a
+  web SSO reload keeps it) → router allows only login / register / public
+  pages (login page: close button = cancel, subtitle says the groups move) →
+  on a successful login / token login / registration `AuthNotifier._afterSignIn`
+  writes `beginLocalAdoption(mxid)` (local profile cleared + `adoptInto = mxid`
+  in one write; `localModeActive` already flips false once the MXID is known).
+  `localLedgerAdoptionProvider` (watched by `LedgerSyncHost`) then runs
+  `adoptLocalLedger` (`local_adoption.dart`) once that account's DB is open:
+  every row of the local DB is **LWW-merged** into the account DB (an account
+  that already has groups merges, no duplicates; idempotent after a crash),
+  the participant claimed by `local:self` becomes claimed by the MXID
+  (`adoptedMember`, `nextLwwClock`), every unsigned row is marked
+  `pendingSign` and **signed by the account's device** right away
+  (`signPendingRows(originIfMissing: true)` — creation statements too, so
+  "added by" works and peers never refuse them as unsigned; waits up to
+  `localAdoptionKeyWaitProvider` = 30 s for the device key, else the sync
+  engine signs before the first digest — without origin for edited rows),
+  archive entries + attested keys copied, then the **local DB is wiped**,
+  `finishLocalAdoption(mxid)` (`lastAdoptedInto`), a groups-page banner, and
+  each adopted group is poked → the digest reaches our other devices (unknown
+  group → resync → bootstrap). Inviting Matrix members afterwards = the normal
+  G18 invite flow. Signing out later is the normal non-destructive logout.
+- **Leave local mode:** settings → *Delete local data* (confirm with group
+  count) → `AppDatabase.wipeAll()` + `endLocalProfile()` → login page. Starting
+  local mode again (also after an adoption) starts with an empty ledger; the
+  setup page says where earlier local groups went (`lastAdoptedInto`).
+- Not done: a local-mode backup restored into a Matrix account keeps its rows
+  unsigned/legacy and the `local:self` claim — use *Connect a Matrix account*
+  instead (open point).
 
 ### Data Flow
 
@@ -526,7 +631,9 @@ connected + battery not low; `lib/core/background/`) fixes that:
 - Setting: per account, device-local `AppSettings` `background_sync_enabled`
   (default on), *Settings* sheet (gear) on the groups page;
   `backgroundSyncSchedulingProvider` (watched by `LedgerSyncHost`) registers /
-  cancels the OS task (cancel on sign-out). The round re-checks the flag.
+  cancels the OS task (cancel on sign-out and in local mode, G40). The round
+  re-checks the flag (and overrides `localModeActiveProvider` /
+  `ledgerIdentityProvider`, so it only ever syncs the account it opened).
 - The app manifest removes the plugin's `POST_NOTIFICATIONS` permission (no
   expedited / foreground workers). Web/iOS: no background sync.
 - **Debug builds only (G36):** the settings sheet has *Run background sync now
@@ -1066,7 +1173,7 @@ provider's `.future` in a `ProviderContainer` test.
 
 **Drift web setup:** `openNamedConnection(name)` passes `DriftWebOptions(sqlite3Wasm: Uri.parse('sqlite3.wasm'), driftWorker: Uri.parse('drift_worker.js'))` when `kIsWeb`. The two files in `web/` must not be deleted — they are not generated by the build and are not in `.gitignore`.
 
-**Router pattern:** `routerProvider` is `keepAlive: true` and uses `refreshListenable` (a `ValueNotifier`, toggled) to rerun the redirect when `isLoggedInProvider` **or** `onboardingGateProvider` changes. Do **not** make it non-keepAlive — that recreates the `GoRouter` on every auth state change, which crashes at the default initial location `/`. `routerRedirect(isLoggedIn, OnboardingStatus, location)` is the pure, unit-tested seam: signed-out users reach only `/login` + `/register`; signed in, the one-time **onboarding** flag (`onboarding_seen` in the per-account `AppSettings`) is tri-state (G25, `OnboardingGate` in `onboarding_provider.dart`): **unknown** (DB/flag still loading, incl. reloading after an account switch) → neutral `/splash`; **notSeen** → forced `/onboarding`; **seen** → off auth pages / `/` / `/splash` / `/onboarding` to `/groups`. If the flag hasn't loaded after `kOnboardingFlagTimeout` (8 s) or the stream errors, the gate logs and latches *seen* for that account (never strands the user on the splash; a late "not seen" doesn't yank them to onboarding). The wiring is tested end-to-end in `test/core/router_provider_test.dart` (listen to `routerProvider` in a container test — unlistened providers are paused; don't `pumpAndSettle` on the splash, its spinner never settles).
+**Router pattern:** `routerProvider` is `keepAlive: true` and uses `refreshListenable` (a `ValueNotifier`, toggled) to rerun the redirect when `appSessionProvider`, `welcomeStatusProvider`, `connectingAccountProvider` **or** `onboardingGateProvider` changes (G39/G40: `routerRedirect({session, welcome, onboarding, connecting, location})` — prefs loading → `/splash`; signed out + welcome not seen → `/welcome` (+ public pages); signed out + seen → login / register / welcome / local setup / public; local mode = "in" like an account (own onboarding flag, no `/devices`); connecting → only login / register / public; `initialLocation` is `/splash`; tested in `test/core/router_redirect_test.dart` + the end-to-end flow in `router_provider_test.dart`). The rest of this paragraph describes the onboarding part. Do **not** make it non-keepAlive — that recreates the `GoRouter` on every auth state change, which crashes at the default initial location `/`. `routerRedirect(isLoggedIn, OnboardingStatus, location)` is the pure, unit-tested seam: signed-out users reach only `/login` + `/register`; signed in, the one-time **onboarding** flag (`onboarding_seen` in the per-account `AppSettings`) is tri-state (G25, `OnboardingGate` in `onboarding_provider.dart`): **unknown** (DB/flag still loading, incl. reloading after an account switch) → neutral `/splash`; **notSeen** → forced `/onboarding`; **seen** → off auth pages / `/` / `/splash` / `/onboarding` to `/groups`. If the flag hasn't loaded after `kOnboardingFlagTimeout` (8 s) or the stream errors, the gate logs and latches *seen* for that account (never strands the user on the splash; a late "not seen" doesn't yank them to onboarding). The wiring is tested end-to-end in `test/core/router_provider_test.dart` (listen to `routerProvider` in a container test — unlistened providers are paused; don't `pumpAndSettle` on the splash, its spinner never settles).
 
 **Errors in user actions (G15):** a user-initiated action that fails must
 show it (snackbar `l.failedWithError` / `exportFailed` / `importFailed`, or

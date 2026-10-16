@@ -291,5 +291,35 @@ void main() {
       expect(ssoServerLabel(' https://Example.org/ '), 'example.org');
       expect(ssoServerLabel('http://localhost:8008/'), 'localhost:8008');
     });
+
+    testWidgets('G39/G40: "What is Matrix?" and "Use without an account"', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        testApp(const LoginPage(), overrides: testOverrides()),
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('whatIsMatrixLink')), findsOneWidget);
+      expect(find.byKey(const Key('useWithoutAccountLink')), findsOneWidget);
+      expect(find.byKey(const Key('cancelConnect')), findsNothing);
+      expect(find.text('Sign in with your Matrix account'), findsOneWidget);
+    });
+
+    testWidgets('G40 connect mode: cancellable, says the groups move', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        testApp(
+          const LoginPage(),
+          overrides: testOverrides(localProfile: 'Lea', connecting: true),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Connect a Matrix account'), findsOneWidget);
+      expect(find.textContaining('local groups then move'), findsOneWidget);
+      expect(find.byKey(const Key('cancelConnect')), findsOneWidget);
+      expect(find.byKey(const Key('useWithoutAccountLink')), findsNothing);
+    });
   });
 }

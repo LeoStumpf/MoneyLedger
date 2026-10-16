@@ -15,11 +15,11 @@ import '../../core/database/daos/signing_dao.dart';
 import '../../core/database/daos/sync_states_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/session/app_session.dart';
 import '../../core/sync/delivery_policy.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
-import '../auth/auth_provider.dart';
 import '../../models/expense_category.dart' show normalizeNote;
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart' show nextLwwClock;
@@ -31,6 +31,13 @@ part 'expenses_provider.g.dart';
 final accountDatabaseOpenerProvider =
     Provider<AppDatabase Function(String mxid)>((ref) => openAccountDatabase);
 
+/// Opens local mode's device-local ledger DB ([localDatabaseName], G40).
+/// Injectable like [accountDatabaseOpenerProvider]; also used to read the
+/// local ledger when it is adopted into an account.
+final localDatabaseOpenerProvider = Provider<AppDatabase Function()>(
+  (ref) => openLocalDatabase,
+);
+
 /// The **current account's** ledger database (Phase G4: one DB per Matrix
 /// account, see `account_database.dart`). Rebuilds when the signed-in account
 /// changes: the previous account's DB is closed and every DAO / stream /
@@ -40,12 +47,16 @@ final accountDatabaseOpenerProvider =
 /// (reads → no rows, writes → error) keeps the provider non-nullable for the
 /// many synchronous consumers; a widget still mounted during the logout
 /// transition sees an empty ledger, never another account's data.
+///
+/// G40: in local mode the device-local ledger ([localDatabaseName]) opens.
 @Riverpod(keepAlive: true)
 AppDatabase appDatabase(Ref ref) {
-  final mxid = ref.watch(accountUserIdProvider);
-  final db = mxid == null
+  final id = ref.watch(ledgerIdentityProvider);
+  final db = id == null
       ? AppDatabase.signedOut(SignedOutExecutor())
-      : ref.read(accountDatabaseOpenerProvider)(mxid);
+      : isLocalAccountId(id)
+      ? ref.read(localDatabaseOpenerProvider)()
+      : ref.read(accountDatabaseOpenerProvider)(id);
   ref.onDispose(db.close);
   return db;
 }

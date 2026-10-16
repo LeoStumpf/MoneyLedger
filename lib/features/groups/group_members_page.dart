@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/session/app_session.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/widgets/text_prompt_dialog.dart';
 import '../../core/theme/app_theme.dart';
@@ -42,18 +43,22 @@ class GroupMembersPage extends ConsumerWidget {
         all.any((m) => m.matrixId == myId) &&
         !all.any((m) => m.matrixId == myId && m.isActive);
     final l = context.l10n;
+    // G40: local mode — people are names only; no invites, devices or
+    // Matrix accounts.
+    final local = ref.watch(localModeActiveProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l.membersTitle),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: l.inviteByMatrixId,
-            onPressed: busy || iAmRemoved
-                ? null
-                : () => _showInviteDialog(context, ref, all),
-          ),
+          if (!local)
+            IconButton(
+              icon: const Icon(Icons.share_outlined),
+              tooltip: l.inviteByMatrixId,
+              onPressed: busy || iAmRemoved
+                  ? null
+                  : () => _showInviteDialog(context, ref, all),
+            ),
         ],
       ),
       floatingActionButton: iAmRemoved
@@ -99,6 +104,19 @@ class GroupMembersPage extends ConsumerWidget {
                   Insets.fabClearance(context),
                 ),
                 children: [
+                  if (local)
+                    ContentWidth(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: Insets.s),
+                        child: Card(
+                          key: const Key('localMembersHint'),
+                          child: ListTile(
+                            leading: const Icon(Icons.phone_android_outlined),
+                            title: Text(l.localModeMembersHint),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (members.isNotEmpty)
                     ContentWidth(
                       child: section([
@@ -108,6 +126,7 @@ class GroupMembersPage extends ConsumerWidget {
                             myId: myId,
                             roomId: roomId,
                             readOnly: iAmRemoved,
+                            local: local,
                           ),
                       ]),
                     ),
@@ -349,7 +368,11 @@ class _MemberTile extends ConsumerWidget {
     required this.myId,
     required this.roomId,
     this.readOnly = false,
+    this.local = false,
   });
+
+  /// G40 local mode: no Matrix accounts / devices.
+  final bool local;
 
   bool get _isSelf => member.matrixId != null && member.matrixId == myId;
 
@@ -361,7 +384,9 @@ class _MemberTile extends ConsumerWidget {
     return ListTile(
       leading: PersonAvatar(id: member.userId, name: title),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: mxid != null
+      subtitle: local
+          ? Text(_isSelf ? l.localModeYouSubtitle : l.localParticipant)
+          : mxid != null
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -378,10 +403,12 @@ class _MemberTile extends ConsumerWidget {
               tooltip: l.options,
               onSelected: (a) => _onAction(context, ref, a),
               itemBuilder: (_) => [
-                if (member.isClaimed)
+                if (member.isClaimed && !local)
                   PopupMenuItem(value: 'devices', child: Text(l.devicesTitle)),
                 PopupMenuItem(value: 'rename', child: Text(l.rename)),
-                if (member.isClaimed)
+                if (local)
+                  ...[]
+                else if (member.isClaimed)
                   PopupMenuItem(
                     value: 'unclaim',
                     child: Text(l.detachMatrixAccount),

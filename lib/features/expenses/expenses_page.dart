@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/session/app_session.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/widgets/text_prompt_dialog.dart';
 import '../../core/sync/sync_engine.dart';
@@ -130,7 +131,9 @@ class ExpensesPage extends ConsumerWidget {
                   onPressed: () =>
                       ref.read(ledgerSearchProvider(roomId).notifier).open(),
                 ),
-                _SyncStatusIcon(status: syncStatus),
+                // G40: nothing syncs in local mode.
+                if (!ref.watch(localModeActiveProvider))
+                  _SyncStatusIcon(status: syncStatus),
                 IconButton(
                   icon: const Icon(Icons.group_outlined),
                   tooltip: l.membersTitle,

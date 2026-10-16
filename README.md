@@ -12,6 +12,9 @@ rooms: Matrix is used purely as an **end-to-end-encrypted to-device relay** to
 replicate records between members, so the homeserver retains no financial data
 and sees only ciphertext.
 
+- **Works without an account too:** choose *Use without an account* and
+  everything stays on this device (no Matrix, no server contacted, no sync) —
+  connect a Matrix account later and your local groups move into it.
 - **Platforms:** Android and web. **iOS is not supported for v1** (see
   [Platform support](#platform-support)).
 - **No backend to run:** bring your own Matrix homeserver (matrix.org, self-hosted, …).
@@ -22,6 +25,17 @@ and sees only ciphertext.
 
 ### Features
 
+- **First-open welcome** that explains the app before any login: what it
+  does, free + open source, no MoneyLedger server, what Matrix is and why you
+  sign in, who sees what — then *Sign in with Matrix*, *Create a Matrix
+  account* or *Use without an account* (re-read it via About → *How
+  MoneyLedger works* or the login page's *What is Matrix?*).
+- **Local mode (no account):** your name + a device-local ledger; other people
+  are names only; a *Local only* chip explains it (back up regularly!).
+  *Settings → Connect a Matrix account* later moves every local group into
+  that account (you become its claimed member, every entry is signed by the
+  new device) so you can invite people and sync your devices; *Delete local
+  data* ends local mode.
 - Local-only expense **groups** with Matrix-account or **local (name-only)**
   participants; link a Matrix account to a local person at any time.
 - **Custom splits**: equal (pick who), exact amounts, shares/weights, or

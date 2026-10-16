@@ -425,7 +425,7 @@ final class GroupCreatorProvider
   }
 }
 
-String _$groupCreatorHash() => r'e56a04ccea931a1cf96911d4c1ce74eda939744d';
+String _$groupCreatorHash() => r'7e0b5a8f5cc5f86bb6d3a5ef16c9455e4fb9e6c3';
 
 abstract class _$GroupCreator extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -477,7 +477,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'f597466cdc4367e8f4d018430da9e9210fb4e754';
+String _$memberAdderHash() => r'84f96f18bb15a94b8c3b2ed130ff7ad9d40e15b4';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -616,7 +616,7 @@ final class ProfileNameRefreshProvider
 }
 
 String _$profileNameRefreshHash() =>
-    r'fc5e4e1aa07a40881103d7676d4232a49cf3ef7c';
+    r'3c72fbb41f1806fa17fa16de2a11f4fdcd4e7fce';
 
 /// Leave / delete a group (G9). Both end with the group **purged** from the
 /// local DB and a device-local [LeftGroupTombstone], so a late digest or

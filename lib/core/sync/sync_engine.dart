@@ -9,6 +9,8 @@ import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../database/app_database.dart';
+import '../session/app_session.dart' show isLocalAccountId;
+import 'pending_signer.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
 import '../database/daos/members_dao.dart';
@@ -22,7 +24,6 @@ import 'ledger_payloads.dart';
 import 'left_groups.dart';
 import 'payload_budget.dart';
 import 'record_gate.dart';
-import 'record_signing.dart';
 import 'record_verifier.dart';
 import 'record_version.dart';
 import 'self_recovery.dart';
@@ -220,6 +221,9 @@ class SyncEngine {
       return;
     }
     if (!_alive) return;
+    // G40: local mode — no relay, nothing to sync (and no "new device"
+    // resync request from the empty local DB).
+    if (isLocalAccountId(transport.userId)) return;
     if (kDebugMode) debugPrint('[sync] engine started for ${transport.userId}');
     _transport = transport;
     _gate = RecordGate(
@@ -406,50 +410,14 @@ class SyncEngine {
   Future<void> _signPending(String groupId) async {
     final transport = _transport;
     if (transport == null || transport.crypto.identity == null) return;
-    final crypto = transport.crypto;
-    final group = await _groups.getGroup(groupId);
-    if (!_alive) return;
-    if (group != null && group.pendingSign) {
-      await _groups.upsertGroupLww(
-        groupCompanion(await signGroupMeta(crypto, group)),
-      );
-    }
-    for (final m in await _members.getMembers(groupId)) {
-      if (!_alive) return;
-      if (m.pendingSign) {
-        await _members.upsertMemberLww(
-          memberCompanion(await signMember(crypto, m)),
-        );
-      }
-    }
-    for (final e in await _expenses.getAllExpensesForGroup(groupId)) {
-      if (!_alive) return;
-      if (e.pendingSign) {
-        await _expenses.upsertExpenseLww(
-          expenseCompanion(
-            await signExpense(
-              crypto,
-              e,
-              creating: e.origin == null && e.updatedAt == e.createdAt,
-            ),
-          ),
-        );
-      }
-    }
-    for (final st in await _expenses.getAllSettlementsForGroup(groupId)) {
-      if (!_alive) return;
-      if (st.pendingSign) {
-        await _expenses.upsertSettlementLww(
-          settlementCompanion(
-            await signSettlement(
-              crypto,
-              st,
-              creating: st.origin == null && st.updatedAt == st.createdAt,
-            ),
-          ),
-        );
-      }
-    }
+    await signPendingRows(
+      crypto: transport.crypto,
+      groups: _groups,
+      members: _members,
+      expenses: _expenses,
+      groupId: groupId,
+      isAlive: () => _alive,
+    );
   }
 
   /// Debounced "something changed in [groupId]": coalesces a burst of inbound

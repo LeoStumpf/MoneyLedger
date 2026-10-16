@@ -23,6 +23,7 @@ import '../database/daos/settings_dao.dart';
 import '../database/daos/sync_states_dao.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
+import '../session/app_session.dart';
 import '../sync/self_recovery.dart';
 import '../sync/sync_engine.dart';
 
@@ -251,6 +252,9 @@ Future<BackgroundRoundResult> runBackgroundRound({
     final c = container = ProviderContainer(
       overrides: [
         accountUserIdProvider.overrideWithValue(mxid),
+        // G40: a round only ever syncs the Matrix account it opened.
+        localModeActiveProvider.overrideWithValue(false),
+        ledgerIdentityProvider.overrideWithValue(mxid),
         accountDatabaseOpenerProvider.overrideWithValue((_) => openedDb),
         ledgerTransportProvider.overrideWith((ref) async => t),
         // No periodic timer inside a round, a short ack debounce (the round

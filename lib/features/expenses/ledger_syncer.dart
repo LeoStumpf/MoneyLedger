@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/session/app_session.dart' show isLocalAccountId;
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/members_dao.dart';
@@ -146,6 +147,7 @@ class LedgerSyncer {
       return;
     }
     if (!_alive) return;
+    if (isLocalAccountId(transport.userId)) return; // G40: local mode
     _myMxid = transport.userId;
     _gate = RecordGate(
       verifier: RecordVerifier(

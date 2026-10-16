@@ -3,11 +3,15 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/database/account_database.dart';
+import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
+import 'package:money_ledger/core/session/device_prefs.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/features/devices/device_provider.dart';
 import 'package:money_ledger/features/expenses/record_attribution.dart';
@@ -89,6 +93,11 @@ List<dynamic> testOverrides({
   int? lastBackupAt,
   // G16: device-local archive entries the pages see.
   Map<String, GroupArchive> archives = const {},
+  // G39/G40: the device-wide preferences (default: welcome seen, no local
+  // profile). [localProfile] puts the app in local mode.
+  String? localProfile,
+  // G40: "Connect a Matrix account" in progress (needs [localProfile]).
+  bool connecting = false,
 }) => [
   isLoggedInProvider.overrideWith((ref) => isLoggedIn),
   // loginFlowsLoading: future never completes, simulating homeserver
@@ -123,6 +132,22 @@ List<dynamic> testOverrides({
   // Never touch the app_links plugin in widget tests.
   ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
   ...signingUiOverrides(archives: archives),
+  // G39/G40: device-wide preferences in memory — welcome seen, no local
+  // profile (never the platform file / localStorage).
+  devicePrefsStoreProvider.overrideWithValue(
+    InMemoryDevicePrefsStore({
+      'welcome_seen': '1',
+      if (localProfile != null)
+        'local_profile': jsonEncode({'name': localProfile, 'created_at': 1}),
+      if (connecting) 'local_connecting': '1',
+    }),
+  ),
+  // Local mode would open the real local DB file — use the storage-less
+  // placeholder like a signed-out widget test does.
+  if (localProfile != null)
+    appDatabaseProvider.overrideWithValue(
+      AppDatabase.signedOut(SignedOutExecutor()),
+    ),
 ];
 
 /// G6: the signature-status streams of the record UI, without a database

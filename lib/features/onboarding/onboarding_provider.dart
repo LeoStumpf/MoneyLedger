@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/database/daos/settings_dao.dart';
+import '../../core/session/app_session.dart';
 import '../../core/timer_factory.dart';
 import '../auth/auth_provider.dart';
 import '../expenses/expenses_provider.dart';
@@ -15,11 +16,12 @@ part 'onboarding_provider.g.dart';
 SettingsDao settingsDao(Ref ref) => SettingsDao(ref.watch(appDatabaseProvider));
 
 /// The flag lives in the **per-account** ledger DB (G4), so onboarding is
-/// shown once per account on a device. Signed out there is no DB to read and
-/// the router never forces onboarding anyway → report "seen".
+/// shown once per account on a device (G40: and once for local mode's
+/// ledger). Signed out there is no DB to read and the router never forces
+/// onboarding anyway → report "seen".
 @Riverpod(keepAlive: true)
 Stream<bool> onboardingSeenStream(Ref ref) {
-  if (ref.watch(accountUserIdProvider) == null) return Stream.value(true);
+  if (ref.watch(ledgerIdentityProvider) == null) return Stream.value(true);
   return ref.watch(settingsDaoProvider).watchOnboardingSeen();
 }
 
@@ -57,8 +59,11 @@ class OnboardingGate extends _$OnboardingGate {
 
   @override
   OnboardingStatus build() {
-    if (!ref.watch(isLoggedInProvider)) return OnboardingStatus.seen;
-    final account = ref.watch(accountUserIdProvider);
+    // G40: local mode is "in" like a signed-in account (its own ledger and
+    // onboarding flag).
+    final local = ref.watch(localModeActiveProvider);
+    if (!local && !ref.watch(isLoggedInProvider)) return OnboardingStatus.seen;
+    final account = ref.watch(ledgerIdentityProvider);
     if (account != null && account == _gaveUpFor) return OnboardingStatus.seen;
     final flag = ref.watch(onboardingSeenStreamProvider);
     if (account != null && !flag.isLoading) {

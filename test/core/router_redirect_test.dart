@@ -1,18 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/router.dart';
+import 'package:money_ledger/core/session/app_session.dart';
 import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
 
-// Most cases assume onboarding is already done; the onboarding groups cover the
-// first-run and still-loading branches explicitly.
+// Most cases assume onboarding and the welcome are already done; the
+// onboarding / welcome / local-mode groups cover the other branches.
 String? redirect(
   bool isLoggedIn,
   String location, {
   bool onboardingSeen = true,
   OnboardingStatus? status,
+  AppSessionKind? session,
+  WelcomeStatus welcome = WelcomeStatus.seen,
+  bool connecting = false,
 }) => routerRedirect(
-  isLoggedIn,
-  status ?? (onboardingSeen ? OnboardingStatus.seen : OnboardingStatus.notSeen),
-  location,
+  session:
+      session ??
+      (isLoggedIn ? AppSessionKind.matrix : AppSessionKind.signedOut),
+  welcome: welcome,
+  onboarding:
+      status ??
+      (onboardingSeen ? OnboardingStatus.seen : OnboardingStatus.notSeen),
+  connecting: connecting,
+  location: location,
 );
 
 void main() {
@@ -102,7 +112,7 @@ void main() {
   });
 
   group('routerRedirect — signed out, splash', () {
-    test('redirects /splash to /login', () {
+    test('redirects /splash to /login (welcome seen)', () {
       expect(redirect(false, '/splash'), '/login');
     });
 
@@ -139,6 +149,117 @@ void main() {
 
     test('leaves the splash for /onboarding once the flag is not seen', () {
       expect(redirect(true, '/splash', onboardingSeen: false), '/onboarding');
+    });
+  });
+
+  group('routerRedirect — device preferences loading (G39)', () {
+    const loading = AppSessionKind.loading;
+    test('every page waits on the splash', () {
+      for (final loc in ['/', '/login', '/groups', '/welcome', '/about']) {
+        expect(redirect(false, loc, session: loading), '/splash', reason: loc);
+      }
+      expect(redirect(false, '/splash', session: loading), isNull);
+    });
+  });
+
+  group('routerRedirect — first open, welcome not seen (G39)', () {
+    const notSeen = WelcomeStatus.notSeen;
+    test('everything leads to the welcome', () {
+      for (final loc in ['/', '/login', '/register', '/groups', '/splash']) {
+        expect(redirect(false, loc, welcome: notSeen), '/welcome', reason: loc);
+      }
+    });
+    test('the welcome itself and the public pages stay', () {
+      for (final loc in [
+        '/welcome',
+        '/about',
+        '/about/privacy',
+        '/how-it-works',
+      ]) {
+        expect(redirect(false, loc, welcome: notSeen), isNull, reason: loc);
+      }
+    });
+    test('local setup needs the welcome first', () {
+      expect(redirect(false, '/local-setup', welcome: notSeen), '/welcome');
+    });
+    test('an unknown welcome flag shows the splash', () {
+      expect(
+        redirect(false, '/login', welcome: WelcomeStatus.unknown),
+        '/splash',
+      );
+    });
+  });
+
+  group('routerRedirect — signed out, welcome seen (G39/G40)', () {
+    test('login, register, welcome, local setup and public pages stay', () {
+      for (final loc in [
+        '/login',
+        '/register',
+        '/welcome',
+        '/local-setup',
+        '/how-it-works',
+        '/about',
+      ]) {
+        expect(redirect(false, loc), isNull, reason: loc);
+      }
+    });
+    test('app pages lead to the login', () {
+      expect(redirect(false, '/groups'), '/login');
+      expect(redirect(false, '/devices'), '/login');
+    });
+  });
+
+  group('routerRedirect — local mode (G40)', () {
+    const local = AppSessionKind.local;
+    test('is "in": the app pages stay, entry pages lead to the groups', () {
+      expect(redirect(false, '/groups', session: local), isNull);
+      expect(redirect(false, '/groups/g1/expenses', session: local), isNull);
+      for (final loc in [
+        '/',
+        '/login',
+        '/register',
+        '/welcome',
+        '/local-setup',
+      ]) {
+        expect(redirect(false, loc, session: local), '/groups', reason: loc);
+      }
+    });
+    test('has no devices page', () {
+      expect(redirect(false, '/devices', session: local), '/groups');
+    });
+    test('its own onboarding gate applies', () {
+      expect(
+        redirect(false, '/groups', session: local, onboardingSeen: false),
+        '/onboarding',
+      );
+      expect(
+        redirect(
+          false,
+          '/groups',
+          session: local,
+          status: OnboardingStatus.unknown,
+        ),
+        '/splash',
+      );
+    });
+    test('"How it works" stays reachable', () {
+      expect(redirect(false, '/how-it-works', session: local), isNull);
+    });
+    test('connecting: only login / register / public pages', () {
+      expect(
+        redirect(false, '/groups', session: local, connecting: true),
+        '/login',
+      );
+      for (final loc in ['/login', '/register', '/about', '/how-it-works']) {
+        expect(
+          redirect(false, loc, session: local, connecting: true),
+          isNull,
+          reason: loc,
+        );
+      }
+    });
+    test('the connect sign-in succeeded: a Matrix session goes in', () {
+      expect(redirect(true, '/login', connecting: true), '/groups');
     });
   });
 }

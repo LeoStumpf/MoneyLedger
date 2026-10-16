@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/onboarding/onboarding_provider.dart';
+import '../session/app_session.dart';
 import 'background_scheduler.dart';
 import 'background_sync.dart';
 
@@ -50,10 +51,6 @@ class BackgroundSyncSchedulingError extends Notifier<Object?> {
 /// turned off or the user signs out. Watched by `LedgerSyncHost`.
 final backgroundSyncSchedulingProvider = Provider.autoDispose<void>((ref) {
   final scheduler = ref.watch(backgroundSchedulerProvider);
-  final loggedIn = ref.watch(loginStateProvider);
-  final account = ref.watch(accountUserIdProvider);
-  final enabled = ref.watch(backgroundSyncEnabledProvider);
-
   // Captured before any await (G19); keepAlive, so it outlives this provider.
   final errors = ref.read(backgroundSyncSchedulingErrorProvider.notifier);
 
@@ -66,6 +63,17 @@ final backgroundSyncSchedulingProvider = Provider.autoDispose<void>((ref) {
       errors.report(e);
     }
   }
+
+  // G40: local mode has nothing to sync — never registered (and a task left
+  // from an earlier Matrix session is cancelled), without consulting Matrix.
+  if (ref.watch(localModeActiveProvider)) {
+    apply(false);
+    return;
+  }
+  if (!ref.watch(matrixSessionWantedProvider)) return; // prefs still loading
+  final loggedIn = ref.watch(loginStateProvider);
+  final account = ref.watch(accountUserIdProvider);
+  final enabled = ref.watch(backgroundSyncEnabledProvider);
 
   if (loggedIn.hasValue && loggedIn.value == false) {
     apply(false);

@@ -18,6 +18,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 
+import '../session/app_session.dart' show localDatabaseName;
 import 'app_database.dart';
 import 'probe/database_probe.dart';
 
@@ -89,6 +90,10 @@ bool shouldAdoptLegacy({
   return legacyClaimedMatrixIds.isEmpty ||
       legacyClaimedMatrixIds.contains(mxid);
 }
+
+/// Opens local mode's device-local ledger (G40) — no legacy adoption (the
+/// pre-G4 ledger belongs to Matrix accounts).
+AppDatabase openLocalDatabase() => AppDatabase.named(localDatabaseName);
 
 /// Opens the ledger DB for [mxid], adopting the legacy global ledger on first
 /// open if applicable. The production `accountDatabaseOpenerProvider`.

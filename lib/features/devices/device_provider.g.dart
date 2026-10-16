@@ -9,11 +9,15 @@ part of 'device_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 /// Device-verification seam. Overridden with an in-memory fake in tests.
+/// G40: local mode has no devices — it fails (no Matrix client is built);
+/// device lists read as unavailable and no verification is listened for.
 
 @ProviderFor(deviceGateway)
 final deviceGatewayProvider = DeviceGatewayProvider._();
 
 /// Device-verification seam. Overridden with an in-memory fake in tests.
+/// G40: local mode has no devices — it fails (no Matrix client is built);
+/// device lists read as unavailable and no verification is listened for.
 
 final class DeviceGatewayProvider
     extends
@@ -24,6 +28,8 @@ final class DeviceGatewayProvider
         >
     with $FutureModifier<DeviceGateway>, $FutureProvider<DeviceGateway> {
   /// Device-verification seam. Overridden with an in-memory fake in tests.
+  /// G40: local mode has no devices — it fails (no Matrix client is built);
+  /// device lists read as unavailable and no verification is listened for.
   DeviceGatewayProvider._()
     : super(
         from: null,
@@ -50,7 +56,7 @@ final class DeviceGatewayProvider
   }
 }
 
-String _$deviceGatewayHash() => r'f15708afc8283ad2bafd4335a225847ac13a1bba';
+String _$deviceGatewayHash() => r'f43ccca5df53235084e8c1c620f5e093fe159210';
 
 /// G11: the devices this account verified by emoji comparison (device-local,
 /// per account — the app's own record, see `SettingsDao.markDeviceVerified`).
