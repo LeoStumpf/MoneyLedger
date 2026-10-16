@@ -2807,7 +2807,7 @@ abstract class AppLocalizations {
   /// G39 welcome page 2 body
   ///
   /// In en, this message translates to:
-  /// **'MoneyLedger is free software (AGPL-3.0) — anyone can read its source code. There is no MoneyLedger server and no MoneyLedger account: your groups and expenses are stored only on your devices.'**
+  /// **'MoneyLedger is free software (AGPL-3.0-or-later) — anyone can read its source code. There is no MoneyLedger server and no MoneyLedger account: your groups and expenses are stored only on your devices.'**
   String get welcomeOpenBody;
 
   /// G39 welcome: link to the public repository

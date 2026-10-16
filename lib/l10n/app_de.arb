@@ -451,7 +451,7 @@
   "welcomeIntroTitle": "Ausgaben fair teilen",
   "welcomeIntroBody": "MoneyLedger hält fest, wer in einer Gruppe was bezahlt hat – auf einer Reise, in der WG, beim Essen – und zeigt, wer wem etwas schuldet, wie Splitwise oder Tricount. Teile gleichmäßig oder ungleich auf, erfasse Zahlungen und gleiche Schulden aus.",
   "welcomeOpenTitle": "Kostenlos, Open Source, ohne Server",
-  "welcomeOpenBody": "MoneyLedger ist freie Software (AGPL-3.0) – jede und jeder kann den Quellcode lesen. Es gibt keinen MoneyLedger-Server und kein MoneyLedger-Konto: Deine Gruppen und Ausgaben liegen nur auf deinen Geräten.",
+  "welcomeOpenBody": "MoneyLedger ist freie Software (AGPL-3.0-or-later) – jede und jeder kann den Quellcode lesen. Es gibt keinen MoneyLedger-Server und kein MoneyLedger-Konto: Deine Gruppen und Ausgaben liegen nur auf deinen Geräten.",
   "welcomeSourceLink": "Quellcode ansehen",
   "welcomeMatrixTitle": "Was ist Matrix?",
   "welcomeMatrixBody": "Matrix ist ein offenes, dezentrales Nachrichtennetz. Wie bei E-Mail wählst du einen Anbieter (einen „Homeserver“, z. B. matrix.org) und legst dort ein kostenloses Konto an. MoneyLedger nutzt dein Matrix-Konto als deine Identität und als Ende-zu-Ende-verschlüsselten Übermittler zu den anderen Mitgliedern deiner Gruppen – deshalb meldest du dich an.",

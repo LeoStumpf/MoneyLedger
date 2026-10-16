@@ -15,7 +15,7 @@ part 'about_page.g.dart';
 const kSourceCodeUrl = 'https://github.com/LeoStumpf/MoneyLedger';
 
 /// The app's license (G21).
-const kAppLicense = 'AGPL-3.0';
+const kAppLicense = 'AGPL-3.0-or-later';
 
 /// The app version (`1.0.0+1` style) from the platform; tests override it.
 @riverpod

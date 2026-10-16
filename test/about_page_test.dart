@@ -56,7 +56,8 @@ void main() {
     expect(find.text('MoneyLedger'), findsOneWidget);
     expect(find.text('Version 1.2.3+4'), findsOneWidget);
     expect(find.text(kSourceCodeUrl), findsOneWidget);
-    expect(find.textContaining('AGPL-3.0'), findsOneWidget);
+    expect(find.textContaining('AGPL-3.0-or-later'), findsOneWidget);
+    expect(kAppLicense, 'AGPL-3.0-or-later');
     expect(kSourceCodeUrl, 'https://github.com/LeoStumpf/MoneyLedger');
   });
 

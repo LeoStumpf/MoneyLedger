@@ -45,4 +45,14 @@ void main() {
       );
     }
   });
+
+  test('G44: no encrypted dependency-info blob in the APK / bundle', () {
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    final block = RegExp(
+      r'dependenciesInfo\s*\{([^}]*)\}',
+    ).firstMatch(gradle)?.group(1);
+    expect(block, isNotNull, reason: 'F-Droid flags the AGP blob');
+    expect(block, contains('includeInApk = false'));
+    expect(block, contains('includeInBundle = false'));
+  });
 }

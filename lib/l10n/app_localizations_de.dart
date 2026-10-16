@@ -1777,7 +1777,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get welcomeOpenBody =>
-      'MoneyLedger ist freie Software (AGPL-3.0) – jede und jeder kann den Quellcode lesen. Es gibt keinen MoneyLedger-Server und kein MoneyLedger-Konto: Deine Gruppen und Ausgaben liegen nur auf deinen Geräten.';
+      'MoneyLedger ist freie Software (AGPL-3.0-or-later) – jede und jeder kann den Quellcode lesen. Es gibt keinen MoneyLedger-Server und kein MoneyLedger-Konto: Deine Gruppen und Ausgaben liegen nur auf deinen Geräten.';
 
   @override
   String get welcomeSourceLink => 'Quellcode ansehen';

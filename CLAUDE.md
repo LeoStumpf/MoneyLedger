@@ -119,6 +119,21 @@ domain) — the app data holds the ledger DBs and the Matrix session incl. crypt
 keys. Pinned by `test/core/android_manifest_test.dart`; PRIVACY.md + the in-app
 privacy text say so.
 
+F-Droid (G44): `android { dependenciesInfo { includeInApk = false;
+includeInBundle = false } }` — no AGP encrypted dependency blob in the APK /
+bundle (pinned in `test/core/android_manifest_test.dart`). The About page
+shows the license as `AGPL-3.0-or-later` (`kAppLicense`).
+
+**Release logging (G44):** release builds log nothing of ours —
+`silenceDebugPrintInRelease()` (`lib/core/logging.dart`) replaces `debugPrint`
+with a no-op under `kReleaseMode`, called first in `main()` **and** in
+`backgroundSyncDispatcher` (own isolate, own `debugPrint`); `buildMatrixClient`
+sets the SDK's `Logs().level = Level.wtf` in release (the SDK `print`s, not
+`debugPrint`; there is no "off"). Our logs name MXIDs / homeservers / group
+ids. Debug and profile builds keep logging, so the `adb logcat` workflow
+(`[bg]`, `[g6]`, `[watchdog]` …) needs a debug (or profile) build. Always log
+via `debugPrint`, never `print`.
+
 ## Commands
 
 ```bash
@@ -766,7 +781,8 @@ connected + battery not low; `lib/core/background/`) fixes that:
   (WorkManager schedules in that JobScheduler namespace on Android 14+ — without
   `-n` the job isn't found; id from `dumpsys jobscheduler | grep leostumpf`,
   it changes when WorkManager reschedules, e.g. after a force stop); logs are
-  tagged `[bg]` / `[bg-gate]`.
+  tagged `[bg]` / `[bg-gate]` — debug / profile builds only (G44: release
+  builds are silent).
 
 ### Anti-entropy (Phase C)
 

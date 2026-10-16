@@ -22,6 +22,7 @@ import '../matrix/ledger_transport.dart';
 import '../matrix/matrix_ledger_transport.dart';
 import '../matrix/matrix_service.dart';
 import '../matrix/request_timeout_http_client.dart';
+import '../logging.dart';
 import 'background_gate.dart';
 import 'background_round.dart';
 import 'background_scheduler.dart';
@@ -141,6 +142,8 @@ Completer<void>? _osStop;
 /// WorkManager's headless entry point (runs in a fresh engine + isolate).
 @pragma('vm:entry-point')
 void backgroundSyncDispatcher() {
+  // G44: a fresh isolate — its own debugPrint; silence it in release too.
+  silenceDebugPrintInRelease();
   Workmanager().executeTask(
     (task, input) async {
       try {

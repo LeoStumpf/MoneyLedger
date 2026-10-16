@@ -6,11 +6,14 @@ import 'app.dart';
 import 'core/background/background_sync.dart';
 import 'core/background/background_wait_app.dart';
 import 'core/demo/demo_mode.dart';
+import 'core/logging.dart';
 import 'core/matrix/crypto_status.dart';
 import 'core/demo/demo_overrides.dart';
 import 'core/theme/web_fonts.dart';
 
 Future<void> main() async {
+  // G44: no debugPrint output (MXIDs, homeservers) in release builds.
+  silenceDebugPrintInRelease();
   WidgetsFlutterBinding.ensureInitialized();
   // G21: MoneyLedger's own license on the in-app licenses page, above the
   // automatically collected package licenses.

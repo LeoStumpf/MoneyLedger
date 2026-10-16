@@ -74,7 +74,7 @@ void main() {
       await tester.tap(find.byKey(const Key('welcomeNext')));
       await tester.pumpAndSettle();
       expect(find.text('Free, open source, no server'), findsOneWidget);
-      expect(find.textContaining('AGPL-3.0'), findsOneWidget);
+      expect(find.textContaining('AGPL-3.0-or-later'), findsOneWidget);
       expect(find.byKey(const Key('welcomeSourceLink')), findsOneWidget);
       await tester.tap(find.byKey(const Key('welcomeNext')));
       await tester.pumpAndSettle();

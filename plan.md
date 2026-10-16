@@ -527,9 +527,13 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       "Check server" contacts only the entered server → `docs/smoke-test.md`
 
 ### G44. Small release fixes (goal 6/7) 🟠
-- [ ] About page shows `AGPL-3.0-or-later`
-- [ ] Android: `dependenciesInfo { includeInApk = false; includeInBundle = false }`
-- [ ] Release builds: silence `debugPrint` (logcat holds MXIDs / homeservers)
+- [x] About page shows `AGPL-3.0-or-later`
+- [x] Android: `dependenciesInfo { includeInApk = false; includeInBundle = false }`
+- [x] Release builds: silence `debugPrint` (logcat holds MXIDs / homeservers)
+
+- [ ] Follow-up: confirm with `apksigner`/F-Droid scanner that the release
+      APK has no dependency-info block; optional opt-in "debug log" export
+      (release builds now log nothing, SDK only `wtf`)
 
 ### G45. Minimal Matrix footprint (goal 5) 🟠
 - [ ] Minimal `syncFilter` (no rooms, presence, account data) +
@@ -668,7 +672,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G38 — app id io.github.leostumpf.moneyledger + device reset (tests G39 on fresh installs)
 - [x] G18 — final release review
 - [x] G43 — privacy promises true (web CDN, matrix.org probes, privacy texts)
-- [ ] G44 — small release fixes (license label, AGP blob, release logging)
+- [x] G44 — small release fixes (license label, AGP blob, release logging)
 - [ ] G45 — minimal Matrix footprint (sync filter, presence)
 - [ ] G46 — UX quick wins
 - [ ] G47 — custom categories + dropdown

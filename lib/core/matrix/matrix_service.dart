@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:http/http.dart' as http;
 import 'package:matrix/encryption.dart' show KeyVerificationMethod;
 import 'package:matrix/matrix.dart';
@@ -11,6 +11,10 @@ import 'request_timeout_http_client.dart';
 /// passes its own, so it can abort requests in flight before it closes the
 /// stores); default a fresh [RequestTimeoutHttpClient].
 Future<Client> buildMatrixClient({http.Client? httpClient}) async {
+  // G44: the SDK logs via `print` (not debugPrint), level info by default —
+  // request URLs, user ids, device ids. Release builds keep only `wtf`
+  // (there is no "off" level; those few are crash-class errors).
+  if (kReleaseMode) Logs().level = Level.wtf;
   MatrixSdkDatabase db;
 
   if (kIsWeb) {
