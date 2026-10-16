@@ -133,7 +133,7 @@ mistyped settlement is permanent from the user's perspective.
       rule 7 also re-sends our `removed` record to peers that missed it); re-add brings it back
 - [x] "Delete group" for solo/local-only groups (or when we're no longer active)
 - [x] Confirmation warns about unsettled balance + offers CSV export; ⋮ menu on expenses page
-- [ ] Archive for settled-up groups — not done (future, low priority)
+- [x] Archive for settled-up groups (G16, device-local, auto-unarchive on activity)
 
 ### G10. Group rename + default currency edit 🟡
 Group meta is LWW-synced already (`meta_updated_at`), only the UI is missing.
@@ -183,10 +183,10 @@ full-fidelity backup in G5 — keep CSV as the human-readable export only.
       user-relevant failures into `SyncHealth` or a snackbar
 
 ### G16. Nice-to-have features
-- [ ] Participant avatars
-- [ ] Expense categories / notes / receipt photo
-- [ ] "Simplify debts" toggle explanation + settle-up suggestions per currency
-- [ ] Search/filter in the expense list
+- [x] Participant avatars (G17)
+- [x] Expense categories / notes (receipt photos out of scope — no media over to-device)
+- [x] "Simplify debts" toggle explanation + settle-up suggestions per currency
+- [x] Search/filter in the expense list
 
 ---
 
@@ -359,6 +359,9 @@ stale crypto identity (broken sessions) and is a privacy concern.
 ### G33. Design follow-ups (found in G17) 🟡
 - [ ] Settlement row title with long names (MXID localparts) truncates to the
       payer only — keep both names visible ("A → B"), e.g. ellipsize each name
+- [ ] Expense row: the right column width (amount vs. "du schuldest 12,25 €")
+      squeezes the title ("Taxi to a…") — lay out title+amount and
+      payer+lent/borrowed as two independent rows so the title gets the space
 - [ ] The extended FAB covers the last list row's amount on the group and
       groups pages — add bottom padding (~88 dp) to the scroll views
 - [ ] G15 follow-ups: unit test for `_TrackingTransport.quiet` (background
@@ -460,7 +463,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G6 — signed records (any member may edit; every version signed by its editor)
 - [x] G11 — verified-only replication (+ SAS emulator ↔ phone)
 - [x] G14 — digest size measurement
-- [ ] G16 — nice-to-haves
+- [x] G16 — nice-to-haves
 - [ ] G22 — dependency upgrades (matrix, file_picker)
 - [x] G27 — LWW tie-break
 - [ ] G33 — design follow-ups (settlement title, test display names)

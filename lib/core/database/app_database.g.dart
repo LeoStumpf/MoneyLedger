@@ -570,6 +570,26 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -586,6 +606,8 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     sig,
     origin,
     pendingSign,
+    category,
+    note,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -708,6 +730,18 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         ),
       );
     }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
     return context;
   }
 
@@ -773,6 +807,14 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         DriftSqlType.bool,
         data['${effectivePrefix}pending_sign'],
       )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
     );
   }
 
@@ -797,6 +839,8 @@ class Expense extends DataClass implements Insertable<Expense> {
   final String? sig;
   final String? origin;
   final bool pendingSign;
+  final String? category;
+  final String? note;
   const Expense({
     required this.id,
     required this.roomId,
@@ -812,6 +856,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     this.sig,
     this.origin,
     required this.pendingSign,
+    this.category,
+    this.note,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -836,6 +882,12 @@ class Expense extends DataClass implements Insertable<Expense> {
       map['origin'] = Variable<String>(origin);
     }
     map['pending_sign'] = Variable<bool>(pendingSign);
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
     return map;
   }
 
@@ -859,6 +911,10 @@ class Expense extends DataClass implements Insertable<Expense> {
           ? const Value.absent()
           : Value(origin),
       pendingSign: Value(pendingSign),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
     );
   }
 
@@ -882,6 +938,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       sig: serializer.fromJson<String?>(json['sig']),
       origin: serializer.fromJson<String?>(json['origin']),
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
+      category: serializer.fromJson<String?>(json['category']),
+      note: serializer.fromJson<String?>(json['note']),
     );
   }
   @override
@@ -902,6 +960,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       'sig': serializer.toJson<String?>(sig),
       'origin': serializer.toJson<String?>(origin),
       'pendingSign': serializer.toJson<bool>(pendingSign),
+      'category': serializer.toJson<String?>(category),
+      'note': serializer.toJson<String?>(note),
     };
   }
 
@@ -920,6 +980,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     Value<String?> sig = const Value.absent(),
     Value<String?> origin = const Value.absent(),
     bool? pendingSign,
+    Value<String?> category = const Value.absent(),
+    Value<String?> note = const Value.absent(),
   }) => Expense(
     id: id ?? this.id,
     roomId: roomId ?? this.roomId,
@@ -937,6 +999,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     sig: sig.present ? sig.value : this.sig,
     origin: origin.present ? origin.value : this.origin,
     pendingSign: pendingSign ?? this.pendingSign,
+    category: category.present ? category.value : this.category,
+    note: note.present ? note.value : this.note,
   );
   Expense copyWithCompanion(ExpensesCompanion data) {
     return Expense(
@@ -964,6 +1028,8 @@ class Expense extends DataClass implements Insertable<Expense> {
       pendingSign: data.pendingSign.present
           ? data.pendingSign.value
           : this.pendingSign,
+      category: data.category.present ? data.category.value : this.category,
+      note: data.note.present ? data.note.value : this.note,
     );
   }
 
@@ -983,7 +1049,9 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('deleted: $deleted, ')
           ..write('sig: $sig, ')
           ..write('origin: $origin, ')
-          ..write('pendingSign: $pendingSign')
+          ..write('pendingSign: $pendingSign, ')
+          ..write('category: $category, ')
+          ..write('note: $note')
           ..write(')'))
         .toString();
   }
@@ -1004,6 +1072,8 @@ class Expense extends DataClass implements Insertable<Expense> {
     sig,
     origin,
     pendingSign,
+    category,
+    note,
   );
   @override
   bool operator ==(Object other) =>
@@ -1022,7 +1092,9 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.deleted == this.deleted &&
           other.sig == this.sig &&
           other.origin == this.origin &&
-          other.pendingSign == this.pendingSign);
+          other.pendingSign == this.pendingSign &&
+          other.category == this.category &&
+          other.note == this.note);
 }
 
 class ExpensesCompanion extends UpdateCompanion<Expense> {
@@ -1040,6 +1112,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<String?> sig;
   final Value<String?> origin;
   final Value<bool> pendingSign;
+  final Value<String?> category;
+  final Value<String?> note;
   final Value<int> rowid;
   const ExpensesCompanion({
     this.id = const Value.absent(),
@@ -1056,6 +1130,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.sig = const Value.absent(),
     this.origin = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.category = const Value.absent(),
+    this.note = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ExpensesCompanion.insert({
@@ -1073,6 +1149,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.sig = const Value.absent(),
     this.origin = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.category = const Value.absent(),
+    this.note = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        roomId = Value(roomId),
@@ -1097,6 +1175,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<String>? sig,
     Expression<String>? origin,
     Expression<bool>? pendingSign,
+    Expression<String>? category,
+    Expression<String>? note,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1114,6 +1194,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       if (sig != null) 'sig': sig,
       if (origin != null) 'origin': origin,
       if (pendingSign != null) 'pending_sign': pendingSign,
+      if (category != null) 'category': category,
+      if (note != null) 'note': note,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1133,6 +1215,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Value<String?>? sig,
     Value<String?>? origin,
     Value<bool>? pendingSign,
+    Value<String?>? category,
+    Value<String?>? note,
     Value<int>? rowid,
   }) {
     return ExpensesCompanion(
@@ -1150,6 +1234,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       sig: sig ?? this.sig,
       origin: origin ?? this.origin,
       pendingSign: pendingSign ?? this.pendingSign,
+      category: category ?? this.category,
+      note: note ?? this.note,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1199,6 +1285,12 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     if (pendingSign.present) {
       map['pending_sign'] = Variable<bool>(pendingSign.value);
     }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1222,6 +1314,8 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('sig: $sig, ')
           ..write('origin: $origin, ')
           ..write('pendingSign: $pendingSign, ')
+          ..write('category: $category, ')
+          ..write('note: $note, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4252,6 +4346,8 @@ typedef $$ExpensesTableCreateCompanionBuilder =
       Value<String?> sig,
       Value<String?> origin,
       Value<bool> pendingSign,
+      Value<String?> category,
+      Value<String?> note,
       Value<int> rowid,
     });
 typedef $$ExpensesTableUpdateCompanionBuilder =
@@ -4270,6 +4366,8 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
       Value<String?> sig,
       Value<String?> origin,
       Value<bool> pendingSign,
+      Value<String?> category,
+      Value<String?> note,
       Value<int> rowid,
     });
 
@@ -4349,6 +4447,16 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<bool> get pendingSign => $composableBuilder(
     column: $table.pendingSign,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4431,6 +4539,16 @@ class $$ExpensesTableOrderingComposer
     column: $table.pendingSign,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ExpensesTableAnnotationComposer
@@ -4493,6 +4611,12 @@ class $$ExpensesTableAnnotationComposer
     column: $table.pendingSign,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 }
 
 class $$ExpensesTableTableManager
@@ -4537,6 +4661,8 @@ class $$ExpensesTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<String?> origin = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion(
                 id: id,
@@ -4553,6 +4679,8 @@ class $$ExpensesTableTableManager
                 sig: sig,
                 origin: origin,
                 pendingSign: pendingSign,
+                category: category,
+                note: note,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4571,6 +4699,8 @@ class $$ExpensesTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<String?> origin = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion.insert(
                 id: id,
@@ -4587,6 +4717,8 @@ class $$ExpensesTableTableManager
                 sig: sig,
                 origin: origin,
                 pendingSign: pendingSign,
+                category: category,
+                note: note,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

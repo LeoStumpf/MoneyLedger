@@ -32,6 +32,9 @@ Map<String, dynamic> expensePayload(ExpenseModel e) => {
   'created_at': e.createdAt,
   'updated_at': e.updatedAt,
   'deleted': e.deleted,
+  // G16: optional — absent when unset (pre-G16 payloads look exactly alike).
+  if (e.category != null) 'category': e.category,
+  if (e.note != null) 'note': e.note,
   if (e.origin != null) 'origin': e.origin!.toJson(),
   if (e.sig != null) 'sig': e.sig!.toJson(),
 };
@@ -254,10 +257,15 @@ ExpenseModel? expenseFromPayload(Map<String, dynamic> c) {
     createdAt: createdAt,
     updatedAt: c['updated_at'] as int? ?? createdAt,
     deleted: c['deleted'] as bool? ?? false,
+    // G16 (optional; a non-string is ignored, "" normalises to none).
+    category: _optString(c['category']),
+    note: _optString(c['note']),
     sig: RecordSignature.fromJson(c['sig']),
     origin: RecordSignature.fromJson(c['origin']),
   );
 }
+
+String? _optString(Object? v) => v is String && v.isNotEmpty ? v : null;
 
 /// The settlement in [c], or null without `id` / `group`.
 SettlementModel? settlementFromPayload(Map<String, dynamic> c) {

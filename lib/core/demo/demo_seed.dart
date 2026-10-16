@@ -4,8 +4,11 @@ import 'package:drift/drift.dart';
 
 import '../../features/expenses/split_calculator.dart';
 import '../database/app_database.dart';
+import '../database/daos/expenses_dao.dart';
 import '../database/daos/settings_dao.dart';
 import '../database/daos/sync_states_dao.dart';
+import '../../models/expense_category.dart';
+import '../../models/group_archive.dart';
 import 'demo_mode.dart';
 
 const _ben = '@ben:example.org';
@@ -13,7 +16,8 @@ const _chiara = '@chiara:example.org';
 const _david = '@david:example.org';
 
 /// Replaces everything in [db] with the demo dataset (G15 offline demo):
-/// three groups with real-sounding people, several currencies, custom splits,
+/// four groups (one settled up and archived, G16) with real-sounding people,
+/// categories and notes, several currencies, custom splits,
 /// a few settlements and dates spread over the last weeks — relative to [now],
 /// so the demo always looks fresh. Every peer is marked in sync, so the cloud
 /// icons show "synced". Onboarding is marked seen.
@@ -68,6 +72,8 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       Map<String, int> split, {
       required int when,
       String currency = 'EUR',
+      ExpenseCategory? category,
+      String? note,
     }) {
       assert(split.values.fold(0, (a, b) => a + b) == cents);
       return db
@@ -83,6 +89,8 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
               splitsJson: jsonEncode(split),
               createdAt: when,
               updatedAt: Value(when),
+              category: Value(category?.wire),
+              note: Value(note),
             ),
           );
     }
@@ -127,6 +135,8 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       anna,
       splitEqually(48000, four),
       when: at(19, 9, 12),
+      category: ExpenseCategory.accommodation,
+      note: 'Check-in after 3 pm, key box code in the chat.',
     );
     await expense(
       lisbon,
@@ -135,6 +145,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _chiara,
       splitEqually(2400, four),
       when: at(18, 10, 40),
+      category: ExpenseCategory.transport,
     );
     await expense(
       lisbon,
@@ -143,6 +154,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       davidLocal,
       splitEqually(1860, four),
       when: at(18, 15, 5),
+      category: ExpenseCategory.food,
     );
     await expense(
       lisbon,
@@ -151,6 +163,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _ben,
       splitEqually(13640, four),
       when: at(18, 21, 30),
+      category: ExpenseCategory.food,
     );
     await expense(
       lisbon,
@@ -159,11 +172,17 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       anna,
       splitByShares(9200, {anna: 1, _ben: 1, _chiara: 1, davidLocal: 1}),
       when: at(17, 8, 50),
+      category: ExpenseCategory.travel,
     );
-    await expense(lisbon, 'Fado night', 6000, _chiara, {
-      anna: 3000,
-      _chiara: 3000,
-    }, when: at(17, 22, 15));
+    await expense(
+      lisbon,
+      'Fado night',
+      6000,
+      _chiara,
+      {anna: 3000, _chiara: 3000},
+      when: at(17, 22, 15),
+      category: ExpenseCategory.entertainment,
+    );
     await expense(
       lisbon,
       'Airport taxi',
@@ -171,6 +190,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _ben,
       splitEqually(3850, four),
       when: at(16, 6, 45),
+      category: ExpenseCategory.transport,
     );
     await settlement(lisbon, davidLocal, anna, 5000, when: at(12, 19));
     await settlement(lisbon, _chiara, _ben, 2500, when: at(9, 18, 30));
@@ -189,6 +209,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _chiara,
       splitByPercent(165000, {anna: 40, _ben: 30, _chiara: 30}),
       when: at(15, 9),
+      category: ExpenseCategory.home,
     );
     await expense(
       flat,
@@ -197,6 +218,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       anna,
       splitEqually(3999, three),
       when: at(14, 11, 20),
+      category: ExpenseCategory.home,
     );
     await expense(
       flat,
@@ -205,6 +227,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _ben,
       splitEqually(8735, three),
       when: at(11, 18, 10),
+      category: ExpenseCategory.groceries,
     );
     await expense(
       flat,
@@ -213,6 +236,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       anna,
       splitEqually(2345, three),
       when: at(8, 17, 45),
+      category: ExpenseCategory.home,
     );
     await expense(
       flat,
@@ -221,6 +245,8 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _chiara,
       splitEqually(21480, three),
       when: at(5, 10, 30),
+      category: ExpenseCategory.home,
+      note: 'Includes the back payment for July.',
     );
     await expense(
       flat,
@@ -229,6 +255,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       anna,
       splitEqually(6420, three),
       when: at(2, 19, 5),
+      category: ExpenseCategory.groceries,
     );
     await settlement(flat, _ben, _chiara, 30000, when: at(10, 20));
     await settlement(flat, anna, _chiara, 45000, when: at(6, 8, 15));
@@ -247,6 +274,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _david,
       splitEqually(6420, skiers),
       when: at(4, 7, 30),
+      category: ExpenseCategory.transport,
     );
     await expense(
       ski,
@@ -255,6 +283,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       anna,
       splitEqually(31200, skiers),
       when: at(3, 9),
+      category: ExpenseCategory.entertainment,
       currency: 'CHF',
     );
     await expense(
@@ -264,6 +293,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _ben,
       splitEqually(9650, skiers),
       when: at(3, 19, 30),
+      category: ExpenseCategory.food,
       currency: 'CHF',
     );
     await expense(
@@ -273,9 +303,37 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       _david,
       splitEqually(42000, skiers),
       when: at(2, 16),
+      category: ExpenseCategory.accommodation,
       currency: 'CHF',
     );
     await settlement(ski, _ben, _david, 6000, when: at(1, 21), currency: 'CHF');
+
+    // ── Board game night: settled up and archived on this device (G16) ───
+    const games = 'demo-group-games';
+    await group(games, 'Board game night', 'EUR');
+    await member(games, anna, 'Anna', mxid: anna);
+    await member(games, _ben, 'Ben', mxid: _ben);
+    await expense(
+      games,
+      'Pizza',
+      3600,
+      anna,
+      splitEqually(3600, [anna, _ben]),
+      when: at(26, 20, 15),
+      category: ExpenseCategory.food,
+    );
+    await settlement(games, _ben, anna, 1800, when: at(25, 9));
+    final ledger = ExpensesDao(db);
+    await SettingsDao(db).archiveGroup(
+      games,
+      GroupArchive(
+        archivedAt: at(24),
+        fingerprint: ledgerFingerprint(
+          await ledger.getAllExpensesForGroup(games),
+          await ledger.getAllSettlementsForGroup(games),
+        ),
+      ),
+    );
 
     // Everyone acknowledged everything: the sync icons show "synced".
     final syncStates = SyncStatesDao(db);
@@ -283,6 +341,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       (lisbon, [_ben, _chiara]),
       (flat, [_ben, _chiara]),
       (ski, [_ben, _david]),
+      (games, [_ben]),
     ]) {
       for (final p in peers) {
         await syncStates.markInSync(gid, p, t0);

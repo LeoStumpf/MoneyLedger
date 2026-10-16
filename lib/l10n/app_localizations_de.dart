@@ -1458,4 +1458,126 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get recordDeviceNotVerifiedByYou =>
       'Du hast dieses Gerät nicht verifiziert (Emoji-Vergleich).';
+
+  @override
+  String get categoryLabel => 'Kategorie';
+
+  @override
+  String get categoryFood => 'Essen & Trinken';
+
+  @override
+  String get categoryGroceries => 'Lebensmittel';
+
+  @override
+  String get categoryTransport => 'Verkehr';
+
+  @override
+  String get categoryAccommodation => 'Unterkunft';
+
+  @override
+  String get categoryEntertainment => 'Freizeit';
+
+  @override
+  String get categoryShopping => 'Shopping';
+
+  @override
+  String get categoryHome => 'Wohnen & Nebenkosten';
+
+  @override
+  String get categoryHealth => 'Gesundheit';
+
+  @override
+  String get categoryTravel => 'Reisen';
+
+  @override
+  String get categoryOther => 'Sonstiges';
+
+  @override
+  String get noteLabel => 'Notiz (optional)';
+
+  @override
+  String get expenseHasNote => 'Hat eine Notiz';
+
+  @override
+  String get searchTooltip => 'Suchen';
+
+  @override
+  String get searchHint => 'Beschreibung, Notiz, Zahler suchen';
+
+  @override
+  String get closeSearch => 'Suche schließen';
+
+  @override
+  String get filterInvolvingMe => 'Mit mir';
+
+  @override
+  String get noMatchesTitle => 'Nichts gefunden';
+
+  @override
+  String get noMatchesBody =>
+      'Versuch eine andere Suche oder setz die Filter zurück.';
+
+  @override
+  String get clearFilters => 'Filter zurücksetzen';
+
+  @override
+  String filterResultCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Einträge',
+      one: '1 Eintrag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get archiveGroup => 'Gruppe archivieren';
+
+  @override
+  String get unarchiveGroup => 'Aus dem Archiv holen';
+
+  @override
+  String archivedSection(int count) {
+    return 'Archiviert ($count)';
+  }
+
+  @override
+  String get archivedSectionHint =>
+      'Nur auf diesem Gerät ausgeblendet. Eine Gruppe kommt von selbst zurück, sobald etwas Neues hinzukommt.';
+
+  @override
+  String groupArchived(String name) {
+    return '„$name“ archiviert';
+  }
+
+  @override
+  String groupArchivedUnsettled(String name) {
+    return '„$name“ archiviert — dein offener Saldo zählt weiter in der Übersicht.';
+  }
+
+  @override
+  String groupUnarchived(String name) {
+    return '„$name“ ist wieder bei deinen Gruppen';
+  }
+
+  @override
+  String get archivedBanner => 'Diese Gruppe ist auf diesem Gerät archiviert.';
+
+  @override
+  String get undo => 'Rückgängig';
+
+  @override
+  String get simplifyDebtsInfoTooltip => 'Wie entstehen die Vorschläge?';
+
+  @override
+  String get simplifyDebtsInfoTitle => 'Vereinfachte Schulden';
+
+  @override
+  String get simplifyDebtsInfoBody =>
+      'MoneyLedger verrechnet alle Ausgaben und Zahlungen zu einem Saldo pro Person und schlägt die wenigsten Zahlungen vor, mit denen alle ausgeglichen sind. Dabei kann es sein, dass du jemandem Geld gibst, mit dem du nie direkt eine Ausgabe geteilt hast — was jede Person insgesamt zahlt und zurückbekommt, bleibt genau gleich.\n\nJede Währung wird für sich ausgeglichen: Beträge werden nie umgerechnet.';
+
+  @override
+  String get simplifyDebtsPerCurrency =>
+      'Jede Währung wird separat ausgeglichen — Beträge werden nie umgerechnet.';
 }

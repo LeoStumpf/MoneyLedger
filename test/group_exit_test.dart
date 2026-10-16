@@ -17,6 +17,7 @@ import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
+import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_exit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/group_model.dart';
@@ -167,6 +168,8 @@ void main() {
         currentParticipantProvider.overrideWith(
           (ref, g) => Future<MemberModel?>.value(members.first),
         ),
+        // G16: no archived groups (no drift stream in widget tests).
+        groupArchivesProvider.overrideWith((_) => Stream.value(const {})),
       ],
       child: MaterialApp.router(
         localizationsDelegates: testLocalizationsDelegates,

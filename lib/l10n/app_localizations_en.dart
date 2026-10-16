@@ -1440,4 +1440,125 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get recordDeviceNotVerifiedByYou =>
       'You haven\'t verified this device (emoji comparison).';
+
+  @override
+  String get categoryLabel => 'Category';
+
+  @override
+  String get categoryFood => 'Food & drink';
+
+  @override
+  String get categoryGroceries => 'Groceries';
+
+  @override
+  String get categoryTransport => 'Transport';
+
+  @override
+  String get categoryAccommodation => 'Accommodation';
+
+  @override
+  String get categoryEntertainment => 'Entertainment';
+
+  @override
+  String get categoryShopping => 'Shopping';
+
+  @override
+  String get categoryHome => 'Home & utilities';
+
+  @override
+  String get categoryHealth => 'Health';
+
+  @override
+  String get categoryTravel => 'Travel';
+
+  @override
+  String get categoryOther => 'Other';
+
+  @override
+  String get noteLabel => 'Note (optional)';
+
+  @override
+  String get expenseHasNote => 'Has a note';
+
+  @override
+  String get searchTooltip => 'Search';
+
+  @override
+  String get searchHint => 'Search description, note, payer';
+
+  @override
+  String get closeSearch => 'Close search';
+
+  @override
+  String get filterInvolvingMe => 'Involving me';
+
+  @override
+  String get noMatchesTitle => 'Nothing found';
+
+  @override
+  String get noMatchesBody => 'Try another search or clear the filters.';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String filterResultCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries',
+      one: '1 entry',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get archiveGroup => 'Archive group';
+
+  @override
+  String get unarchiveGroup => 'Unarchive group';
+
+  @override
+  String archivedSection(int count) {
+    return 'Archived ($count)';
+  }
+
+  @override
+  String get archivedSectionHint =>
+      'Only hidden on this device. A group comes back by itself when something new is added.';
+
+  @override
+  String groupArchived(String name) {
+    return '“$name” archived';
+  }
+
+  @override
+  String groupArchivedUnsettled(String name) {
+    return '“$name” archived — your open balance still counts in the totals.';
+  }
+
+  @override
+  String groupUnarchived(String name) {
+    return '“$name” is back in your groups';
+  }
+
+  @override
+  String get archivedBanner => 'This group is archived on this device.';
+
+  @override
+  String get undo => 'Undo';
+
+  @override
+  String get simplifyDebtsInfoTooltip => 'How are payments suggested?';
+
+  @override
+  String get simplifyDebtsInfoTitle => 'Simplified debts';
+
+  @override
+  String get simplifyDebtsInfoBody =>
+      'MoneyLedger adds up all expenses and payments into one balance per person and suggests the fewest payments that settle everyone up. So you might pay someone you never shared an expense with directly — the amounts everyone pays and gets back stay exactly the same.\n\nEach currency is settled on its own: amounts are never converted.';
+
+  @override
+  String get simplifyDebtsPerCurrency =>
+      'Settled separately per currency — amounts are never converted.';
 }

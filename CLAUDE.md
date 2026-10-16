@@ -128,7 +128,7 @@ lib/
         members_dao.dart       # Participants (id + name + optional matrixId; LWW; activeClaimedMatrixIds)
         sync_states_dao.dart   # PeerSyncStates: per-(group,peer) anti-entropy bookkeeping
         signing_dao.dart       # G6: KnownDeviceKeys (device-key history) + RejectedVersions
-        settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, left-group tombstones, per account); never synced
+        settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, left-group tombstones, G16 archive, per account); never synced
     matrix/
       record_crypto.dart          # G6 ports: RecordCrypto (sign/verify), DeviceKeyDirectory, SignerId
       hmac_record_crypto.dart     # G6 fake device keys (HMAC stand-in) for tests + offline demo
@@ -152,6 +152,8 @@ lib/
     expense_model.dart         # Plain Dart models (ExpenseModel, SettlementModel)
     group_model.dart           # Plain Dart model (GroupModel)
     member_model.dart          # MemberModel; sync_state_model.dart (PeerSyncStateModel)
+    expense_category.dart      # G16: ExpenseCategory (stable wire ids), suggestCategory heuristic, normalizeNote
+    group_archive.dart         # G16: GroupArchive (device-local) + ledgerFingerprint
   features/
     auth/                      # Matrix login, in-app registration, session mgmt
                                #   register_flows.dart: pure UIA-flow classifier; register_page.dart
@@ -159,11 +161,15 @@ lib/
                                #   sign_up_url.dart: pure web sign-up URL resolution
     groups/                    # Group list + create (local-only groups, member add/remove)
                                #   GroupExiter (leave/delete, G9) + group_exit_dialog.dart
+                               #   group_archive_provider.dart: G16 archive (groupArchived, GroupArchiver)
     expenses/                  # Expense list, add/edit/delete, ledger sync
       ledger_syncer.dart       # LedgerSyncer: subscribes to to-device onMessage → writes to Drift
                                # Static @visibleForTesting methods for unit-testable event processing
       split_calculator.dart    # Pure-Dart split math (largest-remainder) — see "Custom splits"
       split_editor.dart        # SplitEditor widget: Equal/Exact/Shares/% modes → SplitPlan
+      expense_category_ui.dart # G16: category icon / colours / label, CategoryIconTile, CategoryPicker
+      expense_filter.dart      # G16: pure LedgerFilter + expenseMatches / settlementMatches
+      ledger_search_provider.dart # G16: per-group search state (null = search bar closed)
     balance/
       balance_calculator.dart  # Pure function: List<Expense> + settlements → List<DebtEntry>
       balance_provider.dart    # Riverpod: watches Drift streams, recomputes on change
@@ -310,7 +316,9 @@ Matrix **Ed25519 fingerprint key** (vodozemac olm account,
 (`DeviceKeyDirectory`, the homeserver's current device list). Design doc:
 `docs/design/g6-signed-records.md`.
 - **What's signed** (`record_signing.dart`): a body built from the parsed
-  *model* (type tag, group, id, all fields, `updated_at`, `deleted`, signer
+  *model* (type tag, group, id, all fields — for expenses incl. the optional
+  G16 `category` / `note`, present **only when set** so pre-G16 bodies and
+  hashes are unchanged — `updated_at`, `deleted`, signer
   {user, device, key}; `v`/`sig` excluded) → Matrix canonical JSON →
   message `mlsig1:` + base64url(SHA-256) (ASCII). Expenses / settlements also
   carry an immutable **`origin`** (creator's signed creation statement →
@@ -621,10 +629,15 @@ column per participant** (header = display name), then trailing machine
 columns that drive the merge:
 
 ```
-Date, Type, Description, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
-2026-06-13T…, Expense, Dinner, EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
-2026-06-14T…, Payment, Payment, EUR, 21.00, Sam, 21.00, , …, <uuid>, Trip, <gid>, 1760000090000
+Date, Type, Description, Category, Note, Currency, Amount, Paid By, <Participant A>, <Participant B>, …, Expense ID, Group, Group ID, Updated At
+2026-06-13T…, Expense, Dinner, food, Tip incl., EUR, 42.00, Alex, 21.00, 21.00, …, <uuid>, Trip, <gid>, 1760000050000
+2026-06-14T…, Payment, Payment, , , EUR, 21.00, Sam, 21.00, , …, <uuid>, Trip, <gid>, 1760000090000
 ```
+
+**G16:** `Category` (the stable English wire id) and `Note` follow
+`Description` (empty when unset and for payments). A CSV without them
+(pre-G16) imports with no category / note; older parsers ignore them (they sit
+before `Paid By`, outside the share columns).
 
 A **payment row** reads like an expense the payer covered entirely for the
 recipient: `Paid By` = from, the recipient's share column = the amount (so the
@@ -657,6 +670,67 @@ tombstones are **not** in the sheet — a deleted record simply isn't exported
 (so it won't re-delete on a peer via CSV). Participant identity is **by name,
 not stable id** — a name collision merges two people and a rename splits one.
 Use the full JSON backup for a lossless copy.
+
+### Categories, notes, search, archive (G16)
+
+- **Categories** (`models/expense_category.dart`): a fixed set of 10 —
+  `food`, `groceries`, `transport`, `accommodation`, `entertainment`,
+  `shopping`, `home`, `health`, `travel`, `other` — stable English **wire
+  ids** (never translated; labels `category*` in the ARBs). An unknown id from
+  a newer peer is kept verbatim (it's signed) and shown as *Other*. UI
+  (`expense_category_ui.dart`): Material icon + colours from the
+  `LedgerColors` avatar palette (light/dark, contrast already pinned), the
+  `CategoryIconTile` replaces the receipt icon in the ledger list, and the
+  add/edit form has a horizontally scrolling `CategoryPicker` (choice chips;
+  tap the selected one → none). `suggestCategory(description)` is a small
+  EN+DE keyword heuristic (word-start stems, ≤ 4-letter stems whole-word
+  only) that **prefills** the chip for new expenses until the user picks one
+  — never on edit.
+- **Notes**: optional free text (form limit `kMaxNoteLength` = 500; trimmed,
+  blank → none via `normalizeNote`; inbound notes are kept as signed). Shown
+  on the edit form; the list marks a note with a small icon after the title.
+- **Wire / storage:** optional `category` / `note` on the expense payload,
+  in the signed content and the G27 hash **only when set** (absent = none;
+  `""` normalises to none on parse — `ExpenseModel` never holds `""`). Drift
+  **schema v7**: nullable `expenses.category` / `expenses.note`. The v6 → v7
+  migration also deletes `rejected_versions` rows of kind `expense`: a
+  pre-G16 build refuses signed versions that carry the new fields (its
+  rebuilt body lacks them), so after the update they must be re-requested
+  (the digest no longer lists them as refused → peers re-send → verified).
+  Mixed old/new devices disagree until all are updated (open point).
+  Bootstraps, the JSON backup (bootstrap payloads) and the CSV carry them.
+- **Search / filter** (`expense_filter.dart`, pure; `ledgerSearchProvider`
+  per group, auto-disposed with the page): 🔍 in the group app bar swaps the
+  title for a search field (description, note, payer name; case- and
+  Latin-accent-insensitive; payments match their two names or "Payment") and
+  shows filter chips — *Involving me* (I paid / share / am a side of the
+  payment) and the categories the group uses (any of; payments never match a
+  category). While searching, the summary card and FAB are hidden and an
+  "N entries" line / *Nothing found* + *Clear filters* is shown.
+- **Settle-up explanation:** suggested payments were already per currency
+  (`calculateDebts` simplifies each currency on its own). The balance page
+  adds an ⓘ on each *Suggested payments* header (dialog "Simplified debts":
+  fewest payments, nets unchanged, never converted) and, with several
+  currencies, a "settled separately per currency" note.
+- **Archive** (device-local, per account — a personal view preference, not
+  synced): ⋮ → *Archive group* (always allowed; an unsettled group gets
+  "your open balance still counts in the totals" in the snackbar, which has
+  *Undo*) → back to the groups list, where archived groups sit in a collapsed
+  **Archived (N)** section at the bottom. Inside an archived group a banner +
+  the ⋮ item offer *Unarchive*. Stored as `AppSettings`
+  `archived_group:<id>` = `{at, fp}` (`GroupArchive`), where `fp` is
+  `ledgerFingerprint` — SHA-256 over every expense / payment `id@updated_at`
+  incl. tombstones. **Any new / edited / deleted record un-archives the group
+  automatically** (`groupArchivedProvider` derives it: entry present and
+  fingerprint unchanged; nothing is written on the inbound path, so this also
+  works for background-sync arrivals) — a new expense in a hidden group is
+  usually a new debt and must not stay out of sight. Member / name changes
+  don't count. The totals card still counts archived groups (an open balance
+  stays real). Leaving / deleting a group drops its archive entry
+  (`purgeGroupAsLeft`). Widget tests: the archive stream is overridden in
+  `signingUiOverrides(archives:)` / `testOverrides(archives:)` (drift stream
+  timers would outlive the test tree).
+- **Out of scope:** receipt photos (no media channel — `docs/open-points.md`).
 
 ### Settlements / recording payments (G28)
 
@@ -854,12 +928,14 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
   "created_at": 1760000000000,
   "updated_at": 1760000050000,
   "deleted": false,
+  "category": "food",
+  "note": "Tip included",
   "origin": { "user": "@alice:matrix.org", "device": "AAAA", "key": "<b64 ed25519>", "sig": "<b64>" },
   "sig":    { "user": "@bob:matrix.org",   "device": "BBBB", "key": "<b64 ed25519>", "sig": "<b64>" }
 }
 ```
 
-`paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs.
+`paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs. `category` (a G16 wire id) and `note` are **optional** — omitted when unset, signed and hashed only when present (see "Categories, notes, search, archive (G16)").
 
 **`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "origin", "sig" }` (`from`/`to` are participant ids).
 

@@ -98,6 +98,26 @@ A `--dart-define=OFFLINE_DEMO=true` that overrides `ledgerTransportProvider` +
 homeserver — useful for screenshots and manual multi-user inspection. The fakes
 already exist for tests.
 
+### Categories / notes / archive (G16) — limits
+- **Receipt photos** are out of scope: there is no media channel (to-device
+  messages are capped at ~64 KB, and the homeserver must keep no ledger data).
+  A future design would need encrypted attachments (MSC / content repo with
+  per-file keys) plus retention rules — not planned for v1.
+- **Unknown fields break signatures on older builds**: the G6 signed body is
+  rebuilt from the *parsed model*, so a pre-G16 build refuses a version that
+  carries `category` / `note` (bad signature → `rejected_versions`). The v7
+  migration forgets refused expense versions so they are re-sent after the
+  update; mixed old/new devices disagree until every device is updated. A
+  future protocol could sign the raw payload (minus transport fields) so
+  unknown optional fields survive older verifiers.
+- **Category set is fixed** (10 ids); an unknown id from a newer peer is kept
+  verbatim and shown as "Other". No per-group custom categories, no
+  category statistics yet.
+- **Archive is device-local** (not synced to your other devices) and only
+  ledger activity (expenses / payments incl. deletions) un-archives; member
+  or group-name changes don't. A same-millisecond LWW tie-break version
+  (G27) doesn't change the fingerprint (practically irrelevant).
+
 ### Real-device smoke tests
 Three flows can only be verified on a real device + homeserver, not in
 `flutter test` or the web build — worth a manual pass before relying on them:

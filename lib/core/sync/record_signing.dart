@@ -96,6 +96,10 @@ Map<String, Object?> expenseContent(ExpenseModel e) => {
   'created_at': e.createdAt,
   'updated_at': e.updatedAt,
   'deleted': e.deleted,
+  // G16: only when set — a version without category / note has exactly the
+  // pre-G16 body, so older signatures and G27 hashes stay valid.
+  if (e.category != null) 'category': e.category,
+  if (e.note != null) 'note': e.note,
 };
 
 Map<String, Object?> expenseBody(ExpenseModel e, SignerId signer) => {

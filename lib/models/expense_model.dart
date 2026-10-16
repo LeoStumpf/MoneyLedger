@@ -13,6 +13,15 @@ class ExpenseModel {
   final int updatedAt; // ms epoch, LWW clock
   final bool deleted; // tombstone — kept forever, hidden from the UI
 
+  /// G16: the category's stable wire id (`food`, `transport`, … — see
+  /// `expense_category.dart`), null = none. Kept verbatim (an id this
+  /// version doesn't know is shown as "other" but never rewritten — it is
+  /// part of the signed content).
+  final String? category;
+
+  /// G16: optional free-text note, null = none (never an empty string).
+  final String? note;
+
   /// G6: this version's signature (its editor), null for a grandfathered
   /// pre-G6 row (legacy / unsigned).
   final RecordSignature? sig;
@@ -37,10 +46,13 @@ class ExpenseModel {
     required this.createdAt,
     this.updatedAt = 0,
     this.deleted = false,
+    String? category,
+    String? note,
     this.sig,
     this.origin,
     this.pendingSign = false,
-  });
+  }) : category = category == '' ? null : category,
+       note = note == '' ? null : note;
 
   /// A copy with the G6 signing fields replaced (content unchanged).
   ExpenseModel withSigning({
@@ -59,6 +71,8 @@ class ExpenseModel {
     createdAt: createdAt,
     updatedAt: updatedAt,
     deleted: deleted,
+    category: category,
+    note: note,
     sig: sig,
     origin: origin,
     pendingSign: pendingSign,

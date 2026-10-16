@@ -17,6 +17,7 @@ import '../../core/widgets/content_width.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/person_avatar.dart';
 import '../../models/group_model.dart';
+import 'group_archive_provider.dart';
 import 'group_overview_provider.dart';
 import 'group_provider.dart';
 
@@ -176,7 +177,20 @@ class _GroupsBody extends ConsumerWidget {
         final overviews = [
           for (final g in groups) ref.watch(groupOverviewProvider(g.roomId)),
         ];
+        // G16: archived groups still count in the totals — an open balance
+        // stays real (a settled one adds nothing anyway).
         final totals = balanceTotals(overviews.map((o) => o.myBalance));
+        final archived = [
+          for (final g in groups) ref.watch(groupArchivedProvider(g.roomId)),
+        ];
+        final active = [
+          for (var i = 0; i < groups.length; i++)
+            if (!archived[i]) (groups[i], overviews[i]),
+        ];
+        final hidden = [
+          for (var i = 0; i < groups.length; i++)
+            if (archived[i]) (groups[i], overviews[i]),
+        ];
         final nudge = ref.watch(backupNudgeProvider);
         return ListView(
           padding: const EdgeInsets.fromLTRB(
@@ -192,16 +206,90 @@ class _GroupsBody extends ConsumerWidget {
               ContentWidth(child: BackupNudgeCard(count: nudge)),
               const SizedBox(height: Insets.m),
             ],
-            for (var i = 0; i < groups.length; i++)
+            for (final (group, overview) in active)
               ContentWidth(
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: Insets.m),
-                  child: GroupCard(group: groups[i], overview: overviews[i]),
+                  child: GroupCard(group: group, overview: overview),
                 ),
               ),
+            if (hidden.isNotEmpty)
+              ContentWidth(child: _ArchivedSection(groups: hidden)),
           ],
         );
       },
+    );
+  }
+}
+
+/// The collapsed "Archived (N)" section at the end of the groups list (G16).
+/// Collapsed on every visit; expanding shows the archived groups' cards.
+class _ArchivedSection extends StatefulWidget {
+  final List<(GroupModel, GroupOverview)> groups;
+  const _ArchivedSection({required this.groups});
+
+  @override
+  State<_ArchivedSection> createState() => _ArchivedSectionState();
+}
+
+class _ArchivedSectionState extends State<_ArchivedSection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          key: const Key('archivedSection'),
+          borderRadius: BorderRadius.circular(Radii.s),
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Insets.xs,
+              vertical: Insets.m,
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.archive_outlined, size: 20, color: muted),
+                const SizedBox(width: Insets.s),
+                Expanded(
+                  child: Text(
+                    l.archivedSection(widget.groups.length),
+                    style: theme.textTheme.labelLarge?.copyWith(color: muted),
+                  ),
+                ),
+                Icon(
+                  _expanded ? Icons.expand_less : Icons.expand_more,
+                  color: muted,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Insets.xs,
+              0,
+              Insets.xs,
+              Insets.m,
+            ),
+            child: Text(
+              l.archivedSectionHint,
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+          ),
+          for (final (group, overview) in widget.groups)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Insets.m),
+              child: GroupCard(group: group, overview: overview),
+            ),
+        ],
+      ],
     );
   }
 }

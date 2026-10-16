@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/core/sync/self_recovery.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
+import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
@@ -261,6 +262,8 @@ void main() {
               ]),
             ),
             selfRecoveryProvider.overrideWith(_Restoring.new),
+            // G16: no archived groups (no drift stream in widget tests).
+            groupArchivesProvider.overrideWith((_) => Stream.value(const {})),
             // The group card's overview reads these (G17).
             groupMembersProvider.overrideWith(
               (ref, g) => Stream.value(const []),

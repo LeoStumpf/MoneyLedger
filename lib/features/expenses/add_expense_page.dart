@@ -8,10 +8,12 @@ import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/person_avatar.dart';
+import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../groups/create_group_page.dart' show kGroupCurrencies;
 import '../groups/group_provider.dart';
+import 'expense_category_ui.dart';
 import 'expenses_provider.dart';
 import 'split_editor.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
@@ -32,6 +34,15 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   final _formKey = GlobalKey<FormState>();
   final _descCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
+
+  /// G16: the category's wire id — kept verbatim on edit (an unknown id from
+  /// a newer peer is shown as "other" but saved unchanged unless picked).
+  String? _category;
+
+  /// The user picked (or cleared) a category: stop suggesting one from the
+  /// description. Edits never get suggestions.
+  bool _categoryChosen = false;
 
   bool get _isEdit => widget.initial != null;
 
@@ -60,7 +71,12 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   void initState() {
     super.initState();
     final initial = widget.initial;
-    if (initial != null) _descCtrl.text = initial.description;
+    if (initial != null) {
+      _descCtrl.text = initial.description;
+      _noteCtrl.text = initial.note ?? '';
+      _category = initial.category;
+      _categoryChosen = true;
+    }
     _loadData();
   }
 
@@ -110,6 +126,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   void dispose() {
     _descCtrl.dispose();
     _amountCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
@@ -136,6 +153,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             paidBy: paidBy,
             splits: splits,
             createdAt: initial.createdAt,
+            category: _category,
+            note: _noteCtrl.text,
           );
     } else {
       await ref
@@ -147,6 +166,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             currency: _currency,
             paidBy: paidBy,
             splits: splits,
+            category: _category,
+            note: _noteCtrl.text,
           );
     }
 
@@ -205,12 +226,31 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               textCapitalization: TextCapitalization.sentences,
                               decoration: InputDecoration(
                                 labelText: l.descriptionLabel,
-                                prefixIcon: const Icon(
-                                  Icons.receipt_long_outlined,
+                                prefixIcon: Icon(
+                                  categoryIcon(
+                                    ExpenseCategory.fromWire(_category),
+                                  ),
                                 ),
                               ),
                               validator: (v) =>
                                   (v == null || v.isEmpty) ? l.required : null,
+                              // G16: suggest a category from the description
+                              // until the user picks one themselves.
+                              onChanged: (v) {
+                                if (_categoryChosen) return;
+                                final s = suggestCategory(v)?.wire;
+                                if (s != _category) {
+                                  setState(() => _category = s);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: Insets.m),
+                            CategoryPicker(
+                              selected: ExpenseCategory.fromWire(_category),
+                              onChanged: (c) => setState(() {
+                                _categoryChosen = true;
+                                _category = c?.wire;
+                              }),
                             ),
                             const SizedBox(height: Insets.l),
                             Row(
@@ -313,6 +353,20 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               currency: _currency,
                               initialSplit: _initialSplit,
                               onPlanChanged: (p) => setState(() => _plan = p),
+                            ),
+                            const SizedBox(height: Insets.xl),
+                            // G16: optional free-text note.
+                            TextFormField(
+                              key: const Key('expenseNote'),
+                              controller: _noteCtrl,
+                              textCapitalization: TextCapitalization.sentences,
+                              minLines: 1,
+                              maxLines: 5,
+                              maxLength: kMaxNoteLength,
+                              decoration: InputDecoration(
+                                labelText: l.noteLabel,
+                                prefixIcon: const Icon(Icons.notes),
+                              ),
                             ),
                             // G6: who added / last edited it (signed).
                             if (widget.initial case final e?) ...[

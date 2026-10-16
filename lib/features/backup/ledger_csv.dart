@@ -4,6 +4,11 @@
 /// columns (`Expense ID`, `Group`, `Group ID`, `Updated At`) so an import can
 /// merge by id via last-writer-wins.
 ///
+/// G16: `Category` (stable English id, e.g. `food`) and `Note` follow
+/// `Description`; both are empty when unset (and for payments). A CSV
+/// without them (pre-G16) imports with no category / note. They sit before
+/// `Paid By`, so older parsers simply ignore them.
+///
 /// The `Type` column says `Expense` or `Payment`. A payment (settlement) row
 /// reads like an expense the payer covered entirely for the recipient:
 /// `Paid By` = who paid, the recipient's share column = the amount — so the
@@ -20,6 +25,7 @@ library;
 
 import 'dart:convert';
 
+import '../../models/expense_category.dart' show normalizeNote;
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
@@ -28,6 +34,8 @@ import '../../models/member_model.dart';
 const _date = 'Date';
 const _type = 'Type';
 const _description = 'Description';
+const _category = 'Category';
+const _note = 'Note';
 const _currency = 'Currency';
 const _amount = 'Amount';
 const _paidBy = 'Paid By';
@@ -61,6 +69,8 @@ String buildGroupCsv(
     _date,
     _type,
     _description,
+    _category,
+    _note,
     _currency,
     _amount,
     _paidBy,
@@ -87,6 +97,8 @@ String buildGroupCsv(
       DateTime.fromMillisecondsSinceEpoch(e.createdAt).toIso8601String(),
       csvTypeExpense,
       e.description,
+      e.category ?? '',
+      e.note ?? '',
       e.currency,
       _money(e.amountCents),
       nameById[e.paidBy] ?? e.paidBy,
@@ -104,6 +116,8 @@ String buildGroupCsv(
       DateTime.fromMillisecondsSinceEpoch(s.createdAt).toIso8601String(),
       csvTypePayment,
       csvTypePayment,
+      '',
+      '',
       s.currency,
       _money(s.amountCents),
       nameById[s.fromUser] ?? s.fromUser,
@@ -128,6 +142,10 @@ class ParsedExpenseRow {
   final String paidByName;
   final Map<String, int> sharesByName; // display name -> cents
 
+  /// G16: category wire id / note, null when absent or empty.
+  final String? category;
+  final String? note;
+
   /// A `Payment` row (settlement): [paidByName] paid the single recipient in
   /// [sharesByName]. See [paymentRecipient].
   final bool isPayment;
@@ -142,6 +160,8 @@ class ParsedExpenseRow {
     required this.amountCents,
     required this.paidByName,
     required this.sharesByName,
+    this.category,
+    this.note,
   });
 }
 
@@ -185,6 +205,8 @@ ParsedCsv parseGroupCsv(String csv) {
   final iDate = idx(_date);
   final iType = idx(_type);
   final iDesc = idx(_description);
+  final iCat = idx(_category);
+  final iNote = idx(_note);
   final iCur = idx(_currency);
   final iAmt = idx(_amount);
   final iPaid = idx(_paidBy);
@@ -231,6 +253,8 @@ ParsedCsv parseGroupCsv(String csv) {
         amountCents: _parseMoney(at(iAmt)) ?? 0,
         paidByName: at(iPaid),
         sharesByName: shares,
+        category: at(iCat).trim().isEmpty ? null : at(iCat).trim(),
+        note: normalizeNote(at(iNote)),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../../core/widgets/text_prompt_dialog.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/sync/sync_health.dart';
 import '../../core/sync/sync_status_provider.dart';
+import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
 import '../backup/csv_export.dart';
@@ -22,14 +23,19 @@ import '../groups/group_overview_provider.dart';
 import '../groups/groups_page.dart' show BalanceSummaryText;
 import '../groups/group_edit_dialog.dart';
 import '../groups/group_exit_dialog.dart';
+import '../groups/group_archive_provider.dart';
 import '../groups/group_provider.dart';
+import '../onboarding/onboarding_provider.dart' show settingsDaoProvider;
+import 'expense_category_ui.dart';
+import 'expense_filter.dart';
 import 'expenses_provider.dart';
+import 'ledger_search_provider.dart';
 import 'ledger_syncer.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../models/record_signature.dart';
 import 'record_attribution.dart';
 
-enum _GroupMenuAction { addMember, edit, export, exit }
+enum _GroupMenuAction { addMember, edit, archive, export, exit }
 
 class ExpensesPage extends ConsumerWidget {
   final String roomId;
@@ -67,6 +73,11 @@ class ExpensesPage extends ConsumerWidget {
     // Same for the leave/delete (G9) and edit-group (G10) notifiers.
     ref.watch(groupExiterProvider);
     ref.watch(groupEditorProvider);
+    ref.watch(groupArchiverProvider);
+    // G16: search / filter (null = search bar closed) and the device-local
+    // archive.
+    final search = ref.watch(ledgerSearchProvider(roomId));
+    final archived = ref.watch(groupArchivedProvider(roomId));
     final exitKind = groupExitKind(members, ref.watch(currentUserIdProvider));
     final l = context.l10n;
     final theme = Theme.of(context);
@@ -74,97 +85,138 @@ class ExpensesPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        // G17: the group's name (not just "Expenses"), members as subtitle.
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              group?.name ?? l.expensesTitle,
-              key: const Key('groupTitle'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (members.isNotEmpty)
-              Text(
-                l.membersCount(activeCount),
-                maxLines: 1,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          _SyncStatusIcon(status: syncStatus),
-          IconButton(
-            icon: const Icon(Icons.group_outlined),
-            tooltip: l.membersTitle,
-            onPressed: () => context.push('/groups/$roomId/members'),
-          ),
-          // Less frequent group actions live in an overflow menu so the app
-          // bar stays uncluttered on phones (and the title isn't truncated —
-          // G12, "Ausgaben").
-          PopupMenuButton<_GroupMenuAction>(
-            tooltip: l.moreTooltip,
-            onSelected: (action) => switch (action) {
-              _GroupMenuAction.addMember => showAddPersonDialog(
-                context,
-                ref,
-                roomId,
-              ),
-              _GroupMenuAction.edit => _editGroup(context, ref),
-              _GroupMenuAction.export => _exportCsv(context, ref),
-              _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: _GroupMenuAction.addMember,
-                enabled: !adderState.isLoading && !removed,
-                child: ListTile(
-                  leading: const Icon(Icons.person_add_outlined),
-                  title: Text(l.addMember),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: _GroupMenuAction.edit,
-                enabled: canEdit,
-                child: ListTile(
-                  leading: const Icon(Icons.edit_outlined),
-                  title: Text(l.editGroup),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: _GroupMenuAction.export,
-                child: ListTile(
-                  leading: const Icon(Icons.save_alt),
-                  title: Text(l.exportCsv),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: _GroupMenuAction.exit,
-                child: ListTile(
-                  leading: Icon(
-                    exitKind == GroupExitKind.leave
-                        ? Icons.logout
-                        : Icons.delete_outline,
+        // G17: the group's name (not just "Expenses"), members as subtitle;
+        // G16: the search field while searching.
+        title: search != null
+            ? _SearchField(roomId: roomId)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    group?.name ?? l.expensesTitle,
+                    key: const Key('groupTitle'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  title: Text(
-                    exitKind == GroupExitKind.leave
-                        ? l.leaveGroup
-                        : l.deleteGroup,
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                ),
+                  if (members.isNotEmpty)
+                    Text(
+                      l.membersCount(activeCount),
+                      maxLines: 1,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-        ],
+        actions: search != null
+            ? [
+                IconButton(
+                  key: const Key('closeSearch'),
+                  icon: const Icon(Icons.close),
+                  tooltip: l.closeSearch,
+                  onPressed: () =>
+                      ref.read(ledgerSearchProvider(roomId).notifier).close(),
+                ),
+              ]
+            : [
+                IconButton(
+                  key: const Key('openSearch'),
+                  icon: const Icon(Icons.search),
+                  tooltip: l.searchTooltip,
+                  onPressed: () =>
+                      ref.read(ledgerSearchProvider(roomId).notifier).open(),
+                ),
+                _SyncStatusIcon(status: syncStatus),
+                IconButton(
+                  icon: const Icon(Icons.group_outlined),
+                  tooltip: l.membersTitle,
+                  onPressed: () => context.push('/groups/$roomId/members'),
+                ),
+                // Less frequent group actions live in an overflow menu so the app
+                // bar stays uncluttered on phones (and the title isn't truncated —
+                // G12, "Ausgaben").
+                PopupMenuButton<_GroupMenuAction>(
+                  tooltip: l.moreTooltip,
+                  onSelected: (action) => switch (action) {
+                    _GroupMenuAction.addMember => showAddPersonDialog(
+                      context,
+                      ref,
+                      roomId,
+                    ),
+                    _GroupMenuAction.edit => _editGroup(context, ref),
+                    _GroupMenuAction.archive => _toggleArchive(
+                      context,
+                      ref,
+                      archived: archived,
+                      unsettled: overview.myBalance.isNotEmpty,
+                    ),
+                    _GroupMenuAction.export => _exportCsv(context, ref),
+                    _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: _GroupMenuAction.addMember,
+                      enabled: !adderState.isLoading && !removed,
+                      child: ListTile(
+                        leading: const Icon(Icons.person_add_outlined),
+                        title: Text(l.addMember),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _GroupMenuAction.edit,
+                      enabled: canEdit,
+                      child: ListTile(
+                        leading: const Icon(Icons.edit_outlined),
+                        title: Text(l.editGroup),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _GroupMenuAction.archive,
+                      child: ListTile(
+                        key: const Key('archiveMenuItem'),
+                        leading: Icon(
+                          archived
+                              ? Icons.unarchive_outlined
+                              : Icons.archive_outlined,
+                        ),
+                        title: Text(
+                          archived ? l.unarchiveGroup : l.archiveGroup,
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _GroupMenuAction.export,
+                      child: ListTile(
+                        leading: const Icon(Icons.save_alt),
+                        title: Text(l.exportCsv),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _GroupMenuAction.exit,
+                      child: ListTile(
+                        leading: Icon(
+                          exitKind == GroupExitKind.leave
+                              ? Icons.logout
+                              : Icons.delete_outline,
+                        ),
+                        title: Text(
+                          exitKind == GroupExitKind.leave
+                              ? l.leaveGroup
+                              : l.deleteGroup,
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
       ),
-      floatingActionButton: removed
+      floatingActionButton: removed || search != null
           ? null
           : FloatingActionButton.extended(
               onPressed: () => context.push('/groups/$roomId/expenses/add'),
@@ -184,6 +236,35 @@ class ExpensesPage extends ConsumerWidget {
                   child: Text(l.deleteFromThisDevice),
                 ),
               ],
+            ),
+          if (archived && search == null)
+            MaterialBanner(
+              key: const Key('archivedBanner'),
+              content: Text(l.archivedBanner),
+              leading: const Icon(Icons.archive_outlined),
+              actions: [
+                TextButton(
+                  onPressed: () => _toggleArchive(
+                    context,
+                    ref,
+                    archived: true,
+                    unsettled: false,
+                  ),
+                  child: Text(l.unarchiveGroup),
+                ),
+              ],
+            ),
+          if (search != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _FilterBar(
+                roomId: roomId,
+                filter: search,
+                categories: usedCategories(
+                  expensesAsync.value ?? const <ExpenseModel>[],
+                ),
+                canFilterMe: meAsync.value != null,
+              ),
             ),
           if (needsClaim)
             MaterialBanner(
@@ -210,6 +291,7 @@ class ExpensesPage extends ConsumerWidget {
                   readOnly: removed,
                   busy: expenseState.isLoading,
                   myId: meAsync.value?.userId,
+                  filter: search,
                 ),
                 if (adderState.isLoading)
                   ColoredBox(
@@ -238,6 +320,7 @@ class ExpensesPage extends ConsumerWidget {
     required bool readOnly,
     required bool busy,
     required String? myId,
+    LedgerFilter? filter,
   }) {
     final l = context.l10n;
     if (expensesAsync.hasError) {
@@ -253,11 +336,40 @@ class ExpensesPage extends ConsumerWidget {
     if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
       return const Center(child: CircularProgressIndicator());
     }
+    // G16: the search bar's filter (names as shown: "you" for me).
+    String searchName(String id) =>
+        id == myId ? l.you : (names[id] ?? localpartOf(id));
+    final f = filter ?? LedgerFilter.none;
     final entries = <({int createdAt, Object record})>[
-      for (final e in expensesAsync.value!) (createdAt: e.createdAt, record: e),
+      for (final e in expensesAsync.value!)
+        if (!f.isActive || expenseMatches(e, f, nameOf: searchName, myId: myId))
+          (createdAt: e.createdAt, record: e),
       for (final s in settlementsAsync.value!)
-        (createdAt: s.createdAt, record: s),
+        if (!f.isActive ||
+            settlementMatches(
+              s,
+              f,
+              nameOf: searchName,
+              myId: myId,
+              paymentLabel: l.paymentLabel,
+            ))
+          (createdAt: s.createdAt, record: s),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (entries.isEmpty && f.isActive) {
+      return EmptyState(
+        key: const Key('noMatches'),
+        icon: Icons.search_off,
+        title: l.noMatchesTitle,
+        body: l.noMatchesBody,
+        actions: [
+          OutlinedButton(
+            onPressed: () =>
+                ref.read(ledgerSearchProvider(roomId).notifier).clear(),
+            child: Text(l.clearFilters),
+          ),
+        ],
+      );
+    }
     if (entries.isEmpty) {
       return EmptyState(
         key: const Key('expensesEmpty'),
@@ -335,27 +447,48 @@ class ExpensesPage extends ConsumerWidget {
         96,
       ), // clear the FAB
       children: [
-        ContentWidth(
-          child: _GroupSummaryCard(
-            overview: overview,
-            readOnly: readOnly,
-            busy: busy,
-            onSettleUp: () {
-              final String my = myId ?? ref.read(currentUserIdProvider);
-              recordPaymentFlow(
-                context,
-                ref,
-                roomId,
-                myId: my,
-                debt: settleUpSuggestion(
-                  ref.read(balanceForRoomProvider(roomId)),
-                  my,
+        if (filter != null)
+          ContentWidth(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(
+                Insets.xs,
+                Insets.s,
+                Insets.xs,
+                0,
+              ),
+              child: Text(
+                l.filterResultCount(entries.length),
+                textAlign: TextAlign.start,
+                key: const Key('filterResultCount'),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              );
-            },
-            onBalances: () => context.push('/groups/$roomId/balance'),
+              ),
+            ),
+          )
+        else
+          ContentWidth(
+            child: _GroupSummaryCard(
+              overview: overview,
+              readOnly: readOnly,
+              busy: busy,
+              onSettleUp: () {
+                final String my = myId ?? ref.read(currentUserIdProvider);
+                recordPaymentFlow(
+                  context,
+                  ref,
+                  roomId,
+                  myId: my,
+                  debt: settleUpSuggestion(
+                    ref.read(balanceForRoomProvider(roomId)),
+                    my,
+                  ),
+                );
+              },
+              onBalances: () => context.push('/groups/$roomId/balance'),
+            ),
           ),
-        ),
         for (final section in sections)
           ContentWidth(
             child: Column(
@@ -421,6 +554,59 @@ class ExpensesPage extends ConsumerWidget {
           kind == GroupExitKind.leave
               ? l.youLeftGroup(group?.name ?? '')
               : l.deletedGroup(group?.name ?? ''),
+        ),
+      ),
+    );
+    if (context.mounted) context.go('/groups');
+  }
+
+  /// Archives this group on this device (G16) and goes back to the groups
+  /// list, where it sits in the collapsed "Archived" section — or brings an
+  /// archived one back. Archiving an unsettled group is allowed; the
+  /// snackbar says that the open balance still counts in the totals.
+  Future<void> _toggleArchive(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool archived,
+    required bool unsettled,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    // Captured for the snackbar's undo, which may run after this page is gone.
+    final settings = ref.read(settingsDaoProvider);
+    final archiver = ref.read(groupArchiverProvider.notifier);
+    final name = (await ref.read(groupsDaoProvider).getGroup(roomId))?.name;
+    if (archived) {
+      await archiver.unarchive(roomId);
+    } else {
+      await archiver.archive(roomId);
+    }
+    final error = ref.read(groupArchiverProvider).error;
+    if (error != null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.failedWithError(error.toString()))),
+      );
+      return;
+    }
+    if (archived) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.groupUnarchived(name ?? ''))),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          unsettled
+              ? l.groupArchivedUnsettled(name ?? '')
+              : l.groupArchived(name ?? ''),
+        ),
+        // An action makes snackbars persist by default — this one is a
+        // short undo window, not something to dismiss by hand.
+        persist: false,
+        action: SnackBarAction(
+          label: l.undo,
+          onPressed: () => settings.unarchiveGroup(roomId),
         ),
       ),
     );
@@ -741,6 +927,111 @@ String _ago(AppLocalizations l, int msEpoch) {
   return l.agoDays(d.inDays);
 }
 
+/// The app-bar search field (G16) — owns its controller; follows the
+/// provider when the filter is cleared from elsewhere.
+class _SearchField extends ConsumerStatefulWidget {
+  final String roomId;
+  const _SearchField({required this.roomId});
+
+  @override
+  ConsumerState<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends ConsumerState<_SearchField> {
+  late final TextEditingController _ctrl = TextEditingController(
+    text: ref.read(ledgerSearchProvider(widget.roomId))?.query ?? '',
+  );
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(ledgerSearchProvider(widget.roomId), (_, next) {
+      final q = next?.query ?? '';
+      if (q != _ctrl.text) _ctrl.text = q;
+    });
+    return TextField(
+      key: const Key('searchField'),
+      controller: _ctrl,
+      autofocus: true,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: context.l10n.searchHint,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        filled: false,
+        isDense: true,
+      ),
+      onChanged: (q) =>
+          ref.read(ledgerSearchProvider(widget.roomId).notifier).setQuery(q),
+    );
+  }
+}
+
+/// Filter chips below the app bar while searching (G16): "Involving me" and
+/// the categories this group uses.
+class _FilterBar extends ConsumerWidget {
+  final String roomId;
+  final LedgerFilter filter;
+  final List<ExpenseCategory> categories;
+  final bool canFilterMe;
+  const _FilterBar({
+    required this.roomId,
+    required this.filter,
+    required this.categories,
+    required this.canFilterMe,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final search = ref.read(ledgerSearchProvider(roomId).notifier);
+    return SingleChildScrollView(
+      key: const Key('filterBar'),
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(
+        Insets.page,
+        Insets.xs,
+        Insets.page,
+        Insets.xs,
+      ),
+      child: Row(
+        children: [
+          if (canFilterMe)
+            Padding(
+              padding: const EdgeInsets.only(right: Insets.s),
+              child: FilterChip(
+                key: const Key('filterInvolvingMe'),
+                avatar: const Icon(Icons.person_outline, size: 18),
+                label: Text(l.filterInvolvingMe),
+                selected: filter.involvingMe,
+                showCheckmark: false,
+                onSelected: (_) => search.toggleInvolvingMe(),
+              ),
+            ),
+          for (final c in categories)
+            Padding(
+              padding: const EdgeInsets.only(right: Insets.s),
+              child: FilterChip(
+                key: Key('filterCategory-${c.wire}'),
+                avatar: Icon(c.icon, size: 18),
+                label: Text(c.label(l)),
+                selected: filter.categories.contains(c),
+                showCheckmark: false,
+                onSelected: (_) => search.toggleCategory(c),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// A date section header in the ledger list (G17).
 class _DayHeader extends StatelessWidget {
   final String text;
@@ -898,7 +1189,11 @@ class _LedgerRow extends StatelessWidget {
   final String menuTooltip;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+
+  /// G16: the expense has a note — a small icon after the title.
+  final bool hasNote;
   const _LedgerRow({
+    this.hasNote = false,
     required this.leading,
     required this.title,
     required this.subtitle,
@@ -945,6 +1240,19 @@ class _LedgerRow extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (hasNote)
+                        Padding(
+                          padding: const EdgeInsets.only(left: Insets.xs),
+                          child: Tooltip(
+                            message: l.expenseHasNote,
+                            child: Icon(
+                              Icons.notes,
+                              key: const Key('expenseNoteIcon'),
+                              size: 16,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                       if (attention)
                         Padding(
                           padding: const EdgeInsets.only(left: Insets.xs),
@@ -1078,12 +1386,13 @@ class _ExpenseTile extends StatelessWidget {
       );
     }
     return _LedgerRow(
-      leading: _LeadingTile(
-        icon: Icons.receipt_long_outlined,
-        background: scheme.secondaryContainer,
-        foreground: scheme.onSecondaryContainer,
+      // G16: the category's icon (generic receipt without one).
+      leading: CategoryIconTile(
+        key: Key('categoryTile-${expense.category ?? 'none'}'),
+        category: ExpenseCategory.fromWire(expense.category),
       ),
       title: expense.description,
+      hasNote: expense.note != null,
       subtitle: payerLine,
       amount: context.money(expense.amountCents, expense.currency),
       amountNote: note,

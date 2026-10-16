@@ -20,6 +20,7 @@ import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
 import '../auth/auth_provider.dart';
+import '../../models/expense_category.dart' show normalizeNote;
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart' show nextLwwClock;
 
@@ -161,6 +162,8 @@ class ExpenseAdder extends _$ExpenseAdder {
     required String currency,
     required String paidBy,
     required Map<String, int> splits,
+    String? category,
+    String? note,
   }) => _run((w) async {
     final createdAt = DateTime.now().millisecondsSinceEpoch;
     final expense = ExpenseModel(
@@ -173,6 +176,8 @@ class ExpenseAdder extends _$ExpenseAdder {
       splitsJson: jsonEncode(splits),
       createdAt: createdAt,
       updatedAt: createdAt,
+      category: category,
+      note: normalizeNote(note),
     );
     final signed = await w.signer.expense(expense, creating: true);
     if (w.db.isClosed) return;
@@ -219,6 +224,8 @@ class ExpenseAdder extends _$ExpenseAdder {
     required String paidBy,
     required Map<String, int> splits,
     required int createdAt,
+    String? category,
+    String? note,
   }) => _run((w) async {
     // The creator's origin ("added by") is carried over unchanged (G6).
     final current = await w.expenses.getExpenseById(id);
@@ -232,6 +239,8 @@ class ExpenseAdder extends _$ExpenseAdder {
       splitsJson: jsonEncode(splits),
       createdAt: createdAt,
       updatedAt: nextLwwClock(current?.updatedAt ?? 0),
+      category: category,
+      note: normalizeNote(note),
       origin: current?.origin,
     );
     final signed = await w.signer.expense(expense);
@@ -257,6 +266,8 @@ class ExpenseAdder extends _$ExpenseAdder {
       createdAt: current.createdAt,
       updatedAt: nextLwwClock(current.updatedAt),
       deleted: true,
+      category: current.category,
+      note: current.note,
       origin: current.origin,
     );
     // A delete is a signed version too ("deleted by").

@@ -14,6 +14,7 @@ import 'package:money_ledger/features/backup/backup_service.dart';
 import 'package:money_ledger/features/backup/backup_ui.dart';
 import 'package:money_ledger/features/backup/csv_import.dart';
 import 'package:money_ledger/features/backup/ledger_backup.dart';
+import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
 import 'package:money_ledger/models/group_model.dart';
@@ -265,6 +266,8 @@ void main() {
       expensesForRoomProvider.overrideWith((ref, g) => Stream.value([])),
       settlementsForRoomProvider.overrideWith((ref, g) => Stream.value([])),
       currentUserIdProvider.overrideWith((_) => '@me:x'),
+      // G16: no archived groups (no drift stream in widget tests).
+      groupArchivesProvider.overrideWith((_) => Stream.value(const {})),
       lastBackupAtProvider.overrideWith((_) => Stream.value(lastBackupAt)),
       backupNudgeSnoozedUntilProvider.overrideWith((ref) {
         final c = StreamController<int?>()..add(snoozedUntil);

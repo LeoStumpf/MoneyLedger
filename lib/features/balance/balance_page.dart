@@ -96,6 +96,38 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                     Insets.xxl,
                   ),
                   children: [
+                    // G16: several currencies are never netted against
+                    // each other — say so once at the top.
+                    if (multiCurrency)
+                      ContentWidth(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            Insets.xs,
+                            Insets.m,
+                            Insets.xs,
+                            0,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.currency_exchange,
+                                size: 18,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: Insets.s),
+                              Expanded(
+                                child: Text(
+                                  l.simplifyDebtsPerCurrency,
+                                  key: const Key('perCurrencyNote'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     for (final MapEntry(key: currency, value: people)
                         in nets.entries)
                       ContentWidth(
@@ -130,6 +162,14 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                               multiCurrency
                                   ? '${l.suggestedPayments} · $currency'
                                   : l.suggestedPayments,
+                              // G16: what "simplified debts" means.
+                              trailing: IconButton(
+                                key: Key('simplifyInfo-$currency'),
+                                icon: const Icon(Icons.info_outline, size: 20),
+                                visualDensity: VisualDensity.compact,
+                                tooltip: l.simplifyDebtsInfoTooltip,
+                                onPressed: () => showSimplifyDebtsInfo(context),
+                              ),
                             ),
                             Card(
                               child: Column(
@@ -195,26 +235,55 @@ class _BalancePageState extends ConsumerState<BalancePage> {
   }
 }
 
+/// G16: explains the suggested payments — debts are simplified (fewest
+/// payments, everyone's net unchanged), separately per currency.
+Future<void> showSimplifyDebtsInfo(BuildContext context) {
+  final l = context.l10n;
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      icon: const Icon(Icons.alt_route),
+      title: Text(l.simplifyDebtsInfoTitle),
+      content: Text(
+        l.simplifyDebtsInfoBody,
+        key: const Key('simplifyInfoBody'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(l.ok)),
+      ],
+    ),
+  );
+}
+
 class _SectionHeader extends StatelessWidget {
   final String text;
-  const _SectionHeader(this.text);
+  final Widget? trailing;
+  const _SectionHeader(this.text, {this.trailing});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final label = Text(
+      text,
+      style: theme.textTheme.labelLarge?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         Insets.xs,
-        Insets.xl,
-        Insets.xs,
-        Insets.s,
+        trailing == null ? Insets.xl : Insets.l,
+        0,
+        trailing == null ? Insets.s : 0,
       ),
-      child: Text(
-        text,
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
+      child: trailing == null
+          ? label
+          : Row(
+              children: [
+                Expanded(child: label),
+                trailing!,
+              ],
+            ),
     );
   }
 }

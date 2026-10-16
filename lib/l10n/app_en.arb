@@ -1006,5 +1006,166 @@
   "recordDeviceNotVerifiedByYou": "You haven't verified this device (emoji comparison).",
   "@recordDeviceNotVerifiedByYou": {
     "description": "G11 device-verification enforcement"
+  },
+  "categoryLabel": "Category",
+  "@categoryLabel": {
+    "description": "G16 expense categories"
+  },
+  "categoryFood": "Food & drink",
+  "@categoryFood": {
+    "description": "G16 expense categories"
+  },
+  "categoryGroceries": "Groceries",
+  "@categoryGroceries": {
+    "description": "G16 expense categories"
+  },
+  "categoryTransport": "Transport",
+  "@categoryTransport": {
+    "description": "G16 expense categories"
+  },
+  "categoryAccommodation": "Accommodation",
+  "@categoryAccommodation": {
+    "description": "G16 expense categories"
+  },
+  "categoryEntertainment": "Entertainment",
+  "@categoryEntertainment": {
+    "description": "G16 expense categories"
+  },
+  "categoryShopping": "Shopping",
+  "@categoryShopping": {
+    "description": "G16 expense categories"
+  },
+  "categoryHome": "Home & utilities",
+  "@categoryHome": {
+    "description": "G16 expense categories"
+  },
+  "categoryHealth": "Health",
+  "@categoryHealth": {
+    "description": "G16 expense categories"
+  },
+  "categoryTravel": "Travel",
+  "@categoryTravel": {
+    "description": "G16 expense categories"
+  },
+  "categoryOther": "Other",
+  "@categoryOther": {
+    "description": "G16 expense categories"
+  },
+  "noteLabel": "Note (optional)",
+  "@noteLabel": {
+    "description": "G16 expense note field"
+  },
+  "expenseHasNote": "Has a note",
+  "@expenseHasNote": {
+    "description": "G16 tooltip of the note icon in the expense list"
+  },
+  "searchTooltip": "Search",
+  "@searchTooltip": {
+    "description": "G16 expense search / filter"
+  },
+  "searchHint": "Search description, note, payer",
+  "@searchHint": {
+    "description": "G16 expense search / filter"
+  },
+  "closeSearch": "Close search",
+  "@closeSearch": {
+    "description": "G16 expense search / filter"
+  },
+  "filterInvolvingMe": "Involving me",
+  "@filterInvolvingMe": {
+    "description": "G16 expense search / filter"
+  },
+  "noMatchesTitle": "Nothing found",
+  "@noMatchesTitle": {
+    "description": "G16 expense search / filter"
+  },
+  "noMatchesBody": "Try another search or clear the filters.",
+  "@noMatchesBody": {
+    "description": "G16 expense search / filter"
+  },
+  "clearFilters": "Clear filters",
+  "@clearFilters": {
+    "description": "G16 expense search / filter"
+  },
+  "filterResultCount": "{count, plural, =1{1 entry} other{{count} entries}}",
+  "@filterResultCount": {
+    "description": "G16 expense search / filter",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "archiveGroup": "Archive group",
+  "@archiveGroup": {
+    "description": "G16 archived groups (device-local)"
+  },
+  "unarchiveGroup": "Unarchive group",
+  "@unarchiveGroup": {
+    "description": "G16 archived groups (device-local)"
+  },
+  "archivedSection": "Archived ({count})",
+  "@archivedSection": {
+    "description": "G16 archived groups (device-local)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "archivedSectionHint": "Only hidden on this device. A group comes back by itself when something new is added.",
+  "@archivedSectionHint": {
+    "description": "G16 archived groups (device-local)"
+  },
+  "groupArchived": "“{name}” archived",
+  "@groupArchived": {
+    "description": "G16 archived groups (device-local)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupArchivedUnsettled": "“{name}” archived — your open balance still counts in the totals.",
+  "@groupArchivedUnsettled": {
+    "description": "G16 archived groups (device-local)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupUnarchived": "“{name}” is back in your groups",
+  "@groupUnarchived": {
+    "description": "G16 archived groups (device-local)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "archivedBanner": "This group is archived on this device.",
+  "@archivedBanner": {
+    "description": "G16 archived groups (device-local)"
+  },
+  "undo": "Undo",
+  "@undo": {
+    "description": "G16 archived groups (device-local)"
+  },
+  "simplifyDebtsInfoTooltip": "How are payments suggested?",
+  "@simplifyDebtsInfoTooltip": {
+    "description": "G16 settle-up explanation (simplify debts)"
+  },
+  "simplifyDebtsInfoTitle": "Simplified debts",
+  "@simplifyDebtsInfoTitle": {
+    "description": "G16 settle-up explanation (simplify debts)"
+  },
+  "simplifyDebtsInfoBody": "MoneyLedger adds up all expenses and payments into one balance per person and suggests the fewest payments that settle everyone up. So you might pay someone you never shared an expense with directly — the amounts everyone pays and gets back stay exactly the same.\n\nEach currency is settled on its own: amounts are never converted.",
+  "@simplifyDebtsInfoBody": {
+    "description": "G16 settle-up explanation (simplify debts)"
+  },
+  "simplifyDebtsPerCurrency": "Settled separately per currency — amounts are never converted.",
+  "@simplifyDebtsPerCurrency": {
+    "description": "G16 settle-up explanation (simplify debts)"
   }
 }

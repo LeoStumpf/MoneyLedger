@@ -124,6 +124,8 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
     deleted: e.deleted,
+    category: e.category,
+    note: e.note,
     sig: RecordSignature.decode(e.sig),
     origin: RecordSignature.decode(e.origin),
     pendingSign: e.pendingSign,
@@ -158,6 +160,8 @@ ExpensesCompanion expenseCompanion(ExpenseModel e) => ExpensesCompanion(
   createdAt: Value(e.createdAt),
   updatedAt: Value(e.updatedAt),
   deleted: Value(e.deleted),
+  category: Value(e.category),
+  note: Value(e.note),
   sig: Value(e.sig?.encode()),
   origin: Value(e.origin?.encode()),
   pendingSign: Value(e.pendingSign),
@@ -195,6 +199,8 @@ ExpenseModel _expenseFromCompanion(ExpensesCompanion c) => ExpenseModel(
   createdAt: _v(c.createdAt, 0),
   updatedAt: c.updatedAt.value,
   deleted: _v(c.deleted, false),
+  category: _v(c.category, null),
+  note: _v(c.note, null),
 );
 
 SettlementModel _settlementFromCompanion(SettlementsCompanion c) =>

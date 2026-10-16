@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../matrix/ledger_transport.dart';
 import '../../sync/left_groups.dart';
+import '../../../models/group_archive.dart';
 
 part 'settings_dao.g.dart';
 
@@ -180,10 +181,43 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
       attachedDatabase.transaction(() async {
         await attachedDatabase.purgeGroup(groupId);
         await markGroupLeft(groupId, t);
+        await unarchiveGroup(groupId);
       });
 
   /// Forgets the tombstone — we were re-added to [groupId].
   Future<void> clearGroupLeft(String groupId) => (delete(
     appSettings,
   )..where((t) => t.key.equals('$_leftGroupPrefix$groupId'))).go();
+
+  // ── archived groups (G16) ────────────────────────────────────────────────
+
+  static const _archivedPrefix = 'archived_group:';
+
+  /// Archives [groupId] on this device (see [GroupArchive]).
+  Future<void> archiveGroup(String groupId, GroupArchive a) =>
+      into(appSettings).insertOnConflictUpdate(
+        AppSettingsCompanion(
+          key: Value('$_archivedPrefix$groupId'),
+          value: Value(a.encode()),
+        ),
+      );
+
+  Future<void> unarchiveGroup(String groupId) => (delete(
+    appSettings,
+  )..where((t) => t.key.equals('$_archivedPrefix$groupId'))).go();
+
+  /// Every archive entry, by group id — including ones that no longer hold
+  /// because the group had new activity (`GroupArchive.holdsFor`).
+  Stream<Map<String, GroupArchive>> watchArchivedGroups() =>
+      (select(
+        appSettings,
+      )..where((t) => t.key.like('$_archivedPrefix%'))).watch().map(
+        (rows) => {
+          for (final r in rows)
+            if (r.key.startsWith(_archivedPrefix))
+              r.key.substring(_archivedPrefix.length): ?GroupArchive.decode(
+                r.value,
+              ),
+        },
+      );
 }

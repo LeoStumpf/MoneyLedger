@@ -138,11 +138,14 @@ void main() {
       final lines = csv.split('\r\n');
       expect(
         lines.first,
-        'Date,Type,Description,Currency,Amount,Paid By,Alex,Sam,'
-        'Expense ID,Group,Group ID,Updated At',
+        'Date,Type,Description,Category,Note,Currency,Amount,Paid By,'
+        'Alex,Sam,Expense ID,Group,Group ID,Updated At',
       );
-      expect(lines[1], contains(',Expense,Dinner,EUR,42.00,Alex,21.00,21.00,'));
-      expect(lines[2], contains(',Payment,Payment,EUR,21.00,Sam,21.00,,s1,'));
+      expect(
+        lines[1],
+        contains(',Expense,Dinner,,,EUR,42.00,Alex,21.00,21.00,'),
+      );
+      expect(lines[2], contains(',Payment,Payment,,,EUR,21.00,Sam,21.00,,s1,'));
     });
 
     test('payments round-trip; deleted ones are skipped', () {
@@ -201,6 +204,45 @@ void main() {
       final r = parseGroupCsv(csv).rows.single;
       expect(r.isPayment, isTrue);
       expect(r.paymentRecipient, isNull);
+    });
+  });
+
+  group('categories + notes (G16)', () {
+    test('round-trip; the note may hold commas, quotes and newlines', () {
+      final e = ExpenseModel(
+        id: 'e1',
+        roomId: 'g1',
+        description: 'Dinner',
+        amountCents: 4200,
+        currency: 'EUR',
+        paidBy: 'pa',
+        splitsJson: '{"pa":2100,"pb":2100}',
+        createdAt: 1760000000000,
+        updatedAt: 1760000050000,
+        category: 'food',
+        note: 'Tip "incl.", see\nreceipt',
+      );
+      final csv = buildGroupCsv(testGroup, members, [e, expense(id: 'e2')]);
+      final rows = parseGroupCsv(csv).rows;
+      expect(rows[0].category, 'food');
+      expect(rows[0].note, 'Tip "incl.", see\nreceipt');
+      expect(rows[0].sharesByName, {'Alex': 2100, 'Sam': 2100});
+      expect(rows[1].category, isNull);
+      expect(rows[1].note, isNull);
+    });
+
+    test('a pre-G16 CSV (no Category / Note columns) imports without them', () {
+      const old =
+          'Date,Type,Description,Currency,Amount,Paid By,Alex,Sam,'
+          'Expense ID,Group,Group ID,Updated At\r\n'
+          '2025-10-09T10:00:00.000,Expense,Dinner,EUR,42.00,Alex,21.00,21.00,'
+          'e1,Trip,g1,1760000050000';
+      final parsed = parseGroupCsv(old);
+      expect(parsed.participantNames, ['Alex', 'Sam']);
+      final r = parsed.rows.single;
+      expect(r.category, isNull);
+      expect(r.note, isNull);
+      expect(r.sharesByName, {'Alex': 2100, 'Sam': 2100});
     });
   });
 }

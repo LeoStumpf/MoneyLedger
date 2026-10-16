@@ -18,7 +18,9 @@ import 'package:money_ledger/features/auth/sso_provider.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
+import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/models/group_archive.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 import 'package:money_ledger/models/login_flows_result.dart';
@@ -85,6 +87,8 @@ List<dynamic> testOverrides({
   List<DebtEntry> debts = const [],
   List<MemberModel> members = const [],
   int? lastBackupAt,
+  // G16: device-local archive entries the pages see.
+  Map<String, GroupArchive> archives = const {},
 }) => [
   isLoggedInProvider.overrideWith((ref) => isLoggedIn),
   // loginFlowsLoading: future never completes, simulating homeserver
@@ -116,16 +120,22 @@ List<dynamic> testOverrides({
   allMembersProvider.overrideWith((_) => Stream.value(const [])),
   // Never touch the app_links plugin in widget tests.
   ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
-  ...signingUiOverrides(),
+  ...signingUiOverrides(archives: archives),
 ];
 
 /// G6: the signature-status streams of the record UI, without a database
 /// stream (drift stream timers would outlive the widget-test tree).
-/// [keys]: the device-key history the UI sees.
-List<dynamic> signingUiOverrides({List<KnownKey> keys = const []}) => [
+/// [keys]: the device-key history the UI sees. Also the G16 archive entries
+/// (none archived) — read by the group and groups pages — and [archives]
+/// for tests that need archived groups without a DB.
+List<dynamic> signingUiOverrides({
+  List<KnownKey> keys = const [],
+  Map<String, GroupArchive> archives = const {},
+}) => [
   knownDeviceKeysProvider.overrideWith((_) => Stream.value(keys)),
   rejectedVersionProvider.overrideWith((_, _) => Stream.value(null)),
   trustedDevicesProvider.overrideWith((_) => Stream.value(const {})),
+  groupArchivesProvider.overrideWith((_) => Stream.value(archives)),
 ];
 
 /// Additional override for groups tests where you want to control the group list.

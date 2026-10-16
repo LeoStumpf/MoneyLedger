@@ -274,6 +274,8 @@ class CsvImporter extends _$CsvImporter {
           splitsJson: jsonEncode(splits),
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
+          category: row.category,
+          note: row.note,
           origin: stored?.origin,
         ),
         creating: stored == null,

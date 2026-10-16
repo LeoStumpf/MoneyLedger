@@ -59,6 +59,9 @@ Expected results are in *italics*.
 | 3.5 | Re-add the leaver from the peer → *group comes back on the leaver's device with full history* | 2dev |
 | 3.6 | ⋮ → Delete group (solo/local-only group, or every other claimed member left) → *balance warning; "Deleted …" snackbar; group gone from this device* | emu |
 | 3.7 | Removed by a peer → *banner "You were removed from this group", history read-only, "Delete from this device"* | 2dev |
+| 3.8 | ⋮ → Archive group → *back on Groups; group in the collapsed "Archived (N)" section; snackbar Undo works; totals unchanged* (G16) | emu |
+| 3.9 | Peer adds an expense to the archived group → *group is back among the active groups by itself* (G16) | 2dev |
+| 3.10 | Open an archived group → *"archived on this device" banner*; ⋮ / banner → Unarchive → *back in the list* (G16) | emu |
 
 ## 4. Members
 
@@ -84,6 +87,9 @@ Expected results are in *italics*.
 | 5.5 | Edit an expense (tap) → *form prefilled (equal → Equal, else Exact); save updates list + peer* | 2dev |
 | 5.6 | ⋮ Delete → confirm → *gone here and on the peer (tombstone)* | 2dev |
 | 5.7 | Keyboard open on the form → *Add/Save button reachable (known: covered, G17)* | emu |
+| 5.8 | Type "Pizza" → *Food & drink chip preselected*; pick another chip → *typing no longer changes it*; tap the selected chip → *none* (G16) | emu |
+| 5.9 | Add a category + note → *category icon in the list, note icon after the title; peer shows the same icon + note (DE labels on a German device)* (G16) | 2dev |
+| 5.10 | 🔍 in the group app bar → type part of a description / note / payer → *list filtered, "N entries"*; category chips + "Involving me" narrow it; nothing found → *"Clear filters"* (G16) | emu |
 
 ## 6. Settlements & balances
 
@@ -94,6 +100,7 @@ Expected results are in *italics*.
 | 6.3 | Settlement ⋮ Delete → *gone; balance restored; peer too* | 2dev |
 | 6.4 | Edit group → default currency USD → add an expense → *balance page shows separate EUR and USD debts, no conversion* (then delete it + switch back) | emu |
 | 6.5 | Everything settled → *"All settled up!"* | emu |
+| 6.6 | Balance → ⓘ next to "Suggested payments" → *"Simplified debts" explanation*; multi-currency group → *"settled separately per currency" note* (G16) | emu |
 
 ## 7. Sync
 

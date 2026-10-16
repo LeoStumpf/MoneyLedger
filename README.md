@@ -26,7 +26,14 @@ and sees only ciphertext.
   participants; link a Matrix account to a local person at any time.
 - **Custom splits**: equal (pick who), exact amounts, shares/weights, or
   percentages — always summing to the total exactly.
-- Multi-currency **balances** with greedy debt simplification, plus settlements.
+- **Categories + notes** on expenses (10 categories with icons, suggested
+  from the description; an optional note), and **search / filter** in a
+  group's list (text, category chips, "involving me").
+- Multi-currency **balances** with greedy debt simplification (explained in
+  the app; each currency is settled separately), plus settlements.
+- **Archive** settled groups on this device (⋮ → *Archive group*): they move
+  into a collapsed *Archived* section and come back by themselves when
+  something new is added.
 - **Full backup / restore**: *Settings* (gear) → *Back up all groups* writes one
   JSON file with every group (participants, expenses, payments, deletions);
   *Restore from backup* previews and merges it back (idempotent, newer entries

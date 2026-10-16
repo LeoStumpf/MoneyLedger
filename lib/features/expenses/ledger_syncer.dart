@@ -439,11 +439,16 @@ class LedgerSyncer {
           clampInboundClock(content['updated_at'] as int? ?? createdAt),
         ),
         deleted: Value(content['deleted'] as bool? ?? false),
+        category: Value(_optString(content['category'])),
+        note: Value(_optString(content['note'])),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
       ),
     );
   }
+
+  static String? _optString(Object? v) =>
+      v is String && v.isNotEmpty ? v : null;
 
   @visibleForTesting
   static Future<void> processSettlement(

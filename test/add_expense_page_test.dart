@@ -590,5 +590,133 @@ void main() {
       }
       expect(received.single.content['currency'], 'THB');
     });
+
+    // ── G16: category + note ──────────────────────────────────────────────
+    Future<List<TransportMessage>> pumpForm(
+      WidgetTester tester, {
+      ExpenseModel? initial,
+      Locale? locale,
+    }) async {
+      final (db, net) = await seedGroup();
+      final received = <TransportMessage>[];
+      net.clientFor('@bob:x.org').onMessage.listen(received.add);
+      await tester.pumpWidget(
+        testRouterApp(
+          AddExpensePage(roomId: 'g1', initial: initial),
+          locale: locale,
+          overrides: [
+            ...signingUiOverrides(),
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      return received;
+    }
+
+    Future<void> submit(WidgetTester tester, String label) async {
+      await tester.tap(find.widgetWithText(FilledButton, label));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+    }
+
+    bool chipSelected(WidgetTester tester, String wire) =>
+        tester.widget<ChoiceChip>(find.byKey(Key('category-$wire'))).selected;
+
+    testWidgets('the description suggests a category; a note is sent', (
+      tester,
+    ) async {
+      final received = await pumpForm(tester);
+      expect(find.byKey(const Key('categoryPicker')), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Pizza',
+      );
+      await tester.pumpAndSettle();
+      expect(chipSelected(tester, 'food'), isTrue);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
+      await tester.enterText(
+        find.byKey(const Key('expenseNote')),
+        '  Margherita x2  ',
+      );
+      await submit(tester, 'Add');
+
+      expect(received.single.content['category'], 'food');
+      expect(received.single.content['note'], 'Margherita x2');
+    });
+
+    testWidgets('a picked category wins over later suggestions; tap again '
+        'clears it', (tester) async {
+      final received = await pumpForm(tester);
+      final chip = find.byKey(const Key('category-health'));
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(chipSelected(tester, 'health'), isTrue);
+      // Typing no longer changes the user's choice.
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Taxi',
+      );
+      await tester.pumpAndSettle();
+      expect(chipSelected(tester, 'health'), isTrue);
+      expect(chipSelected(tester, 'transport'), isFalse);
+      // Tapping the selected chip clears the category.
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(chipSelected(tester, 'health'), isFalse);
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Amount'),
+        '20',
+      );
+      await submit(tester, 'Add');
+      expect(received.single.content.containsKey('category'), isFalse);
+      expect(received.single.content.containsKey('note'), isFalse);
+    });
+
+    testWidgets('edit: category + note prefilled; no suggestion overrides', (
+      tester,
+    ) async {
+      const initial = ExpenseModel(
+        id: 'e1',
+        roomId: 'g1',
+        description: 'Taxi',
+        amountCents: 2000,
+        currency: 'CHF',
+        paidBy: '@alice:x.org',
+        splitsJson: '{"@alice:x.org":1000,"@bob:x.org":1000}',
+        createdAt: 1000,
+        updatedAt: 1000,
+        category: 'pets', // a newer peer's category: kept verbatim
+        note: 'From the station',
+      );
+      final received = await pumpForm(tester, initial: initial);
+      expect(find.text('From the station'), findsOneWidget);
+      expect(chipSelected(tester, 'other'), isTrue); // unknown → "other"
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Pizza',
+      );
+      await tester.pumpAndSettle();
+      expect(chipSelected(tester, 'food'), isFalse);
+      await submit(tester, 'Save');
+      expect(received.single.content['category'], 'pets');
+      expect(received.single.content['note'], 'From the station');
+    });
+
+    testWidgets('German: category labels and note field', (tester) async {
+      await pumpForm(tester, locale: const Locale('de'));
+      expect(find.text('Essen & Trinken'), findsOneWidget);
+      expect(find.text('Notiz (optional)'), findsOneWidget);
+    });
   });
 }

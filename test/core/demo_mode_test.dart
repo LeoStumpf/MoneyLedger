@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/models/group_archive.dart';
 import 'package:money_ledger/app.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
@@ -29,7 +30,7 @@ void main() {
   });
 
   group('seedDemoLedger', () {
-    test('three groups, real names, several currencies, all in sync', () async {
+    test('four groups, real names, several currencies, all in sync', () async {
       final db = openTestDatabase();
       addTearDown(db.close);
       final now = DateTime(2026, 10, 16, 12);
@@ -40,6 +41,7 @@ void main() {
         'Lisbon trip',
         'Flat share',
         'Ski weekend',
+        'Board game night',
       });
 
       final currencies = <String>{};
@@ -90,6 +92,26 @@ void main() {
       expect(currencies, containsAll(['EUR', 'CHF']));
       expect(settlementCount, greaterThanOrEqualTo(3));
       expect(await SettingsDao(db).watchOnboardingSeen().first, isTrue);
+
+      // G16: categorised expenses (README screenshots), a note, and the
+      // settled-up board game night archived — its fingerprint still holds.
+      final all = [
+        for (final g in groups)
+          ...await ExpensesDao(db).getExpensesForRoom(g.roomId),
+      ];
+      expect(all.where((e) => e.category != null).length, all.length);
+      expect(all.where((e) => e.note != null), isNotEmpty);
+      final archives = await SettingsDao(db).watchArchivedGroups().first;
+      expect(archives.keys, ['demo-group-games']);
+      expect(
+        archives['demo-group-games']!.holdsFor(
+          ledgerFingerprint(
+            await ExpensesDao(db).getAllExpensesForGroup('demo-group-games'),
+            await ExpensesDao(db).getAllSettlementsForGroup('demo-group-games'),
+          ),
+        ),
+        isTrue,
+      );
     });
 
     test('reseeding replaces the data instead of duplicating it', () async {
@@ -97,7 +119,7 @@ void main() {
       addTearDown(db.close);
       await seedDemoLedger(db);
       await seedDemoLedger(db);
-      expect(await GroupsDao(db).getAllGroups(), hasLength(3));
+      expect(await GroupsDao(db).getAllGroups(), hasLength(4));
     });
   });
 

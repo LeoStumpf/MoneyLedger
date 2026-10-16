@@ -39,6 +39,10 @@ class Expenses extends Table {
   TextColumn get sig => text().nullable()();
   TextColumn get origin => text().nullable()();
   BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
+  // G16: optional category (stable wire id, `expense_category.dart`) and
+  // free-text note; NULL = none. Part of the signed content when set.
+  TextColumn get category => text().nullable()();
+  TextColumn get note => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -222,7 +226,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -288,6 +292,21 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(settlements, settlements.pendingSign);
         await m.createTable(knownDeviceKeys);
         await m.createTable(rejectedVersions);
+      }
+      // v7 (G16): expense category + note (nullable — existing rows have
+      // none, their signatures and hashes are unchanged). A pre-G16 build
+      // can't verify a version that carries them (its signed body lacks the
+      // fields) and refused it; forget those refusals so the next digest
+      // exchange re-sends them and this build verifies them properly (a
+      // genuinely bad version is simply refused again).
+      if (from < 7) {
+        await m.addColumn(expenses, expenses.category);
+        await m.addColumn(expenses, expenses.note);
+        if (from >= 6) {
+          await customStatement(
+            "DELETE FROM rejected_versions WHERE kind = 'expense'",
+          );
+        }
       }
     },
     beforeOpen: (_) async {

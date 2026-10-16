@@ -2311,6 +2311,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You haven\'t verified this device (emoji comparison).'**
   String get recordDeviceNotVerifiedByYou;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get categoryLabel;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Food & drink'**
+  String get categoryFood;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Groceries'**
+  String get categoryGroceries;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Transport'**
+  String get categoryTransport;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Accommodation'**
+  String get categoryAccommodation;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Entertainment'**
+  String get categoryEntertainment;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping'**
+  String get categoryShopping;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Home & utilities'**
+  String get categoryHome;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Health'**
+  String get categoryHealth;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Travel'**
+  String get categoryTravel;
+
+  /// G16 expense categories
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get categoryOther;
+
+  /// G16 expense note field
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get noteLabel;
+
+  /// G16 tooltip of the note icon in the expense list
+  ///
+  /// In en, this message translates to:
+  /// **'Has a note'**
+  String get expenseHasNote;
+
+  /// G16 expense search / filter
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get searchTooltip;
+
+  /// G16 expense search / filter
+  ///
+  /// In en, this message translates to:
+  /// **'Search description, note, payer'**
+  String get searchHint;
+
+  /// G16 expense search / filter
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get closeSearch;
+
+  /// G16 expense search / filter
+  ///
+  /// In en, this message translates to:
+  /// **'Involving me'**
+  String get filterInvolvingMe;
+
+  /// G16 expense search / filter
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found'**
+  String get noMatchesTitle;
+
+  /// G16 expense search / filter
+  ///
+  /// In en, this message translates to:
+  /// **'Try another search or clear the filters.'**
+  String get noMatchesBody;
+
+  /// G16 expense search / filter
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get clearFilters;
+
+  /// G16 expense search / filter
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry} other{{count} entries}}'**
+  String filterResultCount(int count);
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'Archive group'**
+  String get archiveGroup;
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'Unarchive group'**
+  String get unarchiveGroup;
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'Archived ({count})'**
+  String archivedSection(int count);
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'Only hidden on this device. A group comes back by itself when something new is added.'**
+  String get archivedSectionHint;
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” archived'**
+  String groupArchived(String name);
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” archived — your open balance still counts in the totals.'**
+  String groupArchivedUnsettled(String name);
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” is back in your groups'**
+  String groupUnarchived(String name);
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'This group is archived on this device.'**
+  String get archivedBanner;
+
+  /// G16 archived groups (device-local)
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get undo;
+
+  /// G16 settle-up explanation (simplify debts)
+  ///
+  /// In en, this message translates to:
+  /// **'How are payments suggested?'**
+  String get simplifyDebtsInfoTooltip;
+
+  /// G16 settle-up explanation (simplify debts)
+  ///
+  /// In en, this message translates to:
+  /// **'Simplified debts'**
+  String get simplifyDebtsInfoTitle;
+
+  /// G16 settle-up explanation (simplify debts)
+  ///
+  /// In en, this message translates to:
+  /// **'MoneyLedger adds up all expenses and payments into one balance per person and suggests the fewest payments that settle everyone up. So you might pay someone you never shared an expense with directly — the amounts everyone pays and gets back stay exactly the same.\n\nEach currency is settled on its own: amounts are never converted.'**
+  String get simplifyDebtsInfoBody;
+
+  /// G16 settle-up explanation (simplify debts)
+  ///
+  /// In en, this message translates to:
+  /// **'Settled separately per currency — amounts are never converted.'**
+  String get simplifyDebtsPerCurrency;
 }
 
 class _AppLocalizationsDelegate
