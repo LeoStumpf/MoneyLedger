@@ -23,19 +23,21 @@ void main() {
     // shared in-memory DB, and returns it plus the fake network.
     Future<(AppDatabase, FakeMatrixNetwork)> seedGroup({
       List<CustomCategory> categories = const [],
+      String currency = 'CHF',
+      List<String> users = const ['@alice:x.org', '@bob:x.org'],
     }) async {
       final db = openTestDatabase();
       await GroupsDao(db).upsertGroupLww(
         GroupsCompanion(
           roomId: const Value('g1'),
           name: const Value('Trip'),
-          currency: const Value('CHF'),
+          currency: Value(currency),
           updatedAt: const Value(1000),
           categoriesJson: Value(encodeCategories(categories)),
         ),
       );
       final memberDao = MembersDao(db);
-      for (final u in ['@alice:x.org', '@bob:x.org']) {
+      for (final u in users) {
         await memberDao.upsertMemberLww(
           MembersCompanion(
             groupId: const Value('g1'),
@@ -660,6 +662,58 @@ void main() {
       expect(received, hasLength(1));
       expect(received.first.content['currency'], 'USD');
       expect(received.first.content['amount'], 1000);
+    });
+
+    // G66: a 0-decimal currency — whole yen in, hundredths stored, the
+    // equal split in whole yen.
+    testWidgets('JPY: whole units, stored in hundredths, split in whole yen', (
+      tester,
+    ) async {
+      final (db, net) = await seedGroup(
+        currency: 'JPY',
+        users: ['@alice:x.org', '@bob:x.org', '@carol:x.org'],
+      );
+      final received = <TransportMessage>[];
+      net.clientFor('@bob:x.org').onMessage.listen(received.add);
+
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            ...signingUiOverrides(),
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Ramen',
+      );
+      final amount = find.widgetWithText(TextFormField, 'Amount');
+      await tester.enterText(amount, '1000.4');
+      await tester.pump();
+      expect(find.text('= ¥1,000'), findsOneWidget);
+      await tester.enterText(amount, '1000');
+      await tester.pump();
+      expect(find.textContaining('¥334'), findsWidgets);
+      expect(find.textContaining('.00'), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+
+      expect(received, hasLength(1));
+      final content = received.single.content;
+      expect(content['currency'], 'JPY');
+      expect(content['amount'], 100000);
+      final split = (content['split'] as Map).values.cast<int>().toList()
+        ..sort();
+      expect(split, [33300, 33300, 33400]);
     });
 
     testWidgets('editing keeps the expense\'s own (unlisted) currency', (

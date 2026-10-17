@@ -4,7 +4,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/sync/record_validation.dart';
 import '../../models/expense_date.dart' show dayOf;
 import '../expenses/record_date_field.dart';
-import '../groups/create_group_page.dart' show kGroupCurrencies;
+import '../../core/widgets/currency_field.dart';
 
 /// What the user confirmed in [RecordPaymentDialog].
 class PaymentDraft {
@@ -56,6 +56,10 @@ class RecordPaymentDialog extends StatefulWidget {
   /// G60: shown under the fields (edit mode: the attribution footer).
   final Widget? footer;
 
+  /// G66: the currency picker's first section (group currency, used ones,
+  /// region …); [currency] is always offered.
+  final List<String> suggestedCurrencies;
+
   const RecordPaymentDialog({
     super.key,
     required this.participants,
@@ -67,6 +71,7 @@ class RecordPaymentDialog extends StatefulWidget {
     this.initialDay,
     this.editing = false,
     this.footer,
+    this.suggestedCurrencies = const [],
   });
 
   @override
@@ -80,6 +85,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
   late DateTime _day = dayOf(widget.initialDay ?? DateTime.now()); // G60
   final TextEditingController _amount = TextEditingController();
   bool _amountPrefilled = false;
+  String? _prefillText;
 
   @override
   void didChangeDependencies() {
@@ -88,7 +94,12 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
     final initial = widget.initialCents;
     if (!_amountPrefilled && initial != null) {
       _amountPrefilled = true;
-      _amount.text = formatAmountInput(initial, context.localeName);
+      _amount.text = formatAmountInput(
+        initial,
+        context.localeName,
+        currency: widget.currency,
+      );
+      _prefillText = _amount.text;
     }
   }
 
@@ -102,13 +113,27 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
   /// lone grouping separator (G18 review). Null unless a storable amount
   /// (1 cent … [kMaxAmountCents]).
   int? get _cents {
-    final c = parseAmountCents(_amount.text, locale: context.localeName);
+    final c = _parsed;
     return c != null && isValidAmountCents(c) ? c : null;
+  }
+
+  /// G66: the typed amount rounded to the currency's decimals; the unchanged
+  /// prefill is [RecordPaymentDialog.initialCents] itself (a legacy
+  /// non-whole JPY amount isn't rounded).
+  int? get _parsed {
+    if (_prefillText != null && _amount.text == _prefillText) {
+      return widget.initialCents;
+    }
+    return parseAmountCents(
+      _amount.text,
+      locale: context.localeName,
+      currency: _currency,
+    );
   }
 
   /// Why the typed amount can't be recorded.
   String _amountError(AppLocalizations l) {
-    final c = parseAmountCents(_amount.text, locale: context.localeName);
+    final c = _parsed;
     if (c == null) return l.invalidNumber;
     return c < 1 ? l.amountMustBePositive : l.amountTooLarge;
   }
@@ -129,10 +154,6 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
   @override
   Widget build(BuildContext context) {
     final ids = widget.participants.keys.toList();
-    final currencies = [
-      ...kGroupCurrencies,
-      if (!kGroupCurrencies.contains(widget.currency)) widget.currency,
-    ];
     final cents = _cents;
     final debt = widget.debtCents;
     final exceeds =
@@ -202,16 +223,11 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                 const SizedBox(width: 12),
                 SizedBox(
                   width: 96,
-                  child: DropdownButtonFormField<String>(
+                  child: CurrencyField(
                     key: const Key('paymentCurrency'),
-                    initialValue: _currency,
-                    decoration: InputDecoration(labelText: l.currencyLabel),
-                    items: [
-                      for (final c in currencies)
-                        DropdownMenuItem(value: c, child: Text(c)),
-                    ],
-                    onChanged: (v) =>
-                        setState(() => _currency = v ?? _currency),
+                    value: _currency,
+                    suggested: widget.suggestedCurrencies,
+                    onChanged: (c) => setState(() => _currency = c),
                   ),
                 ),
               ],

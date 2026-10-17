@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import 'formatting.dart';
 
 export '../../l10n/app_localizations.dart';
+export 'currencies.dart';
 export 'formatting.dart';
 
 extension AppLocalizationsX on BuildContext {

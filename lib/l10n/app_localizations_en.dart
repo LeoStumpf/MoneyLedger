@@ -2481,4 +2481,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get deleteGroupTileBody =>
       'Removes the group and all its entries from this device.';
+
+  @override
+  String get chooseCurrencyTitle => 'Choose currency';
+
+  @override
+  String get currencySearchHint => 'Search code or name';
+
+  @override
+  String get currencySuggested => 'Suggested';
+
+  @override
+  String get currencyAll => 'All currencies';
+
+  @override
+  String get currencyNoMatch => 'No currency found';
 }

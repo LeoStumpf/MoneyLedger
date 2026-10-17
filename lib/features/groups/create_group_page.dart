@@ -4,11 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
+import '../../core/widgets/currency_field.dart';
 import '../../models/member_model.dart' show duplicateNameOf;
 import 'group_provider.dart';
-
-/// Currencies offered for a group's default currency (create + edit).
-const kGroupCurrencies = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD'];
 
 class CreateGroupPage extends ConsumerStatefulWidget {
   const CreateGroupPage({super.key});
@@ -20,7 +18,9 @@ class CreateGroupPage extends ConsumerStatefulWidget {
 class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  String _currency = 'EUR';
+
+  /// G66: the device region's currency (de_CH → CHF), else EUR.
+  late String _currency = defaultCurrencyFor(ref.read(deviceRegionProvider));
 
   /// G64 (U4): the other people, added as chips ("Who's in?"). The creator
   /// is always in the group ("You" chip) and isn't part of this list.
@@ -103,16 +103,16 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                       (v == null || v.trim().isEmpty) ? l.required : null,
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _currency,
-                  decoration: InputDecoration(
-                    labelText: l.currencyLabel,
-                    prefixIcon: const Icon(Icons.payments_outlined),
+                CurrencyField(
+                  key: const Key('createGroupCurrency'),
+                  value: _currency,
+                  showName: true,
+                  prefixIcon: const Icon(Icons.payments_outlined),
+                  suggested: suggestedCurrencies(
+                    selected: _currency,
+                    region: ref.read(deviceRegionProvider),
                   ),
-                  items: kGroupCurrencies
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _currency = v ?? 'EUR'),
+                  onChanged: (c) => setState(() => _currency = c),
                 ),
                 const SizedBox(height: Insets.xl),
                 _peopleSection(context),

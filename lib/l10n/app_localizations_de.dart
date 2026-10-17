@@ -2508,4 +2508,19 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get deleteGroupTileBody =>
       'Entfernt die Gruppe mit allen Einträgen von diesem Gerät.';
+
+  @override
+  String get chooseCurrencyTitle => 'Währung wählen';
+
+  @override
+  String get currencySearchHint => 'Code oder Name suchen';
+
+  @override
+  String get currencySuggested => 'Vorschläge';
+
+  @override
+  String get currencyAll => 'Alle Währungen';
+
+  @override
+  String get currencyNoMatch => 'Keine Währung gefunden';
 }

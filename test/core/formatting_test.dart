@@ -26,8 +26,54 @@ void main() {
       expect(formatMoney(300, 'CHF', 'de'), '3,00${nbsp}CHF');
     });
 
-    test('always two decimals (amounts are hundredths, also for JPY)', () {
-      expect(formatMoney(1234, 'JPY', 'en'), contains('12.34'));
+    // G66: storage stays hundredths for every currency; only the display
+    // follows the currency's decimals (min(ISO, 2)).
+    test('0-decimal currencies show whole units (stored in hundredths)', () {
+      expect(formatMoney(100000, 'JPY', 'en'), '¥1,000');
+      expect(formatMoney(100000, 'JPY', 'de'), '1.000$nbsp¥');
+      expect(formatMoney(1500000, 'KRW', 'en'), '₩15,000');
+      expect(formatMoney(250000, 'HUF', 'de'), '2.500${nbsp}Ft');
+      expect(formatMoney(-50000, 'ISK', 'en'), contains('500'));
+      // A legacy non-whole amount is shown rounded, never refused.
+      expect(formatMoney(1234, 'JPY', 'en'), '¥12');
+    });
+
+    test('3-decimal currencies show 2 (a thousandth isn\'t storable)', () {
+      expect(formatMoney(123456, 'BHD', 'en'), contains('1,234.56'));
+      expect(formatMoney(123456, 'KWD', 'de'), contains('1.234,56'));
+    });
+
+    test('unknown codes from a peer: the code + 2 decimals, no crash', () {
+      expect(formatMoney(123456, 'XYZ', 'en'), 'XYZ${nbsp}1,234.56');
+      expect(formatMoney(123456, 'XYZ', 'de'), '1.234,56${nbsp}XYZ');
+      for (final odd in ['Bitcoin', 'ab', '€', '']) {
+        expect(formatMoney(100, odd, 'en'), contains('1.00'));
+      }
+    });
+  });
+
+  test('formatAmountInput follows the currency (G66)', () {
+    expect(formatAmountInput(100000, 'en', currency: 'JPY'), '1000');
+    expect(formatAmountInput(100000, 'de', currency: 'JPY'), '1000');
+    expect(formatAmountInput(123456, 'de', currency: 'BHD'), '1234,56');
+    expect(formatAmountInput(123450, 'en', currency: 'EUR'), '1234.50');
+    // Legacy non-whole JPY keeps its two decimals (nothing silently lost).
+    expect(formatAmountInput(1234, 'en', currency: 'JPY'), '12.34');
+  });
+
+  group('parseAmountCents with a currency (G66)', () {
+    test('0-decimal: rounded to whole units, still hundredths', () {
+      expect(parseAmountCents('1000', locale: 'en', currency: 'JPY'), 100000);
+      expect(parseAmountCents('1.000', locale: 'de', currency: 'JPY'), 100000);
+      expect(parseAmountCents('1,000', locale: 'en', currency: 'JPY'), 100000);
+      expect(parseAmountCents('1000,5', locale: 'de', currency: 'JPY'), 100100);
+      expect(parseAmountCents('0.4', locale: 'en', currency: 'KRW'), 0);
+    });
+
+    test('2- and 3-decimal currencies: hundredths as before', () {
+      expect(parseAmountCents('12,345', locale: 'de', currency: 'EUR'), 1235);
+      expect(parseAmountCents('1.234', locale: 'en', currency: 'BHD'), 123);
+      expect(parseAmountCents('12.50', locale: 'en', currency: 'XYZ'), 1250);
     });
   });
 

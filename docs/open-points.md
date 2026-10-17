@@ -218,6 +218,29 @@ peers'), and SAS works with other members' devices (members page). Open:
   the origin of a record it re-signs as creator). Edited `Date` cells
   back-date expenses and (G60) payments on import.
 
+### Currencies (G66) — storage in hundredths, not ISO minor units
+- **Why not ISO minor units:** every amount has always been stored and sent
+  as hundredths of the major unit, also for JPY (offered since the first
+  version: ¥1,000 = `100000`). Switching to real minor units (yen, fils)
+  would change what the integer means: existing signed JPY records would
+  show 100× too much (or need re-signed new versions), and old and new
+  builds would read the same record differently — a wire change that would
+  need a protocol marker (bundle with G57 if ever wanted). G66 therefore
+  only changes display and input; nothing stored changes.
+- **3-decimal currencies** (BHD, KWD, JOD, OMR, TND, LYD) show and accept
+  **2 decimals** — a thousandth (1 fils ≈ €0.0025) can't be stored in
+  hundredths. Splits are exact to 0.01.
+- **0-decimal currencies** (JPY, KRW, ISK, HUF, IDR, …) are typed and split
+  in whole units; a legacy non-whole amount (typed before G66, e.g.
+  ¥12.34) is shown rounded (`¥12`) and kept as stored — never refused,
+  an unchanged edit keeps it, a CSV export writes its 2 decimals.
+- **`kMaxAmountCents`** (10^13 hundredths = 10^11 major units) is the same
+  for every currency — ample for IDR / VND (≈ 6 M USD); a wire rule, so not
+  made per currency.
+- **Names** are ISO's (via Debian `iso-codes`) with a few clarified (JPY
+  "Japanese Yen" …); search finds a currency by code or a word of its EN /
+  DE name, not by country.
+
 ### Backups (G5 / G34) — limits
 - **Encrypted backups** (optional passphrase): Argon2id (32 MiB, t = 3,
   p = 1) + AES-256-GCM via the pure-Dart `cryptography` implementations.

@@ -3883,6 +3883,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Removes the group and all its entries from this device.'**
   String get deleteGroupTileBody;
+
+  /// G66: title of the currency picker sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Choose currency'**
+  String get chooseCurrencyTitle;
+
+  /// G66: hint of the currency picker's search field
+  ///
+  /// In en, this message translates to:
+  /// **'Search code or name'**
+  String get currencySearchHint;
+
+  /// G66: picker section — the group's currencies, region default, common ones
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested'**
+  String get currencySuggested;
+
+  /// G66: picker section — every other ISO-4217 currency
+  ///
+  /// In en, this message translates to:
+  /// **'All currencies'**
+  String get currencyAll;
+
+  /// G66: the search matched no currency
+  ///
+  /// In en, this message translates to:
+  /// **'No currency found'**
+  String get currencyNoMatch;
 }
 
 class _AppLocalizationsDelegate

@@ -40,6 +40,7 @@
 library;
 
 import '../../core/l10n/formatting.dart' show parseLocalizedDecimal;
+import '../../core/l10n/currencies.dart' show currencyDecimals, currencyStep;
 import '../../core/sync/record_validation.dart';
 import '../../models/expense_category.dart' show normalizeNote;
 import '../../models/expense_date.dart';
@@ -111,7 +112,7 @@ String buildGroupCsv(
     final shareByColName = <String, String>{};
     for (final m in cols) {
       final cents = splits[m.userId];
-      if (cents != null) shareByColName[_nameOf(m)] = _money(cents);
+      if (cents != null) shareByColName[_nameOf(m)] = _money(cents, e.currency);
     }
     rows.add([
       expenseDateOf(e.displayDay),
@@ -121,7 +122,7 @@ String buildGroupCsv(
       customNames[e.category] ?? '',
       e.note ?? '',
       e.currency,
-      _money(e.amountCents),
+      _money(e.amountCents, e.currency),
       nameById[e.paidBy] ?? e.paidBy,
       for (final n in colNames) shareByColName[n] ?? '',
       e.id,
@@ -142,9 +143,10 @@ String buildGroupCsv(
       '',
       '',
       s.currency,
-      _money(s.amountCents),
+      _money(s.amountCents, s.currency),
       nameById[s.fromUser] ?? s.fromUser,
-      for (final n in colNames) n == toName ? _money(s.amountCents) : '',
+      for (final n in colNames)
+        n == toName ? _money(s.amountCents, s.currency) : '',
       s.id,
       group.name,
       group.roomId,
@@ -325,7 +327,15 @@ ParsedCsv parseGroupCsv(String csv) {
 }
 
 // ── money helpers ──────────────────────────────────────────────────────────
-String _money(int cents) => (cents / 100).toStringAsFixed(2);
+///
+/// G66: in the currency's decimals (`1000` for ¥1,000 — JPY is stored in
+/// hundredths like every currency, so the import's ×100 reads it back); a
+/// legacy amount that isn't a whole step keeps 2 decimals (lossless).
+String _money(int cents, String currency) {
+  final step = currencyStep(currency);
+  final decimals = cents % step == 0 ? currencyDecimals(currency) : 2;
+  return (cents / 100).toStringAsFixed(decimals);
+}
 
 /// A money cell in cents: finite, non-negative, at most [kMaxAmountCents].
 /// Machine format is `1234.50`; a spreadsheet's `1,234.56` / `12,50` /

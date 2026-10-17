@@ -7,16 +7,33 @@ library;
 
 import 'package:intl/intl.dart';
 
+import 'currencies.dart';
+
 /// [cents] of [currency] for display, e.g. `€1,234.50` (en) / `1.234,50 €`
-/// (de). Every currency is stored in hundredths (also JPY), so two decimals
-/// are always shown. A letter "symbol" (e.g. `CHF`) is kept apart from the
-/// digits with a no-break space (`CHF 3.00`, not `CHF3.00`).
+/// (de), `¥1,000` (JPY).
+///
+/// **G66 rule:** every currency is *stored* in hundredths of its major unit
+/// (also JPY: `100000` = ¥1,000) — the wire / DB integer never depends on
+/// the currency. Only display and input follow it: [currencyDecimals] =
+/// min(ISO decimals, 2) — JPY / KRW / ISK / HUF … show 0 decimals (a legacy
+/// non-whole amount like `1234` JPY shows rounded, `¥12`), BHD / KWD / JOD /
+/// OMR / TND (3 ISO decimals) show 2, an unknown code (e.g. from a newer
+/// peer) shows its code and 2 decimals. A letter "symbol" (e.g. `CHF`) is
+/// kept apart from the digits with a no-break space (`CHF 3.00`, not
+/// `CHF3.00`).
 String formatMoney(int cents, String currency, String locale) {
-  final f = NumberFormat.simpleCurrency(
-    locale: locale,
-    name: currency,
-    decimalDigits: 2,
-  );
+  final NumberFormat f;
+  try {
+    f = NumberFormat.simpleCurrency(
+      locale: locale,
+      name: currency,
+      decimalDigits: currencyDecimals(currency),
+    );
+  } catch (_) {
+    // Never crash on an odd code from a peer: the plain number + the code.
+    return '${NumberFormat('#,##0.00', locale).format(cents / 100)}'
+        '\u00a0$currency';
+  }
   final text = f.format(cents / 100);
   final symbol = f.currencySymbol;
   if (!RegExp(r'^[A-Za-z]+$').hasMatch(symbol)) return text;
@@ -28,8 +45,18 @@ String formatMoney(int cents, String currency, String locale) {
 
 /// [cents] as a plain decimal for an editable amount field — no grouping, no
 /// symbol, the locale's decimal separator: `1234.50` (en) / `1234,50` (de).
-String formatAmountInput(int cents, String locale) =>
-    NumberFormat('0.00', locale).format(cents / 100);
+/// With a [currency] it uses that currency's decimals (G66: JPY `1000`); a
+/// legacy amount that isn't a whole step of it (`1234` JPY) keeps two
+/// decimals (`12.34`), so nothing is silently rounded in a prefilled field.
+String formatAmountInput(int cents, String locale, {String? currency}) {
+  final decimals = currency == null || cents % currencyStep(currency) != 0
+      ? 2
+      : currencyDecimals(currency);
+  return NumberFormat(
+    decimals == 0 ? '0' : '0.${'0' * decimals}',
+    locale,
+  ).format(cents / 100);
+}
 
 /// A percentage value for display, e.g. `33.3` / `33,3`.
 String formatDecimal(num value, String locale) =>
@@ -142,14 +169,18 @@ String? _groupingSeparator(String locale) {
   }
 }
 
-/// [parseLocalizedDecimal] in integer cents (rounded), or null. Pass the UI
-/// [locale] for user input (see the `1.234` rule there).
-int? parseAmountCents(String input, {String? locale}) {
+/// [parseLocalizedDecimal] in integer cents (stored hundredths, rounded), or
+/// null. Pass the UI [locale] for user input (see the `1.234` rule there).
+/// G66: with a [currency], the value is rounded to that currency's decimals
+/// ([currencyStep]) — `1000.5` JPY → `100100` (¥1,001), `12.345` EUR →
+/// `1235` as before.
+int? parseAmountCents(String input, {String? locale, String? currency}) {
   final v = parseLocalizedDecimal(input, locale: locale);
   if (v == null) return null;
   final cents = v * 100;
   // Beyond 2^53 a double can't hold whole cents (and round() would throw on
   // infinity); far above any valid amount anyway.
   if (cents.abs() > 9007199254740991) return null;
-  return cents.round();
+  final step = currency == null ? 1 : currencyStep(currency);
+  return step == 1 ? cents.round() : (cents / step).round() * step;
 }

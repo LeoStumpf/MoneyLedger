@@ -2296,5 +2296,25 @@
   "deleteGroupTileBody": "Removes the group and all its entries from this device.",
   "@deleteGroupTileBody": {
     "description": "G65: subtitle of the Delete group tile"
+  },
+  "chooseCurrencyTitle": "Choose currency",
+  "@chooseCurrencyTitle": {
+    "description": "G66: title of the currency picker sheet"
+  },
+  "currencySearchHint": "Search code or name",
+  "@currencySearchHint": {
+    "description": "G66: hint of the currency picker's search field"
+  },
+  "currencySuggested": "Suggested",
+  "@currencySuggested": {
+    "description": "G66: picker section — the group's currencies, region default, common ones"
+  },
+  "currencyAll": "All currencies",
+  "@currencyAll": {
+    "description": "G66: picker section — every other ISO-4217 currency"
+  },
+  "currencyNoMatch": "No currency found",
+  "@currencyNoMatch": {
+    "description": "G66: the search matched no currency"
   }
 }

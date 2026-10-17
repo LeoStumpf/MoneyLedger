@@ -10,6 +10,7 @@ import '../backup/csv_export.dart';
 import '../backup/ledger_backup.dart' show savedFileDisplayName;
 import '../balance/balance_provider.dart';
 import '../expenses/expenses_provider.dart';
+import '../expenses/group_currencies.dart';
 import '../onboarding/onboarding_provider.dart' show settingsDaoProvider;
 import 'group_archive_provider.dart';
 import 'group_edit_dialog.dart';
@@ -134,10 +135,18 @@ Future<void> editGroupFlow(
   final l = context.l10n;
   final group = await ref.read(groupsDaoProvider).getGroup(roomId);
   if (group == null || !context.mounted) return;
+  // G66: the group's currencies first in the picker.
+  final suggested = await groupCurrencySuggestions(
+    ref,
+    roomId,
+    selected: group.currency,
+  );
+  if (!context.mounted) return;
   final result = await showEditGroupDialog(
     context,
     name: group.name,
     currency: group.currency,
+    suggested: suggested,
   );
   if (result == null) return;
   await ref

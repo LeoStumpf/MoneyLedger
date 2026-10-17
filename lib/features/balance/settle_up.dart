@@ -6,6 +6,7 @@ import '../../core/l10n/l10n.dart';
 import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
 import '../expenses/expenses_provider.dart';
+import '../expenses/group_currencies.dart';
 import '../expenses/record_attribution.dart';
 import '../groups/group_provider.dart';
 import 'balance_calculator.dart';
@@ -46,6 +47,15 @@ Future<void> recordPaymentFlow(
       ? myId
       : (ids.isNotEmpty ? ids.first : null);
   final defaultTo = ids.where((id) => id != defaultFrom).firstOrNull;
+  final currency = debt?.currency ?? group?.currency ?? 'EUR';
+  // G66: the group's currencies first in the picker.
+  final suggested = await groupCurrencySuggestions(
+    ref,
+    roomId,
+    selected: currency,
+    groupCurrency: group?.currency,
+  );
+  if (!context.mounted) return;
 
   final draft = await showDialog<PaymentDraft>(
     context: context,
@@ -55,7 +65,8 @@ Future<void> recordPaymentFlow(
       initialTo: debt?.to ?? defaultTo,
       initialCents: debt?.cents,
       debtCents: debt?.cents,
-      currency: debt?.currency ?? group?.currency ?? 'EUR',
+      currency: currency,
+      suggestedCurrencies: suggested,
     ),
   );
   if (draft == null || !context.mounted) return;
@@ -107,6 +118,16 @@ Future<void> editPaymentFlow(
     settlement.toUser: names[settlement.toUser] ?? settlement.toUser,
   };
   final initialDay = settlement.displayDay;
+  final group = (ref.read(ledgerGroupsProvider).value ?? const [])
+      .where((g) => g.roomId == roomId)
+      .firstOrNull;
+  final suggested = await groupCurrencySuggestions(
+    ref,
+    roomId,
+    selected: settlement.currency,
+    groupCurrency: group?.currency,
+  );
+  if (!context.mounted) return;
   final draft = await showDialog<PaymentDraft>(
     context: context,
     builder: (_) => RecordPaymentDialog(
@@ -116,6 +137,7 @@ Future<void> editPaymentFlow(
       initialTo: settlement.toUser,
       initialCents: settlement.amountCents,
       currency: settlement.currency,
+      suggestedCurrencies: suggested,
       initialDay: initialDay,
       footer: RecordAttribution(
         groupId: roomId,

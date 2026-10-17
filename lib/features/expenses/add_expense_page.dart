@@ -11,7 +11,8 @@ import '../../models/expense_category.dart';
 import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
-import '../groups/create_group_page.dart' show kGroupCurrencies;
+import '../../core/widgets/currency_field.dart';
+import 'group_currencies.dart';
 import '../groups/group_provider.dart';
 import 'expense_category_ui.dart';
 import 'expenses_provider.dart';
@@ -61,6 +62,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   String? _paidBy; // participant id of the payer
   String _currency = 'EUR';
   String _initialCurrency = 'EUR'; // as loaded — stays selectable
+
+  /// G66: the currency picker's first section (group currency, used ones …).
+  List<String> _suggestedCurrencies = const [];
 
   // The SplitEditor's current mode + inputs; resolved against the live amount.
   SplitPlan? _plan;
@@ -119,8 +123,23 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   /// Accepts `,` and `.` as decimal separator (G12) — see
   /// [parseAmountCents]; the UI locale decides a lone grouping separator
   /// (`1.234` in German = 1234, G18 review).
-  int? get _parsedCents =>
-      parseAmountCents(_amountCtrl.text, locale: context.localeName);
+  ///
+  /// G66: rounded to the currency's decimals (whole yen); the unchanged
+  /// prefill of an edited expense is its stored amount — a legacy non-whole
+  /// JPY amount (stored in hundredths before G66) isn't rounded on save.
+  int? get _parsedCents {
+    final initial = widget.initial;
+    if (initial != null &&
+        _amountPrefilled &&
+        _amountCtrl.text == _initialAmountText) {
+      return initial.amountCents;
+    }
+    return parseAmountCents(
+      _amountCtrl.text,
+      locale: context.localeName,
+      currency: _currency,
+    );
+  }
 
   /// The amount if it is a storable one (1 cent … [kMaxAmountCents]), else
   /// 0 — which no split accepts.
@@ -173,6 +192,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       _amountCtrl.text = formatAmountInput(
         initial.amountCents,
         context.localeName,
+        currency: initial.currency,
       );
       _initialAmountText = _amountCtrl.text;
     }
@@ -186,6 +206,13 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       initial: widget.initial,
     );
     final group = await ref.read(groupsDaoProvider).getGroup(widget.roomId);
+    final currency = widget.initial?.currency ?? group?.currency ?? 'EUR';
+    final suggested = await groupCurrencySuggestions(
+      ref,
+      widget.roomId,
+      selected: currency,
+      groupCurrency: group?.currency,
+    );
     // Default payer: the edited expense's payer, else this device's participant.
     final self = await ref.read(
       currentParticipantProvider(widget.roomId).future,
@@ -199,8 +226,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         _members = members;
         // Edit keeps the expense's own currency; new ones default to the
         // group's (G29 — each expense may use any currency).
-        _currency = widget.initial?.currency ?? group?.currency ?? 'EUR';
+        _currency = currency;
         _initialCurrency = _currency;
+        _suggestedCurrencies = suggested;
         _paidBy = defaultPayer;
         _initialPayer = defaultPayer;
         _customCategories = group?.categories ?? const [];
@@ -337,11 +365,6 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         !adderState.isLoading &&
         members.isNotEmpty &&
         (_plan?.resolve(_amountCents).isValid ?? false);
-    final currencies = [
-      ...kGroupCurrencies,
-      // Keep an unlisted currency (edit / group).
-      if (!kGroupCurrencies.contains(_initialCurrency)) _initialCurrency,
-    ];
 
     // G56: ← / system back on a changed form asks before throwing it away.
     _wasDirty = _dirty;
@@ -418,22 +441,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                 children: [
                                   SizedBox(
                                     width: 108,
-                                    child: DropdownButtonFormField<String>(
+                                    // G66: any ISO-4217 currency (search);
+                                    // the expense's own one stays offered.
+                                    child: CurrencyField(
                                       key: const Key('expenseCurrency'),
-                                      initialValue: _currency,
-                                      decoration: InputDecoration(
-                                        labelText: l.currencyLabel,
-                                      ),
-                                      items: [
-                                        for (final c in currencies)
-                                          DropdownMenuItem(
-                                            value: c,
-                                            child: Text(c),
-                                          ),
-                                      ],
-                                      onChanged: (v) => setState(
-                                        () => _currency = v ?? _currency,
-                                      ),
+                                      value: _currency,
+                                      suggested: _suggestedCurrencies,
+                                      onChanged: (c) =>
+                                          setState(() => _currency = c),
                                     ),
                                   ),
                                   const SizedBox(width: Insets.m),
@@ -449,6 +464,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                         hintText: formatAmountInput(
                                           0,
                                           context.localeName,
+                                          currency: _currency,
                                         ),
                                         // G18 review: how the input was read
                                         // (e.g. "= 1.234,00 €").
@@ -471,10 +487,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                         if (v == null || v.isEmpty) {
                                           return l.required;
                                         }
-                                        final c = parseAmountCents(
-                                          v,
-                                          locale: context.localeName,
-                                        );
+                                        final c = _parsedCents;
                                         if (c == null) return l.invalidNumber;
                                         if (c < 1) {
                                           return l.amountMustBePositive;
@@ -559,6 +572,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                   () => _amountCtrl.text = formatAmountInput(
                                     cents,
                                     context.localeName,
+                                    currency: _currency,
                                   ),
                                 ),
                               ),

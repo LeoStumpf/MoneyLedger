@@ -11,19 +11,25 @@ library;
 
 /// Splits [total] equally across [ids]. With a remainder, the leftover cents go
 /// one each to the first ids (e.g. 100¢ across 3 → 34, 33, 33).
-Map<String, int> splitEqually(int total, List<String> ids) =>
-    distributeByWeights(total, {for (final id in ids) id: 1});
+Map<String, int> splitEqually(int total, List<String> ids, {int step = 1}) =>
+    distributeByWeights(total, {for (final id in ids) id: 1}, step: step);
 
 /// Splits [total] in proportion to integer [weights] (e.g. {a:2, b:1, c:1}).
 /// Zero/negative weights receive nothing.
-Map<String, int> splitByShares(int total, Map<String, int> weights) =>
-    distributeByWeights(total, weights);
+Map<String, int> splitByShares(
+  int total,
+  Map<String, int> weights, {
+  int step = 1,
+}) => distributeByWeights(total, weights, step: step);
 
 /// Splits [total] in proportion to [percents] (e.g. {a:50, b:30, c:20}). The
 /// percents need not be exactly 100 — the result is proportional regardless and
 /// always sums to [total]; the UI enforces the 100% rule for the user.
-Map<String, int> splitByPercent(int total, Map<String, num> percents) =>
-    distributeByWeights(total, percents);
+Map<String, int> splitByPercent(
+  int total,
+  Map<String, num> percents, {
+  int step = 1,
+}) => distributeByWeights(total, percents, step: step);
 
 /// Core largest-remainder distribution: hand out [total] cents in proportion to
 /// [weights], flooring each share then giving the leftover cents one-by-one to
@@ -31,7 +37,23 @@ Map<String, int> splitByPercent(int total, Map<String, num> percents) =>
 /// result is deterministic). Guarantees `sum(result) == total` when total ≥ 0
 /// and at least one weight is positive. Entries with a non-positive weight get
 /// 0 and never receive a leftover cent. Keys preserve [weights] order.
-Map<String, int> distributeByWeights(int total, Map<String, num> weights) {
+///
+/// G66: [step] is the currency's smallest amount in cents (`currencyStep`:
+/// 100 for JPY & co.) — the total is handed out in whole steps, so every
+/// share is a whole yen. A (legacy) total that isn't a multiple of [step] is
+/// split cent-exact as before ([step] ignored), so stored splits of old
+/// data reopen unchanged.
+Map<String, int> distributeByWeights(
+  int total,
+  Map<String, num> weights, {
+  int step = 1,
+}) {
+  if (step > 1 && total > 0 && total % step == 0) {
+    return distributeByWeights(
+      total ~/ step,
+      weights,
+    ).map((id, units) => MapEntry(id, units * step));
+  }
   final result = {for (final id in weights.keys) id: 0};
   if (total <= 0) return result;
 
@@ -76,10 +98,14 @@ int remainingForExact(int total, Map<String, int> entered) =>
 /// its keys — i.e. what [splitEqually] would produce. Used on edit to reopen an
 /// expense in Equal mode (vs. Exact). A near-equal map with the extra cent on a
 /// different person reads as not-equal, which harmlessly opens in Exact mode.
-bool isEqualSplit(Map<String, int> map) {
+///
+/// G66: [step] as in [distributeByWeights] (an equal JPY split is in whole
+/// yen; the cent-exact form is accepted too, for splits stored before).
+bool isEqualSplit(Map<String, int> map, {int step = 1}) {
   if (map.isEmpty) return false;
+  if (step > 1 && isEqualSplit(map)) return true;
   final total = map.values.fold(0, (a, b) => a + b);
-  final canonical = splitEqually(total, map.keys.toList());
+  final canonical = splitEqually(total, map.keys.toList(), step: step);
   for (final id in map.keys) {
     if (map[id] != canonical[id]) return false;
   }
@@ -93,18 +119,22 @@ bool isEqualSplit(Map<String, int> map) {
 Map<String, int> distributeRest(
   int total,
   Map<String, int> fixed,
-  List<String> open,
-) {
+  List<String> open, {
+  int step = 1,
+}) {
   final rest = remainingForExact(total, fixed);
   if (rest <= 0 || open.isEmpty) return const {};
-  return splitEqually(rest, open);
+  return splitEqually(rest, open, step: step);
 }
 
 /// G59: [amounts] scaled proportionally so they sum to [total] exactly
 /// (largest remainder). Entries ≤ 0 stay 0. Empty input or no positive amount →
 /// every entry 0 (the caller only offers this when something was typed).
-Map<String, int> rescaleProportionally(int total, Map<String, int> amounts) =>
-    distributeByWeights(total, amounts);
+Map<String, int> rescaleProportionally(
+  int total,
+  Map<String, int> amounts, {
+  int step = 1,
+}) => distributeByWeights(total, amounts, step: step);
 
 /// G59: the simplest whole-number shares with the same proportions as
 /// [weights] — all equal positive weights → 1 each; whole weights (e.g. cents
@@ -118,7 +148,11 @@ Map<String, int> rescaleProportionally(int total, Map<String, int> amounts) =>
 /// [kMaxNiceShares] are preferred when they resolve against [total] to
 /// **exactly** the same cents as [weights] do (here 1 / 2). Every positive
 /// weight keeps ≥ 1 share (nobody drops out). Else the exact GCD form.
-Map<String, int> sharesFromWeights(Map<String, num> weights, {int total = 0}) {
+Map<String, int> sharesFromWeights(
+  Map<String, num> weights, {
+  int total = 0,
+  int step = 1,
+}) {
   final positive = [
     for (final w in weights.values)
       if (w > 0) w,
@@ -134,7 +168,7 @@ Map<String, int> sharesFromWeights(Map<String, num> weights, {int total = 0}) {
   final exact = {for (final e in weights.entries) e.key: scaled(e.value) ~/ g};
   if (total <= 0) return exact;
   final exactSum = exact.values.fold(0, (a, b) => a + b);
-  final target = distributeByWeights(total, weights);
+  final target = distributeByWeights(total, weights, step: step);
   for (
     var sum = positive.length;
     sum < exactSum && sum <= kMaxNiceShares;
@@ -145,7 +179,7 @@ Map<String, int> sharesFromWeights(Map<String, num> weights, {int total = 0}) {
       (e) => e.value <= 0 || candidate[e.key]! > 0,
     );
     if (keepsEveryone &&
-        _sameSplit(distributeByWeights(total, candidate), target)) {
+        _sameSplit(distributeByWeights(total, candidate, step: step), target)) {
       return candidate;
     }
   }

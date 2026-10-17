@@ -782,8 +782,10 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [ ] Device check: smoke step 3.11 (Pixel, DE, 360 dp)
 
 ### G66. Currencies (U16) 🟠
-- [ ] Full ISO-4217 list with search, minor units per currency (JPY 0),
-      default from the device region
+- [x] Full ISO-4217 list with search, minor units per currency (JPY 0),
+      default from the device region — **storage stays hundredths for every
+      currency** (JPY was always ×100; ISO minor units would be a wire change →
+      G57 bundle if ever); display decimals = min(ISO, 2)
 
 ### G67. Undo + understandable errors (U13, U25, U15) 🟠
 - [ ] Undo snackbar for delete (confirm dialog stays — Leo) / record payment, *Delete* in the edit form,
@@ -898,7 +900,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G63 — correctness + texts before release (usability review U11 …)
 - [x] G64 — people when creating a group (before G52 step 6/7)
 - [x] G65 — group settings + settings page (before G52 step 6/9)
-- [ ] G66 — currencies
+- [x] G66 — currencies
 - [ ] G67 — undo + understandable errors
 - [ ] G68 — sync sheet per person (with G52 step 9)
 - [ ] G69 — share + overview

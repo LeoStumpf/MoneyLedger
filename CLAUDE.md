@@ -170,7 +170,8 @@ lib/
     background/      # G31 Android periodic background sync (round, gate, WorkManager glue)
     demo/            # G15 offline demo mode: kOfflineDemo, demo fakes, seedDemoLedger, demoOverrides
     timer_factory.dart # TimerFactory typedef (injectable timers, G15)
-    widgets/         # shared widgets (incl. text_prompt_dialog.dart: one-field prompt owning its controller)
+    widgets/         # shared widgets (incl. text_prompt_dialog.dart: one-field prompt owning its controller;
+                     #   currency_field.dart: G66 CurrencyField + searchable picker sheet, deviceRegionProvider)
     theme/           # G17 design tokens: app_theme.dart, app_colors.dart (LedgerColors),
                      #   web_fonts.dart (G43 web-only fallback fonts + their licenses)
     widgets/         # G17 PersonAvatar/AvatarStack, ContentWidth, EmptyState, BrandLogo
@@ -182,6 +183,8 @@ lib/
     l10n/
       l10n.dart        # context.l10n / context.money() / context.date() + re-exports
       formatting.dart  # pure intl helpers: formatMoney, formatDate, parseAmountCents (`,`/`.`)
+      currencies.dart  # G66: ISO-4217 list, display decimals / split step, region default, picker order + search
+      currency_names.dart # G66 GENERATED (tool/currencies/make_currency_names.py): code → (EN, DE) name
     splash_page.dart # neutral loading route while the onboarding flag is unknown (G25)
     database/
       app_database.dart        # Drift DB + table definitions (AppDatabase.named / .forTesting())
@@ -758,8 +761,8 @@ prefilled with a suggested debt involving them; removes nobody); removing
 stays possible. Tests: `test/g64_people_test.dart`.
 
 **Editing a group (G10).** Group settings → *Name & currency* (any active member):
-name + default currency (`group_edit_dialog.dart`, currencies from
-`kGroupCurrencies`). `GroupEditor.edit` LWW-upserts the meta with
+name + default currency (`group_edit_dialog.dart`; G66 `CurrencyField` —
+any ISO-4217 currency, see "Currencies (G66)"). `GroupEditor.edit` LWW-upserts the meta with
 `nextLwwClock` and relays a `com.moneyledger.group` payload to the active
 claimed members; a lost relay is repaired by the digest's `meta_updated_at`.
 The default currency only applies to **new** expenses (balances are per
@@ -1261,8 +1264,10 @@ sheet's per-person sums still match the balances); its settlement id sits in
 settlement (else it is imported as an expense). A CSV **without** a `Type`
 column (pre-G13) is all expenses.
 
-Amounts are **decimal** in the sheet (`cents/100`, 2 dp) but **integer cents**
-everywhere else. The parser locates fixed columns by header name and treats any
+Amounts are **decimal** in the sheet (`cents/100`; 2 dp, G66: 0 dp for a
+0-decimal currency like JPY — `1000` = ¥1,000 — unless a legacy amount isn't
+a whole yen, then 2 dp, lossless; the import reads every cell ×100 as
+before) but **integer cents** everywhere else. The parser locates fixed columns by header name and treats any
 column between `Paid By` and `Expense ID` as a participant share column, so
 extra/missing optional columns are tolerated.
 
@@ -1450,7 +1455,8 @@ payment* action opens the same `RecordPaymentDialog` with from/to pickers
 (read-only, G26) → no recording. Wire/replication unchanged (a settlement's
 `from`/`to` were always arbitrary participant ids). Expenses likewise carry
 their own currency (G29 picker on the add/edit form, default = group
-currency; balances are per currency).
+currency; balances are per currency; G66: the full ISO-4217 list with
+search in every picker).
 
 **Editing a payment (G60 follow-up).** Tapping a payment row in the ledger
 (or its ⋮ → *Edit*; ⋮ → *Delete* stays) runs `editPaymentFlow`
@@ -1593,9 +1599,10 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
   `registrationRequirementLabel(stage, l)`). Unit tests use `en`/`de` from
   `test/helpers/l10n.dart` (`lookupAppLocalizations`).
 - **Amounts/dates:** `context.money(cents, currency)` (`€1,234.50` /
-  `1.234,50 €`, always 2 decimals) and `context.date(ms)`; editable amount
-  fields prefill with `formatAmountInput` and parse with `parseAmountCents`,
-  which accepts `,` **and** `.` as decimal separator. G18 review: pass the UI
+  `1.234,50 €`, `¥1,000` — the currency's display decimals, G66) and
+  `context.date(ms)`; editable amount fields prefill with
+  `formatAmountInput(…, currency:)` and parse with
+  `parseAmountCents(…, currency:)`, which accepts `,` **and** `.` as decimal separator. G18 review: pass the UI
   `locale:` — a **lone** locale grouping separator followed by exactly 3
   digits is thousands (`de`: `1.234` = 1234; `en`: `1.234` stays 1.234,
   `1,234` = 1234); malformed grouping (`12,34.5`) is rejected. The amount
@@ -1604,6 +1611,38 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
   form's *Add* and the payment dialog's *Record* stay disabled otherwise;
   `SplitPlan.resolve` is never valid for such a total). The **CSV stays machine
   format** (dot decimals, ISO dates, English headers) in every language.
+- **Currencies (G66):** **storage stays hundredths for every currency** —
+  the wire / DB integer is `major × 100` also for JPY (`100000` = ¥1,000);
+  that was always so (JPY was offered since the first version) and real ISO
+  minor units would change the meaning of existing signed records and
+  between app versions (`docs/open-points.md`). Only display and input
+  follow the currency (`lib/core/l10n/currencies.dart`):
+  `currencyDecimals` = min(ISO, 2) — 0 for `kZeroDecimalCurrencies` (JPY,
+  KRW, ISK, HUF, IDR, CLP, VND, …; our own list, independent of `intl`'s),
+  else 2 (BHD / KWD / JOD / OMR / TND show 2 — a thousandth isn't
+  storable); an unknown code (any string from a peer) → the code + 2
+  decimals, never a crash. `currencyStep` (100 for 0 decimals) is what
+  `parseAmountCents(currency:)` rounds to (`1000,5` JPY → ¥1,001) and what
+  the split math hands out (`distributeByWeights(step:)`, `SplitPlan.step`:
+  ¥1,000 / 3 → 334 / 333 / 333); a legacy total that isn't a whole step is
+  split cent-exact and shown rounded, never refused, and a form's unchanged
+  prefill keeps the stored amount (`formatAmountInput` keeps 2 decimals for
+  it). `kMaxAmountCents` is unchanged (10^11 major units in any currency).
+  Names: `currency_names.dart` (**generated** by
+  `tool/currencies/make_currency_names.py` from Debian `iso-codes`,
+  LGPL-2.1+, EN + DE, funds / metals / withdrawn codes left out; in-app
+  license entry in `main.dart`). Pickers: `CurrencyField` +
+  `showCurrencyPicker` (`core/widgets/currency_field.dart`; bottom sheet,
+  search by code or a word of the EN / DE name, accent-insensitive; keys
+  `currencySearch`, `currency-<code>`, `currencyNoMatch`) in create / edit
+  group, the expense form and the payment dialog; order
+  (`suggestedCurrencies`): selected, group currency, currencies used in the
+  group by frequency (`groupCurrencySuggestions`), the region's, then
+  `kCommonCurrencies`, then all others. **New group default** = the device
+  region's currency (`deviceRegionProvider` — first system locale with a
+  country; `defaultCurrencyFor`: CH → CHF, GB → GBP, DE → EUR, else EUR;
+  tests override the provider). Tests: `test/core/currencies_test.dart`,
+  `test/core/formatting_test.dart`, `test/g66_currency_picker_test.dart`.
 - **Widget tests:** `testApp`/`testRouterApp` add the localization delegates
   (English by default, `locale: Locale('de')` for German tests); any other
   test `MaterialApp` needs `localizationsDelegates: testLocalizationsDelegates`.

@@ -630,5 +630,10 @@
   "archiveTileBody": "Verschiebt sie in deiner Liste nach „Archiviert“. Nur hier – die anderen merken nichts.",
   "unarchiveTileBody": "Zurück in deine Gruppenliste",
   "leaveGroupTileBody": "Entfernt die Gruppe von diesem Gerät. Die anderen sehen, dass du gegangen bist.",
-  "deleteGroupTileBody": "Entfernt die Gruppe mit allen Einträgen von diesem Gerät."
+  "deleteGroupTileBody": "Entfernt die Gruppe mit allen Einträgen von diesem Gerät.",
+  "chooseCurrencyTitle": "Währung wählen",
+  "currencySearchHint": "Code oder Name suchen",
+  "currencySuggested": "Vorschläge",
+  "currencyAll": "Alle Währungen",
+  "currencyNoMatch": "Keine Währung gefunden"
 }

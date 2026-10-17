@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/l10n.dart';
-import 'create_group_page.dart' show kGroupCurrencies;
+import '../../core/widgets/currency_field.dart';
 
 /// The "Edit group" dialog (G10): name + default currency. Returns the new
 /// values, or null when cancelled. Changing the currency only affects **new**
@@ -11,15 +11,24 @@ Future<({String name, String currency})?> showEditGroupDialog(
   BuildContext context, {
   required String name,
   required String currency,
+  List<String> suggested = const [],
 }) => showDialog<({String name, String currency})>(
   context: context,
-  builder: (_) => _EditGroupDialog(name: name, currency: currency),
+  builder: (_) =>
+      _EditGroupDialog(name: name, currency: currency, suggested: suggested),
 );
 
 class _EditGroupDialog extends StatefulWidget {
   final String name;
   final String currency;
-  const _EditGroupDialog({required this.name, required this.currency});
+
+  /// G66: the picker's suggestions (group currency, used ones, region …).
+  final List<String> suggested;
+  const _EditGroupDialog({
+    required this.name,
+    required this.currency,
+    required this.suggested,
+  });
 
   @override
   State<_EditGroupDialog> createState() => _EditGroupDialogState();
@@ -45,11 +54,6 @@ class _EditGroupDialogState extends State<_EditGroupDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Keep a currency set elsewhere (CSV import, older app) selectable.
-    final currencies = [
-      ...kGroupCurrencies,
-      if (!kGroupCurrencies.contains(widget.currency)) widget.currency,
-    ];
     final l = context.l10n;
     return AlertDialog(
       title: Text(l.editGroup),
@@ -66,17 +70,17 @@ class _EditGroupDialogState extends State<_EditGroupDialog> {
                   (v == null || v.trim().isEmpty) ? l.required : null,
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _currency,
-              decoration: InputDecoration(
-                labelText: l.defaultCurrencyLabel,
-                helperText: l.defaultCurrencyHelper,
-                helperMaxLines: 3,
-              ),
-              items: currencies
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (v) => setState(() => _currency = v ?? _currency),
+            // G66: any ISO-4217 currency; a code set elsewhere (CSV import,
+            // a peer) stays selectable (the picker always offers the
+            // selected one).
+            CurrencyField(
+              key: const Key('editGroupCurrency'),
+              value: _currency,
+              showName: true,
+              labelText: l.defaultCurrencyLabel,
+              helperText: l.defaultCurrencyHelper,
+              suggested: widget.suggested,
+              onChanged: (c) => setState(() => _currency = c),
             ),
           ],
         ),

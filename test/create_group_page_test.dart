@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
+import 'package:money_ledger/core/widgets/currency_field.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/create_group_page.dart';
 
@@ -36,6 +37,8 @@ void main() {
               (ref) => net.clientFor('@alice:x.org'),
             ),
             appDatabaseProvider.overrideWithValue(db),
+            // G66: the device region decides the default currency.
+            deviceRegionProvider.overrideWithValue('CH'),
           ],
         ),
       );
@@ -55,7 +58,7 @@ void main() {
         final groups = await GroupsDao(db).watchAllGroups().first;
         expect(groups, hasLength(1));
         expect(groups.first.name, 'Holiday');
-        expect(groups.first.currency, 'EUR');
+        expect(groups.first.currency, 'CHF');
       });
     });
   });

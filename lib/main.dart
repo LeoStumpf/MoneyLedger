@@ -50,6 +50,21 @@ Future<void> main() async {
       ),
     ),
   );
+  // G66: the currency names (EN/DE) come from Debian iso-codes (LGPL-2.1+).
+  LicenseRegistry.addLicense(
+    () => Stream.value(
+      const LicenseEntryWithLineBreaks(
+        ['iso-codes (currency names)'],
+        'ISO 4217 currency names and their German translations from the '
+        'iso-codes package (https://salsa.debian.org/iso-codes-team/iso-codes).'
+        '\n\n'
+        'This data is free software; you can redistribute it and/or modify it '
+        'under the terms of the GNU Lesser General Public License as published '
+        'by the Free Software Foundation; either version 2.1 of the License, '
+        'or (at your option) any later version.',
+      ),
+    ),
+  );
   // G43: the web fetches no font from Google — register the bundled
   // fallback fonts (+ their licenses) before the first frame, so the engine
   // never goes looking for a Noto font for our own texts. No-op off the web.

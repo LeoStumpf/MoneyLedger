@@ -31,12 +31,17 @@ class SplitPlan {
   final Map<String, int> weights; // shares
   final Map<String, num> percents; // percent
 
+  /// G66: the currency's smallest amount in cents (`currencyStep`, 100 for
+  /// JPY) — Equal / Shares / Percent hand out whole steps.
+  final int step;
+
   const SplitPlan({
     required this.mode,
     this.included = const [],
     this.exact = const {},
     this.weights = const {},
     this.percents = const {},
+    this.step = 1,
   });
 
   /// The split of [total] — never valid for a total outside 1 cent …
@@ -49,16 +54,22 @@ class SplitPlan {
   SplitResult _resolve(int total) {
     switch (mode) {
       case SplitMode.equal:
-        return SplitResult(splitEqually(total, included), included.isNotEmpty);
+        return SplitResult(
+          splitEqually(total, included, step: step),
+          included.isNotEmpty,
+        );
       case SplitMode.exact:
         final valid = exact.isNotEmpty && remainingForExact(total, exact) == 0;
         return SplitResult(Map.of(exact), valid);
       case SplitMode.shares:
-        return SplitResult(splitByShares(total, weights), weights.isNotEmpty);
+        return SplitResult(
+          splitByShares(total, weights, step: step),
+          weights.isNotEmpty,
+        );
       case SplitMode.percent:
         final sum = percents.values.fold<num>(0, (a, b) => a + b);
         final valid = percents.isNotEmpty && (sum - 100).abs() < 0.01;
-        return SplitResult(splitByPercent(total, percents), valid);
+        return SplitResult(splitByPercent(total, percents, step: step), valid);
     }
   }
 }
@@ -152,7 +163,7 @@ class _SplitEditorState extends State<SplitEditor> {
     final initial = widget.initialSplit;
     if (initial != null && initial.isNotEmpty) {
       _included = initial.keys.toSet();
-      if (isEqualSplit(initial)) {
+      if (isEqualSplit(initial, step: currencyStep(widget.currency))) {
         _mode = SplitMode.equal;
       } else {
         // Any other distribution reopens as editable exact amounts
@@ -191,13 +202,19 @@ class _SplitEditorState extends State<SplitEditor> {
       for (final m in widget.members) {
         final cents = initial[m.userId] ?? 0;
         _exactCtrl[m.userId]!.text = cents > 0
-            ? formatAmountInput(cents, locale)
+            ? formatAmountInput(cents, locale, currency: widget.currency)
             : '0';
       }
     }
   }
 
   String _money(int cents) => context.money(cents, widget.currency);
+
+  /// G66: the currency's smallest amount in cents (100 for JPY).
+  int get _step => currencyStep(widget.currency);
+
+  String _amountText(int cents) =>
+      formatAmountInput(cents, context.localeName, currency: widget.currency);
 
   String _percent(int hundredths) => context.l10n.splitPercentValue(
     formatDecimal(hundredthsToPercent(hundredths), context.localeName),
@@ -229,8 +246,11 @@ class _SplitEditorState extends State<SplitEditor> {
 
   // --- reading the inputs -------------------------------------------------
 
-  int? _exactCents(String id) =>
-      parseAmountCents(_exactCtrl[id]!.text, locale: context.localeName);
+  int? _exactCents(String id) => parseAmountCents(
+    _exactCtrl[id]!.text,
+    locale: context.localeName,
+    currency: widget.currency,
+  );
 
   /// Percent of [id] in hundredths, or null when blank / unparsable.
   int? _percentHundredths(String id) {
@@ -275,27 +295,32 @@ class _SplitEditorState extends State<SplitEditor> {
       case SplitMode.equal:
         return SplitPlan(
           mode: _mode,
+          step: _step,
           included: [
             for (final m in widget.members)
               if (_included.contains(m.userId)) m.userId,
           ],
         );
       case SplitMode.exact:
-        return SplitPlan(mode: _mode, exact: _allValues(_exactCents));
+        return SplitPlan(
+          mode: _mode,
+          step: _step,
+          exact: _allValues(_exactCents),
+        );
       case SplitMode.shares:
         final weights = <String, int>{};
         for (final m in widget.members) {
           final w = int.tryParse(_shareCtrl[m.userId]!.text.trim());
           if (w != null && w > 0) weights[m.userId] = w;
         }
-        return SplitPlan(mode: _mode, weights: weights);
+        return SplitPlan(mode: _mode, step: _step, weights: weights);
       case SplitMode.percent:
         final percents = <String, num>{};
         for (final m in widget.members) {
           final p = parseLocalizedDecimal(_percentCtrl[m.userId]!.text);
           if (p != null && p > 0) percents[m.userId] = p;
         }
-        return SplitPlan(mode: _mode, percents: percents);
+        return SplitPlan(mode: _mode, step: _step, percents: percents);
     }
   }
 
@@ -373,7 +398,7 @@ class _SplitEditorState extends State<SplitEditor> {
         final cents = total > 0
             ? distributeByWeights(total, {
                 for (final m in widget.members) m.userId: w(m.userId),
-              })
+              }, step: _step)
             : null;
         _autoExact.clear();
         for (final m in widget.members) {
@@ -384,14 +409,20 @@ class _SplitEditorState extends State<SplitEditor> {
             // No amount yet → blank (open): "Distribute" fills it later.
             _exactCtrl[id]!.text = cents == null
                 ? ''
-                : formatAmountInput(cents[id]!, locale);
+                : formatAmountInput(
+                    cents[id]!,
+                    locale,
+                    currency: widget.currency,
+                  );
             _autoExact.add(id);
           }
         }
       case SplitMode.shares:
-        final shares = sharesFromWeights({
-          for (final m in widget.members) m.userId: w(m.userId),
-        }, total: widget.totalCents);
+        final shares = sharesFromWeights(
+          {for (final m in widget.members) m.userId: w(m.userId)},
+          total: widget.totalCents,
+          step: _step,
+        );
         shares.forEach((id, n) => _shareCtrl[id]!.text = '$n');
       case SplitMode.percent:
         final percents = percentsFromWeights({
@@ -416,7 +447,12 @@ class _SplitEditorState extends State<SplitEditor> {
     final value = exact ? _exactCents : _percentHundredths;
     final total = exact ? widget.totalCents : 10000;
     final open = _openRows(ctrl, auto, value);
-    final fill = distributeRest(total, _fixedRows(ctrl, open, value), open);
+    final fill = distributeRest(
+      total,
+      _fixedRows(ctrl, open, value),
+      open,
+      step: exact ? _step : 1,
+    );
     if (fill.isEmpty) return;
     fill.forEach((id, v) {
       ctrl[id]!.text = _format(mode, v);
@@ -435,6 +471,7 @@ class _SplitEditorState extends State<SplitEditor> {
     rescaleProportionally(
       exact ? widget.totalCents : 10000,
       values,
+      step: exact ? _step : 1,
     ).forEach((id, v) => ctrl[id]!.text = _format(mode, v));
     _changed();
   }
@@ -451,7 +488,7 @@ class _SplitEditorState extends State<SplitEditor> {
   }
 
   String _format(SplitMode mode, int v) => mode == SplitMode.exact
-      ? formatAmountInput(v, context.localeName)
+      ? _amountText(v)
       : formatDecimal(hundredthsToPercent(v), context.localeName);
 
   /// Exact: `total − sum(all)` in cents; Percent: `100 % − sum` in hundredths.
