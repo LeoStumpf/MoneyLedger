@@ -3559,6 +3559,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When did it happen?'**
   String get expenseDatePickerHelp;
+
+  /// G56: copy a value (e.g. a Matrix ID) to the clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copy;
+
+  /// G56: snackbar after copying to the clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get copiedToClipboard;
+
+  /// G56: settings sheet 'Devices & security' tile subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Your logins and emoji verification'**
+  String get devicesSettingsBody;
+
+  /// G56: card above the ledger when I'm the only member but there are already expenses
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s just you in this group so far.'**
+  String get addPeopleHint;
+
+  /// G56: tooltip of a card's close button
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get dismiss;
+
+  /// G56: leaving a changed expense form
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get discardChangesTitle;
+
+  /// G56: leaving a changed expense form — body
+  ///
+  /// In en, this message translates to:
+  /// **'What you entered for this expense will be lost.'**
+  String get discardChangesBody;
+
+  /// G56: discard-changes dialog: leave without saving
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discard;
+
+  /// G56: discard-changes dialog: stay on the form
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get keepEditing;
 }
 
 class _AppLocalizationsDelegate

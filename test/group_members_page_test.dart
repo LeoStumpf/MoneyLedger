@@ -75,8 +75,9 @@ void main() {
 
       expect(find.text('Cash'), findsOneWidget);
       expect(find.text('Local'), findsOneWidget);
-      // The claimed member shows their MXID as the subtitle.
-      expect(find.text('@alice:x.org'), findsOneWidget);
+      // G56: the claimed member shows only the short `@localpart`.
+      expect(find.text('@alice'), findsOneWidget);
+      expect(find.text('@alice:x.org'), findsNothing);
     });
 
     testWidgets('a local participant offers "Link Matrix account"', (
@@ -122,7 +123,7 @@ void main() {
       expect(find.text('Alice'), findsOneWidget);
       expect(find.text('Former members'), findsOneWidget);
       expect(find.text('Bob'), findsOneWidget);
-      expect(find.text('@bob:x.org · former member'), findsOneWidget);
+      expect(find.text('@bob · former member'), findsOneWidget);
       expect(find.text('Local · former member'), findsOneWidget);
       // Bob appears after the section header, greyed.
       expect(
@@ -251,6 +252,60 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Failed'), findsNothing);
+    });
+
+    // G56: the account line is short unless two people would look alike.
+    testWidgets('same name twice → both show the full Matrix ID', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        testApp(
+          const GroupMembersPage(roomId: 'g1'),
+          overrides: overridesFor([
+            claimed('@alice:x.org', name: 'Alice'),
+            claimed('@sam:a.org', name: 'Sam'),
+            claimed('@sam2:b.org', name: 'sam'),
+          ], '@alice:x.org'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('@alice'), findsOneWidget);
+      expect(find.text('@sam:a.org'), findsOneWidget);
+      expect(find.text('@sam2:b.org'), findsOneWidget);
+    });
+
+    testWidgets('long-press and ⋮ → Matrix ID show the full ID with Copy', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        testApp(
+          const GroupMembersPage(roomId: 'g1'),
+          overrides: overridesFor([
+            claimed('@alice:x.org', name: 'Alice'),
+            claimed('@bob:x.org', name: 'Bob'),
+          ], '@alice:x.org'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('@bob:x.org'), findsNothing);
+
+      await tester.longPress(find.text('Bob'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('matrixIdDialogValue')), findsOneWidget);
+      expect(find.text('@bob:x.org'), findsOneWidget);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('matrixIdDialogValue')), findsNothing);
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Matrix ID').last);
+      await tester.pumpAndSettle();
+      expect(find.text('@bob:x.org'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('matrixIdCopy')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('matrixIdDialogValue')), findsNothing);
+      expect(find.text('Copied'), findsOneWidget);
     });
   });
 }

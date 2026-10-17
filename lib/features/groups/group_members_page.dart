@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session/app_session.dart';
@@ -123,6 +126,7 @@ class GroupMembersPage extends ConsumerWidget {
                         for (final m in members)
                           _MemberTile(
                             member: m,
+                            all: all,
                             myId: myId,
                             roomId: roomId,
                             readOnly: iAmRemoved,
@@ -148,6 +152,7 @@ class GroupMembersPage extends ConsumerWidget {
                             for (final m in former)
                               _FormerMemberTile(
                                 member: m,
+                                all: all,
                                 myId: myId,
                                 roomId: roomId,
                                 canReadd: !iAmRemoved && !busy,
@@ -244,11 +249,13 @@ class GroupMembersPage extends ConsumerWidget {
 /// bootstraps their account), a local one in place.
 class _FormerMemberTile extends ConsumerWidget {
   final MemberModel member;
+  final List<MemberModel> all;
   final String myId;
   final String roomId;
   final bool canReadd;
   const _FormerMemberTile({
     required this.member,
+    required this.all,
     required this.myId,
     required this.roomId,
     required this.canReadd,
@@ -260,13 +267,19 @@ class _FormerMemberTile extends ConsumerWidget {
     final isSelf = member.matrixId != null && member.matrixId == myId;
     final mxid = member.matrixId;
     final l = context.l10n;
+    final account = memberAccountLine(member, all);
     return Opacity(
       opacity: 0.6,
       child: ListTile(
         leading: PersonAvatar(id: member.userId, name: title, dimmed: true),
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        onLongPress: mxid == null
+            ? null
+            : () => showMatrixIdDialog(context, mxid),
         subtitle: Text(
-          mxid != null ? l.formerMemberClaimed(mxid) : l.formerMemberLocal,
+          account != null
+              ? l.formerMemberClaimed(account)
+              : l.formerMemberLocal,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -363,11 +376,16 @@ class _PeerDeviceWarning extends ConsumerWidget {
 
 class _MemberTile extends ConsumerWidget {
   final MemberModel member;
+
+  /// Every participant of the group (active and former) — decides whether
+  /// the account line needs the full MXID (G56).
+  final List<MemberModel> all;
   final String myId;
   final String roomId;
   final bool readOnly;
   const _MemberTile({
     required this.member,
+    required this.all,
     required this.myId,
     required this.roomId,
     this.readOnly = false,
@@ -384,16 +402,31 @@ class _MemberTile extends ConsumerWidget {
     final title = member.label;
     final l = context.l10n;
     final mxid = member.matrixId;
+    final theme = Theme.of(context);
     return ListTile(
       leading: PersonAvatar(id: member.userId, name: title),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      // G56: the full Matrix ID behind a long-press (and ⋮ → Matrix ID).
+      onLongPress: local || mxid == null
+          ? null
+          : () => showMatrixIdDialog(context, mxid),
       subtitle: local
           ? Text(_isSelf ? l.localModeYouSubtitle : l.localParticipant)
           : mxid != null
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(mxid, maxLines: 1, overflow: TextOverflow.ellipsis),
+                // G56: `@localpart` (muted); the full MXID only when two
+                // participants would otherwise look alike.
+                Text(
+                  memberAccountLine(member, all)!,
+                  key: Key('memberAccount:${member.userId}'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 if (!_isSelf) _PeerDeviceWarning(matrixId: mxid, name: title),
               ],
             )
@@ -406,8 +439,13 @@ class _MemberTile extends ConsumerWidget {
               tooltip: l.options,
               onSelected: (a) => _onAction(context, ref, a),
               itemBuilder: (_) => [
-                if (member.isClaimed && !local)
+                if (member.isClaimed && !local) ...[
+                  PopupMenuItem(
+                    value: 'matrixId',
+                    child: Text(l.matrixIdLabel),
+                  ),
                   PopupMenuItem(value: 'devices', child: Text(l.devicesTitle)),
+                ],
                 PopupMenuItem(value: 'rename', child: Text(l.rename)),
                 if (local)
                   ...[]
@@ -438,6 +476,8 @@ class _MemberTile extends ConsumerWidget {
     // The write that ran, if any, and how to read its outcome afterwards.
     Object? Function()? errorOf;
     switch (action) {
+      case 'matrixId':
+        await showMatrixIdDialog(context, member.matrixId!);
       case 'devices':
         await showMemberDevicesSheet(
           context,
@@ -531,4 +571,34 @@ class _MemberTile extends ConsumerWidget {
       confirmLabel: l.ok,
     );
   }
+}
+
+/// G56: a member's full Matrix ID (selectable, with *Copy*) — the members
+/// list itself shows only the short form ([memberAccountLine]).
+Future<void> showMatrixIdDialog(BuildContext context, String mxid) {
+  final l = context.l10n;
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.matrixIdLabel),
+      content: SelectableText(mxid, key: const Key('matrixIdDialogValue')),
+      actions: [
+        TextButton(
+          key: const Key('matrixIdCopy'),
+          onPressed: () {
+            unawaited(Clipboard.setData(ClipboardData(text: mxid)));
+            Navigator.of(ctx).pop();
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(l.copiedToClipboard)));
+          },
+          child: Text(l.copy),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: Text(l.done),
+        ),
+      ],
+    ),
+  );
 }

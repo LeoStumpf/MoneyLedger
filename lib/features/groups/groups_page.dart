@@ -61,14 +61,8 @@ class GroupsPage extends ConsumerWidget {
             tooltip: l.importCsvTooltip,
             onPressed: () => _importCsv(context, ref),
           ),
-          if (local)
-            const LocalModeChip()
-          else
-            IconButton(
-              icon: const Icon(Icons.devices),
-              tooltip: l.devicesTooltip,
-              onPressed: () => context.push('/devices'),
-            ),
+          // G56: Devices & security moved into the settings sheet.
+          if (local) const LocalModeChip(),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: l.settingsTooltip,
@@ -850,7 +844,8 @@ class VerifiedOnlySyncTile extends ConsumerWidget {
   }
 }
 
-/// Settings sheet (G31 sync settings, G11 verified-only, G5 backup, G12 about): explains when
+/// Settings sheet (G31 sync settings, G11 verified-only, G56 devices, G5
+/// backup, G12 about): explains when
 /// this device syncs and, on Android, toggles the periodic background sync for
 /// the signed-in account; backs up / restores all groups; links to the About
 /// page.
@@ -941,6 +936,18 @@ class SyncSettingsSheet extends ConsumerWidget {
                   subtitle: Text(l.noBackgroundSyncBody),
                 ),
               const VerifiedOnlySyncTile(),
+              // G56: was an app-bar icon on the groups page.
+              ListTile(
+                key: const Key('devicesTile'),
+                leading: const Icon(Icons.devices),
+                title: Text(l.devicesTooltip),
+                subtitle: Text(l.devicesSettingsBody),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  context.push('/devices');
+                },
+              ),
             ],
             const Divider(),
             const BackupSettingsSection(),

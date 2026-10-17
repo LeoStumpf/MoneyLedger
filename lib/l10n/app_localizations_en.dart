@@ -2281,4 +2281,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expenseDatePickerHelp => 'When did it happen?';
+
+  @override
+  String get copy => 'Copy';
+
+  @override
+  String get copiedToClipboard => 'Copied';
+
+  @override
+  String get devicesSettingsBody => 'Your logins and emoji verification';
+
+  @override
+  String get addPeopleHint => 'It\'s just you in this group so far.';
+
+  @override
+  String get dismiss => 'Dismiss';
+
+  @override
+  String get discardChangesTitle => 'Discard changes?';
+
+  @override
+  String get discardChangesBody =>
+      'What you entered for this expense will be lost.';
+
+  @override
+  String get discard => 'Discard';
+
+  @override
+  String get keepEditing => 'Keep editing';
 }

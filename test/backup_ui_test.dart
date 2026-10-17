@@ -56,6 +56,9 @@ void main() {
       await tester.pumpAndSettle();
       // No file dialog in tests → the export fails; what matters is that the
       // result shows on the page, not under the (closed) sheet.
+      // (G56: the sheet grew a Devices tile — scroll the backup tile in.)
+      await tester.ensureVisible(find.byKey(const Key('backupExportTile')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('backupExportTile')));
       await tester.pumpAndSettle();
 

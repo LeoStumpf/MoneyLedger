@@ -51,6 +51,20 @@ enum _GroupMenuAction {
   exit,
 }
 
+/// G56: groups whose "just you so far" card was dismissed — for this app
+/// session only (it comes back on the next start while still true).
+final addPeopleHintDismissedProvider =
+    NotifierProvider<AddPeopleHintDismissed, Set<String>>(
+      AddPeopleHintDismissed.new,
+    );
+
+class AddPeopleHintDismissed extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const {};
+
+  void dismiss(String groupId) => state = {...state, groupId};
+}
+
 class ExpensesPage extends ConsumerWidget {
   final String roomId;
   const ExpensesPage({super.key, required this.roomId});
@@ -595,6 +609,13 @@ class ExpensesPage extends ConsumerWidget {
               onBalances: () => context.push('/groups/$roomId/balance'),
             ),
           ),
+        // G56: only me, but there are already expenses — the empty state's
+        // "Add people" no longer shows, so offer it above the ledger.
+        if (filter == null &&
+            !readOnly &&
+            onlyMe &&
+            !ref.watch(addPeopleHintDismissedProvider).contains(roomId))
+          ContentWidth(child: _AddPeopleCard(roomId: roomId)),
         for (final section in sections)
           ContentWidth(
             child: Column(
@@ -1155,6 +1176,84 @@ class _FilterBar extends ConsumerWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// G56: a subtle card above a ledger where I'm the only active member —
+/// same action as the empty state's CTA, dismissible for the session.
+class _AddPeopleCard extends ConsumerWidget {
+  final String roomId;
+  const _AddPeopleCard({required this.roomId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: Insets.m),
+      child: Card(
+        key: const Key('addPeopleCard'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Insets.l,
+            Insets.xs,
+            Insets.xs,
+            Insets.xs,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: Insets.m),
+                child: Icon(
+                  Icons.group_add_outlined,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: Insets.m),
+              // Text above the action, so a long (German) label never
+              // squeezes the row at phone width.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: Insets.m),
+                      child: Text(
+                        l.addPeopleHint,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      key: const Key('cardAddPeople'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.s,
+                        ),
+                      ),
+                      onPressed: () =>
+                          showAddPersonDialog(context, ref, roomId),
+                      icon: const Icon(Icons.person_add_outlined, size: 18),
+                      label: Text(l.addPeople),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                key: const Key('dismissAddPeople'),
+                tooltip: l.dismiss,
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: () => ref
+                    .read(addPeopleHintDismissedProvider.notifier)
+                    .dismiss(roomId),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

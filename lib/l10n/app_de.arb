@@ -576,5 +576,14 @@
   "privacyRestorePointsTitle": "Wiederherstellungspunkte auf diesem Gerät",
   "privacyRestorePointsBody": "Damit du Fehler rückgängig machen kannst, bewahrt MoneyLedger frühere Versionen der Einträge deiner Gruppen 90 Tage lang auf diesem Gerät auf, und unter Android einmal am Tag (wenn sich etwas geändert hat) eine Kopie all deiner Gruppen im privaten Speicher der App – die letzten 7 Tage und 4 ältere Wochen. Diese Versionen und Kopien werden nie irgendwohin gesendet, sind in keiner Sicherungsdatei enthalten und wie alle App-Daten von den Android-Backups ausgenommen. Wenn du eine Gruppe verlässt oder löschst, werden ihre früheren Versionen sofort entfernt; die täglichen Kopien enthalten sie noch, bis sie herausrotiert sind (nach etwa fünf Wochen), damit eine versehentlich gelöschte Gruppe wiederhergestellt werden kann. „Lokale Daten löschen“ oder das Deinstallieren der App entfernt alles.",
   "expenseDateLabel": "Datum",
-  "expenseDatePickerHelp": "Wann war das?"
+  "expenseDatePickerHelp": "Wann war das?",
+  "copy": "Kopieren",
+  "copiedToClipboard": "Kopiert",
+  "devicesSettingsBody": "Deine Anmeldungen und Emoji-Verifizierung",
+  "addPeopleHint": "Bisher bist nur du in dieser Gruppe.",
+  "dismiss": "Ausblenden",
+  "discardChangesTitle": "Änderungen verwerfen?",
+  "discardChangesBody": "Was du für diese Ausgabe eingegeben hast, geht verloren.",
+  "discard": "Verwerfen",
+  "keepEditing": "Weiter bearbeiten"
 }

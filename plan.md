@@ -631,10 +631,10 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       you confirm your server
 
 ### G56. UX follow-ups (found in G46) 🟢
-- [ ] Members page: full MXID as subtitle — shorten / tuck away?
-- [ ] Groups app bar "Devices" icon → move into the settings sheet
-- [ ] "Add people" prompt also when I'm alone but the group already has expenses
-- [ ] Leaving a filled add-expense form with ← asks nothing (discard confirm?)
+- [x] Members page: full MXID as subtitle — shorten / tuck away?
+- [x] Groups app bar "Devices" icon → move into the settings sheet
+- [x] "Add people" prompt also when I'm alone but the group already has expenses
+- [x] Leaving a filled add-expense form with ← asks nothing (discard confirm?)
 
 ### G57. Custom-category follow-ups (found in G47) 🟢
 - [ ] Concurrent category edits lose one (whole meta is LWW) — per-category
@@ -754,7 +754,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G60 — expense-date follow-ups (found in G49)
 - [ ] G61 — split follow-ups (found in G59)
 - [ ] G57 — custom-category follow-ups (found in G47)
-- [ ] G56 — UX follow-ups (found in G46)
+- [x] G56 — UX follow-ups (found in G46)
 
 ---
 

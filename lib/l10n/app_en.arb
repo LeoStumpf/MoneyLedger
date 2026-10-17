@@ -2032,5 +2032,41 @@
   "expenseDatePickerHelp": "When did it happen?",
   "@expenseDatePickerHelp": {
     "description": "G49 expense date field: date picker title"
+  },
+  "copy": "Copy",
+  "@copy": {
+    "description": "G56: copy a value (e.g. a Matrix ID) to the clipboard"
+  },
+  "copiedToClipboard": "Copied",
+  "@copiedToClipboard": {
+    "description": "G56: snackbar after copying to the clipboard"
+  },
+  "devicesSettingsBody": "Your logins and emoji verification",
+  "@devicesSettingsBody": {
+    "description": "G56: settings sheet 'Devices & security' tile subtitle"
+  },
+  "addPeopleHint": "It's just you in this group so far.",
+  "@addPeopleHint": {
+    "description": "G56: card above the ledger when I'm the only member but there are already expenses"
+  },
+  "dismiss": "Dismiss",
+  "@dismiss": {
+    "description": "G56: tooltip of a card's close button"
+  },
+  "discardChangesTitle": "Discard changes?",
+  "@discardChangesTitle": {
+    "description": "G56: leaving a changed expense form"
+  },
+  "discardChangesBody": "What you entered for this expense will be lost.",
+  "@discardChangesBody": {
+    "description": "G56: leaving a changed expense form — body"
+  },
+  "discard": "Discard",
+  "@discard": {
+    "description": "G56: discard-changes dialog: leave without saving"
+  },
+  "keepEditing": "Keep editing",
+  "@keepEditing": {
+    "description": "G56: discard-changes dialog: stay on the form"
   }
 }

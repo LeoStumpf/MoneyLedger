@@ -92,3 +92,25 @@ int nextLwwClock(int previous, {int? now}) {
   final t = now ?? DateTime.now().millisecondsSinceEpoch;
   return t > previous ? t : previous + 1;
 }
+
+/// G56: the short account line under a claimed participant on the members
+/// page — `@localpart` normally, the full MXID only when it is needed to
+/// tell [member] apart from another participant in [all] (same name or same
+/// localpart, case-insensitive). Null for a local participant. The full MXID
+/// stays one tap away (long-press / ⋮ → Matrix ID).
+String? memberAccountLine(MemberModel member, List<MemberModel> all) {
+  final mxid = member.matrixId;
+  if (mxid == null) return null;
+  final local = localpartOf(mxid);
+  final name = member.label.trim().toLowerCase();
+  final ambiguous = all.any((o) {
+    if (o.userId == member.userId) return false;
+    if (o.label.trim().toLowerCase() == name) return true;
+    final oid = o.matrixId;
+    return oid != null &&
+        oid != mxid &&
+        localpartOf(oid).toLowerCase() == local.toLowerCase();
+  });
+  if (ambiguous || local == mxid) return mxid;
+  return '@$local';
+}
