@@ -112,7 +112,13 @@ Map<String, int> rescaleProportionally(int total, Map<String, int> amounts) =>
 /// percents 12.5 / 87.5) are taken in hundredths first. Non-positive weights
 /// → 0. Resolving the result against the same total reproduces the original
 /// cents exactly when the weights were cents.
-Map<String, int> sharesFromWeights(Map<String, num> weights) {
+///
+/// G61: with a [total] > 0, uneven amounts no longer give big numbers
+/// (3.33 / 6.67 € → 333 / 667): the smallest "nice" shares summing to at most
+/// [kMaxNiceShares] are preferred when they resolve against [total] to
+/// **exactly** the same cents as [weights] do (here 1 / 2). Every positive
+/// weight keeps ≥ 1 share (nobody drops out). Else the exact GCD form.
+Map<String, int> sharesFromWeights(Map<String, num> weights, {int total = 0}) {
   final positive = [
     for (final w in weights.values)
       if (w > 0) w,
@@ -125,8 +131,33 @@ Map<String, int> sharesFromWeights(Map<String, num> weights) {
     g = _gcd(g, scaled(w));
   }
   if (g <= 0) g = 1;
-  return {for (final e in weights.entries) e.key: scaled(e.value) ~/ g};
+  final exact = {for (final e in weights.entries) e.key: scaled(e.value) ~/ g};
+  if (total <= 0) return exact;
+  final exactSum = exact.values.fold(0, (a, b) => a + b);
+  final target = distributeByWeights(total, weights);
+  for (
+    var sum = positive.length;
+    sum < exactSum && sum <= kMaxNiceShares;
+    sum++
+  ) {
+    final candidate = distributeByWeights(sum, weights);
+    final keepsEveryone = weights.entries.every(
+      (e) => e.value <= 0 || candidate[e.key]! > 0,
+    );
+    if (keepsEveryone &&
+        _sameSplit(distributeByWeights(total, candidate), target)) {
+      return candidate;
+    }
+  }
+  return exact;
 }
+
+/// G61: the largest share sum [sharesFromWeights] tries before falling back
+/// to the exact (GCD) form.
+const kMaxNiceShares = 20;
+
+bool _sameSplit(Map<String, int> a, Map<String, int> b) =>
+    a.length == b.length && a.entries.every((e) => b[e.key] == e.value);
 
 /// G59: percentages (in hundredths, summing to exactly 100 %) proportional to
 /// [weights] — e.g. three equal weights → 33.34 / 33.33 / 33.33. Non-positive

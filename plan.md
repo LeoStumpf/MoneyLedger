@@ -674,9 +674,9 @@ Switching split modes or editing amounts today starts from blanks; make the
 
 ### G61. Split follow-ups (found in G59) 🟢
 - [ ] Try live auto-fill of open rows (Tricount-style) instead of the button
-- [ ] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
+- [x] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
 - [x] Check the new split rows at phone width (long names, Shares steppers)
-- [ ] Rows with long names sharing a prefix are indistinguishable
+- [x] Rows with long names sharing a prefix are indistinguishable
       ("moneyledger-test-…" twice) — ellipsize in the middle / 2 lines
 
 ### G62. Reset page empty after update / new group (found in DEV-H) 🟠

@@ -366,7 +366,7 @@ class _SplitEditorState extends State<SplitEditor> {
       case SplitMode.shares:
         final shares = sharesFromWeights({
           for (final m in widget.members) m.userId: w(m.userId),
-        });
+        }, total: widget.totalCents);
         shares.forEach((id, n) => _shareCtrl[id]!.text = '$n');
       case SplitMode.percent:
         final percents = percentsFromWeights({
@@ -501,18 +501,41 @@ class _SplitEditorState extends State<SplitEditor> {
   }
 
   Widget _row(MemberModel m, int cents, int remaining) {
-    // G17: avatar + name (one line, ellipsized) on every row.
-    final name = Expanded(
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    // G17: avatar + name on every row. G61: the name wraps onto up to two
+    // lines (like NamesLine, G33) — long MXID localparts often share a long
+    // prefix ("moneyledger-test-a…" / "…-b…"), so one ellipsized line made the
+    // rows indistinguishable on a phone. Shares / Percent show the resolved
+    // amount *under* the name, which leaves the name the room the inputs
+    // don't need.
+    Widget name({bool amountBelow = false}) => Expanded(
       child: Row(
         children: [
           PersonAvatar(id: m.userId, name: m.label, size: 30),
           const SizedBox(width: Insets.m),
           Expanded(
-            child: Text(
-              m.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyLarge,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  m.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyLarge,
+                ),
+                if (amountBelow)
+                  Text(
+                    _money(cents),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFeatures: kTabularFigures,
+                      color: muted,
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -529,10 +552,7 @@ class _SplitEditorState extends State<SplitEditor> {
         _money(cents),
         maxLines: 1,
         textAlign: TextAlign.right,
-        style: TextStyle(
-          fontFeatures: kTabularFigures,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: TextStyle(fontFeatures: kTabularFigures, color: muted),
       ),
     );
     switch (_mode) {
@@ -552,7 +572,7 @@ class _SplitEditorState extends State<SplitEditor> {
                   _changed();
                 },
               ),
-              name,
+              name(),
               preview,
             ],
           ),
@@ -562,7 +582,7 @@ class _SplitEditorState extends State<SplitEditor> {
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             children: [
-              name,
+              name(),
               SizedBox(
                 width: 96,
                 child: _numField(
@@ -585,14 +605,13 @@ class _SplitEditorState extends State<SplitEditor> {
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             children: [
-              name,
+              name(amountBelow: true),
               _stepButton(m.userId, -1),
               SizedBox(
                 width: 48,
                 child: _numField(_shareCtrl[m.userId]!, decimal: false),
               ),
               _stepButton(m.userId, 1),
-              preview,
             ],
           ),
         );
@@ -601,7 +620,7 @@ class _SplitEditorState extends State<SplitEditor> {
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             children: [
-              name,
+              name(amountBelow: true),
               SizedBox(
                 width: 64,
                 child: _numField(
@@ -612,7 +631,6 @@ class _SplitEditorState extends State<SplitEditor> {
                 ),
               ),
               _restButton(SplitMode.percent, m.userId, remaining),
-              preview,
             ],
           ),
         );

@@ -230,6 +230,66 @@ void main() {
       expect(splitByShares(1000, odd), {'a': 333, 'b': 667});
     });
 
+    group('G61 nice shares', () {
+      test('uneven cents → small shares with exactly the same cents', () {
+        final s = sharesFromWeights({'a': 333, 'b': 667}, total: 1000);
+        expect(s, {'a': 1, 'b': 2});
+        expect(splitByShares(1000, s), {'a': 333, 'b': 667});
+        // 10.00 € as 3.34 / 3.33 / 3.33 → 1 / 1 / 1.
+        expect(sharesFromWeights({'a': 334, 'b': 333, 'c': 333}, total: 1000), {
+          'a': 1,
+          'b': 1,
+          'c': 1,
+        });
+        // 12.34 € as 4.11 / 8.23 → 1 / 2 reproduces it.
+        final t = sharesFromWeights({'a': 411, 'b': 823}, total: 1234);
+        expect(t, {'a': 1, 'b': 2});
+        expect(splitByShares(1234, t), {'a': 411, 'b': 823});
+      });
+
+      test('excluded stays 0, everyone involved keeps ≥ 1 share', () {
+        final s = sharesFromWeights({'a': 9990, 'b': 10, 'c': 0}, total: 10000);
+        // 1 share in 1000 can't be written with ≤ 20 shares → exact form.
+        expect(s, {'a': 999, 'b': 1, 'c': 0});
+        expect(splitByShares(10000, s), {'a': 9990, 'b': 10, 'c': 0});
+      });
+
+      test('falls back to the exact GCD form when no small one matches', () {
+        // 1.01 / 0.99 € of 2.00 €: any ≤ 20 shares give other cents.
+        final s = sharesFromWeights({'a': 101, 'b': 99}, total: 200);
+        expect(s, {'a': 101, 'b': 99});
+        // Already simple stays as it is.
+        expect(sharesFromWeights({'a': 1500, 'b': 500}, total: 2000), {
+          'a': 3,
+          'b': 1,
+        });
+      });
+
+      test('the result always resolves to the original cents', () {
+        for (final total in [7, 100, 999, 1000, 4200, 12345]) {
+          for (var a = 1; a < total; a += (total ~/ 13) + 1) {
+            final cents = {'a': a, 'b': total - a};
+            final s = sharesFromWeights(cents, total: total);
+            expect(splitByShares(total, s), cents, reason: '$a / ${total - a}');
+            expect(s.values.every((n) => n > 0), isTrue);
+          }
+        }
+      });
+
+      test('percent weights match their own resolution', () {
+        final s = sharesFromWeights({'a': 33.3, 'b': 66.7}, total: 1000);
+        expect(s, {'a': 1, 'b': 2});
+        expect(
+          splitByShares(1000, s),
+          splitByPercent(1000, {'a': 33.3, 'b': 66.7}),
+        );
+      });
+
+      test('without a total: the exact form as before', () {
+        expect(sharesFromWeights({'a': 333, 'b': 667}), {'a': 333, 'b': 667});
+      });
+    });
+
     test('fractional weights (percents) go by hundredths', () {
       expect(sharesFromWeights({'a': 12.5, 'b': 87.5}), {'a': 1, 'b': 7});
       expect(sharesFromWeights({'a': 50, 'b': 50}), {'a': 1, 'b': 1});

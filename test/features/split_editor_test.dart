@@ -228,6 +228,19 @@ void main() {
       expect(plan!.included, ['a', 'b']);
     });
 
+    testWidgets('G61: uneven amounts → small shares, same cents', (
+      tester,
+    ) async {
+      await pumpEditor(tester, totalCents: 1000);
+      await mode(tester, 'Exact');
+      await type(tester, 0, '3.33');
+      await type(tester, 1, '6.67');
+      await mode(tester, 'Shares');
+      expect(values(tester), ['1', '2']);
+      expect(resolved('a'), 333);
+      expect(resolved('b'), 667);
+    });
+
     testWidgets('a peek returns to what was typed', (tester) async {
       await pumpEditor(tester, totalCents: 2000);
       await mode(tester, 'Exact');

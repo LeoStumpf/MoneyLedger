@@ -1399,7 +1399,10 @@ change.** Only the add/edit form changed.
   `distributeRest(total, fixed, open)` (rest spread equally, largest
   remainder; empty when rest ≤ 0 / nobody open), `rescaleProportionally`,
   `sharesFromWeights` (simplest whole shares: equal → 1 each, cents ÷ GCD —
-  re-resolving gives the same cents; fractional weights via hundredths),
+  re-resolving gives the same cents; fractional weights via hundredths; G61:
+  given the `total`, the smallest shares summing to ≤ `kMaxNiceShares` (20)
+  that resolve to **exactly** the same cents win — 3.33 / 6.67 € → 1 / 2,
+  not 333 / 667 — else the GCD form),
   `percentsFromWeights` (hundredths summing to exactly 100 %, e.g.
   33.34/33.33/33.33), `percentToHundredths` / `hundredthsToPercent`. Editor:
   - **Mode switch converts the current split** (Equal → Exact: the equal
@@ -1421,6 +1424,11 @@ change.** Only the add/edit form changed.
     remainder to that row. Percent works in hundredths with the same
     actions. Hint line "Empty fields share the rest · 0 = not involved".
   - **Shares:** −/+ steppers per row (min 0, − disabled at 0).
+  - **Rows (G61):** names wrap onto up to two lines (MXID localparts share
+    long prefixes — one ellipsized line made rows indistinguishable on a
+    phone); Shares / Percent show the resolved amount under the name, not in
+    a column. `test/g61_split_names_test.dart` (360 dp, EN+DE, also the payer
+    dropdown + payment pickers, which already fit).
   - Equal/Shares/% follow a changed total automatically (resolve); Exact
     keeps its amounts and shows the mismatch. Tests:
     `test/features/split_editor_test.dart` (incl. the 5 € / 2.50 € example),
