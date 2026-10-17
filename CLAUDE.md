@@ -194,6 +194,7 @@ lib/
         sync_states_dao.dart   # PeerSyncStates: per-(group,peer) anti-entropy bookkeeping
         signing_dao.dart       # G6: KnownDeviceKeys (device-key history) + RejectedVersions
         history_dao.dart       # G48: record_history (version history) — append helper, HistorySource, prune, floor
+        link_dao.dart          # G52: LinkChannels (link secret, per-group Nostr key, my participant, publish state) + LinkPeers (per-part event dedup); device-local, never logged
         settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, left-group tombstones, G16 archive, per account); never synced
     matrix/
       record_crypto.dart          # G6 ports: RecordCrypto (sign/verify), DeviceKeyDirectory, SignerId
@@ -224,6 +225,7 @@ lib/
     expense_category.dart      # G16: ExpenseCategory (stable wire ids), suggestCategory heuristic, normalizeNote
     expense_date.dart          # G49/G60: ISO day helpers, storedExpenseDate, recordDateProblem, displayDay (expense + payment)
                                # G47: CustomCategory, resolveCategory, kCustomCategoryIcons, bounds
+    link_model.dart            # G52: LinkChannelModel (toString omits the secrets) + LinkPeerModel
     group_archive.dart         # G16: GroupArchive (device-local) + ledgerFingerprint
   features/
     auth/                      # Matrix login, in-app registration, session mgmt

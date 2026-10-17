@@ -85,6 +85,17 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _linkAuthorMeta = const VerificationMeta(
+    'linkAuthor',
+  );
+  @override
+  late final GeneratedColumn<String> linkAuthor = GeneratedColumn<String>(
+    'link_author',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     roomId,
@@ -94,6 +105,7 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
     sig,
     pendingSign,
     categoriesJson,
+    linkAuthor,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -159,6 +171,12 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         ),
       );
     }
+    if (data.containsKey('link_author')) {
+      context.handle(
+        _linkAuthorMeta,
+        linkAuthor.isAcceptableOrUnknown(data['link_author']!, _linkAuthorMeta),
+      );
+    }
     return context;
   }
 
@@ -196,6 +214,10 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         DriftSqlType.string,
         data['${effectivePrefix}categories_json'],
       ),
+      linkAuthor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}link_author'],
+      ),
     );
   }
 
@@ -213,6 +235,7 @@ class Group extends DataClass implements Insertable<Group> {
   final String? sig;
   final bool pendingSign;
   final String? categoriesJson;
+  final String? linkAuthor;
   const Group({
     required this.roomId,
     required this.name,
@@ -221,6 +244,7 @@ class Group extends DataClass implements Insertable<Group> {
     this.sig,
     required this.pendingSign,
     this.categoriesJson,
+    this.linkAuthor,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -236,6 +260,9 @@ class Group extends DataClass implements Insertable<Group> {
     if (!nullToAbsent || categoriesJson != null) {
       map['categories_json'] = Variable<String>(categoriesJson);
     }
+    if (!nullToAbsent || linkAuthor != null) {
+      map['link_author'] = Variable<String>(linkAuthor);
+    }
     return map;
   }
 
@@ -250,6 +277,9 @@ class Group extends DataClass implements Insertable<Group> {
       categoriesJson: categoriesJson == null && nullToAbsent
           ? const Value.absent()
           : Value(categoriesJson),
+      linkAuthor: linkAuthor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkAuthor),
     );
   }
 
@@ -266,6 +296,7 @@ class Group extends DataClass implements Insertable<Group> {
       sig: serializer.fromJson<String?>(json['sig']),
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
       categoriesJson: serializer.fromJson<String?>(json['categoriesJson']),
+      linkAuthor: serializer.fromJson<String?>(json['linkAuthor']),
     );
   }
   @override
@@ -279,6 +310,7 @@ class Group extends DataClass implements Insertable<Group> {
       'sig': serializer.toJson<String?>(sig),
       'pendingSign': serializer.toJson<bool>(pendingSign),
       'categoriesJson': serializer.toJson<String?>(categoriesJson),
+      'linkAuthor': serializer.toJson<String?>(linkAuthor),
     };
   }
 
@@ -290,6 +322,7 @@ class Group extends DataClass implements Insertable<Group> {
     Value<String?> sig = const Value.absent(),
     bool? pendingSign,
     Value<String?> categoriesJson = const Value.absent(),
+    Value<String?> linkAuthor = const Value.absent(),
   }) => Group(
     roomId: roomId ?? this.roomId,
     name: name ?? this.name,
@@ -300,6 +333,7 @@ class Group extends DataClass implements Insertable<Group> {
     categoriesJson: categoriesJson.present
         ? categoriesJson.value
         : this.categoriesJson,
+    linkAuthor: linkAuthor.present ? linkAuthor.value : this.linkAuthor,
   );
   Group copyWithCompanion(GroupsCompanion data) {
     return Group(
@@ -314,6 +348,9 @@ class Group extends DataClass implements Insertable<Group> {
       categoriesJson: data.categoriesJson.present
           ? data.categoriesJson.value
           : this.categoriesJson,
+      linkAuthor: data.linkAuthor.present
+          ? data.linkAuthor.value
+          : this.linkAuthor,
     );
   }
 
@@ -326,7 +363,8 @@ class Group extends DataClass implements Insertable<Group> {
           ..write('updatedAt: $updatedAt, ')
           ..write('sig: $sig, ')
           ..write('pendingSign: $pendingSign, ')
-          ..write('categoriesJson: $categoriesJson')
+          ..write('categoriesJson: $categoriesJson, ')
+          ..write('linkAuthor: $linkAuthor')
           ..write(')'))
         .toString();
   }
@@ -340,6 +378,7 @@ class Group extends DataClass implements Insertable<Group> {
     sig,
     pendingSign,
     categoriesJson,
+    linkAuthor,
   );
   @override
   bool operator ==(Object other) =>
@@ -351,7 +390,8 @@ class Group extends DataClass implements Insertable<Group> {
           other.updatedAt == this.updatedAt &&
           other.sig == this.sig &&
           other.pendingSign == this.pendingSign &&
-          other.categoriesJson == this.categoriesJson);
+          other.categoriesJson == this.categoriesJson &&
+          other.linkAuthor == this.linkAuthor);
 }
 
 class GroupsCompanion extends UpdateCompanion<Group> {
@@ -362,6 +402,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
   final Value<String?> sig;
   final Value<bool> pendingSign;
   final Value<String?> categoriesJson;
+  final Value<String?> linkAuthor;
   final Value<int> rowid;
   const GroupsCompanion({
     this.roomId = const Value.absent(),
@@ -371,6 +412,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.sig = const Value.absent(),
     this.pendingSign = const Value.absent(),
     this.categoriesJson = const Value.absent(),
+    this.linkAuthor = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupsCompanion.insert({
@@ -381,6 +423,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.sig = const Value.absent(),
     this.pendingSign = const Value.absent(),
     this.categoriesJson = const Value.absent(),
+    this.linkAuthor = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : roomId = Value(roomId),
        name = Value(name);
@@ -392,6 +435,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Expression<String>? sig,
     Expression<bool>? pendingSign,
     Expression<String>? categoriesJson,
+    Expression<String>? linkAuthor,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -402,6 +446,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
       if (sig != null) 'sig': sig,
       if (pendingSign != null) 'pending_sign': pendingSign,
       if (categoriesJson != null) 'categories_json': categoriesJson,
+      if (linkAuthor != null) 'link_author': linkAuthor,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -414,6 +459,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Value<String?>? sig,
     Value<bool>? pendingSign,
     Value<String?>? categoriesJson,
+    Value<String?>? linkAuthor,
     Value<int>? rowid,
   }) {
     return GroupsCompanion(
@@ -424,6 +470,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
       sig: sig ?? this.sig,
       pendingSign: pendingSign ?? this.pendingSign,
       categoriesJson: categoriesJson ?? this.categoriesJson,
+      linkAuthor: linkAuthor ?? this.linkAuthor,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -452,6 +499,9 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     if (categoriesJson.present) {
       map['categories_json'] = Variable<String>(categoriesJson.value);
     }
+    if (linkAuthor.present) {
+      map['link_author'] = Variable<String>(linkAuthor.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -468,6 +518,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
           ..write('sig: $sig, ')
           ..write('pendingSign: $pendingSign, ')
           ..write('categoriesJson: $categoriesJson, ')
+          ..write('linkAuthor: $linkAuthor, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -674,6 +725,17 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _linkAuthorMeta = const VerificationMeta(
+    'linkAuthor',
+  );
+  @override
+  late final GeneratedColumn<String> linkAuthor = GeneratedColumn<String>(
+    'link_author',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -694,6 +756,7 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     note,
     expenseDate,
     versionHash,
+    linkAuthor,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -846,6 +909,12 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         ),
       );
     }
+    if (data.containsKey('link_author')) {
+      context.handle(
+        _linkAuthorMeta,
+        linkAuthor.isAcceptableOrUnknown(data['link_author']!, _linkAuthorMeta),
+      );
+    }
     return context;
   }
 
@@ -927,6 +996,10 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         DriftSqlType.string,
         data['${effectivePrefix}version_hash'],
       ),
+      linkAuthor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}link_author'],
+      ),
     );
   }
 
@@ -955,6 +1028,7 @@ class Expense extends DataClass implements Insertable<Expense> {
   final String? note;
   final String? expenseDate;
   final String? versionHash;
+  final String? linkAuthor;
   const Expense({
     required this.id,
     required this.roomId,
@@ -974,6 +1048,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     this.note,
     this.expenseDate,
     this.versionHash,
+    this.linkAuthor,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1010,6 +1085,9 @@ class Expense extends DataClass implements Insertable<Expense> {
     if (!nullToAbsent || versionHash != null) {
       map['version_hash'] = Variable<String>(versionHash);
     }
+    if (!nullToAbsent || linkAuthor != null) {
+      map['link_author'] = Variable<String>(linkAuthor);
+    }
     return map;
   }
 
@@ -1043,6 +1121,9 @@ class Expense extends DataClass implements Insertable<Expense> {
       versionHash: versionHash == null && nullToAbsent
           ? const Value.absent()
           : Value(versionHash),
+      linkAuthor: linkAuthor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkAuthor),
     );
   }
 
@@ -1070,6 +1151,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       note: serializer.fromJson<String?>(json['note']),
       expenseDate: serializer.fromJson<String?>(json['expenseDate']),
       versionHash: serializer.fromJson<String?>(json['versionHash']),
+      linkAuthor: serializer.fromJson<String?>(json['linkAuthor']),
     );
   }
   @override
@@ -1094,6 +1176,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       'note': serializer.toJson<String?>(note),
       'expenseDate': serializer.toJson<String?>(expenseDate),
       'versionHash': serializer.toJson<String?>(versionHash),
+      'linkAuthor': serializer.toJson<String?>(linkAuthor),
     };
   }
 
@@ -1116,6 +1199,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     Value<String?> note = const Value.absent(),
     Value<String?> expenseDate = const Value.absent(),
     Value<String?> versionHash = const Value.absent(),
+    Value<String?> linkAuthor = const Value.absent(),
   }) => Expense(
     id: id ?? this.id,
     roomId: roomId ?? this.roomId,
@@ -1137,6 +1221,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     note: note.present ? note.value : this.note,
     expenseDate: expenseDate.present ? expenseDate.value : this.expenseDate,
     versionHash: versionHash.present ? versionHash.value : this.versionHash,
+    linkAuthor: linkAuthor.present ? linkAuthor.value : this.linkAuthor,
   );
   Expense copyWithCompanion(ExpensesCompanion data) {
     return Expense(
@@ -1172,6 +1257,9 @@ class Expense extends DataClass implements Insertable<Expense> {
       versionHash: data.versionHash.present
           ? data.versionHash.value
           : this.versionHash,
+      linkAuthor: data.linkAuthor.present
+          ? data.linkAuthor.value
+          : this.linkAuthor,
     );
   }
 
@@ -1195,7 +1283,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('category: $category, ')
           ..write('note: $note, ')
           ..write('expenseDate: $expenseDate, ')
-          ..write('versionHash: $versionHash')
+          ..write('versionHash: $versionHash, ')
+          ..write('linkAuthor: $linkAuthor')
           ..write(')'))
         .toString();
   }
@@ -1220,6 +1309,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     note,
     expenseDate,
     versionHash,
+    linkAuthor,
   );
   @override
   bool operator ==(Object other) =>
@@ -1242,7 +1332,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.category == this.category &&
           other.note == this.note &&
           other.expenseDate == this.expenseDate &&
-          other.versionHash == this.versionHash);
+          other.versionHash == this.versionHash &&
+          other.linkAuthor == this.linkAuthor);
 }
 
 class ExpensesCompanion extends UpdateCompanion<Expense> {
@@ -1264,6 +1355,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<String?> note;
   final Value<String?> expenseDate;
   final Value<String?> versionHash;
+  final Value<String?> linkAuthor;
   final Value<int> rowid;
   const ExpensesCompanion({
     this.id = const Value.absent(),
@@ -1284,6 +1376,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.note = const Value.absent(),
     this.expenseDate = const Value.absent(),
     this.versionHash = const Value.absent(),
+    this.linkAuthor = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ExpensesCompanion.insert({
@@ -1305,6 +1398,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.note = const Value.absent(),
     this.expenseDate = const Value.absent(),
     this.versionHash = const Value.absent(),
+    this.linkAuthor = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        roomId = Value(roomId),
@@ -1333,6 +1427,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<String>? note,
     Expression<String>? expenseDate,
     Expression<String>? versionHash,
+    Expression<String>? linkAuthor,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1354,6 +1449,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       if (note != null) 'note': note,
       if (expenseDate != null) 'expense_date': expenseDate,
       if (versionHash != null) 'version_hash': versionHash,
+      if (linkAuthor != null) 'link_author': linkAuthor,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1377,6 +1473,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Value<String?>? note,
     Value<String?>? expenseDate,
     Value<String?>? versionHash,
+    Value<String?>? linkAuthor,
     Value<int>? rowid,
   }) {
     return ExpensesCompanion(
@@ -1398,6 +1495,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       note: note ?? this.note,
       expenseDate: expenseDate ?? this.expenseDate,
       versionHash: versionHash ?? this.versionHash,
+      linkAuthor: linkAuthor ?? this.linkAuthor,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1459,6 +1557,9 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     if (versionHash.present) {
       map['version_hash'] = Variable<String>(versionHash.value);
     }
+    if (linkAuthor.present) {
+      map['link_author'] = Variable<String>(linkAuthor.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1486,6 +1587,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('note: $note, ')
           ..write('expenseDate: $expenseDate, ')
           ..write('versionHash: $versionHash, ')
+          ..write('linkAuthor: $linkAuthor, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1662,6 +1764,17 @@ class $SettlementsTable extends Settlements
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _linkAuthorMeta = const VerificationMeta(
+    'linkAuthor',
+  );
+  @override
+  late final GeneratedColumn<String> linkAuthor = GeneratedColumn<String>(
+    'link_author',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1679,6 +1792,7 @@ class $SettlementsTable extends Settlements
     pendingSign,
     settlementDate,
     versionHash,
+    linkAuthor,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1808,6 +1922,12 @@ class $SettlementsTable extends Settlements
         ),
       );
     }
+    if (data.containsKey('link_author')) {
+      context.handle(
+        _linkAuthorMeta,
+        linkAuthor.isAcceptableOrUnknown(data['link_author']!, _linkAuthorMeta),
+      );
+    }
     return context;
   }
 
@@ -1877,6 +1997,10 @@ class $SettlementsTable extends Settlements
         DriftSqlType.string,
         data['${effectivePrefix}version_hash'],
       ),
+      linkAuthor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}link_author'],
+      ),
     );
   }
 
@@ -1902,6 +2026,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
   final bool pendingSign;
   final String? settlementDate;
   final String? versionHash;
+  final String? linkAuthor;
   const Settlement({
     required this.id,
     required this.roomId,
@@ -1918,6 +2043,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     required this.pendingSign,
     this.settlementDate,
     this.versionHash,
+    this.linkAuthor,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1947,6 +2073,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     if (!nullToAbsent || versionHash != null) {
       map['version_hash'] = Variable<String>(versionHash);
     }
+    if (!nullToAbsent || linkAuthor != null) {
+      map['link_author'] = Variable<String>(linkAuthor);
+    }
     return map;
   }
 
@@ -1975,6 +2104,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       versionHash: versionHash == null && nullToAbsent
           ? const Value.absent()
           : Value(versionHash),
+      linkAuthor: linkAuthor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkAuthor),
     );
   }
 
@@ -1999,6 +2131,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
       settlementDate: serializer.fromJson<String?>(json['settlementDate']),
       versionHash: serializer.fromJson<String?>(json['versionHash']),
+      linkAuthor: serializer.fromJson<String?>(json['linkAuthor']),
     );
   }
   @override
@@ -2020,6 +2153,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       'pendingSign': serializer.toJson<bool>(pendingSign),
       'settlementDate': serializer.toJson<String?>(settlementDate),
       'versionHash': serializer.toJson<String?>(versionHash),
+      'linkAuthor': serializer.toJson<String?>(linkAuthor),
     };
   }
 
@@ -2039,6 +2173,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     bool? pendingSign,
     Value<String?> settlementDate = const Value.absent(),
     Value<String?> versionHash = const Value.absent(),
+    Value<String?> linkAuthor = const Value.absent(),
   }) => Settlement(
     id: id ?? this.id,
     roomId: roomId ?? this.roomId,
@@ -2059,6 +2194,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
         ? settlementDate.value
         : this.settlementDate,
     versionHash: versionHash.present ? versionHash.value : this.versionHash,
+    linkAuthor: linkAuthor.present ? linkAuthor.value : this.linkAuthor,
   );
   Settlement copyWithCompanion(SettlementsCompanion data) {
     return Settlement(
@@ -2087,6 +2223,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       versionHash: data.versionHash.present
           ? data.versionHash.value
           : this.versionHash,
+      linkAuthor: data.linkAuthor.present
+          ? data.linkAuthor.value
+          : this.linkAuthor,
     );
   }
 
@@ -2107,7 +2246,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           ..write('origin: $origin, ')
           ..write('pendingSign: $pendingSign, ')
           ..write('settlementDate: $settlementDate, ')
-          ..write('versionHash: $versionHash')
+          ..write('versionHash: $versionHash, ')
+          ..write('linkAuthor: $linkAuthor')
           ..write(')'))
         .toString();
   }
@@ -2129,6 +2269,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     pendingSign,
     settlementDate,
     versionHash,
+    linkAuthor,
   );
   @override
   bool operator ==(Object other) =>
@@ -2148,7 +2289,8 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           other.origin == this.origin &&
           other.pendingSign == this.pendingSign &&
           other.settlementDate == this.settlementDate &&
-          other.versionHash == this.versionHash);
+          other.versionHash == this.versionHash &&
+          other.linkAuthor == this.linkAuthor);
 }
 
 class SettlementsCompanion extends UpdateCompanion<Settlement> {
@@ -2167,6 +2309,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
   final Value<bool> pendingSign;
   final Value<String?> settlementDate;
   final Value<String?> versionHash;
+  final Value<String?> linkAuthor;
   final Value<int> rowid;
   const SettlementsCompanion({
     this.id = const Value.absent(),
@@ -2184,6 +2327,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     this.pendingSign = const Value.absent(),
     this.settlementDate = const Value.absent(),
     this.versionHash = const Value.absent(),
+    this.linkAuthor = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettlementsCompanion.insert({
@@ -2202,6 +2346,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     this.pendingSign = const Value.absent(),
     this.settlementDate = const Value.absent(),
     this.versionHash = const Value.absent(),
+    this.linkAuthor = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        roomId = Value(roomId),
@@ -2226,6 +2371,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     Expression<bool>? pendingSign,
     Expression<String>? settlementDate,
     Expression<String>? versionHash,
+    Expression<String>? linkAuthor,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2244,6 +2390,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       if (pendingSign != null) 'pending_sign': pendingSign,
       if (settlementDate != null) 'settlement_date': settlementDate,
       if (versionHash != null) 'version_hash': versionHash,
+      if (linkAuthor != null) 'link_author': linkAuthor,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2264,6 +2411,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     Value<bool>? pendingSign,
     Value<String?>? settlementDate,
     Value<String?>? versionHash,
+    Value<String?>? linkAuthor,
     Value<int>? rowid,
   }) {
     return SettlementsCompanion(
@@ -2282,6 +2430,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       pendingSign: pendingSign ?? this.pendingSign,
       settlementDate: settlementDate ?? this.settlementDate,
       versionHash: versionHash ?? this.versionHash,
+      linkAuthor: linkAuthor ?? this.linkAuthor,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2334,6 +2483,9 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     if (versionHash.present) {
       map['version_hash'] = Variable<String>(versionHash.value);
     }
+    if (linkAuthor.present) {
+      map['link_author'] = Variable<String>(linkAuthor.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2358,6 +2510,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
           ..write('pendingSign: $pendingSign, ')
           ..write('settlementDate: $settlementDate, ')
           ..write('versionHash: $versionHash, ')
+          ..write('linkAuthor: $linkAuthor, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2457,6 +2610,17 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _linkAuthorMeta = const VerificationMeta(
+    'linkAuthor',
+  );
+  @override
+  late final GeneratedColumn<String> linkAuthor = GeneratedColumn<String>(
+    'link_author',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     groupId,
@@ -2467,6 +2631,7 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
     updatedAt,
     sig,
     pendingSign,
+    linkAuthor,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2540,6 +2705,12 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
         ),
       );
     }
+    if (data.containsKey('link_author')) {
+      context.handle(
+        _linkAuthorMeta,
+        linkAuthor.isAcceptableOrUnknown(data['link_author']!, _linkAuthorMeta),
+      );
+    }
     return context;
   }
 
@@ -2581,6 +2752,10 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
         DriftSqlType.bool,
         data['${effectivePrefix}pending_sign'],
       )!,
+      linkAuthor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}link_author'],
+      ),
     );
   }
 
@@ -2599,6 +2774,7 @@ class Member extends DataClass implements Insertable<Member> {
   final int updatedAt;
   final String? sig;
   final bool pendingSign;
+  final String? linkAuthor;
   const Member({
     required this.groupId,
     required this.userId,
@@ -2608,6 +2784,7 @@ class Member extends DataClass implements Insertable<Member> {
     required this.updatedAt,
     this.sig,
     required this.pendingSign,
+    this.linkAuthor,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2624,6 +2801,9 @@ class Member extends DataClass implements Insertable<Member> {
       map['sig'] = Variable<String>(sig);
     }
     map['pending_sign'] = Variable<bool>(pendingSign);
+    if (!nullToAbsent || linkAuthor != null) {
+      map['link_author'] = Variable<String>(linkAuthor);
+    }
     return map;
   }
 
@@ -2639,6 +2819,9 @@ class Member extends DataClass implements Insertable<Member> {
       updatedAt: Value(updatedAt),
       sig: sig == null && nullToAbsent ? const Value.absent() : Value(sig),
       pendingSign: Value(pendingSign),
+      linkAuthor: linkAuthor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkAuthor),
     );
   }
 
@@ -2656,6 +2839,7 @@ class Member extends DataClass implements Insertable<Member> {
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       sig: serializer.fromJson<String?>(json['sig']),
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
+      linkAuthor: serializer.fromJson<String?>(json['linkAuthor']),
     );
   }
   @override
@@ -2670,6 +2854,7 @@ class Member extends DataClass implements Insertable<Member> {
       'updatedAt': serializer.toJson<int>(updatedAt),
       'sig': serializer.toJson<String?>(sig),
       'pendingSign': serializer.toJson<bool>(pendingSign),
+      'linkAuthor': serializer.toJson<String?>(linkAuthor),
     };
   }
 
@@ -2682,6 +2867,7 @@ class Member extends DataClass implements Insertable<Member> {
     int? updatedAt,
     Value<String?> sig = const Value.absent(),
     bool? pendingSign,
+    Value<String?> linkAuthor = const Value.absent(),
   }) => Member(
     groupId: groupId ?? this.groupId,
     userId: userId ?? this.userId,
@@ -2691,6 +2877,7 @@ class Member extends DataClass implements Insertable<Member> {
     updatedAt: updatedAt ?? this.updatedAt,
     sig: sig.present ? sig.value : this.sig,
     pendingSign: pendingSign ?? this.pendingSign,
+    linkAuthor: linkAuthor.present ? linkAuthor.value : this.linkAuthor,
   );
   Member copyWithCompanion(MembersCompanion data) {
     return Member(
@@ -2706,6 +2893,9 @@ class Member extends DataClass implements Insertable<Member> {
       pendingSign: data.pendingSign.present
           ? data.pendingSign.value
           : this.pendingSign,
+      linkAuthor: data.linkAuthor.present
+          ? data.linkAuthor.value
+          : this.linkAuthor,
     );
   }
 
@@ -2719,7 +2909,8 @@ class Member extends DataClass implements Insertable<Member> {
           ..write('status: $status, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('sig: $sig, ')
-          ..write('pendingSign: $pendingSign')
+          ..write('pendingSign: $pendingSign, ')
+          ..write('linkAuthor: $linkAuthor')
           ..write(')'))
         .toString();
   }
@@ -2734,6 +2925,7 @@ class Member extends DataClass implements Insertable<Member> {
     updatedAt,
     sig,
     pendingSign,
+    linkAuthor,
   );
   @override
   bool operator ==(Object other) =>
@@ -2746,7 +2938,8 @@ class Member extends DataClass implements Insertable<Member> {
           other.status == this.status &&
           other.updatedAt == this.updatedAt &&
           other.sig == this.sig &&
-          other.pendingSign == this.pendingSign);
+          other.pendingSign == this.pendingSign &&
+          other.linkAuthor == this.linkAuthor);
 }
 
 class MembersCompanion extends UpdateCompanion<Member> {
@@ -2758,6 +2951,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
   final Value<int> updatedAt;
   final Value<String?> sig;
   final Value<bool> pendingSign;
+  final Value<String?> linkAuthor;
   final Value<int> rowid;
   const MembersCompanion({
     this.groupId = const Value.absent(),
@@ -2768,6 +2962,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
     this.updatedAt = const Value.absent(),
     this.sig = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.linkAuthor = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MembersCompanion.insert({
@@ -2779,6 +2974,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
     required int updatedAt,
     this.sig = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.linkAuthor = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : groupId = Value(groupId),
        userId = Value(userId),
@@ -2792,6 +2988,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
     Expression<int>? updatedAt,
     Expression<String>? sig,
     Expression<bool>? pendingSign,
+    Expression<String>? linkAuthor,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2803,6 +3000,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (sig != null) 'sig': sig,
       if (pendingSign != null) 'pending_sign': pendingSign,
+      if (linkAuthor != null) 'link_author': linkAuthor,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2816,6 +3014,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
     Value<int>? updatedAt,
     Value<String?>? sig,
     Value<bool>? pendingSign,
+    Value<String?>? linkAuthor,
     Value<int>? rowid,
   }) {
     return MembersCompanion(
@@ -2827,6 +3026,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
       updatedAt: updatedAt ?? this.updatedAt,
       sig: sig ?? this.sig,
       pendingSign: pendingSign ?? this.pendingSign,
+      linkAuthor: linkAuthor ?? this.linkAuthor,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2858,6 +3058,9 @@ class MembersCompanion extends UpdateCompanion<Member> {
     if (pendingSign.present) {
       map['pending_sign'] = Variable<bool>(pendingSign.value);
     }
+    if (linkAuthor.present) {
+      map['link_author'] = Variable<String>(linkAuthor.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2875,6 +3078,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
           ..write('updatedAt: $updatedAt, ')
           ..write('sig: $sig, ')
           ..write('pendingSign: $pendingSign, ')
+          ..write('linkAuthor: $linkAuthor, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5033,6 +5237,1157 @@ class RecordHistoryCompanion extends UpdateCompanion<HistoryRow> {
   }
 }
 
+class $LinkChannelsTable extends LinkChannels
+    with TableInfo<$LinkChannelsTable, LinkChannel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LinkChannelsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _epochMeta = const VerificationMeta('epoch');
+  @override
+  late final GeneratedColumn<int> epoch = GeneratedColumn<int>(
+    'epoch',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _secretMeta = const VerificationMeta('secret');
+  @override
+  late final GeneratedColumn<String> secret = GeneratedColumn<String>(
+    'secret',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _myParticipantIdMeta = const VerificationMeta(
+    'myParticipantId',
+  );
+  @override
+  late final GeneratedColumn<String> myParticipantId = GeneratedColumn<String>(
+    'my_participant_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nostrPrivMeta = const VerificationMeta(
+    'nostrPriv',
+  );
+  @override
+  late final GeneratedColumn<String> nostrPriv = GeneratedColumn<String>(
+    'nostr_priv',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastPublishedHashMeta = const VerificationMeta(
+    'lastPublishedHash',
+  );
+  @override
+  late final GeneratedColumn<String> lastPublishedHash =
+      GeneratedColumn<String>(
+        'last_published_hash',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastPublishedAtMeta = const VerificationMeta(
+    'lastPublishedAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastPublishedAt = GeneratedColumn<int>(
+    'last_published_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastCreatedAtMeta = const VerificationMeta(
+    'lastCreatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastCreatedAt = GeneratedColumn<int>(
+    'last_created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _partsMeta = const VerificationMeta('parts');
+  @override
+  late final GeneratedColumn<int> parts = GeneratedColumn<int>(
+    'parts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _openedAtMeta = const VerificationMeta(
+    'openedAt',
+  );
+  @override
+  late final GeneratedColumn<int> openedAt = GeneratedColumn<int>(
+    'opened_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    groupId,
+    epoch,
+    secret,
+    myParticipantId,
+    nostrPriv,
+    lastPublishedHash,
+    lastPublishedAt,
+    lastCreatedAt,
+    parts,
+    openedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'link_channels';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LinkChannel> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('epoch')) {
+      context.handle(
+        _epochMeta,
+        epoch.isAcceptableOrUnknown(data['epoch']!, _epochMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_epochMeta);
+    }
+    if (data.containsKey('secret')) {
+      context.handle(
+        _secretMeta,
+        secret.isAcceptableOrUnknown(data['secret']!, _secretMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_secretMeta);
+    }
+    if (data.containsKey('my_participant_id')) {
+      context.handle(
+        _myParticipantIdMeta,
+        myParticipantId.isAcceptableOrUnknown(
+          data['my_participant_id']!,
+          _myParticipantIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('nostr_priv')) {
+      context.handle(
+        _nostrPrivMeta,
+        nostrPriv.isAcceptableOrUnknown(data['nostr_priv']!, _nostrPrivMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nostrPrivMeta);
+    }
+    if (data.containsKey('last_published_hash')) {
+      context.handle(
+        _lastPublishedHashMeta,
+        lastPublishedHash.isAcceptableOrUnknown(
+          data['last_published_hash']!,
+          _lastPublishedHashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_published_at')) {
+      context.handle(
+        _lastPublishedAtMeta,
+        lastPublishedAt.isAcceptableOrUnknown(
+          data['last_published_at']!,
+          _lastPublishedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_created_at')) {
+      context.handle(
+        _lastCreatedAtMeta,
+        lastCreatedAt.isAcceptableOrUnknown(
+          data['last_created_at']!,
+          _lastCreatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('parts')) {
+      context.handle(
+        _partsMeta,
+        parts.isAcceptableOrUnknown(data['parts']!, _partsMeta),
+      );
+    }
+    if (data.containsKey('opened_at')) {
+      context.handle(
+        _openedAtMeta,
+        openedAt.isAcceptableOrUnknown(data['opened_at']!, _openedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_openedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupId};
+  @override
+  LinkChannel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LinkChannel(
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_id'],
+      )!,
+      epoch: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}epoch'],
+      )!,
+      secret: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}secret'],
+      )!,
+      myParticipantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}my_participant_id'],
+      ),
+      nostrPriv: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nostr_priv'],
+      )!,
+      lastPublishedHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_published_hash'],
+      ),
+      lastPublishedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_published_at'],
+      )!,
+      lastCreatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_created_at'],
+      )!,
+      parts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}parts'],
+      )!,
+      openedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}opened_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LinkChannelsTable createAlias(String alias) {
+    return $LinkChannelsTable(attachedDatabase, alias);
+  }
+}
+
+class LinkChannel extends DataClass implements Insertable<LinkChannel> {
+  final String groupId;
+
+  /// Key epoch of [secret] (a *Reset invite link* starts a new one).
+  final int epoch;
+
+  /// The link secret (32 bytes, base64url without padding — the link's `k`):
+  /// a cache of the meta's `link.secret` for [epoch].
+  final String secret;
+
+  /// Who this device is in the group ("Which participant are you?"); NULL
+  /// until picked. Device-local — never a synced claim (§6.1).
+  final String? myParticipantId;
+
+  /// This device's secp256k1 Nostr private key for this group (64 hex
+  /// chars) — random per (device, group), not derived from [secret] (§3.1).
+  final String nostrPriv;
+
+  /// Change detection: digest of the snapshot we last published (NULL =
+  /// nothing published yet).
+  final String? lastPublishedHash;
+
+  /// When we last published (ms epoch, our clock; 0 = never) — drives the
+  /// 10-day refresh.
+  final int lastPublishedAt;
+
+  /// The Nostr `created_at` (**seconds**) of our latest event — kept
+  /// strictly increasing per (pubkey, d) (§4.5; 0 = none yet).
+  final int lastCreatedAt;
+
+  /// How many parts our last snapshot was sharded into (1, 2, 4 or 8, §5.4)
+  /// — needed to retire parts when the count shrinks.
+  final int parts;
+
+  /// When this device opened / joined the channel (ms epoch).
+  final int openedAt;
+  const LinkChannel({
+    required this.groupId,
+    required this.epoch,
+    required this.secret,
+    this.myParticipantId,
+    required this.nostrPriv,
+    this.lastPublishedHash,
+    required this.lastPublishedAt,
+    required this.lastCreatedAt,
+    required this.parts,
+    required this.openedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_id'] = Variable<String>(groupId);
+    map['epoch'] = Variable<int>(epoch);
+    map['secret'] = Variable<String>(secret);
+    if (!nullToAbsent || myParticipantId != null) {
+      map['my_participant_id'] = Variable<String>(myParticipantId);
+    }
+    map['nostr_priv'] = Variable<String>(nostrPriv);
+    if (!nullToAbsent || lastPublishedHash != null) {
+      map['last_published_hash'] = Variable<String>(lastPublishedHash);
+    }
+    map['last_published_at'] = Variable<int>(lastPublishedAt);
+    map['last_created_at'] = Variable<int>(lastCreatedAt);
+    map['parts'] = Variable<int>(parts);
+    map['opened_at'] = Variable<int>(openedAt);
+    return map;
+  }
+
+  LinkChannelsCompanion toCompanion(bool nullToAbsent) {
+    return LinkChannelsCompanion(
+      groupId: Value(groupId),
+      epoch: Value(epoch),
+      secret: Value(secret),
+      myParticipantId: myParticipantId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(myParticipantId),
+      nostrPriv: Value(nostrPriv),
+      lastPublishedHash: lastPublishedHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPublishedHash),
+      lastPublishedAt: Value(lastPublishedAt),
+      lastCreatedAt: Value(lastCreatedAt),
+      parts: Value(parts),
+      openedAt: Value(openedAt),
+    );
+  }
+
+  factory LinkChannel.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LinkChannel(
+      groupId: serializer.fromJson<String>(json['groupId']),
+      epoch: serializer.fromJson<int>(json['epoch']),
+      secret: serializer.fromJson<String>(json['secret']),
+      myParticipantId: serializer.fromJson<String?>(json['myParticipantId']),
+      nostrPriv: serializer.fromJson<String>(json['nostrPriv']),
+      lastPublishedHash: serializer.fromJson<String?>(
+        json['lastPublishedHash'],
+      ),
+      lastPublishedAt: serializer.fromJson<int>(json['lastPublishedAt']),
+      lastCreatedAt: serializer.fromJson<int>(json['lastCreatedAt']),
+      parts: serializer.fromJson<int>(json['parts']),
+      openedAt: serializer.fromJson<int>(json['openedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupId': serializer.toJson<String>(groupId),
+      'epoch': serializer.toJson<int>(epoch),
+      'secret': serializer.toJson<String>(secret),
+      'myParticipantId': serializer.toJson<String?>(myParticipantId),
+      'nostrPriv': serializer.toJson<String>(nostrPriv),
+      'lastPublishedHash': serializer.toJson<String?>(lastPublishedHash),
+      'lastPublishedAt': serializer.toJson<int>(lastPublishedAt),
+      'lastCreatedAt': serializer.toJson<int>(lastCreatedAt),
+      'parts': serializer.toJson<int>(parts),
+      'openedAt': serializer.toJson<int>(openedAt),
+    };
+  }
+
+  LinkChannel copyWith({
+    String? groupId,
+    int? epoch,
+    String? secret,
+    Value<String?> myParticipantId = const Value.absent(),
+    String? nostrPriv,
+    Value<String?> lastPublishedHash = const Value.absent(),
+    int? lastPublishedAt,
+    int? lastCreatedAt,
+    int? parts,
+    int? openedAt,
+  }) => LinkChannel(
+    groupId: groupId ?? this.groupId,
+    epoch: epoch ?? this.epoch,
+    secret: secret ?? this.secret,
+    myParticipantId: myParticipantId.present
+        ? myParticipantId.value
+        : this.myParticipantId,
+    nostrPriv: nostrPriv ?? this.nostrPriv,
+    lastPublishedHash: lastPublishedHash.present
+        ? lastPublishedHash.value
+        : this.lastPublishedHash,
+    lastPublishedAt: lastPublishedAt ?? this.lastPublishedAt,
+    lastCreatedAt: lastCreatedAt ?? this.lastCreatedAt,
+    parts: parts ?? this.parts,
+    openedAt: openedAt ?? this.openedAt,
+  );
+  LinkChannel copyWithCompanion(LinkChannelsCompanion data) {
+    return LinkChannel(
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      epoch: data.epoch.present ? data.epoch.value : this.epoch,
+      secret: data.secret.present ? data.secret.value : this.secret,
+      myParticipantId: data.myParticipantId.present
+          ? data.myParticipantId.value
+          : this.myParticipantId,
+      nostrPriv: data.nostrPriv.present ? data.nostrPriv.value : this.nostrPriv,
+      lastPublishedHash: data.lastPublishedHash.present
+          ? data.lastPublishedHash.value
+          : this.lastPublishedHash,
+      lastPublishedAt: data.lastPublishedAt.present
+          ? data.lastPublishedAt.value
+          : this.lastPublishedAt,
+      lastCreatedAt: data.lastCreatedAt.present
+          ? data.lastCreatedAt.value
+          : this.lastCreatedAt,
+      parts: data.parts.present ? data.parts.value : this.parts,
+      openedAt: data.openedAt.present ? data.openedAt.value : this.openedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LinkChannel(')
+          ..write('groupId: $groupId, ')
+          ..write('epoch: $epoch, ')
+          ..write('secret: $secret, ')
+          ..write('myParticipantId: $myParticipantId, ')
+          ..write('nostrPriv: $nostrPriv, ')
+          ..write('lastPublishedHash: $lastPublishedHash, ')
+          ..write('lastPublishedAt: $lastPublishedAt, ')
+          ..write('lastCreatedAt: $lastCreatedAt, ')
+          ..write('parts: $parts, ')
+          ..write('openedAt: $openedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    groupId,
+    epoch,
+    secret,
+    myParticipantId,
+    nostrPriv,
+    lastPublishedHash,
+    lastPublishedAt,
+    lastCreatedAt,
+    parts,
+    openedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LinkChannel &&
+          other.groupId == this.groupId &&
+          other.epoch == this.epoch &&
+          other.secret == this.secret &&
+          other.myParticipantId == this.myParticipantId &&
+          other.nostrPriv == this.nostrPriv &&
+          other.lastPublishedHash == this.lastPublishedHash &&
+          other.lastPublishedAt == this.lastPublishedAt &&
+          other.lastCreatedAt == this.lastCreatedAt &&
+          other.parts == this.parts &&
+          other.openedAt == this.openedAt);
+}
+
+class LinkChannelsCompanion extends UpdateCompanion<LinkChannel> {
+  final Value<String> groupId;
+  final Value<int> epoch;
+  final Value<String> secret;
+  final Value<String?> myParticipantId;
+  final Value<String> nostrPriv;
+  final Value<String?> lastPublishedHash;
+  final Value<int> lastPublishedAt;
+  final Value<int> lastCreatedAt;
+  final Value<int> parts;
+  final Value<int> openedAt;
+  final Value<int> rowid;
+  const LinkChannelsCompanion({
+    this.groupId = const Value.absent(),
+    this.epoch = const Value.absent(),
+    this.secret = const Value.absent(),
+    this.myParticipantId = const Value.absent(),
+    this.nostrPriv = const Value.absent(),
+    this.lastPublishedHash = const Value.absent(),
+    this.lastPublishedAt = const Value.absent(),
+    this.lastCreatedAt = const Value.absent(),
+    this.parts = const Value.absent(),
+    this.openedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LinkChannelsCompanion.insert({
+    required String groupId,
+    required int epoch,
+    required String secret,
+    this.myParticipantId = const Value.absent(),
+    required String nostrPriv,
+    this.lastPublishedHash = const Value.absent(),
+    this.lastPublishedAt = const Value.absent(),
+    this.lastCreatedAt = const Value.absent(),
+    this.parts = const Value.absent(),
+    required int openedAt,
+    this.rowid = const Value.absent(),
+  }) : groupId = Value(groupId),
+       epoch = Value(epoch),
+       secret = Value(secret),
+       nostrPriv = Value(nostrPriv),
+       openedAt = Value(openedAt);
+  static Insertable<LinkChannel> custom({
+    Expression<String>? groupId,
+    Expression<int>? epoch,
+    Expression<String>? secret,
+    Expression<String>? myParticipantId,
+    Expression<String>? nostrPriv,
+    Expression<String>? lastPublishedHash,
+    Expression<int>? lastPublishedAt,
+    Expression<int>? lastCreatedAt,
+    Expression<int>? parts,
+    Expression<int>? openedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (groupId != null) 'group_id': groupId,
+      if (epoch != null) 'epoch': epoch,
+      if (secret != null) 'secret': secret,
+      if (myParticipantId != null) 'my_participant_id': myParticipantId,
+      if (nostrPriv != null) 'nostr_priv': nostrPriv,
+      if (lastPublishedHash != null) 'last_published_hash': lastPublishedHash,
+      if (lastPublishedAt != null) 'last_published_at': lastPublishedAt,
+      if (lastCreatedAt != null) 'last_created_at': lastCreatedAt,
+      if (parts != null) 'parts': parts,
+      if (openedAt != null) 'opened_at': openedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LinkChannelsCompanion copyWith({
+    Value<String>? groupId,
+    Value<int>? epoch,
+    Value<String>? secret,
+    Value<String?>? myParticipantId,
+    Value<String>? nostrPriv,
+    Value<String?>? lastPublishedHash,
+    Value<int>? lastPublishedAt,
+    Value<int>? lastCreatedAt,
+    Value<int>? parts,
+    Value<int>? openedAt,
+    Value<int>? rowid,
+  }) {
+    return LinkChannelsCompanion(
+      groupId: groupId ?? this.groupId,
+      epoch: epoch ?? this.epoch,
+      secret: secret ?? this.secret,
+      myParticipantId: myParticipantId ?? this.myParticipantId,
+      nostrPriv: nostrPriv ?? this.nostrPriv,
+      lastPublishedHash: lastPublishedHash ?? this.lastPublishedHash,
+      lastPublishedAt: lastPublishedAt ?? this.lastPublishedAt,
+      lastCreatedAt: lastCreatedAt ?? this.lastCreatedAt,
+      parts: parts ?? this.parts,
+      openedAt: openedAt ?? this.openedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (epoch.present) {
+      map['epoch'] = Variable<int>(epoch.value);
+    }
+    if (secret.present) {
+      map['secret'] = Variable<String>(secret.value);
+    }
+    if (myParticipantId.present) {
+      map['my_participant_id'] = Variable<String>(myParticipantId.value);
+    }
+    if (nostrPriv.present) {
+      map['nostr_priv'] = Variable<String>(nostrPriv.value);
+    }
+    if (lastPublishedHash.present) {
+      map['last_published_hash'] = Variable<String>(lastPublishedHash.value);
+    }
+    if (lastPublishedAt.present) {
+      map['last_published_at'] = Variable<int>(lastPublishedAt.value);
+    }
+    if (lastCreatedAt.present) {
+      map['last_created_at'] = Variable<int>(lastCreatedAt.value);
+    }
+    if (parts.present) {
+      map['parts'] = Variable<int>(parts.value);
+    }
+    if (openedAt.present) {
+      map['opened_at'] = Variable<int>(openedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LinkChannelsCompanion(')
+          ..write('groupId: $groupId, ')
+          ..write('epoch: $epoch, ')
+          ..write('secret: $secret, ')
+          ..write('myParticipantId: $myParticipantId, ')
+          ..write('nostrPriv: $nostrPriv, ')
+          ..write('lastPublishedHash: $lastPublishedHash, ')
+          ..write('lastPublishedAt: $lastPublishedAt, ')
+          ..write('lastCreatedAt: $lastCreatedAt, ')
+          ..write('parts: $parts, ')
+          ..write('openedAt: $openedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LinkPeersTable extends LinkPeers
+    with TableInfo<$LinkPeersTable, LinkPeer> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LinkPeersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pubkeyMeta = const VerificationMeta('pubkey');
+  @override
+  late final GeneratedColumn<String> pubkey = GeneratedColumn<String>(
+    'pubkey',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _meMeta = const VerificationMeta('me');
+  @override
+  late final GeneratedColumn<String> me = GeneratedColumn<String>(
+    'me',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _eventIdsJsonMeta = const VerificationMeta(
+    'eventIdsJson',
+  );
+  @override
+  late final GeneratedColumn<String> eventIdsJson = GeneratedColumn<String>(
+    'event_ids_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _lastCreatedAtMeta = const VerificationMeta(
+    'lastCreatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastCreatedAt = GeneratedColumn<int>(
+    'last_created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSeenAtMeta = const VerificationMeta(
+    'lastSeenAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastSeenAt = GeneratedColumn<int>(
+    'last_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _snapshotDigestMeta = const VerificationMeta(
+    'snapshotDigest',
+  );
+  @override
+  late final GeneratedColumn<String> snapshotDigest = GeneratedColumn<String>(
+    'snapshot_digest',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    groupId,
+    pubkey,
+    me,
+    eventIdsJson,
+    lastCreatedAt,
+    lastSeenAt,
+    snapshotDigest,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'link_peers';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LinkPeer> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('pubkey')) {
+      context.handle(
+        _pubkeyMeta,
+        pubkey.isAcceptableOrUnknown(data['pubkey']!, _pubkeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pubkeyMeta);
+    }
+    if (data.containsKey('me')) {
+      context.handle(_meMeta, me.isAcceptableOrUnknown(data['me']!, _meMeta));
+    }
+    if (data.containsKey('event_ids_json')) {
+      context.handle(
+        _eventIdsJsonMeta,
+        eventIdsJson.isAcceptableOrUnknown(
+          data['event_ids_json']!,
+          _eventIdsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_created_at')) {
+      context.handle(
+        _lastCreatedAtMeta,
+        lastCreatedAt.isAcceptableOrUnknown(
+          data['last_created_at']!,
+          _lastCreatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_seen_at')) {
+      context.handle(
+        _lastSeenAtMeta,
+        lastSeenAt.isAcceptableOrUnknown(
+          data['last_seen_at']!,
+          _lastSeenAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('snapshot_digest')) {
+      context.handle(
+        _snapshotDigestMeta,
+        snapshotDigest.isAcceptableOrUnknown(
+          data['snapshot_digest']!,
+          _snapshotDigestMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupId, pubkey};
+  @override
+  LinkPeer map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LinkPeer(
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_id'],
+      )!,
+      pubkey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pubkey'],
+      )!,
+      me: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}me'],
+      ),
+      eventIdsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_ids_json'],
+      )!,
+      lastCreatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_created_at'],
+      )!,
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_seen_at'],
+      )!,
+      snapshotDigest: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}snapshot_digest'],
+      ),
+    );
+  }
+
+  @override
+  $LinkPeersTable createAlias(String alias) {
+    return $LinkPeersTable(attachedDatabase, alias);
+  }
+}
+
+class LinkPeer extends DataClass implements Insertable<LinkPeer> {
+  final String groupId;
+
+  /// The publisher's Nostr pubkey (x-only, 64 hex chars).
+  final String pubkey;
+
+  /// The participant the publisher's latest event names as its `me` — a
+  /// hint only ("used on another phone"); NULL = none.
+  final String? me;
+
+  /// The id of the latest event processed **per part** (JSON object
+  /// `{"<part index>": "<event id>"}`): a sharded snapshot is several
+  /// events, each skipped before decrypting once seen.
+  final String eventIdsJson;
+
+  /// Newest Nostr `created_at` (seconds) seen from this publisher (any part)
+  /// — the base of the live subscription's `since`.
+  final int lastCreatedAt;
+
+  /// When this device last received an event of it (ms epoch, our clock) —
+  /// "Ben's phone last published …".
+  final int lastSeenAt;
+
+  /// Digest of the publisher's snapshot as last merged (to compare with
+  /// ours: "Ben has everything", §5.3); NULL = unknown.
+  final String? snapshotDigest;
+  const LinkPeer({
+    required this.groupId,
+    required this.pubkey,
+    this.me,
+    required this.eventIdsJson,
+    required this.lastCreatedAt,
+    required this.lastSeenAt,
+    this.snapshotDigest,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_id'] = Variable<String>(groupId);
+    map['pubkey'] = Variable<String>(pubkey);
+    if (!nullToAbsent || me != null) {
+      map['me'] = Variable<String>(me);
+    }
+    map['event_ids_json'] = Variable<String>(eventIdsJson);
+    map['last_created_at'] = Variable<int>(lastCreatedAt);
+    map['last_seen_at'] = Variable<int>(lastSeenAt);
+    if (!nullToAbsent || snapshotDigest != null) {
+      map['snapshot_digest'] = Variable<String>(snapshotDigest);
+    }
+    return map;
+  }
+
+  LinkPeersCompanion toCompanion(bool nullToAbsent) {
+    return LinkPeersCompanion(
+      groupId: Value(groupId),
+      pubkey: Value(pubkey),
+      me: me == null && nullToAbsent ? const Value.absent() : Value(me),
+      eventIdsJson: Value(eventIdsJson),
+      lastCreatedAt: Value(lastCreatedAt),
+      lastSeenAt: Value(lastSeenAt),
+      snapshotDigest: snapshotDigest == null && nullToAbsent
+          ? const Value.absent()
+          : Value(snapshotDigest),
+    );
+  }
+
+  factory LinkPeer.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LinkPeer(
+      groupId: serializer.fromJson<String>(json['groupId']),
+      pubkey: serializer.fromJson<String>(json['pubkey']),
+      me: serializer.fromJson<String?>(json['me']),
+      eventIdsJson: serializer.fromJson<String>(json['eventIdsJson']),
+      lastCreatedAt: serializer.fromJson<int>(json['lastCreatedAt']),
+      lastSeenAt: serializer.fromJson<int>(json['lastSeenAt']),
+      snapshotDigest: serializer.fromJson<String?>(json['snapshotDigest']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupId': serializer.toJson<String>(groupId),
+      'pubkey': serializer.toJson<String>(pubkey),
+      'me': serializer.toJson<String?>(me),
+      'eventIdsJson': serializer.toJson<String>(eventIdsJson),
+      'lastCreatedAt': serializer.toJson<int>(lastCreatedAt),
+      'lastSeenAt': serializer.toJson<int>(lastSeenAt),
+      'snapshotDigest': serializer.toJson<String?>(snapshotDigest),
+    };
+  }
+
+  LinkPeer copyWith({
+    String? groupId,
+    String? pubkey,
+    Value<String?> me = const Value.absent(),
+    String? eventIdsJson,
+    int? lastCreatedAt,
+    int? lastSeenAt,
+    Value<String?> snapshotDigest = const Value.absent(),
+  }) => LinkPeer(
+    groupId: groupId ?? this.groupId,
+    pubkey: pubkey ?? this.pubkey,
+    me: me.present ? me.value : this.me,
+    eventIdsJson: eventIdsJson ?? this.eventIdsJson,
+    lastCreatedAt: lastCreatedAt ?? this.lastCreatedAt,
+    lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+    snapshotDigest: snapshotDigest.present
+        ? snapshotDigest.value
+        : this.snapshotDigest,
+  );
+  LinkPeer copyWithCompanion(LinkPeersCompanion data) {
+    return LinkPeer(
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      pubkey: data.pubkey.present ? data.pubkey.value : this.pubkey,
+      me: data.me.present ? data.me.value : this.me,
+      eventIdsJson: data.eventIdsJson.present
+          ? data.eventIdsJson.value
+          : this.eventIdsJson,
+      lastCreatedAt: data.lastCreatedAt.present
+          ? data.lastCreatedAt.value
+          : this.lastCreatedAt,
+      lastSeenAt: data.lastSeenAt.present
+          ? data.lastSeenAt.value
+          : this.lastSeenAt,
+      snapshotDigest: data.snapshotDigest.present
+          ? data.snapshotDigest.value
+          : this.snapshotDigest,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LinkPeer(')
+          ..write('groupId: $groupId, ')
+          ..write('pubkey: $pubkey, ')
+          ..write('me: $me, ')
+          ..write('eventIdsJson: $eventIdsJson, ')
+          ..write('lastCreatedAt: $lastCreatedAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('snapshotDigest: $snapshotDigest')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    groupId,
+    pubkey,
+    me,
+    eventIdsJson,
+    lastCreatedAt,
+    lastSeenAt,
+    snapshotDigest,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LinkPeer &&
+          other.groupId == this.groupId &&
+          other.pubkey == this.pubkey &&
+          other.me == this.me &&
+          other.eventIdsJson == this.eventIdsJson &&
+          other.lastCreatedAt == this.lastCreatedAt &&
+          other.lastSeenAt == this.lastSeenAt &&
+          other.snapshotDigest == this.snapshotDigest);
+}
+
+class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
+  final Value<String> groupId;
+  final Value<String> pubkey;
+  final Value<String?> me;
+  final Value<String> eventIdsJson;
+  final Value<int> lastCreatedAt;
+  final Value<int> lastSeenAt;
+  final Value<String?> snapshotDigest;
+  final Value<int> rowid;
+  const LinkPeersCompanion({
+    this.groupId = const Value.absent(),
+    this.pubkey = const Value.absent(),
+    this.me = const Value.absent(),
+    this.eventIdsJson = const Value.absent(),
+    this.lastCreatedAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.snapshotDigest = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LinkPeersCompanion.insert({
+    required String groupId,
+    required String pubkey,
+    this.me = const Value.absent(),
+    this.eventIdsJson = const Value.absent(),
+    this.lastCreatedAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.snapshotDigest = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : groupId = Value(groupId),
+       pubkey = Value(pubkey);
+  static Insertable<LinkPeer> custom({
+    Expression<String>? groupId,
+    Expression<String>? pubkey,
+    Expression<String>? me,
+    Expression<String>? eventIdsJson,
+    Expression<int>? lastCreatedAt,
+    Expression<int>? lastSeenAt,
+    Expression<String>? snapshotDigest,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (groupId != null) 'group_id': groupId,
+      if (pubkey != null) 'pubkey': pubkey,
+      if (me != null) 'me': me,
+      if (eventIdsJson != null) 'event_ids_json': eventIdsJson,
+      if (lastCreatedAt != null) 'last_created_at': lastCreatedAt,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
+      if (snapshotDigest != null) 'snapshot_digest': snapshotDigest,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LinkPeersCompanion copyWith({
+    Value<String>? groupId,
+    Value<String>? pubkey,
+    Value<String?>? me,
+    Value<String>? eventIdsJson,
+    Value<int>? lastCreatedAt,
+    Value<int>? lastSeenAt,
+    Value<String?>? snapshotDigest,
+    Value<int>? rowid,
+  }) {
+    return LinkPeersCompanion(
+      groupId: groupId ?? this.groupId,
+      pubkey: pubkey ?? this.pubkey,
+      me: me ?? this.me,
+      eventIdsJson: eventIdsJson ?? this.eventIdsJson,
+      lastCreatedAt: lastCreatedAt ?? this.lastCreatedAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      snapshotDigest: snapshotDigest ?? this.snapshotDigest,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (pubkey.present) {
+      map['pubkey'] = Variable<String>(pubkey.value);
+    }
+    if (me.present) {
+      map['me'] = Variable<String>(me.value);
+    }
+    if (eventIdsJson.present) {
+      map['event_ids_json'] = Variable<String>(eventIdsJson.value);
+    }
+    if (lastCreatedAt.present) {
+      map['last_created_at'] = Variable<int>(lastCreatedAt.value);
+    }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<int>(lastSeenAt.value);
+    }
+    if (snapshotDigest.present) {
+      map['snapshot_digest'] = Variable<String>(snapshotDigest.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LinkPeersCompanion(')
+          ..write('groupId: $groupId, ')
+          ..write('pubkey: $pubkey, ')
+          ..write('me: $me, ')
+          ..write('eventIdsJson: $eventIdsJson, ')
+          ..write('lastCreatedAt: $lastCreatedAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('snapshotDigest: $snapshotDigest, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5049,6 +6404,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $RecordHistoryTable recordHistory = $RecordHistoryTable(this);
+  late final $LinkChannelsTable linkChannels = $LinkChannelsTable(this);
+  late final $LinkPeersTable linkPeers = $LinkPeersTable(this);
   late final Index recordHistoryGroup = Index(
     'record_history_group',
     'CREATE INDEX record_history_group ON record_history (group_id, recorded_at)',
@@ -5071,6 +6428,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     knownDeviceKeys,
     rejectedVersions,
     recordHistory,
+    linkChannels,
+    linkPeers,
     recordHistoryGroup,
     recordHistoryRecord,
   ];
@@ -5085,6 +6444,7 @@ typedef $$GroupsTableCreateCompanionBuilder =
       Value<String?> sig,
       Value<bool> pendingSign,
       Value<String?> categoriesJson,
+      Value<String?> linkAuthor,
       Value<int> rowid,
     });
 typedef $$GroupsTableUpdateCompanionBuilder =
@@ -5096,6 +6456,7 @@ typedef $$GroupsTableUpdateCompanionBuilder =
       Value<String?> sig,
       Value<bool> pendingSign,
       Value<String?> categoriesJson,
+      Value<String?> linkAuthor,
       Value<int> rowid,
     });
 
@@ -5140,6 +6501,11 @@ class $$GroupsTableFilterComposer
 
   ColumnFilters<String> get categoriesJson => $composableBuilder(
     column: $table.categoriesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5187,6 +6553,11 @@ class $$GroupsTableOrderingComposer
     column: $table.categoriesJson,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GroupsTableAnnotationComposer
@@ -5220,6 +6591,11 @@ class $$GroupsTableAnnotationComposer
 
   GeneratedColumn<String> get categoriesJson => $composableBuilder(
     column: $table.categoriesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
     builder: (column) => column,
   );
 }
@@ -5259,6 +6635,7 @@ class $$GroupsTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> categoriesJson = const Value.absent(),
+                Value<String?> linkAuthor = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion(
                 roomId: roomId,
@@ -5268,6 +6645,7 @@ class $$GroupsTableTableManager
                 sig: sig,
                 pendingSign: pendingSign,
                 categoriesJson: categoriesJson,
+                linkAuthor: linkAuthor,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5279,6 +6657,7 @@ class $$GroupsTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> categoriesJson = const Value.absent(),
+                Value<String?> linkAuthor = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion.insert(
                 roomId: roomId,
@@ -5288,6 +6667,7 @@ class $$GroupsTableTableManager
                 sig: sig,
                 pendingSign: pendingSign,
                 categoriesJson: categoriesJson,
+                linkAuthor: linkAuthor,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -5341,6 +6721,7 @@ typedef $$ExpensesTableCreateCompanionBuilder =
       Value<String?> note,
       Value<String?> expenseDate,
       Value<String?> versionHash,
+      Value<String?> linkAuthor,
       Value<int> rowid,
     });
 typedef $$ExpensesTableUpdateCompanionBuilder =
@@ -5363,6 +6744,7 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<String?> expenseDate,
       Value<String?> versionHash,
+      Value<String?> linkAuthor,
       Value<int> rowid,
     });
 
@@ -5462,6 +6844,11 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<String> get versionHash => $composableBuilder(
     column: $table.versionHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5564,6 +6951,11 @@ class $$ExpensesTableOrderingComposer
     column: $table.versionHash,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ExpensesTableAnnotationComposer
@@ -5642,6 +7034,11 @@ class $$ExpensesTableAnnotationComposer
     column: $table.versionHash,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
+    builder: (column) => column,
+  );
 }
 
 class $$ExpensesTableTableManager
@@ -5690,6 +7087,7 @@ class $$ExpensesTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<String?> expenseDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
+                Value<String?> linkAuthor = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion(
                 id: id,
@@ -5710,6 +7108,7 @@ class $$ExpensesTableTableManager
                 note: note,
                 expenseDate: expenseDate,
                 versionHash: versionHash,
+                linkAuthor: linkAuthor,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5732,6 +7131,7 @@ class $$ExpensesTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<String?> expenseDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
+                Value<String?> linkAuthor = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion.insert(
                 id: id,
@@ -5752,6 +7152,7 @@ class $$ExpensesTableTableManager
                 note: note,
                 expenseDate: expenseDate,
                 versionHash: versionHash,
+                linkAuthor: linkAuthor,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -5802,6 +7203,7 @@ typedef $$SettlementsTableCreateCompanionBuilder =
       Value<bool> pendingSign,
       Value<String?> settlementDate,
       Value<String?> versionHash,
+      Value<String?> linkAuthor,
       Value<int> rowid,
     });
 typedef $$SettlementsTableUpdateCompanionBuilder =
@@ -5821,6 +7223,7 @@ typedef $$SettlementsTableUpdateCompanionBuilder =
       Value<bool> pendingSign,
       Value<String?> settlementDate,
       Value<String?> versionHash,
+      Value<String?> linkAuthor,
       Value<int> rowid,
     });
 
@@ -5905,6 +7308,11 @@ class $$SettlementsTableFilterComposer
 
   ColumnFilters<String> get versionHash => $composableBuilder(
     column: $table.versionHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5992,6 +7400,11 @@ class $$SettlementsTableOrderingComposer
     column: $table.versionHash,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettlementsTableAnnotationComposer
@@ -6057,6 +7470,11 @@ class $$SettlementsTableAnnotationComposer
     column: $table.versionHash,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
+    builder: (column) => column,
+  );
 }
 
 class $$SettlementsTableTableManager
@@ -6105,6 +7523,7 @@ class $$SettlementsTableTableManager
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> settlementDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
+                Value<String?> linkAuthor = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettlementsCompanion(
                 id: id,
@@ -6122,6 +7541,7 @@ class $$SettlementsTableTableManager
                 pendingSign: pendingSign,
                 settlementDate: settlementDate,
                 versionHash: versionHash,
+                linkAuthor: linkAuthor,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6141,6 +7561,7 @@ class $$SettlementsTableTableManager
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> settlementDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
+                Value<String?> linkAuthor = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettlementsCompanion.insert(
                 id: id,
@@ -6158,6 +7579,7 @@ class $$SettlementsTableTableManager
                 pendingSign: pendingSign,
                 settlementDate: settlementDate,
                 versionHash: versionHash,
+                linkAuthor: linkAuthor,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -6204,6 +7626,7 @@ typedef $$MembersTableCreateCompanionBuilder =
       required int updatedAt,
       Value<String?> sig,
       Value<bool> pendingSign,
+      Value<String?> linkAuthor,
       Value<int> rowid,
     });
 typedef $$MembersTableUpdateCompanionBuilder =
@@ -6216,6 +7639,7 @@ typedef $$MembersTableUpdateCompanionBuilder =
       Value<int> updatedAt,
       Value<String?> sig,
       Value<bool> pendingSign,
+      Value<String?> linkAuthor,
       Value<int> rowid,
     });
 
@@ -6265,6 +7689,11 @@ class $$MembersTableFilterComposer
 
   ColumnFilters<bool> get pendingSign => $composableBuilder(
     column: $table.pendingSign,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6317,6 +7746,11 @@ class $$MembersTableOrderingComposer
     column: $table.pendingSign,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MembersTableAnnotationComposer
@@ -6353,6 +7787,11 @@ class $$MembersTableAnnotationComposer
 
   GeneratedColumn<bool> get pendingSign => $composableBuilder(
     column: $table.pendingSign,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get linkAuthor => $composableBuilder(
+    column: $table.linkAuthor,
     builder: (column) => column,
   );
 }
@@ -6393,6 +7832,7 @@ class $$MembersTableTableManager
                 Value<int> updatedAt = const Value.absent(),
                 Value<String?> sig = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> linkAuthor = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MembersCompanion(
                 groupId: groupId,
@@ -6403,6 +7843,7 @@ class $$MembersTableTableManager
                 updatedAt: updatedAt,
                 sig: sig,
                 pendingSign: pendingSign,
+                linkAuthor: linkAuthor,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6415,6 +7856,7 @@ class $$MembersTableTableManager
                 required int updatedAt,
                 Value<String?> sig = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> linkAuthor = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MembersCompanion.insert(
                 groupId: groupId,
@@ -6425,6 +7867,7 @@ class $$MembersTableTableManager
                 updatedAt: updatedAt,
                 sig: sig,
                 pendingSign: pendingSign,
+                linkAuthor: linkAuthor,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -7643,6 +9086,567 @@ typedef $$RecordHistoryTableProcessedTableManager =
       HistoryRow,
       PrefetchHooks Function()
     >;
+typedef $$LinkChannelsTableCreateCompanionBuilder =
+    LinkChannelsCompanion Function({
+      required String groupId,
+      required int epoch,
+      required String secret,
+      Value<String?> myParticipantId,
+      required String nostrPriv,
+      Value<String?> lastPublishedHash,
+      Value<int> lastPublishedAt,
+      Value<int> lastCreatedAt,
+      Value<int> parts,
+      required int openedAt,
+      Value<int> rowid,
+    });
+typedef $$LinkChannelsTableUpdateCompanionBuilder =
+    LinkChannelsCompanion Function({
+      Value<String> groupId,
+      Value<int> epoch,
+      Value<String> secret,
+      Value<String?> myParticipantId,
+      Value<String> nostrPriv,
+      Value<String?> lastPublishedHash,
+      Value<int> lastPublishedAt,
+      Value<int> lastCreatedAt,
+      Value<int> parts,
+      Value<int> openedAt,
+      Value<int> rowid,
+    });
+
+class $$LinkChannelsTableFilterComposer
+    extends Composer<_$AppDatabase, $LinkChannelsTable> {
+  $$LinkChannelsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get epoch => $composableBuilder(
+    column: $table.epoch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get secret => $composableBuilder(
+    column: $table.secret,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get myParticipantId => $composableBuilder(
+    column: $table.myParticipantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nostrPriv => $composableBuilder(
+    column: $table.nostrPriv,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastPublishedHash => $composableBuilder(
+    column: $table.lastPublishedHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastPublishedAt => $composableBuilder(
+    column: $table.lastPublishedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastCreatedAt => $composableBuilder(
+    column: $table.lastCreatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get parts => $composableBuilder(
+    column: $table.parts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get openedAt => $composableBuilder(
+    column: $table.openedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LinkChannelsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LinkChannelsTable> {
+  $$LinkChannelsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get epoch => $composableBuilder(
+    column: $table.epoch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get secret => $composableBuilder(
+    column: $table.secret,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get myParticipantId => $composableBuilder(
+    column: $table.myParticipantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nostrPriv => $composableBuilder(
+    column: $table.nostrPriv,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastPublishedHash => $composableBuilder(
+    column: $table.lastPublishedHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastPublishedAt => $composableBuilder(
+    column: $table.lastPublishedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastCreatedAt => $composableBuilder(
+    column: $table.lastCreatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get parts => $composableBuilder(
+    column: $table.parts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get openedAt => $composableBuilder(
+    column: $table.openedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LinkChannelsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LinkChannelsTable> {
+  $$LinkChannelsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<int> get epoch =>
+      $composableBuilder(column: $table.epoch, builder: (column) => column);
+
+  GeneratedColumn<String> get secret =>
+      $composableBuilder(column: $table.secret, builder: (column) => column);
+
+  GeneratedColumn<String> get myParticipantId => $composableBuilder(
+    column: $table.myParticipantId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get nostrPriv =>
+      $composableBuilder(column: $table.nostrPriv, builder: (column) => column);
+
+  GeneratedColumn<String> get lastPublishedHash => $composableBuilder(
+    column: $table.lastPublishedHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastPublishedAt => $composableBuilder(
+    column: $table.lastPublishedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastCreatedAt => $composableBuilder(
+    column: $table.lastCreatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get parts =>
+      $composableBuilder(column: $table.parts, builder: (column) => column);
+
+  GeneratedColumn<int> get openedAt =>
+      $composableBuilder(column: $table.openedAt, builder: (column) => column);
+}
+
+class $$LinkChannelsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LinkChannelsTable,
+          LinkChannel,
+          $$LinkChannelsTableFilterComposer,
+          $$LinkChannelsTableOrderingComposer,
+          $$LinkChannelsTableAnnotationComposer,
+          $$LinkChannelsTableCreateCompanionBuilder,
+          $$LinkChannelsTableUpdateCompanionBuilder,
+          (
+            LinkChannel,
+            BaseReferences<_$AppDatabase, $LinkChannelsTable, LinkChannel>,
+          ),
+          LinkChannel,
+          PrefetchHooks Function()
+        > {
+  $$LinkChannelsTableTableManager(_$AppDatabase db, $LinkChannelsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LinkChannelsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LinkChannelsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LinkChannelsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> groupId = const Value.absent(),
+                Value<int> epoch = const Value.absent(),
+                Value<String> secret = const Value.absent(),
+                Value<String?> myParticipantId = const Value.absent(),
+                Value<String> nostrPriv = const Value.absent(),
+                Value<String?> lastPublishedHash = const Value.absent(),
+                Value<int> lastPublishedAt = const Value.absent(),
+                Value<int> lastCreatedAt = const Value.absent(),
+                Value<int> parts = const Value.absent(),
+                Value<int> openedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LinkChannelsCompanion(
+                groupId: groupId,
+                epoch: epoch,
+                secret: secret,
+                myParticipantId: myParticipantId,
+                nostrPriv: nostrPriv,
+                lastPublishedHash: lastPublishedHash,
+                lastPublishedAt: lastPublishedAt,
+                lastCreatedAt: lastCreatedAt,
+                parts: parts,
+                openedAt: openedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String groupId,
+                required int epoch,
+                required String secret,
+                Value<String?> myParticipantId = const Value.absent(),
+                required String nostrPriv,
+                Value<String?> lastPublishedHash = const Value.absent(),
+                Value<int> lastPublishedAt = const Value.absent(),
+                Value<int> lastCreatedAt = const Value.absent(),
+                Value<int> parts = const Value.absent(),
+                required int openedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LinkChannelsCompanion.insert(
+                groupId: groupId,
+                epoch: epoch,
+                secret: secret,
+                myParticipantId: myParticipantId,
+                nostrPriv: nostrPriv,
+                lastPublishedHash: lastPublishedHash,
+                lastPublishedAt: lastPublishedAt,
+                lastCreatedAt: lastCreatedAt,
+                parts: parts,
+                openedAt: openedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$LinkChannelsTable, LinkChannel>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $LinkChannelsTable,
+                    LinkChannel
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LinkChannelsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LinkChannelsTable,
+      LinkChannel,
+      $$LinkChannelsTableFilterComposer,
+      $$LinkChannelsTableOrderingComposer,
+      $$LinkChannelsTableAnnotationComposer,
+      $$LinkChannelsTableCreateCompanionBuilder,
+      $$LinkChannelsTableUpdateCompanionBuilder,
+      (
+        LinkChannel,
+        BaseReferences<_$AppDatabase, $LinkChannelsTable, LinkChannel>,
+      ),
+      LinkChannel,
+      PrefetchHooks Function()
+    >;
+typedef $$LinkPeersTableCreateCompanionBuilder =
+    LinkPeersCompanion Function({
+      required String groupId,
+      required String pubkey,
+      Value<String?> me,
+      Value<String> eventIdsJson,
+      Value<int> lastCreatedAt,
+      Value<int> lastSeenAt,
+      Value<String?> snapshotDigest,
+      Value<int> rowid,
+    });
+typedef $$LinkPeersTableUpdateCompanionBuilder =
+    LinkPeersCompanion Function({
+      Value<String> groupId,
+      Value<String> pubkey,
+      Value<String?> me,
+      Value<String> eventIdsJson,
+      Value<int> lastCreatedAt,
+      Value<int> lastSeenAt,
+      Value<String?> snapshotDigest,
+      Value<int> rowid,
+    });
+
+class $$LinkPeersTableFilterComposer
+    extends Composer<_$AppDatabase, $LinkPeersTable> {
+  $$LinkPeersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pubkey => $composableBuilder(
+    column: $table.pubkey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get me => $composableBuilder(
+    column: $table.me,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventIdsJson => $composableBuilder(
+    column: $table.eventIdsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastCreatedAt => $composableBuilder(
+    column: $table.lastCreatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get snapshotDigest => $composableBuilder(
+    column: $table.snapshotDigest,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LinkPeersTableOrderingComposer
+    extends Composer<_$AppDatabase, $LinkPeersTable> {
+  $$LinkPeersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pubkey => $composableBuilder(
+    column: $table.pubkey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get me => $composableBuilder(
+    column: $table.me,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventIdsJson => $composableBuilder(
+    column: $table.eventIdsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastCreatedAt => $composableBuilder(
+    column: $table.lastCreatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get snapshotDigest => $composableBuilder(
+    column: $table.snapshotDigest,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LinkPeersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LinkPeersTable> {
+  $$LinkPeersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get pubkey =>
+      $composableBuilder(column: $table.pubkey, builder: (column) => column);
+
+  GeneratedColumn<String> get me =>
+      $composableBuilder(column: $table.me, builder: (column) => column);
+
+  GeneratedColumn<String> get eventIdsJson => $composableBuilder(
+    column: $table.eventIdsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastCreatedAt => $composableBuilder(
+    column: $table.lastCreatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get snapshotDigest => $composableBuilder(
+    column: $table.snapshotDigest,
+    builder: (column) => column,
+  );
+}
+
+class $$LinkPeersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LinkPeersTable,
+          LinkPeer,
+          $$LinkPeersTableFilterComposer,
+          $$LinkPeersTableOrderingComposer,
+          $$LinkPeersTableAnnotationComposer,
+          $$LinkPeersTableCreateCompanionBuilder,
+          $$LinkPeersTableUpdateCompanionBuilder,
+          (LinkPeer, BaseReferences<_$AppDatabase, $LinkPeersTable, LinkPeer>),
+          LinkPeer,
+          PrefetchHooks Function()
+        > {
+  $$LinkPeersTableTableManager(_$AppDatabase db, $LinkPeersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LinkPeersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LinkPeersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LinkPeersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> groupId = const Value.absent(),
+                Value<String> pubkey = const Value.absent(),
+                Value<String?> me = const Value.absent(),
+                Value<String> eventIdsJson = const Value.absent(),
+                Value<int> lastCreatedAt = const Value.absent(),
+                Value<int> lastSeenAt = const Value.absent(),
+                Value<String?> snapshotDigest = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LinkPeersCompanion(
+                groupId: groupId,
+                pubkey: pubkey,
+                me: me,
+                eventIdsJson: eventIdsJson,
+                lastCreatedAt: lastCreatedAt,
+                lastSeenAt: lastSeenAt,
+                snapshotDigest: snapshotDigest,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String groupId,
+                required String pubkey,
+                Value<String?> me = const Value.absent(),
+                Value<String> eventIdsJson = const Value.absent(),
+                Value<int> lastCreatedAt = const Value.absent(),
+                Value<int> lastSeenAt = const Value.absent(),
+                Value<String?> snapshotDigest = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LinkPeersCompanion.insert(
+                groupId: groupId,
+                pubkey: pubkey,
+                me: me,
+                eventIdsJson: eventIdsJson,
+                lastCreatedAt: lastCreatedAt,
+                lastSeenAt: lastSeenAt,
+                snapshotDigest: snapshotDigest,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$LinkPeersTable, LinkPeer>(table),
+                  BaseReferences<_$AppDatabase, $LinkPeersTable, LinkPeer>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LinkPeersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LinkPeersTable,
+      LinkPeer,
+      $$LinkPeersTableFilterComposer,
+      $$LinkPeersTableOrderingComposer,
+      $$LinkPeersTableAnnotationComposer,
+      $$LinkPeersTableCreateCompanionBuilder,
+      $$LinkPeersTableUpdateCompanionBuilder,
+      (LinkPeer, BaseReferences<_$AppDatabase, $LinkPeersTable, LinkPeer>),
+      LinkPeer,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7665,4 +9669,8 @@ class $AppDatabaseManager {
       $$RejectedVersionsTableTableManager(_db, _db.rejectedVersions);
   $$RecordHistoryTableTableManager get recordHistory =>
       $$RecordHistoryTableTableManager(_db, _db.recordHistory);
+  $$LinkChannelsTableTableManager get linkChannels =>
+      $$LinkChannelsTableTableManager(_db, _db.linkChannels);
+  $$LinkPeersTableTableManager get linkPeers =>
+      $$LinkPeersTableTableManager(_db, _db.linkPeers);
 }

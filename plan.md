@@ -636,9 +636,10 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 1. Pure codec + crypto (`lib/core/link/`): link URI, HKDF (`kLinkSaltV1`), envelope (gzip + AES-GCM, AAD), sharding plan (`kLinkContentBudget` 60 000)
 - [x] 2. Mini Nostr client (event id / BIP-340 — verify native only, Leo 2026-10-17; frames, `RelayConnection` + WebSocket adapter, `NostrRelayPool`, `replaced:` handling) + `test/helpers/fake_relay_network.dart`
-- [ ] 3. Schema v15 (`link_channels`, `link_peers`, `link_author`) + `LinkDao` + migration test
-- [ ] 4. Policy: `GroupPolicy`, `RecordGate` link path, engines skip link-only groups
+- [x] 3. Schema v15 (`link_channels`, `link_peers`, `link_author`) + `LinkDao` + migration test
+- [ ] 4. Policy: `GroupPolicy`, `RecordGate` link path, engines skip link-only groups; local adoption (`adoptLocalLedger`) must keep / skip link groups (it doesn't copy `link_channels` / `link_peers` yet)
 - [ ] 5. `LinkSyncEngine` (**gate: retention check 2026-10-20 must pass**)
+      — wire `link_author` into models / companions / payloads (a companion without it keeps the old value — set it explicitly, also null)
       — also: per-relay backoff/block policy after `rate-limited:` / `blocked:`, publish debounce, monotonic `created_at`, NIP-09 delete, NIP-11 (left out of step 2)
 - [ ] 6. Invite UI (sheet, QR, share, disclosure)
 - [ ] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`)
@@ -751,7 +752,7 @@ chained to it is never offered → "nothing to go back to".
 
 ## Usability review 2026-10-17 (`docs/usability-review.md`, U1–U31)
 
-Proposed by the review; order + scope to confirm with Leo (§4 of the review).
+Leo 2026-10-17: **no store hurry — finish everything first**; people are entered when creating a group + the UI says "Personen" throughout (G64); single deletes keep the confirm dialog **plus** an undo snackbar (G67); exchange rates manual **with a button to fetch the current rate** (any source; G73). Open: notifications (G72), payment details / GiroCode.
 
 ### G63. Correctness + texts before release (U11, U5, U3, U29, U14) 🔴
 - [ ] **U11:** editing an expense that involves a former member drops them
@@ -775,7 +776,7 @@ Proposed by the review; order + scope to confirm with Leo (§4 of the review).
       default from the device region
 
 ### G67. Undo + understandable errors (U13, U25, U15) 🟠
-- [ ] Undo snackbar for delete / record payment, *Delete* in the edit form,
+- [ ] Undo snackbar for delete (confirm dialog stays — Leo) / record payment, *Delete* in the edit form,
       `describeActionError` instead of raw "Failed: …" (29 places), detail
       sheet in read-only groups
 
@@ -802,6 +803,10 @@ Proposed by the review; order + scope to confirm with Leo (§4 of the review).
 ### G73. Manual exchange rates (U18) 🟢
 - [ ] Fixed rates per group in the signed meta, "settle in {currency}" — wire
       change → bundle with G57 after G52/G53
+- [ ] *Fetch current rate* button (Leo 2026-10-17: any source): only on tap,
+      never automatic; source named in the dialog + PRIVACY.md / in-app
+      privacy text (a third-party request leaves the device — G43 promise
+      wording must be adjusted); pick a keyless source without tracking
 
 ---
 

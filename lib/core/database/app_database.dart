@@ -20,6 +20,9 @@ class Groups extends Table {
   // G47: the group's custom expense categories (JSON list, the wire
   // `categories` verbatim); NULL = none. Part of the signed meta when set.
   TextColumn get categoriesJson => text().nullable()();
+  // G52: the writer's link-group participant (wire `by`) — see
+  // Expenses.linkAuthor.
+  TextColumn get linkAuthor => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {roomId};
@@ -55,6 +58,11 @@ class Expenses extends Table {
   // G37: cached G27 content hash (SHA-256 hex of the canonical content),
   // written by the DAO's LWW upsert; NULL = compute on demand.
   TextColumn get versionHash => text().nullable()();
+  // G52: author hint of a version written in a link group — the writer's
+  // `link_channels.my_participant_id` (wire `by`). Unsigned, display-only
+  // ("Changed by Ben, via link"), **not** part of the signed body or the
+  // G27 hash; NULL = none.
+  TextColumn get linkAuthor => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -81,6 +89,8 @@ class Settlements extends Table {
   TextColumn get settlementDate => text().nullable()();
   // G37 — see Expenses.versionHash.
   TextColumn get versionHash => text().nullable()();
+  // G52 — see Expenses.linkAuthor.
+  TextColumn get linkAuthor => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -108,9 +118,96 @@ class Members extends Table {
   // G6 — see Groups.
   TextColumn get sig => text().nullable()();
   BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
+  // G52 — see Expenses.linkAuthor.
+  TextColumn get linkAuthor => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {groupId, userId};
+}
+
+/// G52: this device's **link channel** of a link group (no-login sharing
+/// over Nostr relays, `docs/design/no-login-sharing.md` §7.1) — at most one
+/// per group. Device-local, per ledger DB; never synced, never in a backup
+/// file (the secret travels in the group meta, §7.2) and dropped with the
+/// group ([AppDatabase.purgeGroup]).
+///
+/// **Secrets:** [secret] (the link secret = the group's read / write key)
+/// and [nostrPriv] (this device's per-group Nostr signing key) live here,
+/// protected like the Matrix session and the ledger itself (app-private
+/// storage, Android backup off — G32). Never log them.
+class LinkChannels extends Table {
+  TextColumn get groupId => text()();
+
+  /// Key epoch of [secret] (a *Reset invite link* starts a new one).
+  IntColumn get epoch => integer()();
+
+  /// The link secret (32 bytes, base64url without padding — the link's `k`):
+  /// a cache of the meta's `link.secret` for [epoch].
+  TextColumn get secret => text()();
+
+  /// Who this device is in the group ("Which participant are you?"); NULL
+  /// until picked. Device-local — never a synced claim (§6.1).
+  TextColumn get myParticipantId => text().nullable()();
+
+  /// This device's secp256k1 Nostr private key for this group (64 hex
+  /// chars) — random per (device, group), not derived from [secret] (§3.1).
+  TextColumn get nostrPriv => text()();
+
+  /// Change detection: digest of the snapshot we last published (NULL =
+  /// nothing published yet).
+  TextColumn get lastPublishedHash => text().nullable()();
+
+  /// When we last published (ms epoch, our clock; 0 = never) — drives the
+  /// 10-day refresh.
+  IntColumn get lastPublishedAt => integer().withDefault(const Constant(0))();
+
+  /// The Nostr `created_at` (**seconds**) of our latest event — kept
+  /// strictly increasing per (pubkey, d) (§4.5; 0 = none yet).
+  IntColumn get lastCreatedAt => integer().withDefault(const Constant(0))();
+
+  /// How many parts our last snapshot was sharded into (1, 2, 4 or 8, §5.4)
+  /// — needed to retire parts when the count shrinks.
+  IntColumn get parts => integer().withDefault(const Constant(1))();
+
+  /// When this device opened / joined the channel (ms epoch).
+  IntColumn get openedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {groupId};
+}
+
+/// G52: every other publisher (Nostr pubkey) seen on a link group's channel
+/// — dedup of processed events and the per-peer sync detail (§4.3, §5.3).
+/// Device-local, dropped with the group / its channel.
+class LinkPeers extends Table {
+  TextColumn get groupId => text()();
+
+  /// The publisher's Nostr pubkey (x-only, 64 hex chars).
+  TextColumn get pubkey => text()();
+
+  /// The participant the publisher's latest event names as its `me` — a
+  /// hint only ("used on another phone"); NULL = none.
+  TextColumn get me => text().nullable()();
+
+  /// The id of the latest event processed **per part** (JSON object
+  /// `{"<part index>": "<event id>"}`): a sharded snapshot is several
+  /// events, each skipped before decrypting once seen.
+  TextColumn get eventIdsJson => text().withDefault(const Constant('{}'))();
+
+  /// Newest Nostr `created_at` (seconds) seen from this publisher (any part)
+  /// — the base of the live subscription's `since`.
+  IntColumn get lastCreatedAt => integer().withDefault(const Constant(0))();
+
+  /// When this device last received an event of it (ms epoch, our clock) —
+  /// "Ben's phone last published …".
+  IntColumn get lastSeenAt => integer().withDefault(const Constant(0))();
+
+  /// Digest of the publisher's snapshot as last merged (to compare with
+  /// ours: "Ben has everything", §5.3); NULL = unknown.
+  TextColumn get snapshotDigest => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {groupId, pubkey};
 }
 
 /// G6: every (user, device) → Ed25519 key binding this device has seen —
@@ -230,6 +327,8 @@ class AppSettings extends Table {
     KnownDeviceKeys,
     RejectedVersions,
     RecordHistory,
+    LinkChannels,
+    LinkPeers,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -297,7 +396,8 @@ class AppDatabase extends _$AppDatabase {
   });
 
   /// Removes every local row of [groupId] — group meta, participants,
-  /// expenses, settlements (tombstones included) and peer sync bookkeeping —
+  /// expenses, settlements (tombstones included), peer sync bookkeeping and
+  /// (G52) its link channel + link peers —
   /// in one transaction (G9 leave / delete). Device-local: nothing is sent.
   Future<void> purgeGroup(String groupId) => transaction(() async {
     await (delete(groups)..where((t) => t.roomId.equals(groupId))).go();
@@ -312,10 +412,13 @@ class AppDatabase extends _$AppDatabase {
     )..where((t) => t.groupId.equals(groupId))).go();
     // G48: a left / deleted group's version history goes with it.
     await (delete(recordHistory)..where((t) => t.groupId.equals(groupId))).go();
+    // G52: and its link channel (incl. the secret + Nostr key) and peers.
+    await (delete(linkChannels)..where((t) => t.groupId.equals(groupId))).go();
+    await (delete(linkPeers)..where((t) => t.groupId.equals(groupId))).go();
   });
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -338,6 +441,20 @@ class AppDatabase extends _$AppDatabase {
         if (settlementDateAdded) return;
         settlementDateAdded = true;
         await m.addColumn(settlements, settlements.settlementDate);
+      }
+
+      // G52 (v15): the `link_author` columns — same reason again (the v8
+      // backfill reads expenses + settlements, the v12 one all four record
+      // tables with today's columns). A DB older than v2 created `members`
+      // in today's shape already.
+      var linkAuthorsAdded = false;
+      Future<void> addLinkAuthors() async {
+        if (linkAuthorsAdded) return;
+        linkAuthorsAdded = true;
+        await m.addColumn(groups, groups.linkAuthor);
+        await m.addColumn(expenses, expenses.linkAuthor);
+        await m.addColumn(settlements, settlements.linkAuthor);
+        if (from >= 2) await m.addColumn(members, members.linkAuthor);
       }
 
       // v2 (Phase B): add the local membership table. Existing
@@ -424,6 +541,7 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(settlements, settlements.versionHash);
         await addExpenseDate();
         await addSettlementDate();
+        await addLinkAuthors();
         await backfillVersionHashes(this);
       }
       // v9 (G18 review): device-key attestations are scoped to the group
@@ -472,6 +590,7 @@ class AppDatabase extends _$AppDatabase {
         await m.createIndex(recordHistoryRecord);
         await addExpenseDate();
         await addSettlementDate();
+        await addLinkAuthors();
         await backfillRecordHistory(this);
       }
       // v13 (G49): the optional expense date (nullable — existing expenses
@@ -497,6 +616,16 @@ class AppDatabase extends _$AppDatabase {
             "DELETE FROM rejected_versions WHERE kind = 'settlement'",
           );
         }
+      }
+      // v15 (G52 no-login link groups): this device's link channels + the
+      // publishers seen on them (both start empty), and the unsigned,
+      // unhashed `link_author` hint per record version (NULL for every
+      // existing row — signatures and G27 hashes are unchanged, so no
+      // refusals need forgetting).
+      if (from < 15) {
+        await addLinkAuthors();
+        await m.createTable(linkChannels);
+        await m.createTable(linkPeers);
       }
     },
     beforeOpen: (_) async {

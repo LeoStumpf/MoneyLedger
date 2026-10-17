@@ -163,7 +163,7 @@ Leo owns his own code, but the binary combines AGPL code he doesn't own: the `ma
 - **Filter.** `{"kinds":[31847], "#d":[<topics of all my link groups and their parts>]}`, one `REQ` per relay. Single-letter tags are indexed by relays (NIP-01). Relay limits: `max_subscriptions` 20 (nos.lol), 50 (nostr.mom); `max_limit` 500 per filter.
 - **Live, app in the foreground.** One WebSocket per relay and one subscription covering all groups. `since` is set to the newest `created_at` seen minus 60 s. The subscription is re-issued when the group set changes, closed 30 s after the app is paused and reopened on resume. Reconnects back off: 2 s → 4 → … → 5 min, plus jitter.
 - **Full fetch** (on join, on app start, on "pull to refresh"): `REQ` without `since`, wait for `EOSE` (timeout 10 s per relay), then `CLOSE`. (G52 step 2: the 10 s include connecting; a publish waits up to 10 s per relay for its `OK`, connecting included.)
-- **Dedup.** `link_peers` stores the last event id per (group, pubkey). An event already processed is skipped before decrypting.
+- **Dedup.** `link_peers` stores the last event id per (group, pubkey, part). An event already processed is skipped before decrypting.
 - **Own events.** Skip our own pubkey; re-reading it only confirms that a relay holds it, which `link_relay_state` records.
 
 ### 4.4 Publishing
@@ -324,18 +324,27 @@ The group policy is derived from the stored **meta**:
 
 ## 7. Data model, backups, deletion
 
-### 7.1 Schema v14
+### 7.1 Schema v15
+
+(Drafted as "v14"; G60 took v14, so the link schema is **v15** — G52 step 3, `lib/core/database/app_database.dart` + `LinkDao`.)
 
 ```
 link_channels (group_id PK, epoch INT, secret TEXT /*base64url*/,
                my_participant_id TEXT NULL, nostr_priv TEXT /*hex*/,
-               last_published_hash TEXT NULL, last_published_at INT,
-               last_created_at INT, parts INT DEFAULT 1, opened_at INT)
+               last_published_hash TEXT NULL, last_published_at INT DEFAULT 0,
+               last_created_at INT DEFAULT 0 /*seconds*/, parts INT DEFAULT 1,
+               opened_at INT)
 link_peers    (group_id, pubkey, PK(group_id,pubkey), me TEXT NULL,
-               last_event_id TEXT, last_created_at INT, last_seen_at INT,
-               snapshot_digest TEXT NULL)
-expenses.link_author / settlements.link_author / members.link_author  TEXT NULL
+               event_ids_json TEXT DEFAULT '{}' /*{"<part>": "<event id>"}*/,
+               last_created_at INT DEFAULT 0 /*seconds*/,
+               last_seen_at INT DEFAULT 0, snapshot_digest TEXT NULL)
+groups.link_author / expenses.link_author / settlements.link_author /
+members.link_author  TEXT NULL
 ```
+
+- **Step 3 refinements.** `link_peers.last_event_id` became a per-part map (`event_ids_json`): a sharded snapshot is up to 8 events per publisher, each deduped on its own (§4.3). `me` / `snapshot_digest` follow the publisher's newest event; `last_created_at` / `last_seen_at` only move forward. `groups.link_author` was added too, since a meta version written in a link group also carries `by` (§6.3). All `link_author` values are NULL after the migration; the column is outside the signed body and the G27 hash.
+- `link_channels.last_created_at` is advanced by `LinkDao.nextCreatedAt` (`max(nowSec, last + 1)`, stored before use, §4.5) and `bumpCreatedAt` (after `replaced:`, §4.4).
+- Both tables are device-local: never synced, never in a backup file, dropped by `purgeGroup` (and `wipeAll`). `secret` and `nostr_priv` are secrets in the per-account DB (same protection as the Matrix session; Android backup off, G32) and are never logged (`LinkChannelModel.toString` omits them).
 
 - Relay list: `AppSettings` `link_relays` (JSON list; defaults when absent), per ledger DB.
 - Per-relay status: `AppSettings` `link_relay_state:<url>` with NIP-11 cache, last OK and last rejection.
@@ -644,7 +653,7 @@ Each step is a commit with tests. The fakes come first.
 **G52 — link groups**
 1. **Pure codec + crypto** (`lib/core/link/`): link URI build / parse (versions, bad input), HKDF derivation (fixed test vectors), envelope pack / unpack (AAD binding, tamper → error), sharding plan. Unit tests.
 2. **Mini Nostr client:** event serialize / id / sign / verify (BIP-340 test vectors + NIP-01 id vectors), frame codec, `RelayConnection` port + WebSocket adapter, `NostrRelayPool` (publish → per-relay OK, subscribe, fetchOnce, backoff). `test/helpers/fake_relay_network.dart` with addressable semantics, limits, injected failures, `settle()`.
-3. **Schema v14** (`link_channels`, `link_peers`, `link_author` columns) + `LinkDao` + migration test.
+3. **Schema v15** (`link_channels`, `link_peers`, `link_author` columns) + `LinkDao` + migration test.
 4. **Policy:** `GroupPolicy` derived from meta; `RecordGate` link path (§6.4); `currentParticipant` fallback; `SyncEngine` / `LedgerSyncer` skip `linkOnly`; `signPendingRows` / adoption skip link groups. Unit tests for each rule (accept unsigned, refuse bad signature, invalid content, wrong group, future clock, claim refused in `linkOnly`).
 5. **`LinkSyncEngine`:** open channel (rewrite the `local:self` claim), debounced publish, monotonic `created_at`, change detection, refresh, live subscription, merge, `link_peers`, sync status. Integration tests with 2–3 fake devices: concurrent edits, tombstones, an offline device catching up, a stale publisher, sharding up and down, one relay rejecting / rate-limiting, a G19 account switch mid-publish.
 6. **Invite UI:** sheet, QR, share / copy, first-use disclosure, empty-group CTA. Widget tests (EN+DE).
