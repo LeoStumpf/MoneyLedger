@@ -647,6 +647,8 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [ ] Decide: snapshot restore "exactly this state" (overwrite newer content)?
 - [ ] Decide: encrypt snapshot files (plaintext like the DB today)
 - [ ] Concurrent resets by two members converge per record (mix) — merge UI?
+- [ ] A peer's live record within 30 s of a bootstrap is absorbed into the base
+      batch (history doesn't record message type / relaying sender)
 
 ### G59. Smarter split defaults (Leo, 2026-10-17) 🟡
 Switching split modes or editing amounts today starts from blanks; make the
@@ -679,7 +681,7 @@ Switching split modes or editing amounts today starts from blanks; make the
 is resettable only if the meta appeared in an *earlier* batch, so the first
 batch (v12 `initial` backfill, group creation, bootstrap) plus every change
 chained to it is never offered → "nothing to go back to".
-- [ ] Never merge `initial` / meta-creation entries with later changes (and/or
+- [x] Never merge `initial` / meta-creation entries with later changes (and/or
       split batches when the editor changes); regression test with the
       DEV-H repro (update → edits within 10 min → reset offered)
 
@@ -740,7 +742,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G48 — restore points + revert
 - [x] G49 — expense date
 - [x] G59 — smarter split defaults (prefill from current split, "fill the rest")
-- [ ] G62 — reset page empty after update / new group (found in DEV-H)
+- [x] G62 — reset page empty after update / new group (found in DEV-H)
 - [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
 - [ ] G51 — Nostr spike
 - [ ] G52 — link groups implementation
