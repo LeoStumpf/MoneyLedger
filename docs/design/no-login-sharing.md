@@ -437,6 +437,79 @@ Public relays exist for social notes. Some operators may not want opaque app blo
 
 **Decided (2026-10-17, §14 Q12):** operators are **not** contacted. Condition: no grey zone — G51 first reads each default relay's published policy / terms (NIP-11 `posting_policy`, nos.lol's linked terms, damus / primal pages). A relay whose terms exclude app data or opaque encrypted blobs is dropped from the defaults and replaced by one that explicitly allows it (Leo is asked before the replacement). Fallback if relays become a problem: a self-hosted relay entered as the custom relay (Nostr is an open network, any relay works). The in-app disclosure (§9.2) and the "For relay operators" page stay.
 
+### 9.4 Relay terms check (G51, 2026-10-17)
+
+Read-only check, nothing was published. For each relay: the NIP-11 document
+(`curl -s -H 'Accept: application/nostr+json' https://<host>`), every
+`terms_of_service` / `posting_policy` / `privacy_policy` link in it, the relay's
+own HTML page, and the operator's public terms pages. **No relay checked has a
+NIP-11 `posting_policy` or `retention` field**, and none declares
+`restricted_writes`, `auth_required` or `relay_countries` (except the paid ones).
+
+**Classes** (bar from §14 Q12, "no grey zone"):
+- **ALLOWED** = the operator publishes terms / a policy for this relay, and nothing
+  in it restricts app data, encrypted content or non-social kinds, and we stay
+  inside its stated limits.
+- **GREY** = no published terms for the relay, social-only framing, or terms whose
+  scope over the relay is unclear.
+- **EXCLUDED** = the terms forbid our use, or the relay needs payment / auth /
+  a whitelist, or it is technically unfit (no storage, frame too small).
+
+| Relay | Class | Terms source | Limits (NIP-11) | Notes |
+|---|---|---|---|---|
+| **relay.damus.io** (current default) | **GREY** | none — NIP-11 has no terms field; `damus.io/terms`, `/privacy`, `/eula` → 404 | frame 1 000 000, subs 200, NIP-40 ✓ | Only the Damus *app* EULA exists, scoped to "our mobile application Damus" |
+| **nos.lol** (current default) | **ALLOWED** | NIP-11 `terms_of_service` → wikifreedia.xyz/nos.lol | frame **131 072**, subs 20, NIP-40 ✓ | No kind / content restriction; rate limits by pubkey and fresh keys |
+| **relay.primal.net** (current default) | **GREY** (leans allowed) | none in NIP-11; company ToS primal.net/terms (Primal Systems Inc.) | frame 1 000 000, subs 20, NIP-40 ✓ | ToS covers "Services, including but not limited to" the apps; the relay isn't named. If it applies, it only forbids illegal / harmful content |
+| nostr.mom | **ALLOWED** | NIP-11 `terms_of_service` → wikifreedia.xyz/nostr.mom | frame 131 072, subs 50, NIP-40 ✓ | **Same operator as nos.lol** (same NIP-11 pubkey `c5fadeb5…`, same wiki author); "stricter" spam + nudity filter |
+| relay.nostr.net | GREY | none (description only, contact nostr.net = a link list) | frame 262 144, subs 100, `max_limit` 100, NIP-40 ✓ | "public relay operated by aljaz@nostr.si" |
+| offchain.pub | GREY | none (description only) | frame 131 072, subs 20, NIP-40 ✓ | "public nostr relay running strfry"; same NIP-11 pubkey as nostr.bitcoiner.social |
+| nostr.oxtr.dev | GREY | none (description is a motto) | frame 131 072, subs 40, NIP-40 ✓ | — |
+| relay.nos.social | GREY | relay page only | frame 262 144, NIP-40 ✓ | "supports both reading and writing of notes … It is FREE to use" — social framing |
+| relay.nostr.place | GREY | NIP-11 description only | frame 131 072, NIP-40 ✓ | "Public strfry instance, don't be a dick." — a one-liner, not terms |
+| relay.snort.social | EXCLUDED (technical) | none | frame 524 288, `idle_timeout` 10, NIPs 1/9/11 only | "High-performance **in-memory** Nostr relay" (memlay): no NIP-40, no persistence promise |
+| relay.nostr.band | EXCLUDED (unreachable) | — | — | No HTTP / NIP-11 answer on 2026-10-17 |
+| nostr-pub.wellorder.net | EXCLUDED | NIP-11 description | — | "Relay for the (**NIP-05 verified**) Nostr community" — our keys are anonymous |
+| relay.nostrcheck.me | EXCLUDED (limits) | ToS link (didn't load) | **`max_content_length` 8 196** | Content limit far below our snapshots |
+| nostr.wine | EXCLUDED | nostr.wine/terms | `payment_required`, `restricted_writes` | Paid ("admission" 18 888 sats) |
+| nostr.land | EXCLUDED | nostr.land/terms | `payment_required`, frame 65 535 | Paid; terms forbid "Storage of large non-Nostr blobs" |
+| nostr21.com, theforest.nostr1.com | EXCLUDED | `#policy` | `payment_required` | Paid / community relay |
+
+**Verbatim quotes**
+
+- **relay.damus.io** — NIP-11 (https://relay.damus.io): `"description":"Damus strfry relay"`, `"contact":"jb55@jb55.com"`; no `terms_of_service`, `posting_policy` or `privacy_policy`. The relay's HTML page only says "Please use a Nostr client to connect." The only legal text found is the iOS app's EULA (https://github.com/damus-io/damus/blob/master/damus/Features/Onboarding/Views/EULAView.swift): *"This End User License Agreement ("EULA") is a legal agreement between you and Damus Nostr Inc. for the use of our mobile application Damus."* Its prohibited-content list ("discriminatory or promotes hate speech" …) is about the app and doesn't mention relays, kinds or encryption. → Terms are **silent** about the relay: GREY.
+- **nos.lol** — NIP-11 (https://nos.lol): `"description":"Generally accepts notes, except spammy ones."`, `"terms_of_service":"https://wikifreedia.xyz/nos.lol/"`. The linked entry (https://wikifreedia.xyz/nos.lol/npub1nlk894teh248w2heuu0x8z6jjg2hyxkwdc8cxgrjtm9lnamlskcsghjm9c, published 2026-09-01, the only entry on that topic):
+  > "Intended for end user and also high quality proxies, aggregators and blasters. It does rate limiting based on public key (npub). Counts the number of notes sent by a public key and if this number gets too high, first it will say it needs proof of work to accept the notes (practically rejecting). Then if the user continues to send events, it will silently reject. It doesn't like spammy, repetitive text. It will tell the user to slow down first and then after some point will stop responding. Does not currently do filtering of notes based on content. It doesn't like URLs and pictures from fresh public keys because these are main points of spam or NSFW. […] If a user or relay sends events with fresh public keys, it may switch to rate limiting based on IP. […] Only recent logs are kept on the server (A few gigabytes). Administration is done by a human and AI agents. If you worry about your IP leaking to AI companies, use a VPN. Please keep the relay clean, use ethically and responsibly."
+
+  → No kind, content or encryption restriction; the rules are about volume and spam. We comply: a few replaceable events per hour per group, no URLs / pictures, content not repetitive text. **Caveats:** (1) every (device, group) key is a *fresh* public key, which the policy says may switch the relay to **IP-based rate limiting** — G51 E6 must measure it with several groups from one IP; (2) "notes" is used loosely for events (the text says "send events" in the same paragraph); (3) the terms are a wiki entry that the author can change at any time.
+- **relay.primal.net** — NIP-11 (https://relay.primal.net): `"description":"Primal Public Relay"`, `"contact":"primal.net"`; no terms field. Company ToS (https://primal.net/terms, "LAST UPDATED FEBRUARY 19, 2024"; the page is client-rendered, text read from its bundle `assets/Terms-*.js`):
+  > "This Agreement is between you and Primal Systems Inc., an Ontario corporation […], pertaining to your use of Primal's applications and services, including but not limited to the Primal web app, Primal iOS app, Primal Android app, Primal browser extension, Primal Premium Service, or Primal Hosted Wallet Service (collectively referred to as "Services")."
+
+  > "Prohibited content: You agree not to use our Services to create, upload, post, send, store, or share any content that is illegal, infringing, fraudulent, harmful, threatening, abusive, hateful, harassing, defamatory, obscene, or invasive of another's privacy. […]"
+
+  > "Content ownership: You retain all your ownership rights to the content you create. However, by submitting content to Primal, you hereby grant Primal Systems Inc. a worldwide, non-exclusive, royalty-free, sublicensable and transferable license to use, reproduce, distribute […] the content in connection with our Services […]"
+
+  The Privacy Policy (https://primal.net/privacy, 2024-02-21) also scopes itself to "any Primal products and services, including but not limited to" the apps; it says nothing about the relay. → If the ToS covers the relay, nothing in it restricts encrypted app data. But it never names the relay and the relay's NIP-11 doesn't link it, so whether it applies is **ambiguous**: GREY (the mildest kind).
+- **nostr.mom** — NIP-11 (https://nostr.mom): `"description":"Spam and nudity filtering. Stricter and more experimental than nos.lol."`, `"terms_of_service":"https://wikifreedia.xyz/nostr.mom/"`. Linked entry (same author as nos.lol): *"Most filtering and operation is similar to nos.lol. Filtering is a bit stricter. Read nos.lol wiki entry to learn more."* → ALLOWED on the same terms as nos.lol, with the same caveats. "Experimental" means acceptance can change more often.
+- **relay.nos.social** — https://relay.nos.social: *"Relay.nos.social is a unique relay within the Nostr ecosystem that supports both reading and writing of notes as well as the functionality of the Tagr-bot. At a baseline all the users who subscribe to the wss://relay.nos.social can write to and read content from the relay. It is FREE to use."* → describes social notes and content moderation; silent on app data: GREY.
+- **nostr.land** — https://nostr.land/terms: *"You may not use the Nostr.land services to store or disseminate following content: […] Storage of large non-Nostr blobs"*; NIP-11 `"payment_required":true`. → EXCLUDED (paid; also, an encrypted snapshot could be read as a "non-Nostr blob").
+- **nostr.wine** — https://nostr.wine/terms: *"That some services, such as but not limited to the privilege to publish content may require payment(s)"*; NIP-11 `"payment_required":true,"restricted_writes":true`. → EXCLUDED (paid).
+- **nostr-pub.wellorder.net** — NIP-11: `"description": "Relay for the (NIP-05 verified) Nostr community."` → EXCLUDED.
+
+**Limits that matter for the budget (§5.4).** Of the ALLOWED relays, nos.lol and nostr.mom both cap the frame at **131 072 bytes**. The 100 000-char `content` budget fits: about 1 KB of envelope and tags leaves ≈ 130 000 bytes. "~100 KB" therefore means at most ~100 000 base64 chars, i.e. ≈ 73 KB of gzip'd ciphertext, never 100 KB of binary. Typical 20–30 KB events are far below it. Every checked relay supports NIP-40. None publishes a retention period: nos.lol only says "Only recent logs are kept", which is about logs, not events. So retention stays a G51 E7 measurement.
+
+**Result: the "no grey zone" condition fails for two of the three current defaults.** relay.damus.io has no published terms for the relay at all. relay.primal.net has only a company-wide ToS that doesn't name the relay. **This is a stop point for Leo (§14 Q3/Q12).** Only nos.lol and nostr.mom are ALLOWED, and they share **one operator**: one policy change or outage hits both. No free, independent third public relay was found whose terms allow (or even address) this use. The free relays either publish nothing or describe themselves for social "notes". The relays with real terms are paid or forbid blobs. **Three independent ALLOWED free relays are not available today.**
+
+**Recommendation (for Leo to choose; the defaults are not changed until then):**
+- **Option A — strict (recommended if "no grey zone" is literal):** defaults = **nos.lol + nostr.mom + a relay Leo runs himself** (strfry, on his own server or a small VPS), with a published one-page policy that explicitly allows kind 31847 and states its limits and retention. The custom-relay setting stays. Costs: one more service to run and pay for, plus a legal / privacy role as operator (the relay sees IPs, so PRIVACY.md must name Leo as relay operator). It also weakens the "no MoneyLedger server" claim (welcome page 2, G39), so the wording must change to "an optional relay run by the developer, one of three". Damus and Primal are dropped.
+- **Option B — no own server:** defaults = **nos.lol + nostr.mom + relay.primal.net**, if Leo accepts the reading that Primal's company ToS ("services, including but not limited to …") covers its "Primal Public Relay". Read that way, the ToS restricts only illegal / harmful content, and our use is allowed. Damus is dropped either way (it has no terms at all). The risk is that two of the three defaults have one operator, so G52's "rejects our events" status must cope with losing both at once.
+- **Not recommended:** keeping damus (silent terms), any description-only relay (relay.nostr.net, offchain.pub, nostr.oxtr.dev, relay.nostr.place), or paid relays (users are anonymous, there is no payment flow).
+- Whichever option is chosen: re-run this check before release and on every change to the default list. G52's NIP-11 discovery (§4.6) should store each relay's `terms_of_service` URL and show it in the relay settings.
+
+**Disclosure text (§9.2) with the chosen set**, e.g. for option B:
+> "Shared groups sync through public Nostr relays: nos.lol and nostr.mom (one operator) and relay.primal.net (Primal Systems Inc.). They are independent services with their own terms (linked in Settings → Relays). They store your group encrypted — only people with the link can read it. The relays see your IP address and when you sync, and may keep data longer than the 30 days we ask for. Anyone with the link can see and change the group. Want accounts and verified devices? Use Matrix (secure mode)."
+
+For option A, replace the relay clause with "nos.lol and nostr.mom (one operator) and a relay run by the MoneyLedger developer". PRIVACY.md lists each default relay with its operator and terms URL: wikifreedia.xyz/nos.lol, wikifreedia.xyz/nostr.mom, primal.net/terms (or the own relay's policy page). The "For relay operators" page stays: kind 31847, the `alt` tag, volume, and how to block.
+
 ## 10. Mixed groups, lock, and "Why Matrix" (G53, G54)
 
 ### 10.1 Mixed groups and lock (G53)
@@ -596,7 +669,7 @@ Each step is a commit with tests. The fakes come first.
 **Open questions — decided by Leo on 2026-10-17**
 1. **App key (W5):** → **Public salt** `kLinkSaltV1` (no secret key; §3.4).
 2. **Event kind:** → **`31847`**; registering it in the NIPs repo is optional, later.
-3. **Default relays:** → damus, nos.lol, primal, every event to all three; **no** `r=` relay hints in v1; a custom relay is an expert setting.
+3. **Default relays:** → damus, nos.lol, primal, every event to all three; **no** `r=` relay hints in v1; a custom relay is an expert setting. **G51 terms check (§9.4): damus and primal are GREY — the defaults must change; options A / B there, pending Leo.**
 4. **Group name hint `n=`:** → **Yes.**
 5. **Landing page + App Links:** → **Yes**, as a `LeoStumpf.github.io` user-site repo **shared by all of Leo's apps** (per-app path `/moneyledger/…`, one `assetlinks.json` with a statement per package). Created in G52 once the link handler exists.
 6. **In-app QR scanner:** → **No**; the system camera opens the link.
@@ -605,7 +678,7 @@ Each step is a commit with tests. The fakes come first.
 9. **Channel opens only on the first invite:** → **Yes.**
 10. **Reset invite link:** → **In the first version (G52)**, new link shared directly with the remaining people (§7.3).
 11. **Web app:** → **Yes**, same code, live only while the tab is open.
-12. **Ask relay operators:** → **No.** Disclosure in the app + the "For relay operators" page; **condition: no grey zone** — G51 checks each relay's terms first (§9.3), a relay that excludes this use is replaced; self-hosted relay as the fallback.
+12. **Ask relay operators:** → **No.** Disclosure in the app + the "For relay operators" page; **condition: no grey zone** — G51 checks each relay's terms first (§9.3), a relay that excludes this use is replaced; self-hosted relay as the fallback. **Result: see §9.4** (only nos.lol + nostr.mom, one operator, are ALLOWED).
 13. **Matrix users' new groups:** → stay `matrix` groups; *Invite by link* opens a mixed channel (G53).
 14. **Expiry:** → **30 days, refreshed after 10 days of age** (changed from the proposed 60 / 20).
 

@@ -609,9 +609,12 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       via link, G53); **expiry 30 days, refreshed after 10**
 
 ### G51. Nostr spike 🟡
-- [ ] **First:** read each default relay's published terms / policy (NIP-11
+- [x] **First:** read each default relay's published terms / policy (NIP-11
       `posting_policy`, linked terms); a relay excluding app data / encrypted
       blobs → propose a replacement to Leo (stop point)
+      → done 2026-10-17 (design doc §9.4): nos.lol + nostr.mom ALLOWED (same
+      operator), damus + primal GREY → **waiting for Leo** (option A: own
+      relay, option B: accept primal's company terms)
 - [ ] Two devices exchange a snapshot via 2–3 public relays (kind 31847,
       30-day expiry); measure latency, size limits, retention over a few days
       (design doc §12)
