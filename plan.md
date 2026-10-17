@@ -531,9 +531,11 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [x] Android: `dependenciesInfo { includeInApk = false; includeInBundle = false }`
 - [x] Release builds: silence `debugPrint` (logcat holds MXIDs / homeservers)
 
-- [ ] Follow-up: confirm with `apksigner`/F-Droid scanner that the release
-      APK has no dependency-info block; optional opt-in "debug log" export
-      (release builds now log nothing, SDK only `wtf`)
+- [x] Follow-up: release APK signing block checked (2026-10-17): only the v2
+      signature (0x7109871a) + verity padding — no dependency-info block
+      (0x504b4453)
+- [ ] Optional opt-in "debug log" export (release builds now log nothing,
+      SDK only `wtf`)
 
 ### G45. Minimal Matrix footprint (goal 5) 🟠
 - [x] Minimal `syncFilter` (no rooms, presence, account data) +
