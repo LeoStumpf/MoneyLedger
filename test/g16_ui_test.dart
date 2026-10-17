@@ -192,7 +192,7 @@ void main() {
       await tester.pump();
       expect(find.text('Essen & Trinken'), findsOneWidget);
       expect(find.text('Verkehr'), findsOneWidget);
-      expect(find.text('Mit mir'), findsOneWidget);
+      expect(find.text('Betrifft mich'), findsOneWidget);
       expect(find.text('Beschreibung, Notiz, Zahler suchen'), findsOneWidget);
     });
   });

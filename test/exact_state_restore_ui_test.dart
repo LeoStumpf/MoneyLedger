@@ -137,7 +137,7 @@ void main() {
     expect(find.text('only missing entries'), findsOneWidget);
     // A new group just comes back.
     expect(find.text('new'), findsOneWidget);
-    expect(find.textContaining("can't be used"), findsOneWidget);
+    expect(find.textContaining("can't be restored"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('restoreExactSwitch')));
     await tester.pumpAndSettle();

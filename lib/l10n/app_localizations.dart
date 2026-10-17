@@ -641,13 +641,13 @@ abstract class AppLocalizations {
   /// No description provided for @splitEqual.
   ///
   /// In en, this message translates to:
-  /// **'Equal'**
+  /// **'Equally'**
   String get splitEqual;
 
   /// No description provided for @splitExact.
   ///
   /// In en, this message translates to:
-  /// **'Exact'**
+  /// **'Amounts'**
   String get splitExact;
 
   /// No description provided for @splitShares.
@@ -655,6 +655,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shares'**
   String get splitShares;
+
+  /// U14: screen-reader label + tooltip of the split mode segment shown as "%"
+  ///
+  /// In en, this message translates to:
+  /// **'Percent'**
+  String get splitPercent;
 
   /// No description provided for @splitSelectAtLeastOne.
   ///
@@ -991,6 +997,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Local · former member'**
   String get formerMemberLocal;
+
+  /// U11: marks a participant who left / was removed but is part of the edited expense (split row, payer dropdown)
+  ///
+  /// In en, this message translates to:
+  /// **'former member'**
+  String get formerMemberTag;
 
   /// No description provided for @you.
   ///
@@ -1349,7 +1361,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeserverHint.
   ///
   /// In en, this message translates to:
-  /// **'matrix.org or mozilla.modular.im'**
+  /// **'e.g. matrix.org'**
   String get homeserverHint;
 
   /// Tooltip of the button next to the homeserver field that loads the server's sign-in options (nothing is requested before the user acts).
@@ -3521,7 +3533,7 @@ abstract class AppLocalizations {
   /// Reset preview line (G48)
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 earlier version can\'t be used and stays as it is.} other{{count} earlier versions can\'t be used and stay as they are.}}'**
+  /// **'{count, plural, =1{1 earlier version can\'t be restored; that entry stays as it is.} other{{count} earlier versions can\'t be restored; those entries stay as they are.}}'**
   String resetPreviewSkipped(int count);
 
   /// Reset preview: no change (G48)
@@ -3539,7 +3551,7 @@ abstract class AppLocalizations {
   /// Reset preview: list truncated (G48)
   ///
   /// In en, this message translates to:
-  /// **'…and {count} more'**
+  /// **'… and {count} more'**
   String resetPreviewMore(int count);
 
   /// Reset preview item label (G48)

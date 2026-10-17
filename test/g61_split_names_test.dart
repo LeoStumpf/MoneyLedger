@@ -85,8 +85,8 @@ void main() {
       final lang = locale?.languageCode ?? 'en';
       // Mode segment labels (the % segment is the same in both languages).
       final modes = lang == 'de'
-          ? ['Gleich', 'Genau', 'Anteile', '%']
-          : ['Equal', 'Exact', 'Shares', '%'];
+          ? ['Gleich', 'Beträge', 'Anteile', '%']
+          : ['Equally', 'Amounts', 'Shares', '%'];
 
       testWidgets('[$lang] both long names stay readable in every mode', (
         tester,
@@ -100,6 +100,25 @@ void main() {
           _expectFullyShown(tester, _a, where: mode);
           _expectFullyShown(tester, _b, where: mode);
         }
+      });
+
+      // G63 / U14: the spelled-out mode labels fit one line at 360 dp.
+      testWidgets('[$lang] the mode labels fit on one line', (tester) async {
+        _phone(tester, scale: 0.5);
+        await pumpEditor(tester, locale);
+        for (final mode in modes.where((m) => m != '%')) {
+          final p = tester.renderObject<RenderParagraph>(find.text(mode));
+          expect(
+            p.getMaxIntrinsicWidth(double.infinity),
+            lessThanOrEqualTo(p.size.width + 0.5),
+            reason: '"$mode" wraps or is cut',
+          );
+        }
+        // "%" is read out as a word.
+        expect(
+          find.bySemanticsLabel(lang == 'de' ? 'Prozent' : 'Percent'),
+          findsWidgets,
+        );
       });
 
       testWidgets('[$lang] no overflow with the wide test font', (

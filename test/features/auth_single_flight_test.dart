@@ -106,7 +106,7 @@ void main() {
   test('the in-progress message is localized', () {
     const m = AuthErrorMessage(AuthErrorKind.inProgress);
     expect(m.title(en), 'Still signing in…');
-    expect(m.title(de), 'Die Anmeldung läuft noch…');
+    expect(m.title(de), 'Die Anmeldung läuft noch …');
     expect(m.hint(en), contains('signed in automatically'));
   });
 }

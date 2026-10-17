@@ -96,7 +96,7 @@ void main() {
       tester,
     ) async {
       await pumpEditor(tester);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       // No amount yet: the fields stay open (blank).
       expect(values(tester), ['', '']);
       expect(find.text('Enter the amount first'), findsOneWidget);
@@ -121,7 +121,7 @@ void main() {
       tester,
     ) async {
       await pumpEditor(tester, ids: ['a', 'b', 'c'], totalCents: 500);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       expect(values(tester), ['1.67', '1.67', '1.66']);
 
       await type(tester, 0, '3');
@@ -136,7 +136,7 @@ void main() {
       tester,
     ) async {
       await pumpEditor(tester, totalCents: 500);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '1');
       await type(tester, 1, '');
       expect(find.text('€4.00 left'), findsOneWidget);
@@ -153,7 +153,7 @@ void main() {
       tester,
     ) async {
       await pumpEditor(tester, totalCents: 500);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '3');
       await type(tester, 1, '2');
       expect(find.text('Adds up to the total'), findsOneWidget);
@@ -169,7 +169,7 @@ void main() {
 
     testWidgets('explicit 0 stays out of the fill', (tester) async {
       await pumpEditor(tester, ids: ['a', 'b', 'c'], totalCents: 900);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '3');
       await type(tester, 1, '0');
       await type(tester, 2, '');
@@ -180,7 +180,7 @@ void main() {
 
     testWidgets('German: status and action', (tester) async {
       await pumpEditor(tester, totalCents: 500, locale: const Locale('de'));
-      await mode(tester, 'Genau');
+      await mode(tester, 'Beträge');
       await type(tester, 0, '2,5');
       await type(tester, 1, '');
       expect(find.text('noch 2,50 € offen'), findsOneWidget);
@@ -196,7 +196,7 @@ void main() {
       await pumpEditor(tester, ids: ['a', 'b', 'c'], totalCents: 1000);
       await tester.tap(find.byType(Checkbox).at(2));
       await tester.pumpAndSettle();
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       expect(values(tester), ['5.00', '5.00', '0']);
       expect(plan!.resolve(1000).isValid, isTrue);
       expect(plan!.exact, {'a': 500, 'b': 500});
@@ -219,7 +219,7 @@ void main() {
 
     testWidgets('Exact → Shares → % stay proportional', (tester) async {
       await pumpEditor(tester, totalCents: 2000);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '15');
       await type(tester, 1, '5');
       await mode(tester, 'Shares');
@@ -227,7 +227,7 @@ void main() {
       expect(resolved('a'), 1500);
       await mode(tester, '%');
       expect(values(tester), ['75', '25']);
-      await mode(tester, 'Equal');
+      await mode(tester, 'Equally');
       expect(plan!.included, ['a', 'b']);
     });
 
@@ -235,7 +235,7 @@ void main() {
       tester,
     ) async {
       await pumpEditor(tester, totalCents: 1000);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '3.33');
       await type(tester, 1, '6.67');
       await mode(tester, 'Shares');
@@ -246,17 +246,17 @@ void main() {
 
     testWidgets('a peek returns to what was typed', (tester) async {
       await pumpEditor(tester, totalCents: 2000);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '15');
       await type(tester, 1, '5');
-      await mode(tester, 'Equal');
-      await mode(tester, 'Exact');
+      await mode(tester, 'Equally');
+      await mode(tester, 'Amounts');
       expect(values(tester), ['15', '5']);
       // A change in between converts instead.
-      await mode(tester, 'Equal');
+      await mode(tester, 'Equally');
       await tester.tap(find.byType(Checkbox).at(1));
       await tester.pumpAndSettle();
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       expect(values(tester), ['20.00', '0']);
     });
 
@@ -266,7 +266,7 @@ void main() {
       await pumpEditor(tester, totalCents: 2000);
       await mode(tester, 'Shares');
       await type(tester, 0, '3');
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       expect(values(tester), ['15.00', '5.00']);
       await type(tester, 1, '1'); // doesn't add up any more
       await mode(tester, 'Shares');
@@ -336,7 +336,7 @@ void main() {
     testWidgets('the remainder updates on every keystroke, next to the '
         'action', (tester) async {
       await pumpEditor(tester, totalCents: 1000);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '2');
       await type(tester, 1, '');
       expect(remainingText(tester), '€8.00 left');
@@ -369,7 +369,7 @@ void main() {
       tester,
     ) async {
       await pumpEditor(tester, totalCents: 1000, canSetTotal: true);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '8');
       await type(tester, 1, '5');
       expect(remainingText(tester), '€3.00 too much');
@@ -389,7 +389,7 @@ void main() {
     testWidgets('not offered when something is left, without the callback, '
         'or in other modes', (tester) async {
       await pumpEditor(tester, totalCents: 1000, canSetTotal: true);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '2');
       await type(tester, 1, '3');
       expect(remainingText(tester), '€5.00 left');
@@ -400,7 +400,7 @@ void main() {
       expect(setTotalBtn(), findsNothing);
 
       await pumpEditor(tester, totalCents: 1000);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       await type(tester, 0, '8');
       await type(tester, 1, '5');
       expect(remainingText(tester), '€3.00 too much');
@@ -411,7 +411,7 @@ void main() {
       tester,
     ) async {
       await pumpEditor(tester, canSetTotal: true);
-      await mode(tester, 'Exact');
+      await mode(tester, 'Amounts');
       expect(setTotalBtn(), findsNothing); // nothing typed
       await type(tester, 0, '4');
       await type(tester, 1, '1.5');
@@ -446,7 +446,7 @@ void main() {
       tester,
     ) async {
       await pumpEditor(tester, totalCents: 1000);
-      await mode(tester, 'Exact'); // 5.00 / 5.00
+      await mode(tester, 'Amounts'); // 5.00 / 5.00
       await mode(tester, 'Shares'); // 1 / 1 (converted)
       // Back to Exact via the action right away (a peek would also show
       // 5.00 / 5.00) — then change the shares and fine-tune again.
@@ -483,7 +483,7 @@ void main() {
       );
       await mode(tester, 'Anteile');
       expect(find.text('Als Beträge feinjustieren'), findsOneWidget);
-      await mode(tester, 'Genau');
+      await mode(tester, 'Beträge');
       await type(tester, 0, '8');
       await type(tester, 1, '5');
       expect(remainingText(tester), '3,00\u00a0€ zu viel');
@@ -513,7 +513,7 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.byKey(const Key('splitFineTune')), findsOneWidget);
 
-        await mode(tester, de ? 'Genau' : 'Exact');
+        await mode(tester, de ? 'Beträge' : 'Amounts');
         await type(tester, 0, '8');
         await type(tester, 1, '5');
         await type(tester, 2, '3');

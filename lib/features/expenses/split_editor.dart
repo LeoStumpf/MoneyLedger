@@ -98,7 +98,7 @@ class SplitEditor extends StatefulWidget {
   final String currency;
 
   /// Resolved cents map of the expense being edited; drives mode inference and
-  /// prefill. Null for a new expense (defaults to Equal across everyone).
+  /// prefill. Null for a new expense (defaults to Equal across every active member).
   final Map<String, int>? initialSplit;
   final ValueChanged<SplitPlan> onPlanChanged;
 
@@ -161,7 +161,12 @@ class _SplitEditorState extends State<SplitEditor> {
       }
     } else {
       _mode = SplitMode.equal;
-      _included = {for (final m in widget.members) m.userId};
+      // Former members (U11 — only in an edit's list) are never included
+      // by default.
+      _included = {
+        for (final m in widget.members)
+          if (m.isActive) m.userId,
+      };
     }
     _seeded.add(_mode);
     _totalAtSwitch = widget.totalCents;
@@ -337,7 +342,10 @@ class _SplitEditorState extends State<SplitEditor> {
         _fill(target, weights);
       } else if (!_seeded.contains(target)) {
         final who = _included.isEmpty
-            ? [for (final m in widget.members) m.userId]
+            ? [
+                for (final m in widget.members)
+                  if (m.isActive) m.userId,
+              ]
             : _included;
         _fill(target, {for (final id in who) id: 1});
       }
@@ -478,7 +486,12 @@ class _SplitEditorState extends State<SplitEditor> {
             ButtonSegment(value: SplitMode.equal, label: Text(l.splitEqual)),
             ButtonSegment(value: SplitMode.exact, label: Text(l.splitExact)),
             ButtonSegment(value: SplitMode.shares, label: Text(l.splitShares)),
-            const ButtonSegment(value: SplitMode.percent, label: Text('%')),
+            // U14: "%" fits a phone; screen readers hear "Percent".
+            ButtonSegment(
+              value: SplitMode.percent,
+              label: Text('%', semanticsLabel: l.splitPercent),
+              tooltip: l.splitPercent,
+            ),
           ],
           selected: {_mode},
           onSelectionChanged: (s) => _switchTo(s.first),
@@ -542,6 +555,14 @@ class _SplitEditorState extends State<SplitEditor> {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyLarge,
                 ),
+                // U11: a former member kept in an edited expense's split.
+                if (!m.isActive)
+                  Text(
+                    context.l10n.formerMemberTag,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                  ),
                 if (amountBelow)
                   Text(
                     _money(cents),

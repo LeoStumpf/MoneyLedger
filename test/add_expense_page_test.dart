@@ -71,7 +71,7 @@ void main() {
       expect(find.widgetWithText(TextFormField, 'Description'), findsOneWidget);
       // Defaults to the Equal split editor including both members.
       expect(find.textContaining('Split equally among 2'), findsOneWidget);
-      expect(find.text('Equal'), findsOneWidget); // mode segment
+      expect(find.text('Equally'), findsOneWidget); // mode segment
       expect(find.text('CHF'), findsWidgets); // amount suffix + share previews
     });
 
@@ -244,8 +244,8 @@ void main() {
       final amount = find.widgetWithText(TextFormField, 'Betrag');
       await tester.enterText(amount, '10');
       await tester.pump();
-      await tester.ensureVisible(find.text('Genau'));
-      await tester.tap(find.text('Genau'));
+      await tester.ensureVisible(find.text('Beträge'));
+      await tester.tap(find.text('Beträge'));
       await tester.pumpAndSettle();
       final rows = find.descendant(
         of: find.byType(SplitEditor),
@@ -363,8 +363,8 @@ void main() {
         find.widgetWithText(TextFormField, 'Amount'),
         '20',
       );
-      await tester.ensureVisible(find.text('Exact'));
-      await tester.tap(find.text('Exact'));
+      await tester.ensureVisible(find.text('Amounts'));
+      await tester.tap(find.text('Amounts'));
       await tester.pumpAndSettle();
       await tester.enterText(splitFields().at(0), '15'); // alice
       await tester.enterText(splitFields().at(1), '5'); // bob
@@ -495,8 +495,8 @@ void main() {
         find.widgetWithText(TextFormField, 'Amount'),
         '20',
       );
-      await tester.ensureVisible(find.text('Exact'));
-      await tester.tap(find.text('Exact'));
+      await tester.ensureVisible(find.text('Amounts'));
+      await tester.tap(find.text('Amounts'));
       await tester.pumpAndSettle();
       await tester.enterText(splitFields().at(0), '5'); // only 5 of 20
       await tester.pumpAndSettle();

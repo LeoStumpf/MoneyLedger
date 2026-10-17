@@ -179,10 +179,12 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   }
 
   Future<void> _loadData() async {
-    final members =
-        (await ref.read(membersDaoProvider).getMembers(widget.roomId))
-            .where((m) => m.isActive)
-            .toList();
+    final all = await ref.read(membersDaoProvider).getMembers(widget.roomId);
+    final members = editorParticipants(
+      groupId: widget.roomId,
+      all: all,
+      initial: widget.initial,
+    );
     final group = await ref.read(groupsDaoProvider).getGroup(widget.roomId);
     // Default payer: the edited expense's payer, else this device's participant.
     final self = await ref.read(
@@ -262,7 +264,18 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final result = _plan?.resolve(amountCents);
     if (paidBy == null || result == null || !result.isValid) return;
 
-    final splits = result.shares;
+    // U11: an untouched split of an unchanged amount is saved exactly as it
+    // was stored (same people, cents and key order) — re-resolving it could
+    // move a remainder cent (largest-remainder ties follow the row order).
+    final initialSplit = _initialSplit;
+    final keepSplit =
+        widget.initial != null &&
+        initialSplit != null &&
+        initialSplit.isNotEmpty &&
+        _planUpdates <= 1 &&
+        amountCents == widget.initial!.amountCents &&
+        initialSplit.values.fold<int>(0, (a, b) => a + b) == amountCents;
+    final splits = keepSplit ? initialSplit : result.shares;
 
     final initial = widget.initial;
     if (initial != null) {
@@ -375,7 +388,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                     ),
                                   ),
                                 ),
-                                validator: (v) => (v == null || v.isEmpty)
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
                                     ? l.required
                                     : null,
                                 // G16: suggest a category from the description
@@ -500,6 +514,20 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
+                                          // U11: a former member who paid
+                                          // this (edited) expense.
+                                          if (!m.isActive) ...[
+                                            const SizedBox(width: Insets.s),
+                                            Text(
+                                              l.formerMemberTag,
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: theme
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -609,4 +637,43 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       ),
     );
   }
+}
+
+/// U11: the participants the expense form offers — the group's **active**
+/// ones, plus (on edit) every participant [initial] itself references (its
+/// payer and split keys) even if they left or were removed, so editing only
+/// the description never drops them from the split or empties the payer.
+/// Former ones come last; a referenced id with no participant row at all is
+/// kept as a bare (former) entry. A new expense offers active ones only.
+@visibleForTesting
+List<MemberModel> editorParticipants({
+  required String groupId,
+  required List<MemberModel> all,
+  ExpenseModel? initial,
+}) {
+  final referenced = <String>{
+    if (initial != null) initial.paidBy,
+    if (initial != null) ...?tryParseSplit(initial.splitsJson)?.keys,
+  };
+  final active = [
+    for (final m in all)
+      if (m.isActive) m,
+  ];
+  final former = [
+    for (final m in all)
+      if (!m.isActive && referenced.contains(m.userId)) m,
+  ];
+  final known = {for (final m in all) m.userId};
+  return [
+    ...active,
+    ...former,
+    for (final id in referenced)
+      if (!known.contains(id))
+        MemberModel(
+          groupId: groupId,
+          userId: id,
+          status: 'removed',
+          updatedAt: 0,
+        ),
+  ];
 }

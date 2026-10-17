@@ -345,13 +345,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paidByLabel => 'Paid by';
 
   @override
-  String get splitEqual => 'Equal';
+  String get splitEqual => 'Equally';
 
   @override
-  String get splitExact => 'Exact';
+  String get splitExact => 'Amounts';
 
   @override
   String get splitShares => 'Shares';
+
+  @override
+  String get splitPercent => 'Percent';
 
   @override
   String get splitSelectAtLeastOne => 'Select at least one participant';
@@ -555,6 +558,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get formerMemberLocal => 'Local · former member';
+
+  @override
+  String get formerMemberTag => 'former member';
 
   @override
   String get you => 'You';
@@ -773,7 +779,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeserverLabel => 'Homeserver';
 
   @override
-  String get homeserverHint => 'matrix.org or mozilla.modular.im';
+  String get homeserverHint => 'e.g. matrix.org';
 
   @override
   String get checkServerTooltip => 'Check server';
@@ -2247,8 +2253,9 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count earlier versions can\'t be used and stay as they are.',
-      one: '1 earlier version can\'t be used and stays as it is.',
+      other:
+          '$count earlier versions can\'t be restored; those entries stay as they are.',
+      one: '1 earlier version can\'t be restored; that entry stays as it is.',
     );
     return '$_temp0';
   }
@@ -2262,7 +2269,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String resetPreviewMore(int count) {
-    return '…and $count more';
+    return '… and $count more';
   }
 
   @override

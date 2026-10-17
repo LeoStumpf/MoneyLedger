@@ -222,9 +222,13 @@
   "invalidNumber": "Invalid number",
   "currencyLabel": "Currency",
   "paidByLabel": "Paid by",
-  "splitEqual": "Equal",
-  "splitExact": "Exact",
+  "splitEqual": "Equally",
+  "splitExact": "Amounts",
   "splitShares": "Shares",
+  "splitPercent": "Percent",
+  "@splitPercent": {
+    "description": "U14: screen-reader label + tooltip of the split mode segment shown as \"%\""
+  },
   "splitSelectAtLeastOne": "Select at least one participant",
   "splitEquallyAmong": "{n, plural, =1{Split equally among 1} other{Split equally among {n}}}",
   "@splitEquallyAmong": {
@@ -366,6 +370,10 @@
     }
   },
   "formerMemberLocal": "Local · former member",
+  "formerMemberTag": "former member",
+  "@formerMemberTag": {
+    "description": "U11: marks a participant who left / was removed but is part of the edited expense (split row, payer dropdown)"
+  },
   "you": "You",
   "readd": "Re-add",
   "readdedMember": "Re-added {name}",
@@ -477,7 +485,7 @@
   "authErrorDetails": "Details",
   "signInSubtitle": "Sign in with your Matrix account",
   "homeserverLabel": "Homeserver",
-  "homeserverHint": "matrix.org or mozilla.modular.im",
+  "homeserverHint": "e.g. matrix.org",
   "checkServerTooltip": "Check server",
   "@checkServerTooltip": {
     "description": "Tooltip of the button next to the homeserver field that loads the server's sign-in options (nothing is requested before the user acts)."
@@ -1987,7 +1995,7 @@
   "@resetPreviewMeta": {
     "description": "Reset preview line (G48)"
   },
-  "resetPreviewSkipped": "{count, plural, =1{1 earlier version can't be used and stays as it is.} other{{count} earlier versions can't be used and stay as they are.}}",
+  "resetPreviewSkipped": "{count, plural, =1{1 earlier version can't be restored; that entry stays as it is.} other{{count} earlier versions can't be restored; those entries stay as they are.}}",
   "@resetPreviewSkipped": {
     "description": "Reset preview line (G48)",
     "placeholders": {
@@ -2004,7 +2012,7 @@
   "@resetPreviewShared": {
     "description": "Reset preview note (G48)"
   },
-  "resetPreviewMore": "…and {count} more",
+  "resetPreviewMore": "… and {count} more",
   "@resetPreviewMore": {
     "description": "Reset preview: list truncated (G48)",
     "placeholders": {

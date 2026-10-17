@@ -338,9 +338,9 @@ void main() {
 
     testWidgets('a changed split counts as a change', (tester) async {
       await pumpForm(tester);
-      await tester.ensureVisible(find.text('Exact'));
+      await tester.ensureVisible(find.text('Amounts'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Exact'));
+      await tester.tap(find.text('Amounts'));
       await tester.pumpAndSettle();
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();

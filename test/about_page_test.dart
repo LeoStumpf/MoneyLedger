@@ -132,4 +132,21 @@ void main() {
       );
     }
   });
+
+  // G63 / U29: one German typography — en dash with spaces (never "—"), and
+  // an ellipsis always set off by a space ("Lädt …", "… und 3 weitere").
+  test('German ARB: en dashes and spaced ellipses only', () {
+    final de =
+        jsonDecode(File('lib/l10n/app_de.arb').readAsStringSync())
+            as Map<String, dynamic>;
+    for (final MapEntry(:key, :value) in de.entries) {
+      if (key.startsWith('@') || value is! String) continue;
+      expect(value.contains('—'), isFalse, reason: '"$key" uses an em dash');
+      expect(
+        RegExp(r'[^\s(\[„]…|…[^\s)\]“.,!?]').hasMatch(value),
+        isFalse,
+        reason: '"$key": ellipsis without a space',
+      );
+    }
+  });
 }

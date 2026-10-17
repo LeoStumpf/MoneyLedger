@@ -350,10 +350,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get splitEqual => 'Gleich';
 
   @override
-  String get splitExact => 'Genau';
+  String get splitExact => 'Beträge';
 
   @override
   String get splitShares => 'Anteile';
+
+  @override
+  String get splitPercent => 'Prozent';
 
   @override
   String get splitSelectAtLeastOne => 'Wähle mindestens eine Person aus';
@@ -558,6 +561,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get formerMemberLocal => 'Lokal · ehemaliges Mitglied';
+
+  @override
+  String get formerMemberTag => 'ehemaliges Mitglied';
 
   @override
   String get you => 'Du';
@@ -782,7 +788,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homeserverLabel => 'Homeserver';
 
   @override
-  String get homeserverHint => 'matrix.org oder mozilla.modular.im';
+  String get homeserverHint => 'z. B. matrix.org';
 
   @override
   String get checkServerTooltip => 'Server prüfen';
@@ -1291,7 +1297,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restoreLeftNote =>
-      'Gruppen, die du verlassen oder gelöscht hast, kommen auf diesem Gerät zurück. Haben dich die anderen Mitglieder aus einer Gruppe entfernt, kommt sie schreibgeschützt zurück (nur der Verlauf) – eine Entfernung nach dieser Sicherung zeigt sich beim nächsten Sync.';
+      'Gruppen, die du verlassen oder gelöscht hast, kommen auf diesem Gerät zurück. Haben dich die anderen Mitglieder aus einer Gruppe entfernt, kommt sie schreibgeschützt zurück (nur der Verlauf) – eine Entfernung nach dieser Sicherung zeigt sich bei der nächsten Synchronisierung.';
 
   @override
   String get restoreAction => 'Wiederherstellen';
@@ -1567,7 +1573,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get closeSearch => 'Suche schließen';
 
   @override
-  String get filterInvolvingMe => 'Mit mir';
+  String get filterInvolvingMe => 'Betrifft mich';
 
   @override
   String get noMatchesTitle => 'Nichts gefunden';
@@ -1612,7 +1618,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String groupArchivedUnsettled(String name) {
-    return '„$name“ archiviert — dein offener Saldo zählt weiter in der Übersicht.';
+    return '„$name“ archiviert – dein offener Saldo zählt weiter in der Übersicht.';
   }
 
   @override
@@ -1634,11 +1640,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get simplifyDebtsInfoBody =>
-      'MoneyLedger verrechnet alle Ausgaben und Zahlungen zu einem Saldo pro Person und schlägt die wenigsten Zahlungen vor, mit denen alle ausgeglichen sind. Dabei kann es sein, dass du jemandem Geld gibst, mit dem du nie direkt eine Ausgabe geteilt hast — was jede Person insgesamt zahlt und zurückbekommt, bleibt genau gleich.\n\nJede Währung wird für sich ausgeglichen: Beträge werden nie umgerechnet.';
+      'MoneyLedger verrechnet alle Ausgaben und Zahlungen zu einem Saldo pro Person und schlägt die wenigsten Zahlungen vor, mit denen alle ausgeglichen sind. Dabei kann es sein, dass du jemandem Geld gibst, mit dem du nie direkt eine Ausgabe geteilt hast – was jede Person insgesamt zahlt und zurückbekommt, bleibt genau gleich.\n\nJede Währung wird für sich ausgeglichen: Beträge werden nie umgerechnet.';
 
   @override
   String get simplifyDebtsPerCurrency =>
-      'Jede Währung wird separat ausgeglichen — Beträge werden nie umgerechnet.';
+      'Jede Währung wird separat ausgeglichen – Beträge werden nie umgerechnet.';
 
   @override
   String get backupPassphraseTitle => 'Sicherung schützen?';
@@ -1761,7 +1767,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get debugRunBackgroundSync =>
-      'Hintergrund-Sync jetzt ausführen (Debug)';
+      'Hintergrund-Synchronisierung jetzt ausführen (Debug)';
 
   @override
   String debugRunBackgroundSyncBody(int seconds) {
@@ -1772,7 +1778,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get debugRunBackgroundSyncQueued => 'Hintergrundrunde eingeplant.';
 
   @override
-  String get authInProgressTitle => 'Die Anmeldung läuft noch…';
+  String get authInProgressTitle => 'Die Anmeldung läuft noch …';
 
   @override
   String get authInProgressHint =>
@@ -2158,7 +2164,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get groupResetMenu => 'Auf früheren Stand zurücksetzen…';
+  String get groupResetMenu => 'Auf früheren Stand zurücksetzen …';
 
   @override
   String get groupResetTitle => 'Gruppe zurücksetzen';
@@ -2271,8 +2277,9 @@ class AppLocalizationsDe extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count frühere Versionen sind unbrauchbar und bleiben, wie sie sind.',
-      one: '1 frühere Version ist unbrauchbar und bleibt, wie sie ist.',
+          '$count frühere Versionen lassen sich nicht wiederherstellen; die Einträge bleiben, wie sie sind.',
+      one:
+          '1 frühere Version lässt sich nicht wiederherstellen; der Eintrag bleibt, wie er ist.',
     );
     return '$_temp0';
   }
@@ -2287,7 +2294,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String resetPreviewMore(int count) {
-    return '…und $count weitere';
+    return '… und $count weitere';
   }
 
   @override

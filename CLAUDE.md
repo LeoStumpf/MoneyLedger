@@ -1451,6 +1451,19 @@ change.** Only the add/edit form changed.
   stored cents (a shares/percent expense thus reopens as exact amounts — same
   result, different knobs). **Excluded participants are absent from the map**
   (not stored as `0`); the editor's included set on edit = the map's keys.
+- **Former members on edit (G63 / U11):** the form lists the group's
+  **active** participants plus — on edit only — every participant the
+  expense itself references (payer + split keys) even if they left / were
+  removed (`editorParticipants`, `add_expense_page.dart`; former ones last,
+  marked *former member* — `formerMemberTag` — in the split row and the
+  payer dropdown; never included by default). A new expense offers active
+  ones only. An **untouched** split (no split interaction, same amount) is
+  saved exactly as stored (same map incl. key order — re-resolving could
+  move a remainder cent). Tests: `test/g63_former_member_edit_test.dart`.
+- **Mode labels (G63 / U14):** *Equally / Amounts / Shares / %* (DE *Gleich
+  / Beträge / Anteile / %*; "Gleichmäßig" doesn't fit four segments at
+  360 dp); the "%" segment has the semantics label + tooltip *Percent* /
+  *Prozent* (`splitPercent`). Pinned at 360 dp in `g61_split_names_test.dart`.
 - **Smarter defaults (G59)** — pure helpers in `split_calculator.dart`:
   `distributeRest(total, fixed, open)` (rest spread equally, largest
   remainder; empty when rest ≤ 0 / nobody open), `rescaleProportionally`,

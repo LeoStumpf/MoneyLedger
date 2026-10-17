@@ -752,15 +752,16 @@ chained to it is never offered → "nothing to go back to".
 
 ## Usability review 2026-10-17 (`docs/usability-review.md`, U1–U31)
 
-Leo 2026-10-17: **no store hurry — finish everything first**; people are entered when creating a group + the UI says "Personen" throughout (G64); single deletes keep the confirm dialog **plus** an undo snackbar (G67); exchange rates manual **with a button to fetch the current rate** (any source; G73). Open: notifications (G72), payment details / GiroCode.
+Leo 2026-10-17: **no store hurry — finish everything first**; people are entered when creating a group + the UI says "Personen" throughout (G64); single deletes keep the confirm dialog **plus** an undo snackbar (G67); exchange rates manual **with a button to fetch the current rate** (any source; G73). Notifications (G72) **on by default**; payment details (IBAN / PayPal.me → GiroCode QR / link when settling) **optional, entered in the app settings** (new item G74).
 
 ### G63. Correctness + texts before release (U11, U5, U3, U29, U14) 🔴
-- [ ] **U11:** editing an expense that involves a former member drops them
+- [x] **U11:** editing an expense that involves a former member drops them
       from the split (and empties the payer) → balances change silently;
       keep former participants of *this* expense selectable (like
       `settle_up.dart`) + regression test
-- [ ] Trim-validation of names / descriptions, stale homeserver hint,
-      German polish, clearer split-mode labels
+- [x] Trim-validation of names / descriptions, stale homeserver hint,
+      German polish, clearer split-mode labels (EN Equally / Amounts / Shares,
+      DE Gleich / Beträge / Anteile — "Gleichmäßig" doesn't fit at 360 dp)
 
 ### G64. People when creating a group (U4, U9, U6, U10) 🟠
 - [ ] Add people while creating a group (chips, *Add & next*), duplicate-name
@@ -796,9 +797,11 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [ ] Semantics labels, 48 dp targets, autofocus / *Next* through the form;
       TalkBack / 200 % font check in the G52 step 13 device pass
 
-### G72. Local notifications (opt-in) (U26) 🟢
-- [ ] Notify from the background round about others' changes; setting +
-      privacy text — after G52 step 8
+### G72. Local notifications (U26) 🟢
+- [ ] Notify from the background round about others' changes — **on by
+      default** (Leo 2026-10-17), setting to turn off, privacy text; Android 13+
+      needs `POST_NOTIFICATIONS` (today removed from the manifest, G31) +
+      the runtime prompt at a sensible moment — after G52 step 8
 
 ### G73. Manual exchange rates (U18) 🟢
 - [ ] Fixed rates per group in the signed meta, "settle in {currency}" — wire
@@ -807,6 +810,11 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       never automatic; source named in the dialog + PRIVACY.md / in-app
       privacy text (a third-party request leaves the device — G43 promise
       wording must be adjusted); pick a keyless source without tracking
+
+### G74. Payment details + GiroCode (Leo 2026-10-17) 🟢
+- [ ] Optional own IBAN / PayPal.me in the **app settings**; shown to others
+      when they settle with me (GiroCode QR with amount / PayPal link) — needs
+      a synced field → wire change, bundle with G57 / G73
 
 ---
 
@@ -878,7 +886,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G61 — split follow-ups (found in G59)
 - [ ] G57 — custom-category follow-ups (found in G47)
 - [x] G56 — UX follow-ups (found in G46)
-- [ ] G63 — correctness + texts before release (usability review U11 …)
+- [x] G63 — correctness + texts before release (usability review U11 …)
 - [ ] G64 — people when creating a group (before G52 step 6/7)
 - [ ] G65 — group settings + settings page (before G52 step 6/9)
 - [ ] G66 — currencies
@@ -887,8 +895,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G69 — share + overview
 - [ ] G70 — simplify backup / restore
 - [ ] G71 — accessibility + form flow
-- [ ] G72 — local notifications (opt-in)
-- [ ] G73 — manual exchange rates (with G57)
+- [ ] G72 — local notifications (on by default)
+- [ ] G73 — manual exchange rates + fetch button (with G57)
+- [ ] G74 — payment details + GiroCode (with G57 / G73)
 
 ---
 

@@ -70,7 +70,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                     prefixIcon: const Icon(Icons.groups_2_outlined),
                   ),
                   validator: (v) =>
-                      (v == null || v.isEmpty) ? l.required : null,
+                      (v == null || v.trim().isEmpty) ? l.required : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
