@@ -10,6 +10,7 @@ import '../../core/theme/web_fonts.dart';
 import '../auth/auth_provider.dart';
 import 'device_provider.dart';
 import 'sas_emoji_names.dart';
+import '../../core/widgets/large_text.dart';
 
 /// Security screen (Phase F): lists the user's own Matrix devices with their
 /// verified status and lets them run an SAS (emoji) verification against an
@@ -25,7 +26,7 @@ class DevicesPage extends ConsumerWidget {
     final l = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.devicesTitle)),
+      appBar: AppBar(title: AppBarTitle(l.devicesTitle)),
       body: devicesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(

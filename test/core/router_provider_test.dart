@@ -59,6 +59,9 @@ void main() {
         devicePrefsStoreProvider.overrideWithValue(
           InMemoryDevicePrefsStore(prefs),
         ),
+        // G79: a fresh device has no Matrix store (the real probe needs
+        // path_provider).
+        matrixStoreExistsProvider.overrideWith((ref) async => false),
         authGatewayProvider.overrideWith((ref) => gateway),
         loginFlowsProvider.overrideWith(
           (ref, input) => Future.value(LoginFlowsResult.empty),

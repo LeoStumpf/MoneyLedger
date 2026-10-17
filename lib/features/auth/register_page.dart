@@ -9,6 +9,7 @@ import 'auth_error_card.dart';
 import 'auth_errors.dart';
 import 'auth_provider.dart';
 import 'register_flows.dart';
+import '../../core/widgets/large_text.dart';
 
 /// In-app account creation (Phase F). Works against homeservers that allow open
 /// / `m.login.dummy` registration; servers requiring a CAPTCHA, email/phone
@@ -80,7 +81,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final l = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.createAccount)),
+      appBar: AppBar(title: AppBarTitle(l.createAccount)),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

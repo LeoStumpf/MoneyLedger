@@ -727,6 +727,7 @@ class _SplitEditorState extends State<SplitEditor> {
           ),
         );
       case SplitMode.exact:
+        final exactCellWidth = scaledCellWidth(context, 96, 128);
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
@@ -734,12 +735,22 @@ class _SplitEditorState extends State<SplitEditor> {
               name(),
               SizedBox(
                 key: const Key('splitExactCell'),
-                width: scaledCellWidth(context, 96, 128),
+                width: exactCellWidth,
                 child: _numField(
                   _exactCtrl[m.userId]!,
                   // DEV-I: no currency suffix at a large font size — it
                   // left no room for the amount (the form shows it above).
-                  suffix: isLargeText(context) ? null : widget.currency,
+                  // G79: nor when the value and the suffix don't fit the
+                  // cell together ("411,5CHF" at 360 dp).
+                  suffix:
+                      isLargeText(context) ||
+                          !_suffixFits(
+                            _exactCtrl[m.userId]!.text,
+                            widget.currency,
+                            exactCellWidth,
+                          )
+                      ? null
+                      : widget.currency,
                   decimal: true,
                   onEdited: () => _autoExact.remove(m.userId),
                 ),
@@ -811,6 +822,19 @@ class _SplitEditorState extends State<SplitEditor> {
       icon: Icon(delta > 0 ? Icons.add : Icons.remove, size: 18),
       onPressed: delta < 0 && n <= 0 ? null : () => _stepShare(id, delta),
     );
+  }
+
+  /// G79: whether [value] plus the currency [suffix] fit a [cellWidth] dp
+  /// exact-amount cell (content padding + a little gap included).
+  bool _suffixFits(String value, String suffix, double cellWidth) {
+    final style = Theme.of(context).textTheme.bodyLarge;
+    final scaler = MediaQuery.textScalerOf(context);
+    final needed =
+        measureTextWidth(value, style, scaler) +
+        measureTextWidth(suffix, style, scaler) +
+        2 * Insets.s +
+        Insets.xs;
+    return needed <= cellWidth;
   }
 
   Widget _numField(

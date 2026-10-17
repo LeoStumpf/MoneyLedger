@@ -18,6 +18,7 @@ import 'sso_callback.dart';
 import 'sso_provider.dart';
 import '../../core/widgets/brand_logo.dart';
 import 'sso_url.dart';
+import '../../core/widgets/large_text.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -304,7 +305,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Scaffold(
       appBar: connecting
           ? AppBar(
-              title: Text(l.connectMatrixAccount),
+              title: AppBarTitle(l.connectMatrixAccount),
               leading: IconButton(
                 key: const Key('cancelConnect'),
                 icon: const Icon(Icons.close),

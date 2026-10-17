@@ -115,7 +115,7 @@ void main() {
     await tapKey(tester, 'itemEveryone-1');
     await tapKey(tester, 'itemPerson-1-b');
     await tapKey(tester, 'itemsAdd');
-    await enter(tester, 'itemAmount-2', '2*3'); // G75 calculator
+    await enter(tester, 'itemAmount-2', '2*3'); // a pasted expression (G75/G79)
   }
 
   FilledButton applyButton(WidgetTester tester) =>

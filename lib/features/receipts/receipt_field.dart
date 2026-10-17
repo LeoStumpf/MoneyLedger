@@ -7,6 +7,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/action_error.dart';
 import 'receipt_picker.dart';
+import '../../core/widgets/large_text.dart';
 
 /// G78: the expense form's *Receipt photo* section (Android only — the
 /// parent shows it only while `receiptsSupportedProvider` is true).
@@ -180,7 +181,7 @@ class ReceiptViewerPage extends StatelessWidget {
     final l = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: Text(l.receiptPhotoLabel)),
+      appBar: AppBar(title: AppBarTitle(l.receiptPhotoLabel)),
       body: InteractiveViewer(
         key: const Key('receiptViewer'),
         minScale: 1,

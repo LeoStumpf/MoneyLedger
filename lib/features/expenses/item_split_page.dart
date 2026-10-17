@@ -164,7 +164,7 @@ class _ItemSplitPageState extends State<ItemSplitPage> {
           );
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.itemsTitle)),
+      appBar: AppBar(title: AppBarTitle(l.itemsTitle)),
       body: SafeArea(
         child: ContentWidth(
           child: ListView(

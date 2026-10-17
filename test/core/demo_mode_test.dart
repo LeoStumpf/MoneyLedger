@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/models/group_archive.dart';
 import 'package:money_ledger/app.dart';
+import 'package:money_ledger/core/background/background_sync.dart'
+    show backgroundSyncSupported;
+import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
@@ -223,6 +226,23 @@ void main() {
       await seedDemoLedger(db);
       expect(await GroupsDao(db).getAllGroups(), hasLength(4));
     });
+  });
+
+  test('G79: demo restore points live in memory on native (one store per '
+      'DB), none on the web — like the real platform', () async {
+    final native = demoSnapshotStores(web: false);
+    final a = native(kDemoDatabaseName)!;
+    await a.write('2026-10-18.json', '{}');
+    expect(identical(native(kDemoDatabaseName), a), isTrue);
+    expect(await native(kDemoDatabaseName)!.list(), ['2026-10-18.json']);
+    expect(identical(native('other'), a), isFalse);
+    expect(demoSnapshotStores(web: true)(kDemoDatabaseName), isNull);
+  });
+
+  test("G79: the demo shows the platform's background-sync setting", () {
+    final c = ProviderContainer(overrides: demoOverrides());
+    addTearDown(c.dispose);
+    expect(c.read(backgroundSyncSupportedProvider), backgroundSyncSupported);
   });
 
   test('demo fakes: signed in as Anna; sends reach peers, not self', () async {

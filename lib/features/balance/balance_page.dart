@@ -114,7 +114,7 @@ class _BalancePageState extends ConsumerState<BalancePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.balanceTitle),
+        title: AppBarTitle(l.balanceTitle),
         actions: [
           // G69 (U17): "who pays whom" as text for the group's chat.
           if (!nothingYet)

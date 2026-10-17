@@ -5,6 +5,7 @@ import 'package:matrix/matrix.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
 
+import 'matrix_store_name.dart';
 import 'request_timeout_http_client.dart';
 import 'sync_filter.dart';
 
@@ -20,7 +21,7 @@ Future<Client> buildMatrixClient({http.Client? httpClient}) async {
 
   if (kIsWeb) {
     // On web, MatrixSdkDatabase uses IndexedDB by default (no sqfliteFactory).
-    db = await MatrixSdkDatabase.init('money_ledger_matrix');
+    db = await MatrixSdkDatabase.init(kMatrixStoreName);
   } else {
     final appDir = await getApplicationSupportDirectory();
     // matrix 7.x's BoxCollection requires an already-OPENED sqflite Database on
@@ -28,10 +29,10 @@ Future<Client> buildMatrixClient({http.Client? httpClient}) async {
     // `sqfliteDatabase` for use on native" (sqflite_box.dart). The factory is
     // used only for high-level ops like delete. So open the DB here and pass it.
     final database = await sqflite.openDatabase(
-      '${appDir.path}/money_ledger_matrix.sqlite',
+      '${appDir.path}/$kMatrixStoreName.sqlite',
     );
     db = await MatrixSdkDatabase.init(
-      'money_ledger_matrix',
+      kMatrixStoreName,
       database: database,
       sqfliteFactory: sqflite.databaseFactory,
       fileStorageLocation: appDir.uri,

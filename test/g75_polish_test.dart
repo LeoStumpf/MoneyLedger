@@ -1,5 +1,5 @@
 /// G75 (review leftovers): *Duplicate expense* (row ⋮ + edit page), the
-/// calculator in the amount fields, the web limits notice (U31), local-mode
+/// pasted expressions in the amount fields (G79: not advertised), the web limits notice (U31), local-mode
 /// delete texts, *Try again* on repeatable action errors.
 library;
 
@@ -374,7 +374,9 @@ void main() {
     });
   });
 
-  group('calculator in the amount fields', () {
+  // G79: the calculator isn't advertised (Gboard's decimal keypad has only
+  // `-`), but a pasted expression is still read.
+  group('pasted expression in the amount fields (not advertised)', () {
     testWidgets('expense form (DE): "12,50+8" previews 20,50 CHF and saves '
         '2050; "12+" is invalid', (tester) async {
       _phone(tester);
@@ -393,6 +395,19 @@ void main() {
         find.byKey(const Key('expenseDescription')),
         'Pizza',
       );
+      // G79: decimal keypad, no hint / helper about operators.
+      final amountField = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('expenseAmount')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(
+        amountField.keyboardType,
+        const TextInputType.numberWithOptions(decimal: true),
+      );
+      expect(amountField.decoration?.helperText, isNull);
+      expect(amountField.decoration?.hintText, '0,00');
       await tester.enterText(find.byKey(const Key('expenseAmount')), '12+');
       await tester.pump();
       final add = find.widgetWithText(FilledButton, de.add);

@@ -11,6 +11,7 @@ import '../../models/member_model.dart';
 import '../groups/group_provider.dart';
 import 'group_history.dart';
 import 'group_reset.dart';
+import '../../core/widgets/large_text.dart';
 
 /// Change batches shown at most (newest first).
 const kMaxShownChangeBatches = 100;
@@ -52,7 +53,7 @@ class GroupResetPage extends ConsumerWidget {
     final anyResettable = shown.any((b) => b.resettable);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.groupResetTitle)),
+      appBar: AppBar(title: AppBarTitle(l.groupResetTitle)),
       body: ContentWidth(
         child: ListView(
           padding: const EdgeInsets.only(top: Insets.s, bottom: Insets.xxl),

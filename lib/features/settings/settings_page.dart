@@ -17,6 +17,7 @@ import '../devices/device_provider.dart';
 import '../groups/group_provider.dart';
 import '../local/local_mode_ui.dart';
 import '../onboarding/onboarding_provider.dart';
+import '../../core/widgets/large_text.dart';
 
 /// G65: route of the app settings page.
 const kSettingsLocation = '/settings';
@@ -47,7 +48,7 @@ class SettingsPage extends ConsumerWidget {
     final local = ref.watch(localModeActiveProvider);
     final supported = ref.watch(backgroundSyncSupportedProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(l.settingsTitle)),
+      appBar: AppBar(title: AppBarTitle(l.settingsTitle)),
       body: ContentWidth(
         child: ListView(
           key: const Key('settingsList'),

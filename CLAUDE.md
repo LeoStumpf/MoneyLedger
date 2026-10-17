@@ -106,7 +106,12 @@ to now, all peers in sync; screenshot extras: a G47 custom category
 and a back-filled G48 version history — `_seedHistory`: every record's
 versions with `recorded_at` = its clock, Anna's writes `local`, the rest
 `inbound`, incl. one edited and one deleted expense — so the reset page has
-restore points), device prefs in memory (welcome seen — G39). No
+restore points), device prefs in memory (welcome seen — G39). G79: the
+settings show the **real platform's** texts (store screenshots): the
+background-sync toggle on Android (`backgroundSyncSupportedProvider` = the
+platform value, scheduler a no-op) and restore points kept **in memory**
+(`demoSnapshotStores()`: one `InMemorySnapshotStore` per DB name on native,
+none on the web) — never the web's "only in the installed app" texts. No
 Matrix client is ever built. (Separate from the real local mode, G40.) Normal builds
 tree-shake it (`const bool.fromEnvironment`). Never import `test/` from `lib/`.
 Smoke test: `test/core/demo_mode_test.dart`. Used for README/store screenshots.
@@ -431,7 +436,17 @@ seen — never strands the user; logged). Tests: `devicePrefsStoreProvider` →
 `connecting:` params put a widget test in local mode). Revisit mode
 (`/how-it-works`, public page; `?topic=matrix` opens at a page): About →
 *How MoneyLedger works*, login page → *What is Matrix?* — same pages, no
-choices, *Done* pops. The post-login **onboarding** (per ledger DB, unchanged
+choices, *Done* pops. **Lazy Matrix client (G79):** while the welcome
+isn't seen (no mode chosen) `matrixSessionWantedProvider` is false — no
+Matrix client, so a fresh install creates no SDK store
+(`money_ledger_matrix.sqlite`, `kMatrixStoreName`) — **unless** that store
+already exists (`matrixStoreExistsProvider`, `core/matrix/store_probe/`:
+native file check; web always false), so a session from before the welcome
+still starts straight in (`appSessionProvider` stays `loading` → splash
+while that check runs). *Sign in* / *Create account* on the welcome mark it
+seen → the client is built then (the login page still sends nothing until
+the user acts, G43). Tests: `test/core/lazy_matrix_client_test.dart`. The
+post-login **onboarding** (per ledger DB, unchanged
 gate) is slimmed to what's new: Matrix → invite people, background sync, keep
 a copy; local mode → everything stays here, keep a copy, share later.
 
@@ -1220,7 +1235,7 @@ a backup file / digest:
   newest + the newest of each of the next 4 older calendar weeks.
   **Web: none** (`snapshotStoreFactoryProvider` → null; the page says so —
   the in-DB history still allows resets, a backup file covers the rest);
-  the offline demo neither. Settings → *Backup & restore* → *Show restore
+  the offline demo keeps them in memory (G79, native only). Settings → *Backup & restore* → *Show restore
   points* (`/restore-points`,
   `RestorePointsPage`) lists them (date, groups, entries) → *Restore* = the
   normal restore (`BackupRestorer.previewAndRestore`, shared with the file
@@ -1659,8 +1674,12 @@ menu. Tests: `test/g60_payment_edit_test.dart`,
   (`duplicateSplit`: the amount spread equally over the rest; nobody left
   → the default equal split; a payer who left → me). Not offered in
   read-only groups (no row menu there).
-- **Calculator (amount fields):** the expense amount and the payment
-  amount accept `+ - * /` (also `× ÷ ·`), standard precedence, optional
+- **Calculator (amount fields) — accepted when pasted, not advertised
+  (G79, Leo 2026-10-17):** Gboard's decimal keypad (the amount fields keep
+  `numberWithOptions(decimal: true)`) has only `-`, so the UI never mentions
+  a calculator (no hint, helper or docs promise). A pasted / hardware-typed
+  expression in the expense amount, the payment amount or an item amount
+  is still read: `+ - * /` (also `× ÷ ·`), standard precedence, optional
   parentheses, one sign only at the start or after `(` — pure
   `parseAmountInput` (`core/l10n/formatting.dart`): every number read like
   `parseAmountCents` (locale `,` / `.` rules, `1.234` = 1234 in German),
@@ -1786,8 +1805,8 @@ change.** Only the add/edit form changed.
   German next to *Gleich / Beträge / Anteile / %*, and items are a way to
   *compute* amounts, not a mode of their own) opens `ItemSplitPage`
   (`item_split_page.dart`, pushed with `Navigator`, full screen). Items:
-  optional name (`itemName-<i>`), amount (`itemAmount-<i>`, G75
-  calculator `parseAmountInput`, currency step G66), who shares it
+  optional name (`itemName-<i>`), amount (`itemAmount-<i>`,
+  `parseAmountInput` — a pasted expression is read, G75/G79 — currency step G66), who shares it
   (`FilterChip`s of the **active** participants, *Everyone* chip; default
   everyone; nobody → *Select at least one person*, blocks). Pure
   `splitByItems(total, items, restMode:, step:)` (`split_calculator.dart`,
@@ -1942,7 +1961,19 @@ serves the engine's Roboto itself + two fallback subsets (G43, see Building).
   ListView with explicit padding doesn't add it itself), never a fixed number.
 - **Ledger rows** (G33) are two independent lines — *title … amount* and
   *payer … you lent/borrowed* — so a long (German) note never squeezes the
-  title. The attribution footer ("Added by X · Last edited by Y") wraps
+  title. G79: the effect ("du schuldest 140,00 CHF") keeps its 70 % cap but
+  wraps onto a second line (at the space before the amount) instead of
+  cutting the amount.
+- **360 dp truncation helpers (G79, `core/widgets/large_text.dart`):**
+  `AppBarTitle` for every plain app-bar title (one line; too long → scaled
+  down to ≥ 80 %; still too long → two lines at 80 %, one at a large font
+  size); `SettingsSectionHeader` uses `WordSafeText` (wraps between words
+  only; a single word wider than the line — "WIEDERHERSTELLUNGSPUNKTE" at
+  200 % — shrinks the header until it fits); the split editor's exact cell
+  drops its currency suffix when value + suffix don't fit its width
+  (`_suffixFits`, cell never widened). `measureTextWidth` /
+  `ScaledTextScaler` are the shared bits. Tests: the G79 group in
+  `test/devi_large_font_test.dart`. The attribution footer ("Added by X · Last edited by Y") wraps
   between its parts, each ellipsized.
 - **E2EE unavailable** (`vod.init()` threw in `main()`):
   `cryptoAvailableProvider` is overridden to `false` and the groups page shows

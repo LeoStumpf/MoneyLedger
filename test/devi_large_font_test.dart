@@ -1,3 +1,6 @@
+/// G79 group at the end: normal-font truncations at 360 dp (effect line,
+/// app-bar titles, the exact cell's suffix) and word-safe section headers.
+///
 /// DEV-I device pass (G71 §11.5, 360 dp, German, system font size 200 %):
 /// rows that put a name next to an amount ellipsized both on a real phone
 /// (Roboto) — "Du bekommst 310,…", "C… za… 134,37 €", a former member
@@ -23,6 +26,7 @@ import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/core/theme/app_theme.dart';
 import 'package:money_ledger/core/widgets/large_text.dart';
+import 'package:money_ledger/core/widgets/settings_section.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_page.dart';
@@ -350,7 +354,10 @@ void main() {
           expect(suffix, findsNothing, reason: 'room for the amount');
         } else {
           expect(width, 96);
-          expect(suffix, findsOneWidget);
+          // G79: "617,28" + "EUR" don't fit 96 dp together (in the test
+          // font) → the suffix gives way instead of cutting the value; the
+          // suffix-when-it-fits case is the G79 group below.
+          expect(suffix, findsNothing);
         }
       });
     }
@@ -416,5 +423,137 @@ void main() {
         }
       });
     }
+  });
+
+  group('G79', () {
+    testWidgets('ledger row: the effect wraps instead of losing its amount '
+        '(360 dp, normal font)', (tester) async {
+      _phone(tester, height: 1400);
+      await tester.pumpWidget(
+        _routed(const ExpensesPage(roomId: _g), _overrides()),
+      );
+      await tester.pumpAndSettle();
+      final effect = tester.renderObject<RenderParagraph>(
+        find.byKey(const Key('expenseEffect')),
+      );
+      expect(effect.maxLines, 2);
+      expect(effect.didExceedMaxLines, isFalse, reason: 'nothing cut');
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(minutes: 1));
+    });
+
+    for (final locale in const [Locale('en'), Locale('de')]) {
+      testWidgets('app-bar title fits at 360 dp (${locale.languageCode})', (
+        tester,
+      ) async {
+        _phone(tester);
+        final l = locale.languageCode == 'de' ? de : en;
+        await tester.pumpWidget(
+          testApp(
+            Scaffold(
+              appBar: AppBar(
+                title: AppBarTitle(l.editExpense),
+                actions: [
+                  IconButton(onPressed: () {}, icon: const Icon(Icons.copy)),
+                  IconButton(onPressed: () {}, icon: const Icon(Icons.delete)),
+                ],
+              ),
+            ),
+            locale: locale,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final title = tester.renderObject<RenderParagraph>(
+          find.text(l.editExpense),
+        );
+        expect(title.didExceedMaxLines, isFalse, reason: 'not ellipsized');
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('a short app-bar title keeps its size', (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(
+        testApp(Scaffold(appBar: AppBar(title: AppBarTitle(en.balanceTitle)))),
+      );
+      await tester.pumpAndSettle();
+      final title = tester.renderObject<RenderParagraph>(
+        find.text(en.balanceTitle),
+      );
+      expect(title.textScaler, isNot(isA<ScaledTextScaler>()));
+      expect(title.maxLines, 1);
+    });
+
+    for (final locale in const [Locale('en'), Locale('de')]) {
+      testWidgets('exact cell: suffix only while it fits next to the value '
+          '(${locale.languageCode})', (tester) async {
+        _phone(tester, height: 1400);
+        await tester.pumpWidget(
+          testApp(
+            Scaffold(
+              body: SingleChildScrollView(
+                child: SplitEditor(
+                  members: [_member('a', 'Anna'), _member('b', 'Ben')],
+                  totalCents: 0,
+                  currency: 'CHF',
+                  onPlanChanged: (_) {},
+                ),
+              ),
+            ),
+            locale: locale,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final l = locale.languageCode == 'de' ? de : en;
+        await tester.tap(find.text(l.splitExact));
+        await tester.pumpAndSettle();
+        final cell = find.byKey(const Key('splitExactCell')).first;
+        Finder suffix() =>
+            find.descendant(of: cell, matching: find.text('CHF'));
+        expect(suffix(), findsOneWidget, reason: 'empty row: room enough');
+        await tester.enterText(
+          find.descendant(of: cell, matching: find.byType(TextField)),
+          '411,50',
+        );
+        await tester.pump();
+        expect(suffix(), findsNothing, reason: 'the value keeps the room');
+        expect(tester.getSize(cell).width, 96, reason: 'cell not widened');
+      });
+    }
+
+    testWidgets('section header: one long word shrinks instead of breaking '
+        'mid-word (360 dp, 200 %, DE)', (tester) async {
+      _phone(tester, scale: 2);
+      await tester.pumpWidget(
+        testApp(
+          Scaffold(
+            body: ListView(
+              children: [
+                SettingsSectionHeader(de.restorePointsTitle),
+                SettingsSectionHeader(de.backupUndoSection),
+              ],
+            ),
+          ),
+          locale: const Locale('de'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final long = tester.renderObject<RenderParagraph>(
+        find.text(de.restorePointsTitle.toUpperCase()),
+      );
+      final fontSize = long.text.style!.fontSize!;
+      final lineHeight = long.textScaler.scale(fontSize) * 1.5;
+      expect(
+        long.size.height,
+        lessThan(lineHeight),
+        reason: 'one line — the word is not broken',
+      );
+      expect(long.textScaler.scale(fontSize), lessThan(fontSize * 2));
+      // Words that fit keep the user's font size (and wrap between words).
+      final other = tester.renderObject<RenderParagraph>(
+        find.text(de.backupUndoSection.toUpperCase()),
+      );
+      expect(other.textScaler.scale(fontSize), closeTo(fontSize * 2, 0.01));
+    });
   });
 }

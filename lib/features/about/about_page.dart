@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/l10n/l10n.dart';
 import '../web/web_limits.dart';
+import '../../core/widgets/large_text.dart';
 
 part 'about_page.g.dart';
 
@@ -39,7 +40,7 @@ class AboutPage extends ConsumerWidget {
     final theme = Theme.of(context);
     final version = ref.watch(appVersionProvider).value;
     return Scaffold(
-      appBar: AppBar(title: Text(l.aboutTitle)),
+      appBar: AppBar(title: AppBarTitle(l.aboutTitle)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16),
         children: [
@@ -153,7 +154,7 @@ class PrivacyPolicyPage extends StatelessWidget {
       (l.privacyContactTitle, l.privacyContactBody),
     ];
     return Scaffold(
-      appBar: AppBar(title: Text(l.privacyPolicyTitle)),
+      appBar: AppBar(title: AppBarTitle(l.privacyPolicyTitle)),
       body: SelectionArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),

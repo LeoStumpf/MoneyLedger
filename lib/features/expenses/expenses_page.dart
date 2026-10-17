@@ -1347,6 +1347,8 @@ class _LedgerRow extends StatelessWidget {
                   ] else
                     LayoutBuilder(
                       builder: (context, c) => Row(
+                        // G79: a long effect wraps onto a second line.
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
@@ -1362,13 +1364,17 @@ class _LedgerRow extends StatelessWidget {
                             const SizedBox(width: Insets.s),
                             // The note keeps its natural width (it's what the
                             // row is about for me), capped so the payer always
-                            // keeps some room.
+                            // keeps some room. G79: over the cap it wraps
+                            // (at the space before the amount — "du
+                            // schuldest / 140,00 CHF") instead of cutting
+                            // the amount.
                             ConstrainedBox(
                               constraints: BoxConstraints(
                                 maxWidth: c.maxWidth * 0.7,
                               ),
                               child: DefaultTextStyle.merge(
-                                maxLines: 1,
+                                maxLines: 2,
+                                textAlign: TextAlign.end,
                                 overflow: TextOverflow.ellipsis,
                                 child: amountNote!,
                               ),

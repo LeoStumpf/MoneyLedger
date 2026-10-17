@@ -11,6 +11,7 @@ import 'group_actions.dart';
 import 'group_archive_provider.dart';
 import 'group_overview_provider.dart';
 import 'group_provider.dart';
+import '../../core/widgets/large_text.dart';
 
 /// G65: route of a group's settings page.
 String groupSettingsLocation(String roomId) => '/groups/$roomId/settings';
@@ -55,7 +56,7 @@ class GroupSettingsPage extends ConsumerWidget {
     final leave = exitKind == GroupExitKind.leave;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.groupSettingsTitle)),
+      appBar: AppBar(title: AppBarTitle(l.groupSettingsTitle)),
       body: ContentWidth(
         child: ListView(
           key: const Key('groupSettingsList'),

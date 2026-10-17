@@ -545,7 +545,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_isEdit ? l.editExpense : l.addExpense),
+          title: AppBarTitle(_isEdit ? l.editExpense : l.addExpense),
           actions: [
             // G75: *Duplicate* — the add form with a copy of the stored
             // expense (unsaved edits here are not copied; a changed form

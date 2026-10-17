@@ -61,7 +61,7 @@ class GroupMembersPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.membersTitle),
+        title: AppBarTitle(l.membersTitle),
         actions: [
           if (!local)
             IconButton(

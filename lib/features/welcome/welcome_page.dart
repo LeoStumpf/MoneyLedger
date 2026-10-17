@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/widgets/content_width.dart';
 import '../about/about_page.dart' show kSourceCodeUrl;
+import '../../core/widgets/large_text.dart';
 
 /// The explanation pages of the welcome, in order.
 enum WelcomeTopic {
@@ -116,7 +117,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     final topics = WelcomeTopic.values;
     return Scaffold(
       appBar: widget.revisit
-          ? AppBar(title: Text(l.howItWorksTitle))
+          ? AppBar(title: AppBarTitle(l.howItWorksTitle))
           : AppBar(
               automaticallyImplyLeading: false,
               actions: [

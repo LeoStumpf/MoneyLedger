@@ -31,6 +31,7 @@ import '../history/restore_points.dart' show snapshotsSupportedProvider;
 import '../history/restore_points_page.dart' show kRestorePointsLocation;
 import 'backup_providers.dart';
 import 'backup_ui.dart';
+import '../../core/widgets/large_text.dart';
 
 /// Route of [BackupRestorePage] (opened from the settings page).
 const kBackupLocation = '/backup';
@@ -47,7 +48,7 @@ class BackupRestorePage extends ConsumerWidget {
     final groups = ref.watch(ledgerGroupsProvider).value ?? const [];
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.settingsSectionBackup)),
+      appBar: AppBar(title: AppBarTitle(l.settingsSectionBackup)),
       body: ContentWidth(
         child: ListView(
           key: const Key('backupPageList'),

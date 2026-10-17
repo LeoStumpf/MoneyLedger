@@ -7,6 +7,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/session/device_prefs.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
+import '../../core/widgets/large_text.dart';
 
 /// G40: "Use without an account" — explains local mode and asks for the
 /// user's name (how they appear in their local groups). Starting it opens the
@@ -73,7 +74,7 @@ class _LocalSetupPageState extends ConsumerState<LocalSetupPage> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.welcomeUseLocal),
+        title: AppBarTitle(l.welcomeUseLocal),
         leading: BackButton(
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/login'),

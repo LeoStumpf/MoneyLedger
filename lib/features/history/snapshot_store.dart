@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/demo/demo_mode.dart' show kOfflineDemo;
 import '../receipts/receipt_store.dart' show ReceiptStore;
 import 'snapshot_store_platform.dart';
 
@@ -22,7 +21,7 @@ abstract class SnapshotStore {
   Future<void> deleteAll();
 }
 
-/// A [SnapshotStore] in memory — tests.
+/// A [SnapshotStore] in memory — tests and the offline demo (G79).
 class InMemorySnapshotStore implements SnapshotStore {
   final files = <String, String>{};
 
@@ -42,10 +41,11 @@ class InMemorySnapshotStore implements SnapshotStore {
 
 /// The snapshot store of the ledger DB called `dbName`, or null where there
 /// are no snapshots: **web** (no file system — the in-DB version history,
-/// G48, still allows resetting a group there) and the offline demo.
+/// G48, still allows resetting a group there). The offline demo overrides
+/// it with in-memory stores (`demoSnapshotStores`, G79).
 final snapshotStoreFactoryProvider =
     Provider<SnapshotStore? Function(String dbName)>(
-      (ref) => kOfflineDemo ? (_) => null : createPlatformSnapshotStore,
+      (ref) => createPlatformSnapshotStore,
     );
 
 /// G48: local mode's ledger is gone (data deleted, or adopted into an

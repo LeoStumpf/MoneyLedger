@@ -8,6 +8,7 @@ import '../../core/widgets/content_width.dart';
 import '../backup/backup_ui.dart' show BackupRestorer, backupErrorMessage;
 import '../backup/ledger_backup.dart' show BackupFormatException;
 import 'restore_points.dart';
+import '../../core/widgets/large_text.dart';
 
 /// Route of [RestorePointsPage].
 const kRestorePointsLocation = '/restore-points';
@@ -40,7 +41,7 @@ class RestorePointsPage extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.restorePointsTitle)),
+      appBar: AppBar(title: AppBarTitle(l.restorePointsTitle)),
       body: ContentWidth(
         child: ListView(
           padding: const EdgeInsets.only(top: Insets.s, bottom: Insets.xxl),

@@ -8,6 +8,7 @@ import '../../core/widgets/content_width.dart';
 import '../../core/widgets/currency_field.dart';
 import '../../models/member_model.dart' show duplicateNameOf;
 import 'group_provider.dart';
+import '../../core/widgets/large_text.dart';
 
 class CreateGroupPage extends ConsumerStatefulWidget {
   const CreateGroupPage({super.key});
@@ -82,7 +83,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     final state = ref.watch(groupCreatorProvider);
     final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: Text(l.newGroup)),
+      appBar: AppBar(title: AppBarTitle(l.newGroup)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(Insets.page),
         child: ContentWidth(

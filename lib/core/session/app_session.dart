@@ -15,9 +15,11 @@
 /// (`local_adoption.dart`).
 library;
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
+import '../matrix/store_probe/matrix_store_probe.dart';
 import 'device_prefs.dart';
 
 /// The pseudo account id of local mode — "this device" as the claimant of
@@ -52,11 +54,40 @@ final connectingAccountProvider = Provider<bool>(
 /// Whether the Matrix session may be consulted at all. False in local mode
 /// (unless a connect is in progress) and while the device preferences load —
 /// so a local-mode start never builds a Matrix client or opens its store.
+/// G79: also false on a fresh device whose welcome hasn't been completed
+/// (no mode chosen yet) — unless a Matrix store already exists there (a
+/// session from before the welcome existed must still start straight in;
+/// [matrixStoreExistsProvider]). Choosing *Sign in* / *Create account* marks
+/// the welcome seen, so the client is built only then.
 final matrixSessionWantedProvider = Provider<bool>((ref) {
   final prefs = ref.watch(devicePrefsProvider).value;
   if (prefs == null) return false;
-  return prefs.localProfile == null || prefs.connecting;
+  if (prefs.localProfile != null) return prefs.connecting;
+  if (prefs.welcomeSeen) return true;
+  return ref.watch(matrixStoreExistsProvider).value ?? false;
 });
+
+/// G79: whether the Matrix SDK store exists on this device (checked once per
+/// run; false on the web and when the check fails). Only consulted while the
+/// welcome hasn't been seen.
+final matrixStoreExistsProvider = FutureProvider<bool>((ref) async {
+  try {
+    return await matrixStoreExists();
+  } catch (e) {
+    debugPrint('[session] Matrix store check failed: $e');
+    return false;
+  }
+});
+
+/// G79: the [matrixStoreExistsProvider] check still runs and decides whether
+/// a not-yet-welcomed device is signed in → the router keeps the splash.
+bool _storeCheckPending(Ref ref) {
+  final prefs = ref.watch(devicePrefsProvider).value;
+  if (prefs == null || prefs.welcomeSeen || prefs.localProfile != null) {
+    return false;
+  }
+  return ref.watch(matrixStoreExistsProvider).isLoading;
+}
 
 /// Local mode is active: the local ledger is open and nothing syncs. Ends as
 /// soon as a connect's sign-in succeeded (before the preferences are
@@ -96,6 +127,7 @@ final appSessionProvider = Provider<AppSessionKind>((ref) {
     return AppSessionKind.loading;
   }
   if (ref.watch(localModeActiveProvider)) return AppSessionKind.local;
+  if (_storeCheckPending(ref)) return AppSessionKind.loading;
   if (ref.watch(isLoggedInProvider)) return AppSessionKind.matrix;
   return AppSessionKind.signedOut;
 });

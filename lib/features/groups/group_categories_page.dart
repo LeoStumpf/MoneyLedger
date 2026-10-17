@@ -8,6 +8,7 @@ import '../../core/widgets/content_width.dart';
 import '../../models/expense_category.dart';
 import '../expenses/expense_category_ui.dart';
 import 'group_provider.dart';
+import '../../core/widgets/large_text.dart';
 
 /// G47: the group's own expense categories (group ⋮ → *Categories*): add,
 /// rename / change the icon, hide / show again. They live in the signed
@@ -34,7 +35,7 @@ class GroupCategoriesPage extends ConsumerWidget {
     final full = categories.length >= kMaxCustomCategories;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.manageCategories)),
+      appBar: AppBar(title: AppBarTitle(l.manageCategories)),
       floatingActionButton: canEdit && !full
           ? FloatingActionButton.extended(
               key: const Key('addCategory'),

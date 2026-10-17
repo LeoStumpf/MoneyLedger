@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/database/account_database.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
+import 'package:money_ledger/core/session/app_session.dart';
 import 'package:money_ledger/core/session/device_prefs.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/features/devices/device_provider.dart';
@@ -146,6 +147,8 @@ List<dynamic> testOverrides({
       if (connecting) 'local_connecting': '1',
     }),
   ),
+  // G79: no Matrix store probe (path_provider) in widget tests.
+  matrixStoreExistsProvider.overrideWith((ref) async => false),
   // Local mode would open the real local DB file — use the storage-less
   // placeholder like a signed-out widget test does.
   if (localProfile != null)

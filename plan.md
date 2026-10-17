@@ -882,15 +882,16 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [x] 200 % font at 360 dp: group cards, ledger rows, balance rows, split
       cells / mode labels, item editor, people page, currency field —
       fixed (`large_text.dart`, `test/devi_large_font_test.dart`)
-- [ ] **Calculator unreachable on Android:** Gboard's decimal keypad has
+- [x] **Calculator unreachable on Android:** Gboard's decimal keypad has
       only `-` → decide: operator row above the keyboard / text keyboard /
-      drop the feature (Leo)
-- [ ] Normal font, 360 dp: ledger row "du schuldest 140,00 C…" (G33 70 %
+      drop the feature (Leo) → **dropped from the UI** (Leo 2026-10-17); a pasted
+      expression still works
+- [x] Normal font, 360 dp: ledger row "du schuldest 140,00 C…" (G33 70 %
       cap), long titles, Amounts cell "411,5CHF" (3-digit + suffix)
-- [ ] Section header "WIEDERHERSTELLUNGSPUNKTE" breaks mid-word at 200 %
-- [ ] Offline demo on Android shows web-only texts (no background sync /
+- [x] Section header "WIEDERHERSTELLUNGSPUNKTE" breaks mid-word at 200 %
+- [x] Offline demo on Android shows web-only texts (no background sync /
       restore points "im Browser") — screenshots only
-- [ ] Fresh install builds the (empty) Matrix SDK store before a mode is
+- [x] Fresh install builds the (empty) Matrix SDK store before a mode is
       chosen (`money_ledger_matrix.sqlite`, no network) — build it lazily
       only when Matrix is actually wanted
 - [ ] Leo-only: TalkBack 11.1–11.4, 11.7, two-device checks (undo, duplicate,
