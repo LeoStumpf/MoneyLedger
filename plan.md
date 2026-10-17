@@ -843,13 +843,29 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [x] G67 leftover: *Try again* on error snackbars where the action is
       repeatable
 - [ ] Device check: does the decimal keypad (Gboard) offer `+ - * /`? If not, the calculator is unreachable on Android → operator row or other keyboard type (smoke 5.18); web notice in a real web build (12.2); duplicate on two devices (5.17)
-- [ ] Ask Leo: multiple payers per expense (wire), itemized split, local-only
-      receipt photo, quick-add shortcut / widget
+- [x] Ask Leo (2026-10-17): yes to multiple payers (G76), itemized split
+      (G77), local-only receipt photo (G78); **no** quick-add shortcut / widget
 
 ### G74. Payment details + GiroCode (Leo 2026-10-17) 🟢
 - [ ] Optional own IBAN / PayPal.me in the **app settings**; shown to others
       when they settle with me (GiroCode QR with amount / PayPal link) — needs
       a synced field → wire change, bundle with G57 / G73
+
+
+### G76. Multiple payers per expense (Leo 2026-10-17) 🟢
+- [ ] An expense paid by several people (`paid_by` → map of amounts) — wire
+      change (signed body, G27 hash, CSV, backup, balance calc); older builds
+      must not misread it → bundle with G57 / G73 / G74 wire changes
+
+### G77. Itemized split (Leo 2026-10-17) 🟢
+- [ ] Split a receipt item by item (items → people, shared items, rest
+      equally); result is a normal split map — no wire change (items not
+      stored, like the split modes)
+
+### G78. Receipt photo, this device only (Leo 2026-10-17) 🟢
+- [ ] Attach a photo to an expense, stored only on this device (app dir, not
+      synced, not in backups unless decided), clearly labelled so; deleted
+      with the expense / group / local data; privacy text
 
 ---
 
@@ -934,6 +950,9 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G73 — manual exchange rates + fetch button (with G57)
 - [x] G75 — usability polish (review leftovers)
 - [ ] G74 — payment details + GiroCode (with G57 / G73)
+- [ ] G76 — multiple payers (wire, with G57 / G73 / G74)
+- [ ] G77 — itemized split
+- [ ] G78 — receipt photo, this device only
 
 ---
 
