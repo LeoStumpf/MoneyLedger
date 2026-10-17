@@ -111,6 +111,7 @@ Expected results are in *italics*.
 | 5.16 | Record payment → *Date shows "Today"*; tap *Yesterday* → Record → *listed under yesterday on both devices* (G60) | 2dev |
 | 5.17 | (G75) Row ⋮ → *Duplicate* → *add form with the same description / amount / currency / payer / split / category / note, Date "Today"; back without Add → nothing new*; Add → *a second expense under today, on the peer too*; edit form → copy icon → *same, the edit page is replaced* | 2dev |
 | 5.18 | (G75) Amount `12,50+8` (German) → *preview "= 20,50 €", Add saves 20,50*; `10/3` → *3,33*; `12+` → *Add disabled*; same in the payment dialog. **Check the keyboard:** does the decimal keypad offer `+ - * /` (Gboard)? If not, note it — the calculator then only helps with a hardware / web keyboard | phone |
+| 5.19 | (G77) Add expense 30 € → *Split by items…* → Pizza 12 (only Anna), Pasta 9 (only Bob), Wine `2*3` (everyone) → *"Rest (tax, tip, not itemized): 3,00 €", per person 15,56 / 12,22 / 2,22*; switch the rest to *Equally* → *15 / 12 / 3*; *Use this split* → *Amounts mode, "Adds up to the total"*; Add → *peer shows the same split*. Items over the amount → *"… too much"* + *Set total to the sum* sets the form's amount. German UI + 200 % font: item cards, chips and the rest choice don't overflow; back on the editor page keeps the items | phone |
 
 ## 6. Settlements & balances
 

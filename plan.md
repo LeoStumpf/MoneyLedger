@@ -858,9 +858,12 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       must not misread it → bundle with G57 / G73 / G74 wire changes
 
 ### G77. Itemized split (Leo 2026-10-17) 🟢
-- [ ] Split a receipt item by item (items → people, shared items, rest
+- [x] Split a receipt item by item (items → people, shared items, rest
       equally); result is a normal split map — no wire change (items not
       stored, like the split modes)
+      → *Split by items…* action under the mode buttons (5 segments don't fit
+      in DE at 360 dp), full-screen item editor, result opens as Amounts
+- [ ] Device check: smoke 5.19
 
 ### G78. Receipt photo, this device only (Leo 2026-10-17) 🟢
 - [ ] Attach a photo to an expense, stored only on this device (app dir, not
@@ -951,7 +954,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G75 — usability polish (review leftovers)
 - [ ] G74 — payment details + GiroCode (with G57 / G73)
 - [ ] G76 — multiple payers (wire, with G57 / G73 / G74)
-- [ ] G77 — itemized split
+- [x] G77 — itemized split
 - [ ] G78 — receipt photo, this device only
 
 ---

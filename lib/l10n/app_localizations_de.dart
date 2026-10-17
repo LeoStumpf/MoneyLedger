@@ -2850,4 +2850,69 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get errorTryAgain => 'Erneut versuchen';
+
+  @override
+  String get splitByItemsAction => 'Nach Posten aufteilen …';
+
+  @override
+  String get itemsTitle => 'Nach Posten aufteilen';
+
+  @override
+  String itemsReceiptTotal(String amount) {
+    return 'Gesamt: $amount';
+  }
+
+  @override
+  String get itemsNoTotal => 'Noch kein Betrag';
+
+  @override
+  String get itemsNotStoredHint =>
+      'Jeder Posten wird gleichmäßig auf seine Personen aufgeteilt. Gespeichert werden nur die Beträge pro Person, nicht die Posten.';
+
+  @override
+  String itemLabel(int n) {
+    return 'Posten $n';
+  }
+
+  @override
+  String get itemAdd => 'Posten hinzufügen';
+
+  @override
+  String get itemRemove => 'Posten entfernen';
+
+  @override
+  String get itemEveryone => 'Alle';
+
+  @override
+  String itemEach(String amount) {
+    return 'je $amount';
+  }
+
+  @override
+  String get itemsEnterOne => 'Gib mindestens einen Postenbetrag ein';
+
+  @override
+  String itemsRest(String amount) {
+    return 'Rest (Steuer, Trinkgeld, nicht aufgeführt): $amount';
+  }
+
+  @override
+  String get itemsRestProportional => 'Anteilig';
+
+  @override
+  String get itemsRestEqually => 'Gleichmäßig';
+
+  @override
+  String get itemsRestProportionalHint =>
+      'Der Rest wird im Verhältnis zu dem aufgeteilt, was jede Person hatte.';
+
+  @override
+  String get itemsRestEqualHint =>
+      'Der Rest wird gleichmäßig auf alle mit einem Posten aufgeteilt.';
+
+  @override
+  String get itemsResult => 'Pro Person';
+
+  @override
+  String get itemsApply => 'Diese Aufteilung übernehmen';
 }

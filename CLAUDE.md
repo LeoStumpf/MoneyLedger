@@ -247,6 +247,7 @@ lib/
                                # Static @visibleForTesting methods for unit-testable event processing
       split_calculator.dart    # Pure-Dart split math (largest-remainder) — see "Custom splits"
       split_editor.dart        # SplitEditor widget: Equal/Exact/Shares/% modes → SplitPlan
+      item_split_page.dart     # G77 ItemSplitPage: split a receipt item by item → Exact amounts
       record_date_field.dart   # G49/G60 RecordDateField: Date field + Today/Yesterday chips (expense form + payment dialog)
       expense_category_ui.dart # G16: category icon / colours / label, CategoryIconTile, CategoryPicker
                                # (G47: dropdown-style selector + showCategoryDialog, custom icon keys)
@@ -1725,8 +1726,36 @@ change.** Only the add/edit form changed.
     keeps its amounts and shows the mismatch. Tests:
     `test/features/split_editor_test.dart` (incl. the 5 € / 2.50 € example),
     `split_calculator_test.dart`.
-- **Out of scope:** itemised receipts, per-item assignment, tax/tip lines,
-  saving a default split per group; settlements remain split-free.
+- **Itemized split (G77):** *Split by items…* (`splitItemize`, a text
+  button under the mode segments — a fifth segment doesn't fit 360 dp in
+  German next to *Gleich / Beträge / Anteile / %*, and items are a way to
+  *compute* amounts, not a mode of their own) opens `ItemSplitPage`
+  (`item_split_page.dart`, pushed with `Navigator`, full screen). Items:
+  optional name (`itemName-<i>`), amount (`itemAmount-<i>`, G75
+  calculator `parseAmountInput`, currency step G66), who shares it
+  (`FilterChip`s of the **active** participants, *Everyone* chip; default
+  everyone; nobody → *Select at least one person*, blocks). Pure
+  `splitByItems(total, items, restMode:, step:)` (`split_calculator.dart`,
+  `SplitItem(cents, people)`, `itemsSum`): each item split equally among its
+  people (`splitEqually`, step); the rest (`total − items`, incl. items
+  nobody shares) → `ItemRestMode.proportional` (default, by item subtotal,
+  `distributeByWeights`) or `equal` (among everyone with an item); people at
+  0 are absent; sums to the total exactly; null when total ≤ 0, items >
+  total or nobody is in an item. Items over the total → "X too much" +
+  *Set total to the sum* (`itemsSetTotal`; also with no amount yet), only
+  when the editor has `onSetTotal`. *Use this split* (`itemsApply`) pops an
+  `ItemizedSplit(total, split)` → the editor calls `onSetTotal` if the total
+  changed and switches to **Exact** with the amounts as **typed** rows
+  (others `0`, not "auto" — *Distribute* won't flatten them) → `_changed()`
+  (G56 dirty, saved as the usual cents map). **Not stored** (no wire / DB
+  change): an itemized expense reopens as Exact amounts like Shares / %; the
+  items (`ItemSplitDraft`) live in the editor while the form is open (back
+  without applying keeps them, no discard prompt). Tests:
+  `test/g77_itemized_split_test.dart` (incl. 360 dp / 200 % EN+DE, save →
+  stored split), `split_calculator_test.dart` (G77 group), G71 guideline
+  test for the item page.
+- **Out of scope:** per-item tax/tip lines, saving items, saving a default
+  split per group; settlements remain split-free.
 
 ### Localization (G12)
 

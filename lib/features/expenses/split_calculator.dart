@@ -210,6 +210,79 @@ int percentToHundredths(num percent) => (percent * 100).round();
 num hundredthsToPercent(int hundredths) =>
     hundredths % 100 == 0 ? hundredths ~/ 100 : hundredths / 100;
 
+/// G77: how the rest of an itemized receipt (total − items: tax, tip, what
+/// wasn't itemized) is shared.
+enum ItemRestMode {
+  /// In proportion to each person's item subtotal (the default — tax and a
+  /// tip usually scale with what one had).
+  proportional,
+
+  /// Equally among everyone who shares at least one item.
+  equal,
+}
+
+/// G77: one receipt line — [cents] split equally among [people]
+/// (participant ids, in the order given). An item with no people counts
+/// towards the rest (not assigned to anyone).
+class SplitItem {
+  final int cents;
+  final List<String> people;
+  const SplitItem(this.cents, this.people);
+}
+
+/// G77: the sum of every item with a positive amount (with or without
+/// people) — what the receipt total must at least be.
+int itemsSum(List<SplitItem> items) =>
+    items.where((i) => i.cents > 0).fold(0, (a, i) => a + i.cents);
+
+/// G77: an itemized split of [total] — each item (amount > 0, ≥ 1 person) is
+/// split equally among its people (largest remainder, [step] as in
+/// [distributeByWeights]); the rest (`total − assigned items`, incl. items
+/// nobody shares) is spread per [restMode]. The result is an Exact split that
+/// **sums to [total] exactly**; people who end with 0 (in no item, or a
+/// cent item that didn't reach them) are absent. Keys follow each person's
+/// first appearance in [items].
+///
+/// Null when there is nothing to split this way: [total] ≤ 0, the items
+/// exceed the total ([itemsSum] > [total] — "X too much"), or no item with
+/// an amount has anyone.
+Map<String, int>? splitByItems(
+  int total,
+  List<SplitItem> items, {
+  ItemRestMode restMode = ItemRestMode.proportional,
+  int step = 1,
+}) {
+  if (total <= 0 || itemsSum(items) > total) return null;
+  final subtotal = <String, int>{};
+  var assigned = 0;
+  for (final item in items) {
+    if (item.cents <= 0 || item.people.isEmpty) continue;
+    assigned += item.cents;
+    splitEqually(
+      item.cents,
+      item.people.toSet().toList(),
+      step: step,
+    ).forEach((id, c) => subtotal[id] = (subtotal[id] ?? 0) + c);
+  }
+  if (subtotal.isEmpty) return null;
+  final rest = total - assigned;
+  if (rest > 0) {
+    final extra = switch (restMode) {
+      ItemRestMode.proportional =>
+        // Every assigned item gives someone ≥ 1 cent, so a weight is > 0.
+        distributeByWeights(rest, subtotal, step: step),
+      ItemRestMode.equal => splitEqually(
+        rest,
+        subtotal.keys.toList(),
+        step: step,
+      ),
+    };
+    extra.forEach((id, c) => subtotal[id] = subtotal[id]! + c);
+  }
+  subtotal.removeWhere((_, c) => c <= 0);
+  return subtotal;
+}
+
 int _gcd(int a, int b) {
   while (b != 0) {
     final t = a % b;

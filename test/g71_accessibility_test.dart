@@ -415,6 +415,33 @@ void main() {
     }
   });
 
+  testWidgets('G77 item editor (split by items)', (tester) async {
+    _phone(tester, height: 1600);
+    final handle = tester.ensureSemantics();
+    final db = await _seed();
+    addTearDown(db.close);
+    final net = FakeMatrixNetwork();
+    await tester.pumpWidget(
+      _routed(const AddExpensePage(roomId: _g), [
+        ...signingUiOverrides(),
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith((ref) => net.clientFor(_me)),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('expenseAmount')), '10');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('splitItemize')));
+    await tester.tap(find.byKey(const Key('splitItemize')));
+    await tester.pumpAndSettle();
+    // A rest, so the rest-mode choice and the result show.
+    await tester.enterText(find.byKey(const Key('itemAmount-0')), '8');
+    await tester.tap(find.byKey(const Key('itemsAdd')));
+    await tester.pumpAndSettle();
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
   group('screen reader', () {
     testWidgets('a ledger row reads as one sentence, incl. its category, '
         'note, amount, effect and sync state', (tester) async {

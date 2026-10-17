@@ -2820,4 +2820,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorTryAgain => 'Try again';
+
+  @override
+  String get splitByItemsAction => 'Split by items…';
+
+  @override
+  String get itemsTitle => 'Split by items';
+
+  @override
+  String itemsReceiptTotal(String amount) {
+    return 'Total: $amount';
+  }
+
+  @override
+  String get itemsNoTotal => 'No amount yet';
+
+  @override
+  String get itemsNotStoredHint =>
+      'Each item is split equally among its people. Only the amounts per person are saved, not the items.';
+
+  @override
+  String itemLabel(int n) {
+    return 'Item $n';
+  }
+
+  @override
+  String get itemAdd => 'Add item';
+
+  @override
+  String get itemRemove => 'Remove item';
+
+  @override
+  String get itemEveryone => 'Everyone';
+
+  @override
+  String itemEach(String amount) {
+    return '$amount each';
+  }
+
+  @override
+  String get itemsEnterOne => 'Enter at least one item amount';
+
+  @override
+  String itemsRest(String amount) {
+    return 'Rest (tax, tip, not itemized): $amount';
+  }
+
+  @override
+  String get itemsRestProportional => 'Proportionally';
+
+  @override
+  String get itemsRestEqually => 'Equally';
+
+  @override
+  String get itemsRestProportionalHint =>
+      'The rest is shared in proportion to what each person had.';
+
+  @override
+  String get itemsRestEqualHint =>
+      'The rest is shared equally among everyone with an item.';
+
+  @override
+  String get itemsResult => 'Per person';
+
+  @override
+  String get itemsApply => 'Use this split';
 }

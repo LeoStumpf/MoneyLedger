@@ -4447,6 +4447,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get errorTryAgain;
+
+  /// G77: action under the split modes — opens the item editor (receipt line by line)
+  ///
+  /// In en, this message translates to:
+  /// **'Split by items…'**
+  String get splitByItemsAction;
+
+  /// G77: item editor page title
+  ///
+  /// In en, this message translates to:
+  /// **'Split by items'**
+  String get itemsTitle;
+
+  /// G77: the expense amount on top of the item editor
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {amount}'**
+  String itemsReceiptTotal(String amount);
+
+  /// G77: item editor opened before an amount was entered
+  ///
+  /// In en, this message translates to:
+  /// **'No amount yet'**
+  String get itemsNoTotal;
+
+  /// G77: hint under the total
+  ///
+  /// In en, this message translates to:
+  /// **'Each item is split equally among its people. Only the amounts per person are saved, not the items.'**
+  String get itemsNotStoredHint;
+
+  /// G77: label of an item's (optional) name field
+  ///
+  /// In en, this message translates to:
+  /// **'Item {n}'**
+  String itemLabel(int n);
+
+  /// G77
+  ///
+  /// In en, this message translates to:
+  /// **'Add item'**
+  String get itemAdd;
+
+  /// G77: tooltip of an item's delete button
+  ///
+  /// In en, this message translates to:
+  /// **'Remove item'**
+  String get itemRemove;
+
+  /// G77: chip selecting every person for an item
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone'**
+  String get itemEveryone;
+
+  /// G77: per-person share of an item
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} each'**
+  String itemEach(String amount);
+
+  /// G77
+  ///
+  /// In en, this message translates to:
+  /// **'Enter at least one item amount'**
+  String get itemsEnterOne;
+
+  /// G77: total minus the items
+  ///
+  /// In en, this message translates to:
+  /// **'Rest (tax, tip, not itemized): {amount}'**
+  String itemsRest(String amount);
+
+  /// G77: rest shared in proportion to each person's items
+  ///
+  /// In en, this message translates to:
+  /// **'Proportionally'**
+  String get itemsRestProportional;
+
+  /// G77: rest shared equally
+  ///
+  /// In en, this message translates to:
+  /// **'Equally'**
+  String get itemsRestEqually;
+
+  /// G77
+  ///
+  /// In en, this message translates to:
+  /// **'The rest is shared in proportion to what each person had.'**
+  String get itemsRestProportionalHint;
+
+  /// G77
+  ///
+  /// In en, this message translates to:
+  /// **'The rest is shared equally among everyone with an item.'**
+  String get itemsRestEqualHint;
+
+  /// G77: heading of the resulting split
+  ///
+  /// In en, this message translates to:
+  /// **'Per person'**
+  String get itemsResult;
+
+  /// G77: applies the item split (as amounts)
+  ///
+  /// In en, this message translates to:
+  /// **'Use this split'**
+  String get itemsApply;
 }
 
 class _AppLocalizationsDelegate

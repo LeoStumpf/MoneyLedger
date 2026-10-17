@@ -2738,5 +2738,97 @@
   "errorTryAgain": "Try again",
   "@errorTryAgain": {
     "description": "G75 (G67 leftover): error snackbar action that re-runs a repeatable action (export, picking a file)"
+  },
+  "splitByItemsAction": "Split by items…",
+  "@splitByItemsAction": {
+    "description": "G77: action under the split modes — opens the item editor (receipt line by line)"
+  },
+  "itemsTitle": "Split by items",
+  "@itemsTitle": {
+    "description": "G77: item editor page title"
+  },
+  "itemsReceiptTotal": "Total: {amount}",
+  "@itemsReceiptTotal": {
+    "description": "G77: the expense amount on top of the item editor",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsNoTotal": "No amount yet",
+  "@itemsNoTotal": {
+    "description": "G77: item editor opened before an amount was entered"
+  },
+  "itemsNotStoredHint": "Each item is split equally among its people. Only the amounts per person are saved, not the items.",
+  "@itemsNotStoredHint": {
+    "description": "G77: hint under the total"
+  },
+  "itemLabel": "Item {n}",
+  "@itemLabel": {
+    "description": "G77: label of an item's (optional) name field",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "itemAdd": "Add item",
+  "@itemAdd": {
+    "description": "G77"
+  },
+  "itemRemove": "Remove item",
+  "@itemRemove": {
+    "description": "G77: tooltip of an item's delete button"
+  },
+  "itemEveryone": "Everyone",
+  "@itemEveryone": {
+    "description": "G77: chip selecting every person for an item"
+  },
+  "itemEach": "{amount} each",
+  "@itemEach": {
+    "description": "G77: per-person share of an item",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsEnterOne": "Enter at least one item amount",
+  "@itemsEnterOne": {
+    "description": "G77"
+  },
+  "itemsRest": "Rest (tax, tip, not itemized): {amount}",
+  "@itemsRest": {
+    "description": "G77: total minus the items",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsRestProportional": "Proportionally",
+  "@itemsRestProportional": {
+    "description": "G77: rest shared in proportion to each person's items"
+  },
+  "itemsRestEqually": "Equally",
+  "@itemsRestEqually": {
+    "description": "G77: rest shared equally"
+  },
+  "itemsRestProportionalHint": "The rest is shared in proportion to what each person had.",
+  "@itemsRestProportionalHint": {
+    "description": "G77"
+  },
+  "itemsRestEqualHint": "The rest is shared equally among everyone with an item.",
+  "@itemsRestEqualHint": {
+    "description": "G77"
+  },
+  "itemsResult": "Per person",
+  "@itemsResult": {
+    "description": "G77: heading of the resulting split"
+  },
+  "itemsApply": "Use this split",
+  "@itemsApply": {
+    "description": "G77: applies the item split (as amounts)"
   }
 }

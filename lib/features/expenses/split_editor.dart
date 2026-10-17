@@ -6,6 +6,7 @@ import '../../core/sync/record_validation.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/person_avatar.dart';
 import '../../models/member_model.dart';
+import 'item_split_page.dart';
 import 'split_calculator.dart';
 
 /// How an expense is divided. Persisted only as the resolved cents map — the
@@ -103,6 +104,10 @@ class SplitPlan {
 ///   parent sets its amount field and the split adds up.
 /// - **Fine-tune as amounts** (Shares, with an amount and at least one share):
 ///   switches to Exact with the shares converted to amounts.
+///
+/// G77: *Split by items…* (under the modes) opens [ItemSplitPage]; its result
+/// lands in Exact as typed amounts (others `0`), so the stored split is the
+/// usual cents map. The items stay in this editor while the form is open.
 class SplitEditor extends StatefulWidget {
   final List<MemberModel> members;
   final int totalCents;
@@ -142,6 +147,9 @@ class _SplitEditorState extends State<SplitEditor> {
   /// distribute) and the user hasn't typed in since — open for "fill the rest".
   final _autoExact = <String>{};
   final _autoPercent = <String>{};
+
+  /// G77: the item editor's inputs — kept while the form is open.
+  final _itemDraft = ItemSplitDraft();
 
   /// Modes that hold inputs (shown or prefilled at least once).
   final _seeded = <SplitMode>{};
@@ -436,6 +444,41 @@ class _SplitEditorState extends State<SplitEditor> {
     }
   }
 
+  // --- itemized split (G77) ------------------------------------------------
+
+  /// Opens the item editor; its split becomes Exact amounts the user chose
+  /// (typed rows, not "auto" — *Distribute* won't flatten them).
+  Future<void> _itemize() async {
+    final active = [
+      for (final m in widget.members)
+        if (m.isActive) m,
+    ];
+    final result = await Navigator.of(context).push<ItemizedSplit>(
+      MaterialPageRoute(
+        builder: (_) => ItemSplitPage(
+          members: active,
+          totalCents: widget.totalCents,
+          currency: widget.currency,
+          draft: _itemDraft,
+          canSetTotal: widget.onSetTotal != null,
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    if (result.total != widget.totalCents) {
+      widget.onSetTotal?.call(result.total);
+    }
+    for (final m in widget.members) {
+      final cents = result.split[m.userId] ?? 0;
+      _exactCtrl[m.userId]!.text = cents > 0 ? _amountText(cents) : '0';
+    }
+    _autoExact.clear();
+    _seeded.add(SplitMode.exact);
+    _mode = SplitMode.exact;
+    _totalAtSwitch = result.total;
+    _changed();
+  }
+
   // --- fill the rest (G59) ------------------------------------------------
 
   /// Spreads `total − typed` over the open rows of Exact (cents) or Percent
@@ -533,7 +576,18 @@ class _SplitEditorState extends State<SplitEditor> {
           selected: {_mode},
           onSelectionChanged: (s) => _switchTo(s.first),
         ),
-        const SizedBox(height: Insets.s),
+        if (widget.members.any((m) => m.isActive))
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              key: const Key('splitItemize'),
+              onPressed: _itemize,
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: Text(l.splitByItemsAction),
+            ),
+          )
+        else
+          const SizedBox(height: Insets.s),
         Card(
           child: Padding(
             padding: const EdgeInsets.symmetric(

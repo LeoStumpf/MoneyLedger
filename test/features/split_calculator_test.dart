@@ -327,4 +327,131 @@ void main() {
       expect(percentToHundredths(12.5), 1250);
     });
   });
+
+  group('G77 splitByItems', () {
+    test('items split equally among their people, rest proportional', () {
+      // Pizza 12 (a), Pasta 9 (b), Wine 6 (a + b + c); total 30 → rest 3.
+      final r = splitByItems(3000, const [
+        SplitItem(1200, ['a']),
+        SplitItem(900, ['b']),
+        SplitItem(600, ['a', 'b', 'c']),
+      ])!;
+      // Subtotals a 1400, b 1100, c 200 (sum 2700) → rest 300 in proportion.
+      expect(r, {'a': 1556, 'b': 1222, 'c': 222});
+      expect(_sum(r), 3000);
+    });
+
+    test('rest equally among everyone with an item', () {
+      final r = splitByItems(3000, const [
+        SplitItem(1200, ['a']),
+        SplitItem(900, ['b']),
+        SplitItem(600, ['a', 'b', 'c']),
+      ], restMode: ItemRestMode.equal)!;
+      expect(r, {'a': 1500, 'b': 1200, 'c': 300});
+    });
+
+    test('remainders: an item of 10.00 among 3 plus a cent rest', () {
+      final r = splitByItems(1001, const [
+        SplitItem(1000, ['a', 'b', 'c']),
+      ])!;
+      // 334 / 333 / 333, the rest cent to the largest remainder (a).
+      expect(r, {'a': 335, 'b': 333, 'c': 333});
+      expect(_sum(r), 1001);
+      final eq = splitByItems(1002, const [
+        SplitItem(1000, ['a', 'b', 'c']),
+      ], restMode: ItemRestMode.equal)!;
+      expect(eq, {'a': 335, 'b': 334, 'c': 333});
+      expect(_sum(eq), 1002);
+    });
+
+    test('items exactly the total: no rest', () {
+      expect(
+        splitByItems(500, const [
+          SplitItem(300, ['a']),
+          SplitItem(200, ['b']),
+        ]),
+        {'a': 300, 'b': 200},
+      );
+    });
+
+    test('0-decimal currency: whole yen per item and for the rest', () {
+      // ¥1,000 among 3 + ¥200 rest (in stored hundredths, step 100).
+      final r = splitByItems(
+        120000,
+        const [
+          SplitItem(100000, ['a', 'b', 'c']),
+        ],
+        restMode: ItemRestMode.equal,
+        step: 100,
+      )!;
+      expect(r, {'a': 40100, 'b': 40000, 'c': 39900});
+      expect(r.values.every((c) => c % 100 == 0), isTrue);
+      expect(_sum(r), 120000);
+      final p = splitByItems(120000, const [
+        SplitItem(100000, ['a', 'b', 'c']),
+      ], step: 100)!;
+      expect(p.values.every((c) => c % 100 == 0), isTrue);
+      expect(_sum(p), 120000);
+    });
+
+    test('empty items / no amounts / nobody → null', () {
+      expect(splitByItems(1000, const []), isNull);
+      expect(
+        splitByItems(1000, const [
+          SplitItem(0, ['a']),
+        ]),
+        isNull,
+      );
+      expect(splitByItems(1000, const [SplitItem(500, [])]), isNull);
+    });
+
+    test(
+      'a person in no item gets nothing (absent), also with an equal rest',
+      () {
+        final r = splitByItems(1000, const [
+          SplitItem(400, ['a']),
+          SplitItem(400, ['b']),
+        ], restMode: ItemRestMode.equal)!;
+        expect(r, {'a': 500, 'b': 500});
+        expect(r.containsKey('c'), isFalse);
+      },
+    );
+
+    test('an item nobody shares counts as rest', () {
+      final r = splitByItems(1000, const [
+        SplitItem(400, ['a']),
+        SplitItem(200, ['b']),
+        SplitItem(400, []),
+      ])!;
+      // Rest 400 (incl. the unassigned item) proportional 2 : 1.
+      expect(r, {'a': 667, 'b': 333});
+    });
+
+    test('items over the total (negative rest) or no total → null', () {
+      final items = const [
+        SplitItem(700, ['a']),
+        SplitItem(400, ['b']),
+      ];
+      expect(itemsSum(items), 1100);
+      expect(splitByItems(1000, items), isNull);
+      expect(splitByItems(0, items), isNull);
+      expect(splitByItems(1100, items), {'a': 700, 'b': 400});
+    });
+
+    test('a person listed twice in an item counts once', () {
+      expect(
+        splitByItems(600, const [
+          SplitItem(600, ['a', 'a', 'b']),
+        ]),
+        {'a': 300, 'b': 300},
+      );
+    });
+
+    test('a cent item that does not reach someone → they are absent', () {
+      final r = splitByItems(1, const [
+        SplitItem(1, ['a', 'b']),
+      ])!;
+      expect(r, {'a': 1});
+    });
+  });
 }
