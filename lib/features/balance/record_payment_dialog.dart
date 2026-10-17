@@ -162,6 +162,23 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
       _currency == widget.currency &&
       _day == dayOf(widget.initialDay ?? DateTime.now());
 
+  /// G71: *Done* on the amount keyboard — records a complete draft.
+  void _submitIfReady() {
+    final cents = _cents;
+    if (_hasProblem || _unchanged || cents == null) return;
+    _submit(cents);
+  }
+
+  void _submit(int cents) => Navigator.of(context).pop(
+    PaymentDraft(
+      from: _from!,
+      to: _to!,
+      cents: cents,
+      currency: _currency,
+      day: _day,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final ids = widget.participants.keys.toList();
@@ -215,6 +232,11 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                   child: TextField(
                     key: const Key('paymentAmount'),
                     controller: _amount,
+                    // G71 (U12): blank amount → type it right away; *Done*
+                    // records the payment when it is complete.
+                    autofocus: widget.initialCents == null,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submitIfReady(),
                     decoration: InputDecoration(
                       labelText: l.amountLabel,
                       // G18 review: how the input was read.
@@ -281,17 +303,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
         ),
         FilledButton(
           key: const Key('paymentSubmit'),
-          onPressed: problem
-              ? null
-              : () => Navigator.of(context).pop(
-                  PaymentDraft(
-                    from: _from!,
-                    to: _to!,
-                    cents: cents!,
-                    currency: _currency,
-                    day: _day,
-                  ),
-                ),
+          onPressed: problem ? null : () => _submit(cents!),
           child: Text(widget.editing ? l.save : l.record),
         ),
       ],

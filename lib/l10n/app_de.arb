@@ -392,6 +392,7 @@
   "categoryOther": "Sonstiges",
   "noteLabel": "Notiz (optional)",
   "expenseHasNote": "Hat eine Notiz",
+  "recordNotSyncedYet": "Noch nicht synchronisiert",
   "searchTooltip": "Suchen",
   "searchHint": "Beschreibung, Notiz, Zahler suchen",
   "closeSearch": "Suche schließen",

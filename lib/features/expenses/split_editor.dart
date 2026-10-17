@@ -632,24 +632,27 @@ class _SplitEditorState extends State<SplitEditor> {
     );
     switch (_mode) {
       case SplitMode.equal:
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            children: [
-              Checkbox(
-                value: _included.contains(m.userId),
-                onChanged: (v) {
-                  if (v == true) {
-                    _included.add(m.userId);
-                  } else {
-                    _included.remove(m.userId);
-                  }
-                  _changed();
-                },
-              ),
-              name(),
-              preview,
-            ],
+        // G71: the checkbox is read out with the person's name and share.
+        return MergeSemantics(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: _included.contains(m.userId),
+                  onChanged: (v) {
+                    if (v == true) {
+                      _included.add(m.userId);
+                    } else {
+                      _included.remove(m.userId);
+                    }
+                    _changed();
+                  },
+                ),
+                name(),
+                preview,
+              ],
+            ),
           ),
         );
       case SplitMode.exact:
@@ -721,7 +724,6 @@ class _SplitEditorState extends State<SplitEditor> {
     maintainState: true,
     child: IconButton(
       tooltip: context.l10n.splitPutRestHere,
-      visualDensity: VisualDensity.compact,
       icon: const Icon(Icons.add_circle_outline, size: 20),
       onPressed: remaining > 0 ? () => _restHere(mode, id, remaining) : null,
     ),
@@ -732,7 +734,6 @@ class _SplitEditorState extends State<SplitEditor> {
     final n = int.tryParse(_shareCtrl[id]!.text.trim()) ?? 0;
     return IconButton(
       tooltip: delta > 0 ? l.splitShareMore : l.splitShareLess,
-      visualDensity: VisualDensity.compact,
       icon: Icon(delta > 0 ? Icons.add : Icons.remove, size: 18),
       onPressed: delta < 0 && n <= 0 ? null : () => _stepShare(id, delta),
     );
@@ -756,9 +757,10 @@ class _SplitEditorState extends State<SplitEditor> {
       decoration: InputDecoration(
         isDense: true,
         suffixText: suffix,
+        // G71: 48 dp high — a full tap target.
         contentPadding: const EdgeInsets.symmetric(
           horizontal: Insets.s,
-          vertical: Insets.s + 2,
+          vertical: Insets.m,
         ),
       ),
       onChanged: (_) {

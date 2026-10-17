@@ -410,30 +410,35 @@ class _ArchivedSectionState extends State<_ArchivedSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        InkWell(
-          key: const Key('archivedSection'),
-          borderRadius: BorderRadius.circular(Radii.s),
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Insets.xs,
-              vertical: Insets.m,
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.archive_outlined, size: 20, color: muted),
-                const SizedBox(width: Insets.s),
-                Expanded(
-                  child: Text(
-                    l.archivedSection(widget.groups.length),
-                    style: theme.textTheme.labelLarge?.copyWith(color: muted),
+        // G71: a screen reader hears whether the section is open.
+        Semantics(
+          button: true,
+          expanded: _expanded,
+          child: InkWell(
+            key: const Key('archivedSection'),
+            borderRadius: BorderRadius.circular(Radii.s),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Insets.xs,
+                vertical: Insets.m,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.archive_outlined, size: 20, color: muted),
+                  const SizedBox(width: Insets.s),
+                  Expanded(
+                    child: Text(
+                      l.archivedSection(widget.groups.length),
+                      style: theme.textTheme.labelLarge?.copyWith(color: muted),
+                    ),
                   ),
-                ),
-                Icon(
-                  _expanded ? Icons.expand_less : Icons.expand_more,
-                  color: muted,
-                ),
-              ],
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    color: muted,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -493,22 +498,25 @@ class _TotalsCard extends StatelessWidget {
       Color color,
       Key key,
     ) => Expanded(
-      child: Column(
-        key: key,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label.toUpperCase(), style: capsStyle),
-          const SizedBox(height: Insets.xs),
-          if (amounts.isEmpty)
-            Text(l.totalNothing, style: amountStyle(scheme.onSurfaceVariant))
-          else
-            for (final MapEntry(key: c, value: v) in amounts.entries)
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(context.money(v, c), style: amountStyle(color)),
-              ),
-        ],
+      // G71: read as one phrase ("You are owed, €21.00").
+      child: MergeSemantics(
+        child: Column(
+          key: key,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label.toUpperCase(), semanticsLabel: label, style: capsStyle),
+            const SizedBox(height: Insets.xs),
+            if (amounts.isEmpty)
+              Text(l.totalNothing, style: amountStyle(scheme.onSurfaceVariant))
+            else
+              for (final MapEntry(key: c, value: v) in amounts.entries)
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(context.money(v, c), style: amountStyle(color)),
+                ),
+          ],
+        ),
       ),
     );
 
@@ -525,7 +533,10 @@ class _TotalsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l.overviewTitle, style: theme.textTheme.titleSmall),
+          Semantics(
+            header: true,
+            child: Text(l.overviewTitle, style: theme.textTheme.titleSmall),
+          ),
           const SizedBox(height: Insets.m),
           if (settled)
             Row(

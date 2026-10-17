@@ -811,8 +811,9 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       mode, nudge *Back up now*, snackbars)
 
 ### G71. Accessibility + form flow (U30, U12) 🟡
-- [ ] Semantics labels, 48 dp targets, autofocus / *Next* through the form;
+- [x] Semantics labels, 48 dp targets, autofocus / *Next* through the form;
       TalkBack / 200 % font check in the G52 step 13 device pass
+- [ ] Device check: smoke §11 (11.1–11.8) in the G52 step 13 pass
 
 ### G72. Local notifications (U26) 🟢
 - [ ] Notify from the background round about others' changes — **on by
@@ -911,7 +912,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G68 — sync sheet per person (with G52 step 9)
 - [ ] G69 — share + overview
 - [x] G70 — simplify backup / restore
-- [ ] G71 — accessibility + form flow
+- [x] G71 — accessibility + form flow
 - [ ] G72 — local notifications (on by default)
 - [ ] G73 — manual exchange rates + fetch button (with G57)
 - [ ] G74 — payment details + GiroCode (with G57 / G73)

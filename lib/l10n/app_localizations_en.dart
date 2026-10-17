@@ -1514,6 +1514,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expenseHasNote => 'Has a note';
 
   @override
+  String get recordNotSyncedYet => 'Not synced yet';
+
+  @override
   String get searchTooltip => 'Search';
 
   @override

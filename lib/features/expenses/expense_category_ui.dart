@@ -121,12 +121,21 @@ IconData categoryIcon(ResolvedCategory? category) =>
 class CategoryIconTile extends StatelessWidget {
   final ResolvedCategory? category;
   final double size;
-  const CategoryIconTile({super.key, required this.category, this.size = 44});
+
+  /// G71: the tile names its category to screen readers — where no text
+  /// next to it does (the ledger rows). Elsewhere it is decorative.
+  final bool labelled;
+  const CategoryIconTile({
+    super.key,
+    required this.category,
+    this.size = 44,
+    this.labelled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final c = categoryColors(context, category);
-    return Container(
+    final tile = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -134,6 +143,13 @@ class CategoryIconTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.32),
       ),
       child: Icon(categoryIcon(category), color: c.foreground, size: size / 2),
+    );
+    final named = category;
+    if (!labelled || named == null) return tile;
+    return Semantics(
+      label: named.label(context.l10n),
+      excludeSemantics: true,
+      child: tile,
     );
   }
 }

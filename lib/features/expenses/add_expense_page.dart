@@ -41,6 +41,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
 
+  /// G71 (U12): *Next* on the description's keyboard jumps to the amount.
+  final _amountFocus = FocusNode();
+
   /// G16: the category's wire id — kept verbatim on edit (an unknown id from
   /// a newer peer is shown as "other" but saved unchanged unless picked).
   String? _category;
@@ -282,6 +285,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     _descCtrl.dispose();
     _amountCtrl.dispose();
     _noteCtrl.dispose();
+    _amountFocus.dispose();
     super.dispose();
   }
 
@@ -438,7 +442,13 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               TextFormField(
+                                key: const Key('expenseDescription'),
                                 controller: _descCtrl,
+                                // G71 (U12): a new expense starts typing
+                                // right away; *Next* goes to the amount.
+                                autofocus: !_isEdit,
+                                textInputAction: TextInputAction.next,
+                                onEditingComplete: _amountFocus.requestFocus,
                                 textCapitalization:
                                     TextCapitalization.sentences,
                                 decoration: InputDecoration(
@@ -466,16 +476,6 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                   }
                                 },
                               ),
-                              const SizedBox(height: Insets.m),
-                              CategoryPicker(
-                                selected: _category,
-                                custom: _customCategories,
-                                onChanged: (c) => setState(() {
-                                  _categoryChosen = true;
-                                  _category = c;
-                                }),
-                                onCreate: _createCategory,
-                              ),
                               const SizedBox(height: Insets.l),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -495,7 +495,13 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                   const SizedBox(width: Insets.m),
                                   Expanded(
                                     child: TextFormField(
+                                      key: const Key('expenseAmount'),
                                       controller: _amountCtrl,
+                                      focusNode: _amountFocus,
+                                      // G71 (U12): *Done* closes the
+                                      // keyboard — payer, date and split
+                                      // follow.
+                                      textInputAction: TextInputAction.done,
                                       style: theme.textTheme.titleLarge
                                           ?.copyWith(
                                             fontFeatures: kTabularFigures,
@@ -592,6 +598,18 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               RecordDateField(
                                 day: _day,
                                 onChanged: (d) => setState(() => _day = d),
+                              ),
+                              // G71 (U12): after the date — it is suggested
+                              // from the description anyway.
+                              const SizedBox(height: Insets.l),
+                              CategoryPicker(
+                                selected: _category,
+                                custom: _customCategories,
+                                onChanged: (c) => setState(() {
+                                  _categoryChosen = true;
+                                  _category = c;
+                                }),
+                                onCreate: _createCategory,
                               ),
                               const SizedBox(height: Insets.xl),
                               Text(

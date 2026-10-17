@@ -113,25 +113,30 @@ class ExpensesPage extends ConsumerWidget {
                   key: const Key('groupTitleButton'),
                   borderRadius: BorderRadius.circular(Radii.s),
                   onTap: () => context.push(groupSettingsLocation(roomId)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        group?.name ?? l.expensesTitle,
-                        key: const Key('groupTitle'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (members.isNotEmpty)
+                  // G71: a 48 dp tap target even with one line.
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
-                          l.membersCount(activeCount),
+                          group?.name ?? l.expensesTitle,
+                          key: const Key('groupTitle'),
                           maxLines: 1,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                    ],
+                        if (members.isNotEmpty)
+                          Text(
+                            l.membersCount(activeCount),
+                            maxLines: 1,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -670,6 +675,21 @@ class ExpensesPage extends ConsumerWidget {
 /// sync and a manual retry. Otherwise a filled cloud once every active peer has
 /// acknowledged the group's latest record, or an outlined cloud (with the first
 /// waiting peer in the tooltip) while replication is still pending.
+/// G71: a status icon in the app bar (not a button): the tooltip is what a
+/// screen reader says; long-press shows it. Same 48 dp box as an
+/// [IconButton], so the actions don't shift.
+class _StatusIcon extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  const _StatusIcon({required this.icon, required this.message});
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: message,
+    child: SizedBox.square(dimension: 48, child: Icon(icon)),
+  );
+}
+
 class _SyncStatusIcon extends ConsumerWidget {
   final GroupSyncStatus status;
   const _SyncStatusIcon({required this.status});
@@ -686,24 +706,22 @@ class _SyncStatusIcon extends ConsumerWidget {
       );
     }
     if (status.synced) {
-      return IconButton(
-        icon: const Icon(Icons.cloud_done_outlined),
-        tooltip: l.syncedWithAll,
-        onPressed: null,
+      return _StatusIcon(
+        icon: Icons.cloud_done_outlined,
+        message: l.syncedWithAll,
       );
     }
     // A pending peer with no logged-in device (G24) or no verified one
     // (G11, verified-only sync) isn't a sync error — say so instead of
     // "waiting" forever.
     final hint = pendingPeerHint(status.pendingPeers, health);
-    return IconButton(
-      icon: const Icon(Icons.cloud_queue),
-      tooltip: switch (hint.reason) {
+    return _StatusIcon(
+      icon: Icons.cloud_queue,
+      message: switch (hint.reason) {
         PendingReason.unverified => l.peerHasNoVerifiedDevice(hint.peer),
         PendingReason.noDevice => l.peerHasNoDevice(hint.peer),
         PendingReason.waiting => l.waitingForPeer(hint.peer),
       },
-      onPressed: null,
     );
   }
 
@@ -968,11 +986,15 @@ class _DayHeader extends StatelessWidget {
         Insets.xs,
         Insets.s,
       ),
-      child: Text(
-        text,
-        key: const Key('dayHeader'),
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+      // G71: screen readers can jump from day to day.
+      child: Semantics(
+        header: true,
+        child: Text(
+          text,
+          key: const Key('dayHeader'),
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );
@@ -1021,6 +1043,7 @@ class _GroupSummaryCard extends StatelessWidget {
           children: [
             Text(
               l.yourBalance.toUpperCase(),
+              semanticsLabel: l.yourBalance,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: scheme.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
@@ -1224,6 +1247,8 @@ class _LedgerRow extends StatelessWidget {
                             Icons.cloud_queue,
                             size: 16,
                             color: scheme.outline,
+                            // G71: the row is read as one sentence.
+                            semanticLabel: l.recordNotSyncedYet,
                           ),
                         ),
                       Text(
@@ -1361,6 +1386,7 @@ class _ExpenseTile extends StatelessWidget {
       leading: CategoryIconTile(
         key: Key('categoryTile-${expense.category ?? 'none'}'),
         category: category,
+        labelled: true,
       ),
       title: Text(expense.description, key: const Key('expenseTitle')),
       hasNote: expense.note != null,

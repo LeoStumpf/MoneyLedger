@@ -2450,6 +2450,12 @@ abstract class AppLocalizations {
   /// **'Has a note'**
   String get expenseHasNote;
 
+  /// G71 screen-reader label of the small cloud on a ledger row whose change hasn't reached everyone yet
+  ///
+  /// In en, this message translates to:
+  /// **'Not synced yet'**
+  String get recordNotSyncedYet;
+
   /// G16 expense search / filter
   ///
   /// In en, this message translates to:

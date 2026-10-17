@@ -94,6 +94,10 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                 TextFormField(
                   controller: _nameCtrl,
                   autofocus: true,
+                  // G71 (U12): *Next* goes to the people field (the
+                  // currency is preset from the region).
+                  textInputAction: TextInputAction.next,
+                  onEditingComplete: _personFocus.requestFocus,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
                     labelText: l.groupNameLabel,

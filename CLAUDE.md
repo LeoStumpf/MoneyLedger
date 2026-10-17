@@ -1788,6 +1788,28 @@ serves the engine's Roboto itself + two fallback subsets (G43, see Building).
   form differs from how it opened (text fields, category, currency, payer,
   date, or any split-editor interaction — the editor's first plan push is
   the baseline); saving pops without asking. Tests: `test/g56_ux_test.dart`.
+- **G71 accessibility + form flow (U30, U12):** every icon-only button
+  needs a `tooltip` (= its screen-reader label); a non-tappable status icon
+  is a `Tooltip` around the icon, never a disabled `IconButton` (the
+  group page's sync cloud, `_StatusIcon`); meaningful icons without text
+  next to them get a label (`CategoryIconTile(labelled: true)` in ledger
+  rows, the row's "not synced yet" cloud `recordNotSyncedYet`) so a ledger
+  row reads as one sentence; decorative ones (avatars, tiles next to their
+  name) stay silent. Tap targets ≥ 48 dp — no `VisualDensity.compact` on
+  icon buttons, dense inputs ≥ 48 dp high (split rows), the group title
+  `minHeight: 48`. Section / day titles are `Semantics(header: true)`;
+  caps labels carry a `semanticsLabel` in normal case; money is never
+  colour-only (always a word: you lent / owe / gets back). Narrow fields
+  must survive 200 % font (`CurrencyField` fades the code). Form flow:
+  add expense autofocuses the description on a **new** expense, *Next* →
+  amount (`TextInputAction.done`, decimal keyboard), the category picker
+  sits after the date; the payment dialog autofocuses a blank amount and
+  *Done* records a complete draft; create group: name *Next* → people
+  field. Guideline tests (`androidTapTargetGuideline`,
+  `labeledTapTargetGuideline`, `textContrastGuideline` with
+  `AppTheme.light`, 360 dp, EN) for the main pages + focus tests:
+  `test/g71_accessibility_test.dart` — add a page there when you add one.
+  Device check (TalkBack, 200 % font): `docs/smoke-test.md` §11.
 - **G65 settings pages (U22, U28, U21):** the settings **sheet** became a
   page, `SettingsPage` (`/settings`, `kSettingsLocation`, gear on the groups
   page — the app bar keeps only the gear and local mode's chip; *Import CSV*

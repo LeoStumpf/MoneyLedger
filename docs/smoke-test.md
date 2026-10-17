@@ -183,6 +183,21 @@ Expected results are in *italics*.
 | 10.3 | Permissions (`aapt dump permissions` / app info) → *INTERNET only (+ plugin-merged ones); no storage permission needed for export/import* | emu |
 | 10.4 | Web: `flutter build web --release`, serve `build/web` → *login, E2EE init (vodozemac wasm), sync works* | emu |
 
+## 11. Accessibility + form flow (G71)
+
+Run on the Pixel during the G52 step 13 device pass.
+
+| # | Step → expected | How |
+|---|-----------------|-----|
+| 11.1 | TalkBack on → groups page: swipe through → *"Overview" heading; "You are owed, €…" / "You owe, €…" as one phrase each; every icon button says what it does (settings, add); the archived section says "expanded / collapsed"* | phone |
+| 11.2 | TalkBack → group page: swipe through the ledger → *day headers are headings (TalkBack "headings" navigation jumps day to day); a row reads e.g. "Food & drink, Pizza, €42.00, You paid, you lent €21.00" (+ "Has a note", "Not synced yet" when shown); the ⋮ per row is its own "Expense options" button; the app-bar cloud is announced as its status text ("Synced with everyone …" / "Waiting for …"), not as a disabled button; the title says "… Group settings"* | phone |
+| 11.3 | TalkBack → add expense → *description is focused, keyboard open; every split mode readable: Equally — each checkbox "Anna, €5.00, checked"; Amounts / % — "Put the rest here" buttons; Shares — "One share more / less"; "%" segment read as "Percent"* | phone |
+| 11.4 | TalkBack → balance page → *"Balances" / "Suggested payments" are headings; "How are payments suggested?" button; each person "gets back / owes" in words (not only colour)* | phone |
+| 11.5 | System font size **200 %** (Settings → Display → Font size, max) → groups, group, add expense (all four split modes), balance, payment dialog, settings, group settings, people, backup page → *nothing overflows (no yellow-black stripes in debug); the currency field fades a long code instead of overflowing; amounts and names stay readable (ellipsis only where one line is intended)* | phone |
+| 11.6 | Add expense (new), keyboard: *description focused on open → Next → amount (decimal keyboard with `,`/`.`) → Done closes the keyboard; the category picker sits after the date; editing an expense opens without a keyboard* | phone |
+| 11.7 | Payment dialog from the app-bar action (amount blank) → *amount focused, decimal keyboard; Done with a valid amount records the payment*; from a tapped debt (prefilled) → *no keyboard on open* | phone |
+| 11.8 | New group → *name focused; Next → the people field; Enter adds a chip and keeps the keyboard (G64)* | phone |
+
 ## iOS
 
 **iOS is not supported for v1.** The project is developed on Linux — there is no

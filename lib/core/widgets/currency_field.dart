@@ -68,7 +68,19 @@ class CurrencyField extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(value),
+            // G71: a narrow field at a large font size fades the code out
+            // instead of overflowing.
+            if (name == null)
+              Flexible(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.fade,
+                  softWrap: false,
+                ),
+              )
+            else
+              Text(value),
             if (name != null) ...[
               const SizedBox(width: Insets.s),
               Expanded(

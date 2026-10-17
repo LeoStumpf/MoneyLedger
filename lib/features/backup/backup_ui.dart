@@ -1074,6 +1074,10 @@ class BackupNudgeCard extends ConsumerWidget {
                 children: [
                   TextButton(
                     key: const Key('backupNudgeLater'),
+                    // G71: rust on the rust container is below 4.5:1.
+                    style: TextButton.styleFrom(
+                      foregroundColor: scheme.onSecondaryContainer,
+                    ),
                     onPressed: () {
                       final now = ref.read(backupNudgeClockProvider)();
                       ref.read(snoozeBackupNudgeProvider)(

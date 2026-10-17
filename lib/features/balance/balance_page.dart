@@ -167,7 +167,6 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                               trailing: IconButton(
                                 key: Key('simplifyInfo-$currency'),
                                 icon: const Icon(Icons.info_outline, size: 20),
-                                visualDensity: VisualDensity.compact,
                                 tooltip: l.simplifyDebtsInfoTooltip,
                                 onPressed: () => showSimplifyDebtsInfo(context),
                               ),
@@ -265,10 +264,14 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final label = Text(
-      text,
-      style: theme.textTheme.labelLarge?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
+    // G71: screen readers can jump between the sections.
+    final label = Semantics(
+      header: true,
+      child: Text(
+        text,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
     return Padding(

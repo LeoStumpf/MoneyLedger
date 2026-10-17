@@ -100,6 +100,11 @@ List<dynamic> testOverrides({
   bool connecting = false,
   // G47: the group list the pages see (e.g. a group's custom categories).
   List<GroupModel> groups = const [],
+  // G71: the sync status every group shows (default: synced).
+  GroupSyncStatus syncStatus = const GroupSyncStatus(
+    pendingPeers: {},
+    minPeerInSyncAt: null,
+  ),
 }) => [
   isLoggedInProvider.overrideWith((ref) => isLoggedIn),
   // loginFlowsLoading: future never completes, simulating homeserver
@@ -120,10 +125,7 @@ List<dynamic> testOverrides({
   groupMembersProvider.overrideWith((ref, groupId) => Stream.value(members)),
   // Sync-status reads several DB-backed streams; widget tests that don't
   // exercise it default to "synced" so they never open a real database.
-  groupSyncStatusProvider.overrideWith(
-    (ref, groupId) =>
-        const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null),
-  ),
+  groupSyncStatusProvider.overrideWith((ref, groupId) => syncStatus),
   // Backup (G5): never backed up, not snoozed, no members — the nudge stays
   // hidden and nothing opens a database.
   lastBackupAtProvider.overrideWith((_) => Stream.value(lastBackupAt)),

@@ -1530,6 +1530,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get expenseHasNote => 'Hat eine Notiz';
 
   @override
+  String get recordNotSyncedYet => 'Noch nicht synchronisiert';
+
+  @override
   String get searchTooltip => 'Suchen';
 
   @override

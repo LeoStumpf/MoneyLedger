@@ -1121,6 +1121,10 @@
   "@expenseHasNote": {
     "description": "G16 tooltip of the note icon in the expense list"
   },
+  "recordNotSyncedYet": "Not synced yet",
+  "@recordNotSyncedYet": {
+    "description": "G71 screen-reader label of the small cloud on a ledger row whose change hasn't reached everyone yet"
+  },
   "searchTooltip": "Search",
   "@searchTooltip": {
     "description": "G16 expense search / filter"
