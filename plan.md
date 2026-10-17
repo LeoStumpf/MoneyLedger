@@ -831,6 +831,20 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       privacy text (a third-party request leaves the device — G43 promise
       wording must be adjusted); pick a keyless source without tracking
 
+### G75. Usability polish (review leftovers) 🟡
+- [ ] U27: shorter, plain-language verification / device texts
+- [ ] U31: web limits shown once at first start (no background sync, no
+      restore points, live only while the tab is open)
+- [ ] *Duplicate expense* (⋮ on a row / edit page) — cheap stand-in for
+      recurring expenses
+- [ ] Calculator in amount fields ("12,50+8")
+- [ ] G64 leftovers: duplicate-name hint on rename; mode-dependent delete
+      texts (local mode "will be deleted")
+- [ ] G67 leftover: *Try again* on error snackbars where the action is
+      repeatable
+- [ ] Ask Leo: multiple payers per expense (wire), itemized split, local-only
+      receipt photo, quick-add shortcut / widget
+
 ### G74. Payment details + GiroCode (Leo 2026-10-17) 🟢
 - [ ] Optional own IBAN / PayPal.me in the **app settings**; shown to others
       when they settle with me (GiroCode QR with amount / PayPal link) — needs
@@ -917,6 +931,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G71 — accessibility + form flow
 - [ ] G72 — local notifications (on by default)
 - [ ] G73 — manual exchange rates + fetch button (with G57)
+- [ ] G75 — usability polish (review leftovers)
 - [ ] G74 — payment details + GiroCode (with G57 / G73)
 
 ---
