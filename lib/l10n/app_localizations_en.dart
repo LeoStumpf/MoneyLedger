@@ -65,7 +65,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signOutConfirmBody =>
-      'Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn\'t sync — other members\' changes arrive once you sign back in.';
+      'Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn\'t sync — other people\'s changes arrive once you sign back in.';
 
   @override
   String importFailed(Object error) {
@@ -137,10 +137,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expensesTitle => 'Expenses';
 
   @override
-  String get addMember => 'Add member';
+  String get addMember => 'Add person';
 
   @override
-  String get membersTitle => 'Members';
+  String get membersTitle => 'People';
 
   @override
   String get balanceTitle => 'Balance';
@@ -172,7 +172,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addedToGroupBanner =>
-      'You\'ve been added to this group. Which participant are you?';
+      'You\'ve been added to this group. Which person are you?';
 
   @override
   String get choose => 'Choose';
@@ -204,7 +204,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get whichParticipantAreYou => 'Which participant are you?';
+  String get whichParticipantAreYou => 'Which person are you?';
 
   @override
   String get imSomeoneNew => 'I\'m someone new';
@@ -223,7 +223,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String deleteExpenseBody(Object description) {
-    return '\"$description\" will be removed for all members.';
+    return '\"$description\" will be removed for everyone in the group.';
   }
 
   @override
@@ -231,7 +231,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String deleteSettlementBody(Object from, Object to, Object amount) {
-    return '\"$from paid $to $amount\" will be removed for all members and the balance restored.';
+    return '\"$from paid $to $amount\" will be removed for everyone in the group and the balance restored.';
   }
 
   @override
@@ -246,7 +246,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncProblemTooltip => 'Sync problem — tap for details';
 
   @override
-  String get syncedWithAll => 'Synced with all members';
+  String get syncedWithAll => 'Synced with everyone in the group';
 
   @override
   String peerHasNoDevice(Object peer) {
@@ -263,7 +263,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncProblemBody =>
-      'Could not reach other members. Your changes are saved on this device and will sync once the connection recovers.';
+      'Could not reach the others in the group. Your changes are saved on this device and will sync once the connection recovers.';
 
   @override
   String lastSynced(Object ago) {
@@ -357,7 +357,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splitPercent => 'Percent';
 
   @override
-  String get splitSelectAtLeastOne => 'Select at least one participant';
+  String get splitSelectAtLeastOne => 'Select at least one person';
 
   @override
   String splitEquallyAmong(int n) {
@@ -487,7 +487,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String leaveGroupBody(Object group) {
-    return '\"$group\" will be removed from this device and the other members will see that you left. Your expenses stay in their ledger.';
+    return '\"$group\" will be removed from this device and the others in the group will see that you left. Your expenses stay in their ledger.';
   }
 
   @override
@@ -525,10 +525,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPerson => 'Add person';
 
   @override
-  String get noMembers => 'No members.';
+  String get noMembers => 'Nobody in this group yet.';
 
   @override
-  String get formerMembers => 'Former members';
+  String get formerMembers => 'No longer in the group';
 
   @override
   String get invite => 'Invite';
@@ -553,14 +553,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String formerMemberClaimed(Object matrixId) {
-    return '$matrixId · former member';
+    return '$matrixId · no longer in the group';
   }
 
   @override
-  String get formerMemberLocal => 'Local · former member';
+  String get formerMemberLocal => 'Local · no longer in the group';
 
   @override
-  String get formerMemberTag => 'former member';
+  String get formerMemberTag => 'no longer in the group';
 
   @override
   String get you => 'You';
@@ -593,7 +593,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String removeMemberBody(Object name) {
-    return 'Remove $name from this group?\n\nTheir expense history is kept; only their membership is cleared.';
+    return 'Remove $name from this group?\n\nTheir expense history is kept; they are just no longer in the group.';
   }
 
   @override
@@ -604,7 +604,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingAddBody =>
-      'Invite people by their Matrix ID, or add local participants by name and link an account later.';
+      'Invite people by their Matrix ID, or add them by name only and link an account later.';
 
   @override
   String get getStarted => 'Get started';
@@ -906,21 +906,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyLedgerBody =>
-      'Groups, participants, expenses and payments are stored only in a local database on each device signed in to a member\'s account. Every member of a group has a copy of that group\'s ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to all of its members.';
+      'Groups, people, expenses and payments are stored only in a local database on each device signed in to the account of someone in the group. Everyone in a group has a copy of that group\'s ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to everyone in it.';
 
   @override
   String get privacyHomeserverTitle => 'What your Matrix homeserver sees';
 
   @override
   String get privacyHomeserverBody =>
-      'To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the other members\' devices. Your homeserver (and the homeservers of the other members) relay these messages and keep each one only until the receiving device has fetched it, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. MoneyLedger creates no rooms, saves nothing in your account\'s settings and never marks you as online; when it syncs, it asks your homeserver only for these messages and for encryption-key updates — not for your rooms, presence or account settings. What your homeserver still keeps is what every Matrix app needs: your account, its list of devices (this one is named “MoneyLedger”, with when and from which IP address it was last used), each device\'s public encryption keys and one-time keys, and the messages above until they are delivered (for a device that never comes back, until it is removed). Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.';
+      'To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the devices of the others in the group. Your homeserver (and their homeservers) relay these messages and keep each one only until the receiving device has fetched it, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. MoneyLedger creates no rooms, saves nothing in your account\'s settings and never marks you as online; when it syncs, it asks your homeserver only for these messages and for encryption-key updates — not for your rooms, presence or account settings. What your homeserver still keeps is what every Matrix app needs: your account, its list of devices (this one is named “MoneyLedger”, with when and from which IP address it was last used), each device\'s public encryption keys and one-time keys, and the messages above until they are delivered (for a device that never comes back, until it is removed). Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.';
 
   @override
   String get privacyNoTrackingTitle => 'No analytics, no servers of ours';
 
   @override
   String get privacyNoTrackingBody =>
-      'The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of your groups\' members (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.';
+      'The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.';
 
   @override
   String get privacyBackgroundTitle => 'Background sync on Android';
@@ -934,21 +934,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyCsvBody =>
-      'Exporting a group writes a CSV file with its expenses, payments, the participants\' names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the participants\' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.';
+      'Exporting a group writes a CSV file with its expenses, payments, the people\'s names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people\'s Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.';
 
   @override
   String get privacyBackupTitle => 'Device backups';
 
   @override
   String get privacyBackupBody =>
-      'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.';
+      'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other people in your groups; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.';
 
   @override
   String get privacyDeleteTitle => 'Deleting your data';
 
   @override
   String get privacyDeleteBody =>
-      '• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
+      '• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people\'s devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
 
   @override
   String get privacyContactTitle => 'Contact';
@@ -971,7 +971,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settledUp => 'Settled up';
 
   @override
-  String get notParticipating => 'Not a participant';
+  String get notParticipating => 'You\'re not in this group';
 
   @override
   String lastActivity(String date) {
@@ -1011,8 +1011,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '$n members',
-      one: '1 member',
+      other: '$n people',
+      one: '1 person',
     );
     return '$_temp0';
   }
@@ -1194,7 +1194,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String restoreLocalIntoAccount(String account) {
-    return 'This backup was made without a Matrix account. Restoring it moves its groups into $account: you become their member there, and this device signs your entries so they can sync.';
+    return 'This backup was made without a Matrix account. Restoring it moves its groups into $account: you are in them with that account, and this device signs your entries so they can sync.';
   }
 
   @override
@@ -1285,7 +1285,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreLeftNote =>
-      'Groups you left or deleted come back on this device. If the other members removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.';
+      'Groups you left or deleted come back on this device. If the others removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.';
 
   @override
   String get restoreAction => 'Restore';
@@ -1333,7 +1333,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingBackupBody =>
-      'Nobody else stores your ledger. Groups with other members are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).';
+      'Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).';
 
   @override
   String get csvPreviewTitle => 'Import CSV?';
@@ -1355,7 +1355,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String csvPreviewAmbiguous(String names) {
-    return 'Several participants have the same name — the active one is used: $names';
+    return 'Several people have the same name — the active one is used: $names';
   }
 
   @override
@@ -1438,18 +1438,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get verifiedOnlyOffBody =>
-      'Off: every device of your group members (and your own) receives your ledger data.';
+      'Off: every device of the people in your groups (and your own) receives your ledger data.';
 
   @override
   String get verifiedOnlyOnBody =>
-      'On: this device sends nothing to devices you haven\'t verified by emoji comparison — yours or other members\'. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can\'t restore your groups from this device until you verify it.';
+      'On: this device sends nothing to devices you haven\'t verified by emoji comparison — yours or other people\'s. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can\'t restore your groups from this device until you verify it.';
 
   @override
   String get verifiedOnlyConfirmTitle => 'Only sync with verified devices?';
 
   @override
   String get verifiedOnlyConfirmBody =>
-      'This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the members page for others). It doesn\'t change what other devices send — members\' devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including a member\'s new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can\'t restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.';
+      'This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the People page for others). It doesn\'t change what other devices send — other people\'s devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including someone\'s new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can\'t restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.';
 
   @override
   String get verifiedOnlyTurnOn => 'Turn on';
@@ -1768,7 +1768,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get inviteAsNewParticipant => 'A new participant';
+  String get inviteAsNewParticipant => 'A new person';
 
   @override
   String amountPreview(Object amount) {
@@ -1828,14 +1828,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeMatrixBody =>
-      'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other members of your groups — that is why you sign in.';
+      'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other people in your groups — that is why you sign in.';
 
   @override
   String get welcomePrivacyTitle => 'Who sees what';
 
   @override
   String get welcomePrivacyMembers =>
-      'The members of a group get that group\'s expenses and payments on their devices — end-to-end encrypted.';
+      'Everyone in a group gets that group\'s expenses and payments on their devices — end-to-end encrypted.';
 
   @override
   String get welcomePrivacyServer =>
@@ -1929,7 +1929,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localProfileNameHint =>
-      'Used for new groups — rename yourself inside a group on its members page';
+      'Used for new groups — rename yourself inside a group on its People page';
 
   @override
   String get connectMatrixAccount => 'Connect a Matrix account';
@@ -1984,7 +1984,7 @@ class AppLocalizationsEn extends AppLocalizations {
       other: 'Your $count local groups now belong to $account.',
       one: 'Your local group now belongs to $account.',
     );
-    return '$_temp0 You can invite members by their Matrix ID.';
+    return '$_temp0 You can invite people by their Matrix ID.';
   }
 
   @override
@@ -2003,7 +2003,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingBackgroundBody =>
-      'Members\' devices exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).';
+      'The devices in a group exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).';
 
   @override
   String get onboardingLocalOnlyTitle => 'Everything stays on this device';
@@ -2148,11 +2148,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupResetIntro =>
-      'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. Members stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.';
+      'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. People stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.';
 
   @override
   String get groupResetLocalIntro =>
-      'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. Members stay as they are. You can undo a reset the same way.';
+      'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. People stay as they are. You can undo a reset the same way.';
 
   @override
   String get groupResetRetention =>
@@ -2186,8 +2186,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count group or member changes',
-      one: '1 group or member change',
+      other: '$count changes to the group or its people',
+      one: '1 change to the group or its people',
     );
     return '$_temp0';
   }
@@ -2341,11 +2341,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreExactSubtitle =>
-      'Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. Members stay as they are.';
+      'Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. People stay as they are.';
 
   @override
   String get restoreExactWarning =>
-      'Newer changes in these groups — also other members\' — are overwritten for everyone in the group.';
+      'Newer changes in these groups — also other people\'s — are overwritten for everyone in the group.';
 
   @override
   String get restoreExactWarningLocal =>
@@ -2373,4 +2373,41 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0 ($_temp1)';
   }
+
+  @override
+  String get createGroupPeopleLabel => 'Who\'s in?';
+
+  @override
+  String get createGroupPeopleHelper =>
+      'Add the people you share costs with — Enter adds the next one. You can add more later.';
+
+  @override
+  String removePersonTooltip(String name) {
+    return 'Remove $name';
+  }
+
+  @override
+  String duplicatePersonHint(String name) {
+    return 'There is already a $name in this group. You can still add them — a distinct name (e.g. \"$name B.\") helps tell them apart.';
+  }
+
+  @override
+  String get addAndNext => 'Add & next';
+
+  @override
+  String removeMemberGetsBack(String name, String amount) {
+    return '$name still gets $amount back.';
+  }
+
+  @override
+  String removeMemberOwes(String name, String amount) {
+    return '$name still owes $amount.';
+  }
+
+  @override
+  String get removeMemberBalanceNote =>
+      'Removing doesn\'t change the balance: it stays in the suggested payments until it is settled.';
+
+  @override
+  String get settleUpFirst => 'Settle up first';
 }

@@ -67,7 +67,7 @@ Expected results are in *italics*.
 | 3.1 | "New group" → name + currency → Create → *back on Groups, new group listed* | emu |
 | 3.2 | ⋮ → Edit group: rename + change default currency → *title/list updated; peer shows new name* | 2dev |
 | 3.3 | New expense after currency change → *uses the new currency (the form has no per-expense currency picker — the group default is used)* | emu |
-| 3.4 | ⋮ → Leave group (shared group, you are a member) → *warning "You are still owed …" + "Back up all groups first"; group disappears; peer sees you under "Former members"* | 2dev |
+| 3.4 | ⋮ → Leave group (shared group, you are a member) → *warning "You are still owed …" + "Back up all groups first"; group disappears; peer sees you under "No longer in the group"* | 2dev |
 | 3.5 | Re-add the leaver from the peer → *group comes back on the leaver's device with full history* | 2dev |
 | 3.6 | ⋮ → Delete group (solo/local-only group, or every other claimed member left) → *balance warning; "Deleted …" snackbar; group gone from this device* | emu |
 | 3.7 | Removed by a peer → *banner "You were removed from this group", history read-only, "Delete from this device"* | 2dev |
@@ -85,7 +85,7 @@ Expected results are in *italics*.
 | 4.4 | Local person → ⋮ Link Matrix account (MXID) → *shows the MXID; that account now receives the group* | 2dev |
 | 4.5 | A group this device holds without being a participant (e.g. CSV import) → *banner "Which participant are you?" → Choose: a local person or "I'm someone new" + name (local; peers only accept it from an active member — G18)* | emu |
 | 4.6 | ⋮ Rename / Detach Matrix account → *name changes everywhere; history keeps the participant* | emu |
-| 4.7 | ⋮ Remove from group → *moves to "Former members" (greyed, "Re-add"); expenses still show the name* | emu |
+| 4.7 | ⋮ Remove from group → *warns with the open balance (+ "Settle up first") if any; moves to "No longer in the group" (greyed, "Re-add"); expenses still show the name* | emu |
 | 4.8 | "Re-add" a former member (claimed **or** local) → *same participant reactivated (same name/history), no duplicate; peer sees it* | 2dev |
 
 ## 5. Expenses

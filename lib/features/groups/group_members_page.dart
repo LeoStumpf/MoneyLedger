@@ -11,6 +11,10 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/person_avatar.dart';
 import 'add_person_dialog.dart';
+import 'group_exit_dialog.dart' show removalBalanceWarning;
+import '../balance/balance_calculator.dart';
+import '../balance/settle_up.dart';
+import '../expenses/expenses_provider.dart';
 import '../devices/device_provider.dart';
 import '../devices/devices_page.dart';
 import '../../core/matrix/device_gateway.dart';
@@ -25,9 +29,9 @@ import 'group_provider.dart';
 /// Actions: add (name + optional Matrix ID), rename, claim/unclaim a Matrix
 /// account (keeps history), and remove from the group (history kept).
 ///
-/// Removed / left participants are listed under **Former members** (greyed —
-/// they still appear in the history); a claimed one can be re-added, which
-/// reactivates the same participant (G26).
+/// Removed / left participants are listed under **No longer in the group**
+/// (G64 wording; greyed — they still appear in the history); a claimed one
+/// can be re-added, which reactivates the same participant (G26).
 class GroupMembersPage extends ConsumerWidget {
   final String roomId;
   const GroupMembersPage({super.key, required this.roomId});
@@ -38,6 +42,9 @@ class GroupMembersPage extends ConsumerWidget {
     final myId = ref.watch(currentUserIdProvider);
     final adderState = ref.watch(memberAdderProvider);
     final removerState = ref.watch(memberRemoverProvider);
+    // G64 (U10): *Settle up first* in the removal dialog records a payment
+    // — keep the adder alive for its result (see recordPaymentFlow).
+    ref.watch(expenseAdderProvider);
     final busy = adderState.isLoading || removerState.isLoading;
     // G26: once removed from the group, its membership is read-only for us
     // (peers would reject our changes).
@@ -512,8 +519,20 @@ class _MemberTile extends ConsumerWidget {
         await adder.unclaim(roomId, member.userId);
         errorOf = () => ref.read(memberAdderProvider).error;
       case 'remove':
-        final ok = await _confirmRemove(context);
-        if (ok) {
+        final balance = await _openBalance(ref, l);
+        if (!context.mounted) return;
+        final choice = await _confirmRemove(context, balance);
+        if (!context.mounted) return;
+        if (choice == _RemoveChoice.settleFirst && balance != null) {
+          await recordPaymentFlow(
+            context,
+            ref,
+            roomId,
+            // Only the default payer — the debt prefills both sides.
+            myId: claimedBy(all, myId)?.userId ?? '',
+            debt: balance.debt,
+          );
+        } else if (choice == _RemoveChoice.remove) {
           await ref
               .read(memberRemoverProvider.notifier)
               .remove(roomId, member.userId);
@@ -530,27 +549,104 @@ class _MemberTile extends ConsumerWidget {
     }
   }
 
-  Future<bool> _confirmRemove(BuildContext context) async {
+  /// G64 (U10): this person's open balance ("Ben still gets €23.50 back")
+  /// and a suggested payment involving them (for *Settle up first*) — null
+  /// when settled, or when the ledger can't be read (the dialog then just
+  /// doesn't warn; removing never changes a balance).
+  Future<({String warning, DebtEntry? debt})?> _openBalance(
+    WidgetRef ref,
+    AppLocalizations l,
+  ) async {
+    final expensesSub = ref.listenManual(
+      expensesForRoomProvider(roomId),
+      (_, _) {},
+    );
+    final settlementsSub = ref.listenManual(
+      settlementsForRoomProvider(roomId),
+      (_, _) {},
+    );
+    try {
+      const wait = Duration(seconds: 3);
+      final expenses = await ref
+          .read(expensesForRoomProvider(roomId).future)
+          .timeout(wait);
+      final settlements = await ref
+          .read(settlementsForRoomProvider(roomId).future)
+          .timeout(wait);
+      final warning = removalBalanceWarning(
+        member.userId,
+        member.label,
+        expenses,
+        settlements,
+        l,
+      );
+      if (warning == null) return null;
+      final debt = calculateDebts(expenses, settlements)
+          .where((d) => d.from == member.userId || d.to == member.userId)
+          .firstOrNull;
+      return (warning: warning, debt: debt);
+    } catch (e) {
+      debugPrint('[members] open balance unavailable: $e');
+      return null;
+    } finally {
+      expensesSub.close();
+      settlementsSub.close();
+    }
+  }
+
+  Future<_RemoveChoice> _confirmRemove(
+    BuildContext context,
+    ({String warning, DebtEntry? debt})? balance,
+  ) async {
     final name = member.label;
     final l = context.l10n;
-    final confirmed = await showDialog<bool>(
+    final theme = Theme.of(context);
+    final choice = await showDialog<_RemoveChoice>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.removeFromGroup),
-        content: Text(l.removeMemberBody(name)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.removeMemberBody(name)),
+              if (balance != null) ...[
+                const SizedBox(height: Insets.m),
+                Text(
+                  balance.warning,
+                  key: const Key('removeBalanceWarning'),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.secondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: Insets.xs),
+                Text(l.removeMemberBalanceNote),
+              ],
+            ],
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: () => Navigator.of(ctx).pop(_RemoveChoice.cancel),
             child: Text(l.cancel),
           ),
+          if (balance?.debt != null)
+            TextButton(
+              key: const Key('removeSettleFirst'),
+              onPressed: () => Navigator.of(ctx).pop(_RemoveChoice.settleFirst),
+              child: Text(l.settleUpFirst),
+            ),
           FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
+            key: const Key('removeConfirm'),
+            onPressed: () => Navigator.of(ctx).pop(_RemoveChoice.remove),
             child: Text(l.remove),
           ),
         ],
       ),
     );
-    return confirmed ?? false;
+    return choice ?? _RemoveChoice.cancel;
   }
 
   Future<String?> _prompt(
@@ -572,6 +668,10 @@ class _MemberTile extends ConsumerWidget {
     );
   }
 }
+
+/// What the "remove from group" dialog decided (G64: *Settle up first*
+/// opens the payment dialog instead and removes nobody).
+enum _RemoveChoice { cancel, settleFirst, remove }
 
 /// G56: a member's full Matrix ID (selectable, with *Copy*) — the members
 /// list itself shows only the short form ([memberAccountLine]).

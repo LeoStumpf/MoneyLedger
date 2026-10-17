@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../models/expense_model.dart';
 import '../balance/balance_calculator.dart';
 import 'group_provider.dart';
 
@@ -32,6 +33,36 @@ String? unsettledWarning(
   final parts = [
     if (owe.isNotEmpty) l.unsettledYouOwe(owe.join(' + ')),
     if (owed.isNotEmpty) l.unsettledYouAreOwed(owed.join(' + ')),
+  ];
+  return parts.isEmpty ? null : parts.join(' ');
+}
+
+/// G64 (U10): the open balance of the participant [participantId] (shown as
+/// [name]) for the "remove from group" confirmation — "Ben still gets
+/// €23.50 back" / "Ben still owes €5.00", per currency (several joined with
+/// " + "). Null when settled. Removing never changes the balance — the line
+/// only warns; localized through [l], pure.
+String? removalBalanceWarning(
+  String participantId,
+  String name,
+  List<ExpenseModel> expenses,
+  List<SettlementModel> settlements,
+  AppLocalizations l,
+) {
+  final net = netBalanceOf(participantId, expenses, settlements);
+  String fmt(int cents, String currency) =>
+      formatMoney(cents.abs(), currency, l.localeName);
+  final getsBack = [
+    for (final e in net.entries)
+      if (e.value > 0) fmt(e.value, e.key),
+  ];
+  final owes = [
+    for (final e in net.entries)
+      if (e.value < 0) fmt(e.value, e.key),
+  ];
+  final parts = [
+    if (getsBack.isNotEmpty) l.removeMemberGetsBack(name, getsBack.join(' + ')),
+    if (owes.isNotEmpty) l.removeMemberOwes(name, owes.join(' + ')),
   ];
   return parts.isEmpty ? null : parts.join(' ');
 }

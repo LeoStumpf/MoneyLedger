@@ -121,14 +121,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Alice'), findsOneWidget);
-      expect(find.text('Former members'), findsOneWidget);
+      expect(find.text('No longer in the group'), findsOneWidget);
       expect(find.text('Bob'), findsOneWidget);
-      expect(find.text('@bob · former member'), findsOneWidget);
-      expect(find.text('Local · former member'), findsOneWidget);
+      expect(find.text('@bob · no longer in the group'), findsOneWidget);
+      expect(find.text('Local · no longer in the group'), findsOneWidget);
       // Bob appears after the section header, greyed.
       expect(
         tester.getTopLeft(find.text('Bob')).dy >
-            tester.getTopLeft(find.text('Former members')).dy,
+            tester.getTopLeft(find.text('No longer in the group')).dy,
         isTrue,
       );
       expect(

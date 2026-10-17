@@ -767,9 +767,14 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       DE Gleich / Beträge / Anteile — "Gleichmäßig" doesn't fit at 360 dp)
 
 ### G64. People when creating a group (U4, U9, U6, U10) 🟠
-- [ ] Add people while creating a group (chips, *Add & next*), duplicate-name
+- [x] Add people while creating a group (chips, *Add & next*), duplicate-name
       hint, one term ("Personen"), balance warning when removing someone —
       **before G52 step 6/7** (join picker needs the people)
+- [ ] Left out: duplicate hint on *rename*; mode-dependent delete wording
+      (local mode "will be deleted")
+- [ ] Device check (Pixel, DE, 360 dp): Enter keeps the keyboard + focus on
+      the create page; *Add person* dialog's three buttons wrapping; payer
+      dropdown tag "nicht mehr dabei"; read the reworded privacy texts
 
 ### G65. Group settings + settings page (U22, U28, U21) 🟠
 - [ ] Group settings page instead of the 9-entry ⋮ menu; `/settings` as a
@@ -890,7 +895,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G57 — custom-category follow-ups (found in G47)
 - [x] G56 — UX follow-ups (found in G46)
 - [x] G63 — correctness + texts before release (usability review U11 …)
-- [ ] G64 — people when creating a group (before G52 step 6/7)
+- [x] G64 — people when creating a group (before G52 step 6/7)
 - [ ] G65 — group settings + settings page (before G52 step 6/9)
 - [ ] G66 — currencies
 - [ ] G67 — undo + understandable errors

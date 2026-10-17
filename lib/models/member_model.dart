@@ -134,3 +134,16 @@ String? memberAccountLine(MemberModel member, List<MemberModel> all) {
   if (ambiguous || local == mxid) return mxid;
   return '@$local';
 }
+
+/// G64 (U9): the name in [existing] that [name] duplicates — compared
+/// trimmed and case-insensitively — else null. Only a hint: two people may
+/// share a name (sync can produce duplicates too), the UI warns and lets
+/// the user add anyway.
+String? duplicateNameOf(String name, Iterable<String> existing) {
+  final key = name.trim().toLowerCase();
+  if (key.isEmpty) return null;
+  for (final e in existing) {
+    if (e.trim().toLowerCase() == key) return e.trim();
+  }
+  return null;
+}

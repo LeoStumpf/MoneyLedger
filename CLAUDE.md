@@ -232,7 +232,7 @@ lib/
                                #   register_flows.dart: pure UIA-flow classifier; register_page.dart
                                #   auth_errors.dart: pure friendly-error mapper (G20) + auth_error_card.dart
                                #   sign_up_url.dart: pure web sign-up URL resolution
-    groups/                    # Group list + create (local-only groups, member add/remove)
+    groups/                    # Group list + create (local-only groups, people chips — G64; add/remove people)
                                #   GroupExiter (leave/delete, G9) + group_exit_dialog.dart
                                #   group_archive_provider.dart: G16 archive (groupArchived, GroupArchiver)
                                #   group_categories_page.dart: G47 custom categories (add / rename / hide)
@@ -729,10 +729,29 @@ tombstone like `GroupExiter.leave` (`SettingsDao.purgeGroupAsLeft`), sending
 nothing. Removed by **another** member → the group stays as read-only history
 (`currentParticipant` is inactive): banner "You were removed from this group"
 + *Delete from this device*; no add-expense / settle / edit / member changes.
-The members page lists removed participants greyed under **Former members**
-(*Re-add*: claimed ones via `add`, local people via `MemberAdder.reactivate` — same participant, never a duplicate). Who removed whom isn't recorded, so a removal
+The members page (titled *People*, G64) lists removed participants greyed
+under **No longer in the group** (*Re-add*: claimed ones via `add`, local people via `MemberAdder.reactivate` — same participant, never a duplicate). Who removed whom isn't recorded, so a removal
 learned only via a peer's digest gossip (our own leave notice lost) also shows
 as "removed".
+
+**People when creating a group (G64).** `CreateGroupPage` has a *Who's
+in?* field under name + currency: Enter / + adds a name as a chip (trimmed,
+blank ignored; the field keeps focus — `onEditingComplete` is a no-op), ✕
+removes one, a typed-but-not-added name counts at *Create*; the creator is
+the fixed *You* chip. `GroupCreator.create(name, currency, people:)` saves
+them right after the creator as local participants (same `saveMember`
+path as *Add person* → signed / `pendingSign` / link policy; nothing
+relayed — nobody else is claimed yet). Matrix invites stay on the members
+page. *Add person* dialog (`AddPersonDialog`): *Add & next* writes and
+stays open (empty, focused, "Added X, Y"), *Add* writes and closes. **Duplicate
+hint (U9):** `duplicateNameOf` (`member_model.dart`, trimmed,
+case-insensitive) — a live, non-blocking helper line on both (existing
+people incl. former ones + the ones just added). **Removal warning (U10):**
+*Remove from group* shows the person's open balance
+(`removalBalanceWarning`, `group_exit_dialog.dart`: "Ben still gets €23.50
+back" / "owes", per currency) + *Settle up first* (→ `recordPaymentFlow`
+prefilled with a suggested debt involving them; removes nobody); removing
+stays possible. Tests: `test/g64_people_test.dart`.
 
 **Editing a group (G10).** ⋮ → *Edit group* (any active member):
 name + default currency (`group_edit_dialog.dart`, currencies from
@@ -1477,7 +1496,7 @@ change.** Only the add/edit form changed.
   **active** participants plus — on edit only — every participant the
   expense itself references (payer + split keys) even if they left / were
   removed (`editorParticipants`, `add_expense_page.dart`; former ones last,
-  marked *former member* — `formerMemberTag` — in the split row and the
+  marked *no longer in the group* — `formerMemberTag` — in the split row and the
   payer dropdown; never included by default). A new expense offers active
   ones only. An **untouched** split (no split interaction, same amount) is
   saved exactly as stored (same map incl. key order — re-resolving could
@@ -1556,7 +1575,13 @@ via `generate: true`) writes `lib/l10n/app_localizations*.dart`, which are
   `flutter gen-l10n`, use `context.l10n.key` (`import '…/core/l10n/l10n.dart'`).
   Plurals/placeholders use ICU syntax (`{count, plural, =1{…} other{…}}`) with
   an explicit `placeholders` type. German: informal "du", terms *Gruppe,
-  Ausgabe, Zahlung, Saldo, Mitglied, ehemalige Mitglieder, Synchronisiert*.
+  Ausgabe, Zahlung, Saldo, Person / Personen, nicht mehr dabei,
+  Synchronisiert*. **G64 (U6): people are "Personen" / "people" everywhere**
+  — never *Mitglied(er)* / *member(s)* / *participant(s)* in user-visible
+  text (ARB keys keep their old `member…` names); removed / left people are
+  *nicht mehr dabei* / *no longer in the group*; "all members" → *alle in
+  der Gruppe* / *everyone in the group*. *Person* is feminine ("die Person",
+  "eine Person") — watch "ihr/ihre" references in German.
   `test/about_page_test.dart` checks both ARBs have the same keys/placeholders.
 - **Pure helpers return structure, not text**, or take an `AppLocalizations`
   parameter (`describeAuthError` → `AuthErrorMessage.title(l)/hint(l)`,

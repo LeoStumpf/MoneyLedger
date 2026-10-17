@@ -170,7 +170,7 @@ void main() {
       expect(owed.style?.color, LedgerColors.light.positive);
       final owe = tester.widget<Text>(find.text('You owe CHF 3.00'));
       expect(owe.style?.color, LedgerColors.light.negative);
-      expect(find.text('3 members'), findsOneWidget);
+      expect(find.text('3 people'), findsOneWidget);
       expect(find.text('Trip'), findsOneWidget);
     });
 
@@ -189,13 +189,13 @@ void main() {
           recordCount: 3,
         ),
       );
-      expect(find.text('Not a participant'), findsOneWidget);
+      expect(find.text("You're not in this group"), findsOneWidget);
     });
 
     testWidgets('German', (tester) async {
       await pump(tester, overview({'EUR': -300}), locale: const Locale('de'));
       expect(find.text('Du schuldest 3,00 €'), findsOneWidget);
-      expect(find.text('3 Mitglieder'), findsOneWidget);
+      expect(find.text('3 Personen'), findsOneWidget);
     });
   });
 }

@@ -203,7 +203,7 @@ abstract class AppLocalizations {
   /// No description provided for @signOutConfirmBody.
   ///
   /// In en, this message translates to:
-  /// **'Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn\'t sync — other members\' changes arrive once you sign back in.'**
+  /// **'Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn\'t sync — other people\'s changes arrive once you sign back in.'**
   String get signOutConfirmBody;
 
   /// No description provided for @importFailed.
@@ -311,13 +311,13 @@ abstract class AppLocalizations {
   /// No description provided for @addMember.
   ///
   /// In en, this message translates to:
-  /// **'Add member'**
+  /// **'Add person'**
   String get addMember;
 
   /// No description provided for @membersTitle.
   ///
   /// In en, this message translates to:
-  /// **'Members'**
+  /// **'People'**
   String get membersTitle;
 
   /// No description provided for @balanceTitle.
@@ -377,7 +377,7 @@ abstract class AppLocalizations {
   /// No description provided for @addedToGroupBanner.
   ///
   /// In en, this message translates to:
-  /// **'You\'ve been added to this group. Which participant are you?'**
+  /// **'You\'ve been added to this group. Which person are you?'**
   String get addedToGroupBanner;
 
   /// No description provided for @choose.
@@ -425,7 +425,7 @@ abstract class AppLocalizations {
   /// No description provided for @whichParticipantAreYou.
   ///
   /// In en, this message translates to:
-  /// **'Which participant are you?'**
+  /// **'Which person are you?'**
   String get whichParticipantAreYou;
 
   /// No description provided for @imSomeoneNew.
@@ -461,7 +461,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteExpenseBody.
   ///
   /// In en, this message translates to:
-  /// **'\"{description}\" will be removed for all members.'**
+  /// **'\"{description}\" will be removed for everyone in the group.'**
   String deleteExpenseBody(Object description);
 
   /// No description provided for @deleteSettlementTitle.
@@ -473,7 +473,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteSettlementBody.
   ///
   /// In en, this message translates to:
-  /// **'\"{from} paid {to} {amount}\" will be removed for all members and the balance restored.'**
+  /// **'\"{from} paid {to} {amount}\" will be removed for everyone in the group and the balance restored.'**
   String deleteSettlementBody(Object from, Object to, Object amount);
 
   /// No description provided for @matrixIdLabel.
@@ -497,7 +497,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncedWithAll.
   ///
   /// In en, this message translates to:
-  /// **'Synced with all members'**
+  /// **'Synced with everyone in the group'**
   String get syncedWithAll;
 
   /// No description provided for @peerHasNoDevice.
@@ -521,7 +521,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncProblemBody.
   ///
   /// In en, this message translates to:
-  /// **'Could not reach other members. Your changes are saved on this device and will sync once the connection recovers.'**
+  /// **'Could not reach the others in the group. Your changes are saved on this device and will sync once the connection recovers.'**
   String get syncProblemBody;
 
   /// No description provided for @lastSynced.
@@ -665,7 +665,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitSelectAtLeastOne.
   ///
   /// In en, this message translates to:
-  /// **'Select at least one participant'**
+  /// **'Select at least one person'**
   String get splitSelectAtLeastOne;
 
   /// No description provided for @splitEquallyAmong.
@@ -875,7 +875,7 @@ abstract class AppLocalizations {
   /// No description provided for @leaveGroupBody.
   ///
   /// In en, this message translates to:
-  /// **'\"{group}\" will be removed from this device and the other members will see that you left. Your expenses stay in their ledger.'**
+  /// **'\"{group}\" will be removed from this device and the others in the group will see that you left. Your expenses stay in their ledger.'**
   String leaveGroupBody(Object group);
 
   /// No description provided for @deleteGroupBody.
@@ -941,13 +941,13 @@ abstract class AppLocalizations {
   /// No description provided for @noMembers.
   ///
   /// In en, this message translates to:
-  /// **'No members.'**
+  /// **'Nobody in this group yet.'**
   String get noMembers;
 
   /// No description provided for @formerMembers.
   ///
   /// In en, this message translates to:
-  /// **'Former members'**
+  /// **'No longer in the group'**
   String get formerMembers;
 
   /// No description provided for @invite.
@@ -989,19 +989,19 @@ abstract class AppLocalizations {
   /// No description provided for @formerMemberClaimed.
   ///
   /// In en, this message translates to:
-  /// **'{matrixId} · former member'**
+  /// **'{matrixId} · no longer in the group'**
   String formerMemberClaimed(Object matrixId);
 
   /// No description provided for @formerMemberLocal.
   ///
   /// In en, this message translates to:
-  /// **'Local · former member'**
+  /// **'Local · no longer in the group'**
   String get formerMemberLocal;
 
   /// U11: marks a participant who left / was removed but is part of the edited expense (split row, payer dropdown)
   ///
   /// In en, this message translates to:
-  /// **'former member'**
+  /// **'no longer in the group'**
   String get formerMemberTag;
 
   /// No description provided for @you.
@@ -1061,7 +1061,7 @@ abstract class AppLocalizations {
   /// No description provided for @removeMemberBody.
   ///
   /// In en, this message translates to:
-  /// **'Remove {name} from this group?\n\nTheir expense history is kept; only their membership is cleared.'**
+  /// **'Remove {name} from this group?\n\nTheir expense history is kept; they are just no longer in the group.'**
   String removeMemberBody(Object name);
 
   /// No description provided for @remove.
@@ -1079,7 +1079,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingAddBody.
   ///
   /// In en, this message translates to:
-  /// **'Invite people by their Matrix ID, or add local participants by name and link an account later.'**
+  /// **'Invite people by their Matrix ID, or add them by name only and link an account later.'**
   String get onboardingAddBody;
 
   /// No description provided for @getStarted.
@@ -1577,7 +1577,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyLedgerBody.
   ///
   /// In en, this message translates to:
-  /// **'Groups, participants, expenses and payments are stored only in a local database on each device signed in to a member\'s account. Every member of a group has a copy of that group\'s ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to all of its members.'**
+  /// **'Groups, people, expenses and payments are stored only in a local database on each device signed in to the account of someone in the group. Everyone in a group has a copy of that group\'s ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to everyone in it.'**
   String get privacyLedgerBody;
 
   /// No description provided for @privacyHomeserverTitle.
@@ -1589,7 +1589,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyHomeserverBody.
   ///
   /// In en, this message translates to:
-  /// **'To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the other members\' devices. Your homeserver (and the homeservers of the other members) relay these messages and keep each one only until the receiving device has fetched it, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. MoneyLedger creates no rooms, saves nothing in your account\'s settings and never marks you as online; when it syncs, it asks your homeserver only for these messages and for encryption-key updates — not for your rooms, presence or account settings. What your homeserver still keeps is what every Matrix app needs: your account, its list of devices (this one is named “MoneyLedger”, with when and from which IP address it was last used), each device\'s public encryption keys and one-time keys, and the messages above until they are delivered (for a device that never comes back, until it is removed). Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.'**
+  /// **'To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the devices of the others in the group. Your homeserver (and their homeservers) relay these messages and keep each one only until the receiving device has fetched it, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. MoneyLedger creates no rooms, saves nothing in your account\'s settings and never marks you as online; when it syncs, it asks your homeserver only for these messages and for encryption-key updates — not for your rooms, presence or account settings. What your homeserver still keeps is what every Matrix app needs: your account, its list of devices (this one is named “MoneyLedger”, with when and from which IP address it was last used), each device\'s public encryption keys and one-time keys, and the messages above until they are delivered (for a device that never comes back, until it is removed). Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.'**
   String get privacyHomeserverBody;
 
   /// No description provided for @privacyNoTrackingTitle.
@@ -1601,7 +1601,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyNoTrackingBody.
   ///
   /// In en, this message translates to:
-  /// **'The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of your groups\' members (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.'**
+  /// **'The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.'**
   String get privacyNoTrackingBody;
 
   /// No description provided for @privacyBackgroundTitle.
@@ -1625,7 +1625,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyCsvBody.
   ///
   /// In en, this message translates to:
-  /// **'Exporting a group writes a CSV file with its expenses, payments, the participants\' names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the participants\' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.'**
+  /// **'Exporting a group writes a CSV file with its expenses, payments, the people\'s names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people\'s Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.'**
   String get privacyCsvBody;
 
   /// No description provided for @privacyBackupTitle.
@@ -1637,7 +1637,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyBackupBody.
   ///
   /// In en, this message translates to:
-  /// **'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.'**
+  /// **'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other people in your groups; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.'**
   String get privacyBackupBody;
 
   /// No description provided for @privacyDeleteTitle.
@@ -1649,7 +1649,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyDeleteBody.
   ///
   /// In en, this message translates to:
-  /// **'• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the other members are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members\' devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
+  /// **'• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people\'s devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
   String get privacyDeleteBody;
 
   /// No description provided for @privacyContactTitle.
@@ -1685,7 +1685,7 @@ abstract class AppLocalizations {
   /// No description provided for @notParticipating.
   ///
   /// In en, this message translates to:
-  /// **'Not a participant'**
+  /// **'You\'re not in this group'**
   String get notParticipating;
 
   /// No description provided for @lastActivity.
@@ -1751,7 +1751,7 @@ abstract class AppLocalizations {
   /// No description provided for @membersCount.
   ///
   /// In en, this message translates to:
-  /// **'{n, plural, =1{1 member} other{{n} members}}'**
+  /// **'{n, plural, =1{1 person} other{{n} people}}'**
   String membersCount(int n);
 
   /// No description provided for @today.
@@ -2045,7 +2045,7 @@ abstract class AppLocalizations {
   /// G41 restore preview: a local-mode backup is restored into a signed-in Matrix account.
   ///
   /// In en, this message translates to:
-  /// **'This backup was made without a Matrix account. Restoring it moves its groups into {account}: you become their member there, and this device signs your entries so they can sync.'**
+  /// **'This backup was made without a Matrix account. Restoring it moves its groups into {account}: you are in them with that account, and this device signs your entries so they can sync.'**
   String restoreLocalIntoAccount(String account);
 
   /// G41 restore preview: a Matrix account's backup is restored in local mode (no account).
@@ -2117,7 +2117,7 @@ abstract class AppLocalizations {
   /// No description provided for @restoreLeftNote.
   ///
   /// In en, this message translates to:
-  /// **'Groups you left or deleted come back on this device. If the other members removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.'**
+  /// **'Groups you left or deleted come back on this device. If the others removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.'**
   String get restoreLeftNote;
 
   /// No description provided for @restoreAction.
@@ -2171,7 +2171,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingBackupBody.
   ///
   /// In en, this message translates to:
-  /// **'Nobody else stores your ledger. Groups with other members are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).'**
+  /// **'Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).'**
   String get onboardingBackupBody;
 
   /// No description provided for @csvPreviewTitle.
@@ -2201,7 +2201,7 @@ abstract class AppLocalizations {
   /// No description provided for @csvPreviewAmbiguous.
   ///
   /// In en, this message translates to:
-  /// **'Several participants have the same name — the active one is used: {names}'**
+  /// **'Several people have the same name — the active one is used: {names}'**
   String csvPreviewAmbiguous(String names);
 
   /// No description provided for @csvImportAction.
@@ -2321,13 +2321,13 @@ abstract class AppLocalizations {
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'Off: every device of your group members (and your own) receives your ledger data.'**
+  /// **'Off: every device of the people in your groups (and your own) receives your ledger data.'**
   String get verifiedOnlyOffBody;
 
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'On: this device sends nothing to devices you haven\'t verified by emoji comparison — yours or other members\'. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can\'t restore your groups from this device until you verify it.'**
+  /// **'On: this device sends nothing to devices you haven\'t verified by emoji comparison — yours or other people\'s. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can\'t restore your groups from this device until you verify it.'**
   String get verifiedOnlyOnBody;
 
   /// G11 device-verification enforcement
@@ -2339,7 +2339,7 @@ abstract class AppLocalizations {
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the members page for others). It doesn\'t change what other devices send — members\' devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including a member\'s new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can\'t restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.'**
+  /// **'This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the People page for others). It doesn\'t change what other devices send — other people\'s devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including someone\'s new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can\'t restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.'**
   String get verifiedOnlyConfirmBody;
 
   /// G11 device-verification enforcement
@@ -2837,7 +2837,7 @@ abstract class AppLocalizations {
   /// No description provided for @inviteAsNewParticipant.
   ///
   /// In en, this message translates to:
-  /// **'A new participant'**
+  /// **'A new person'**
   String get inviteAsNewParticipant;
 
   /// G18: live preview of the parsed amount under an amount field, e.g. '= 1.234,00 €'
@@ -2939,7 +2939,7 @@ abstract class AppLocalizations {
   /// G39 welcome page 3 body
   ///
   /// In en, this message translates to:
-  /// **'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other members of your groups — that is why you sign in.'**
+  /// **'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other people in your groups — that is why you sign in.'**
   String get welcomeMatrixBody;
 
   /// G39 welcome page 4 title
@@ -2951,7 +2951,7 @@ abstract class AppLocalizations {
   /// G39 welcome page 4, point 1
   ///
   /// In en, this message translates to:
-  /// **'The members of a group get that group\'s expenses and payments on their devices — end-to-end encrypted.'**
+  /// **'Everyone in a group gets that group\'s expenses and payments on their devices — end-to-end encrypted.'**
   String get welcomePrivacyMembers;
 
   /// G39 welcome page 4, point 2
@@ -3107,7 +3107,7 @@ abstract class AppLocalizations {
   /// G40 settings: name tile subtitle
   ///
   /// In en, this message translates to:
-  /// **'Used for new groups — rename yourself inside a group on its members page'**
+  /// **'Used for new groups — rename yourself inside a group on its People page'**
   String get localProfileNameHint;
 
   /// G40: start the upgrade from local mode
@@ -3173,7 +3173,7 @@ abstract class AppLocalizations {
   /// G40 groups page banner after connecting
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{Your local group now belongs to {account}.} other{Your {count} local groups now belong to {account}.}} You can invite members by their Matrix ID.'**
+  /// **'{count, plural, =1{Your local group now belongs to {account}.} other{Your {count} local groups now belong to {account}.}} You can invite people by their Matrix ID.'**
   String localAdoptedBanner(int count, Object account);
 
   /// Onboarding (after login / local start) title
@@ -3203,7 +3203,7 @@ abstract class AppLocalizations {
   /// Onboarding card (Matrix)
   ///
   /// In en, this message translates to:
-  /// **'Members\' devices exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).'**
+  /// **'The devices in a group exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).'**
   String get onboardingBackgroundBody;
 
   /// Onboarding card (local mode)
@@ -3425,13 +3425,13 @@ abstract class AppLocalizations {
   /// Reset page intro (G48)
   ///
   /// In en, this message translates to:
-  /// **'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. Members stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.'**
+  /// **'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. People stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.'**
   String get groupResetIntro;
 
   /// Reset page intro in local mode (G48)
   ///
   /// In en, this message translates to:
-  /// **'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. Members stay as they are. You can undo a reset the same way.'**
+  /// **'Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. People stay as they are. You can undo a reset the same way.'**
   String get groupResetLocalIntro;
 
   /// Reset page footer (G48)
@@ -3473,7 +3473,7 @@ abstract class AppLocalizations {
   /// Change batch part (G48)
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 group or member change} other{{count} group or member changes}}'**
+  /// **'{count, plural, =1{1 change to the group or its people} other{{count} changes to the group or its people}}'**
   String changeOther(int count);
 
   /// Change batch: written on this device (G48)
@@ -3671,13 +3671,13 @@ abstract class AppLocalizations {
   /// G58 restore-point preview: what the switch does
   ///
   /// In en, this message translates to:
-  /// **'Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. Members stay as they are.'**
+  /// **'Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. People stay as they are.'**
   String get restoreExactSubtitle;
 
   /// G58 restore-point preview: warning while 'Exactly this state' is on
   ///
   /// In en, this message translates to:
-  /// **'Newer changes in these groups — also other members\' — are overwritten for everyone in the group.'**
+  /// **'Newer changes in these groups — also other people\'s — are overwritten for everyone in the group.'**
   String get restoreExactWarning;
 
   /// G58 restore-point preview: warning in local mode
@@ -3703,6 +3703,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{groups, plural, =1{Restored 1 group} other{Restored {groups} groups}} ({changes, plural, =1{1 change} other{{changes} changes}})'**
   String restoreExactDone(int groups, int changes);
+
+  /// G64 create-group page: field to add the other people by name (chips)
+  ///
+  /// In en, this message translates to:
+  /// **'Who\'s in?'**
+  String get createGroupPeopleLabel;
+
+  /// G64 create-group page: helper under the people field
+  ///
+  /// In en, this message translates to:
+  /// **'Add the people you share costs with — Enter adds the next one. You can add more later.'**
+  String get createGroupPeopleHelper;
+
+  /// G64: delete button of a person chip on the create-group page
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}'**
+  String removePersonTooltip(String name);
+
+  /// G64 (U9): non-blocking hint when the typed name already exists in the group (case-insensitive)
+  ///
+  /// In en, this message translates to:
+  /// **'There is already a {name} in this group. You can still add them — a distinct name (e.g. \"{name} B.\") helps tell them apart.'**
+  String duplicatePersonHint(String name);
+
+  /// G64: Add person dialog — adds the person and keeps the dialog open for the next one
+  ///
+  /// In en, this message translates to:
+  /// **'Add & next'**
+  String get addAndNext;
+
+  /// G64 (U10): remove-from-group dialog, the person is still owed money
+  ///
+  /// In en, this message translates to:
+  /// **'{name} still gets {amount} back.'**
+  String removeMemberGetsBack(String name, String amount);
+
+  /// G64 (U10): remove-from-group dialog, the person still owes money
+  ///
+  /// In en, this message translates to:
+  /// **'{name} still owes {amount}.'**
+  String removeMemberOwes(String name, String amount);
+
+  /// G64 (U10): note under the open balance in the remove dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Removing doesn\'t change the balance: it stays in the suggested payments until it is settled.'**
+  String get removeMemberBalanceNote;
+
+  /// G64 (U10): remove dialog action — opens the payment dialog prefilled instead of removing
+  ///
+  /// In en, this message translates to:
+  /// **'Settle up first'**
+  String get settleUpFirst;
 }
 
 class _AppLocalizationsDelegate

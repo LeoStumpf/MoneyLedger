@@ -17,7 +17,7 @@ MoneyLedger server that could receive your data.
 |---|---|
 | MoneyLedger server | None |
 | Account | Your existing Matrix account (on a homeserver you choose) — or none at all (local mode) |
-| Where your ledger lives | On the devices of the group's members |
+| Where your ledger lives | On the devices of the people in the group |
 | What the homeserver can read | Nothing of the ledger — only encrypted messages and their metadata |
 | What the homeserver keeps | Your account, its devices and their encryption keys, and encrypted messages until they are delivered — no rooms, no presence, no account settings from MoneyLedger |
 | Analytics, crash reporting, ads, tracking | None |
@@ -26,16 +26,16 @@ MoneyLedger server that could receive your data.
 
 ## Your ledger stays on your devices
 
-Groups, participants, expenses and payments are stored only in a local database
-on each device signed in to a member's account. Every member of a group has a
-copy of that group's ledger — that is how sharing works: the names, Matrix IDs,
-expenses and payments in a group are visible to all of its members.
+Groups, people, expenses and payments are stored only in a local database on
+each device signed in to the account of someone in the group. Everyone in a
+group has a copy of that group's ledger — that is how sharing works: the names,
+Matrix IDs, expenses and payments in a group are visible to everyone in it.
 
 ## What your Matrix homeserver sees
 
 To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix
-to-device message to the other members' devices. Your homeserver (and the
-homeservers of the other members) relay these messages and keep each one only
+to-device message to the devices of the others in the group. Your homeserver
+(and their homeservers) relay these messages and keep each one only
 until the receiving device has fetched it, but cannot read them. They do see
 metadata: which accounts and devices exchange messages, when, how often and
 roughly how large they are. MoneyLedger creates no rooms, saves nothing in your
@@ -55,7 +55,7 @@ privacy policy.
 The app talks only to Matrix homeservers: on the sign-in page to the server you
 enter — and only once you confirm it or sign in — and after that only to your
 own homeserver. Through it, the app also looks up the Matrix profile names and
-devices of your groups' members (your homeserver may ask theirs). If you use
+devices of the people in your groups (your homeserver may ask theirs). If you use
 single sign-on or sign up on the web, your browser opens the pages your
 homeserver sends you to (for matrix.org possibly Element's sign-up page,
 app.element.io). Links in the app — to the source code on GitHub, for example —
@@ -86,9 +86,9 @@ from then on the sections above apply.
 ## Export, backup and import
 
 Exporting a group writes a CSV file with its expenses, payments, the
-participants' names and the amounts; a backup ("Back up all groups" in
+people's names and the amounts; a backup ("Back up all groups" in
 Settings, or one group from its menu) writes one JSON file with the groups,
-including the participants' Matrix IDs and deleted entries. Both happen only
+including the people's Matrix IDs and deleted entries. Both happen only
 when you ask for it. Where the file goes is your choice. A CSV is always plain
 text; a backup is plain text too unless you set a passphrase — then it is
 encrypted on your device (Argon2id + AES-256-GCM) and can only be restored
@@ -102,7 +102,7 @@ MoneyLedger opts out of Android's automatic app backup and device-to-device
 transfer. Your ledger and your Matrix session (including its encryption keys)
 are never copied into a Google backup or onto another phone by Android. On a
 new device, sign in and your groups are restored from your other devices and
-the other members; for groups only you use, a backup file (Settings → Back up
+the other people in your groups; for groups only you use, a backup file (Settings → Back up
 all groups) is your own offline copy.
 
 ## Restore points on this device
@@ -121,15 +121,15 @@ local data, or uninstalling the app, removes all of them.
 
 - Leave or delete a group (group menu ⋮): it and all its records are removed
   from this device (the daily restore points keep it for about five weeks —
-  see "Restore points on this device"). When you leave, the other members are
-  told that you left.
+  see "Restore points on this device"). When you leave, the others in the group
+  are told that you left.
 - Signing out keeps this account's ledger on the device, so it is back when you
   sign in again.
 - In local mode, Settings → *Delete local data* removes every local group from
   this device and ends local mode.
 - Uninstalling the app (or clearing its storage) removes everything it stored
   on the device.
-- Copies on other members' devices are theirs: they keep the group's history,
+- Copies on other people's devices are theirs: they keep the group's history,
   including your expenses in it.
 - Your Matrix account can be deactivated through your homeserver.
 

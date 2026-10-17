@@ -120,7 +120,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(changes, [true]);
     expect(
-      find.textContaining('also other members'),
+      find.textContaining("also other people's"),
       findsOneWidget,
       reason: 'warns that others\' newer changes are overwritten',
     );

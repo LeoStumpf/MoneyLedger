@@ -257,9 +257,21 @@ class GroupCreator extends _$GroupCreator {
   /// the first active member. Nothing is sent to Matrix — members are added (and
   /// the group replicated to them) via [MemberAdder].
   ///
+  /// G64: [people] (names, from the create page's "Who's in?" chips) are
+  /// added right away as local participants — exactly like *Add person*
+  /// ([MemberAdder.addLocal]): a fresh UUIDv7 id, no Matrix ID, signed /
+  /// `pendingSign` / unsigned per the group's policy by the same signer.
+  /// Blank names are skipped; names are trimmed. Nothing is relayed: the
+  /// group has no other claimed member yet (our own other devices learn it
+  /// from the next digest, like the group itself).
+  ///
   /// Returns the new group's id once it is stored (G46: the create page opens
   /// it), or null when the write failed (see [state]) or the DB closed.
-  Future<String?> create(String name, String currency) async {
+  Future<String?> create(
+    String name,
+    String currency, {
+    List<String> people = const [],
+  }) async {
     String? created;
     await _runGroupWrite(ref, (s) => state = s, (w) async {
       final groupId = const Uuid().v7();
@@ -291,6 +303,21 @@ class GroupCreator extends _$GroupCreator {
           updatedAt: now,
         ),
       );
+      for (final person in people) {
+        final personName = person.trim();
+        if (personName.isEmpty) continue;
+        if (w.db.isClosed) return;
+        await w.saveMember(
+          MemberModel(
+            groupId: groupId,
+            userId: const Uuid().v7(),
+            displayName: personName,
+            matrixId: null,
+            status: 'active',
+            updatedAt: now,
+          ),
+        );
+      }
       created = groupId;
     });
     return created;

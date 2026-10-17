@@ -65,7 +65,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get signOutConfirmBody =>
-      'Deine Gruppen und Ausgaben bleiben auf diesem Gerät und sind wieder da, wenn du dich erneut mit diesem Konto anmeldest. Solange du abgemeldet bist, synchronisiert dieses Gerät nicht – Änderungen anderer Mitglieder kommen an, sobald du dich wieder anmeldest.';
+      'Deine Gruppen und Ausgaben bleiben auf diesem Gerät und sind wieder da, wenn du dich erneut mit diesem Konto anmeldest. Solange du abgemeldet bist, synchronisiert dieses Gerät nicht – Änderungen anderer Personen kommen an, sobald du dich wieder anmeldest.';
 
   @override
   String importFailed(Object error) {
@@ -138,10 +138,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get expensesTitle => 'Ausgaben';
 
   @override
-  String get addMember => 'Mitglied hinzufügen';
+  String get addMember => 'Person hinzufügen';
 
   @override
-  String get membersTitle => 'Mitglieder';
+  String get membersTitle => 'Personen';
 
   @override
   String get balanceTitle => 'Saldo';
@@ -224,7 +224,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String deleteExpenseBody(Object description) {
-    return '„$description“ wird für alle Mitglieder entfernt.';
+    return '„$description“ wird für alle in der Gruppe entfernt.';
   }
 
   @override
@@ -232,7 +232,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String deleteSettlementBody(Object from, Object to, Object amount) {
-    return '„$from hat $to $amount gezahlt“ wird für alle Mitglieder entfernt und der Saldo wiederhergestellt.';
+    return '„$from hat $to $amount gezahlt“ wird für alle in der Gruppe entfernt und der Saldo wiederhergestellt.';
   }
 
   @override
@@ -248,7 +248,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Synchronisierungsproblem – für Details tippen';
 
   @override
-  String get syncedWithAll => 'Mit allen Mitgliedern synchronisiert';
+  String get syncedWithAll => 'Mit allen in der Gruppe synchronisiert';
 
   @override
   String peerHasNoDevice(Object peer) {
@@ -265,7 +265,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get syncProblemBody =>
-      'Andere Mitglieder waren nicht erreichbar. Deine Änderungen sind auf diesem Gerät gespeichert und werden synchronisiert, sobald die Verbindung wieder steht.';
+      'Die anderen in der Gruppe waren nicht erreichbar. Deine Änderungen sind auf diesem Gerät gespeichert und werden synchronisiert, sobald die Verbindung wieder steht.';
 
   @override
   String lastSynced(Object ago) {
@@ -490,7 +490,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String leaveGroupBody(Object group) {
-    return '„$group“ wird von diesem Gerät entfernt, und die anderen Mitglieder sehen, dass du gegangen bist. Deine Ausgaben bleiben in ihrem Kassenbuch.';
+    return '„$group“ wird von diesem Gerät entfernt, und die anderen in der Gruppe sehen, dass du gegangen bist. Deine Ausgaben bleiben in ihrem Kassenbuch.';
   }
 
   @override
@@ -528,10 +528,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addPerson => 'Person hinzufügen';
 
   @override
-  String get noMembers => 'Keine Mitglieder.';
+  String get noMembers => 'Noch niemand in dieser Gruppe.';
 
   @override
-  String get formerMembers => 'Ehemalige Mitglieder';
+  String get formerMembers => 'Nicht mehr dabei';
 
   @override
   String get invite => 'Einladen';
@@ -556,14 +556,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String formerMemberClaimed(Object matrixId) {
-    return '$matrixId · ehemaliges Mitglied';
+    return '$matrixId · nicht mehr dabei';
   }
 
   @override
-  String get formerMemberLocal => 'Lokal · ehemaliges Mitglied';
+  String get formerMemberLocal => 'Lokal · nicht mehr dabei';
 
   @override
-  String get formerMemberTag => 'ehemaliges Mitglied';
+  String get formerMemberTag => 'nicht mehr dabei';
 
   @override
   String get you => 'Du';
@@ -596,7 +596,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String removeMemberBody(Object name) {
-    return '$name aus dieser Gruppe entfernen?\n\nDer Ausgabenverlauf bleibt erhalten, nur die Mitgliedschaft wird beendet.';
+    return '$name aus dieser Gruppe entfernen?\n\nDer Ausgabenverlauf bleibt erhalten, die Person ist danach nur nicht mehr dabei.';
   }
 
   @override
@@ -607,7 +607,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingAddBody =>
-      'Lade Leute über ihre Matrix-ID ein oder füge lokale Personen mit Namen hinzu und verknüpfe später ein Konto.';
+      'Lade Personen über ihre Matrix-ID ein oder füge sie nur mit Namen hinzu und verknüpfe später ein Konto.';
 
   @override
   String get getStarted => 'Los geht\'s';
@@ -915,21 +915,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLedgerBody =>
-      'Gruppen, Personen, Ausgaben und Zahlungen werden nur in einer lokalen Datenbank auf jedem Gerät gespeichert, das mit dem Konto eines Mitglieds angemeldet ist. Jedes Mitglied einer Gruppe hat eine Kopie ihres Kassenbuchs – so funktioniert das Teilen: Namen, Matrix-IDs, Ausgaben und Zahlungen einer Gruppe sind für alle ihre Mitglieder sichtbar.';
+      'Gruppen, Personen, Ausgaben und Zahlungen werden nur in einer lokalen Datenbank auf jedem Gerät gespeichert, das mit dem Konto einer Person aus der Gruppe angemeldet ist. Alle in einer Gruppe haben eine Kopie des Kassenbuchs der Gruppe – so funktioniert das Teilen: Namen, Matrix-IDs, Ausgaben und Zahlungen einer Gruppe sind für alle in der Gruppe sichtbar.';
 
   @override
   String get privacyHomeserverTitle => 'Was dein Matrix-Homeserver sieht';
 
   @override
   String get privacyHomeserverBody =>
-      'Zum Synchronisieren sendet MoneyLedger jede Änderung als Ende-zu-Ende-verschlüsselte Matrix-Nachricht (to-device) an die Geräte der anderen Mitglieder. Dein Homeserver (und die Homeserver der anderen Mitglieder) leiten diese Nachrichten weiter und halten jede nur so lange vor, bis das empfangende Gerät sie abgeholt hat, können sie aber nicht lesen. Sie sehen allerdings Metadaten: welche Konten und Geräte Nachrichten austauschen, wann, wie oft und ungefähr wie groß. MoneyLedger legt keine Räume an, speichert nichts in den Einstellungen deines Kontos und zeigt dich nie als online an; beim Synchronisieren fragt es deinen Homeserver nur nach diesen Nachrichten und nach Änderungen an Schlüsseln – nicht nach deinen Räumen, deinem Online-Status oder deinen Kontoeinstellungen. Was dein Homeserver dennoch speichert, braucht jede Matrix-App: dein Konto, die Liste seiner Geräte (dieses heißt „MoneyLedger“, mit Zeitpunkt und IP-Adresse der letzten Nutzung), die öffentlichen Schlüssel und Einmalschlüssel jedes Geräts sowie die Nachrichten oben bis zur Zustellung (für ein Gerät, das nie wiederkommt, bis es entfernt wird). Dein Matrix-Konto selbst – Benutzername, Geräte, Schlüssel, IP-Adressen und Anmeldeverlauf – verarbeitet dein Homeserver nach seiner eigenen Datenschutzerklärung.';
+      'Zum Synchronisieren sendet MoneyLedger jede Änderung als Ende-zu-Ende-verschlüsselte Matrix-Nachricht (to-device) an die Geräte der anderen in der Gruppe. Dein Homeserver (und deren Homeserver) leiten diese Nachrichten weiter und halten jede nur so lange vor, bis das empfangende Gerät sie abgeholt hat, können sie aber nicht lesen. Sie sehen allerdings Metadaten: welche Konten und Geräte Nachrichten austauschen, wann, wie oft und ungefähr wie groß. MoneyLedger legt keine Räume an, speichert nichts in den Einstellungen deines Kontos und zeigt dich nie als online an; beim Synchronisieren fragt es deinen Homeserver nur nach diesen Nachrichten und nach Änderungen an Schlüsseln – nicht nach deinen Räumen, deinem Online-Status oder deinen Kontoeinstellungen. Was dein Homeserver dennoch speichert, braucht jede Matrix-App: dein Konto, die Liste seiner Geräte (dieses heißt „MoneyLedger“, mit Zeitpunkt und IP-Adresse der letzten Nutzung), die öffentlichen Schlüssel und Einmalschlüssel jedes Geräts sowie die Nachrichten oben bis zur Zustellung (für ein Gerät, das nie wiederkommt, bis es entfernt wird). Dein Matrix-Konto selbst – Benutzername, Geräte, Schlüssel, IP-Adressen und Anmeldeverlauf – verarbeitet dein Homeserver nach seiner eigenen Datenschutzerklärung.';
 
   @override
   String get privacyNoTrackingTitle => 'Keine Analyse, keine eigenen Server';
 
   @override
   String get privacyNoTrackingBody =>
-      'Die App kommuniziert nur mit Matrix-Homeservern: auf der Anmeldeseite mit dem Server, den du einträgst – und erst, wenn du ihn bestätigst oder dich anmeldest –, danach nur mit deinem eigenen Homeserver. Über ihn fragt sie auch die Matrix-Profilnamen und Geräte der Mitglieder deiner Gruppen ab (dein Homeserver fragt dafür ggf. deren Homeserver). Wenn du Single Sign-on nutzt oder dich im Web registrierst, öffnet dein Browser die Seiten, zu denen dich dein Homeserver schickt (bei matrix.org ggf. die Registrierungsseite von Element, app.element.io). Links in der App – etwa zum Quellcode auf GitHub – öffnen sich erst in deinem Browser, wenn du darauf tippst. Die Web-Version wird vollständig von der Seite geladen, auf der sie bereitgestellt wird: kein Code und keine Schriften von Google oder anderen Dritten. Es gibt keine Analyse, keine Absturzberichte, keine Werbe-ID und keinerlei Tracking.';
+      'Die App kommuniziert nur mit Matrix-Homeservern: auf der Anmeldeseite mit dem Server, den du einträgst – und erst, wenn du ihn bestätigst oder dich anmeldest –, danach nur mit deinem eigenen Homeserver. Über ihn fragt sie auch die Matrix-Profilnamen und Geräte der Personen in deinen Gruppen ab (dein Homeserver fragt dafür ggf. deren Homeserver). Wenn du Single Sign-on nutzt oder dich im Web registrierst, öffnet dein Browser die Seiten, zu denen dich dein Homeserver schickt (bei matrix.org ggf. die Registrierungsseite von Element, app.element.io). Links in der App – etwa zum Quellcode auf GitHub – öffnen sich erst in deinem Browser, wenn du darauf tippst. Die Web-Version wird vollständig von der Seite geladen, auf der sie bereitgestellt wird: kein Code und keine Schriften von Google oder anderen Dritten. Es gibt keine Analyse, keine Absturzberichte, keine Werbe-ID und keinerlei Tracking.';
 
   @override
   String get privacyBackgroundTitle =>
@@ -951,14 +951,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyBackupBody =>
-      'MoneyLedger nimmt nicht an der automatischen App-Sicherung und Geräteübertragung von Android teil. Dein Kassenbuch und deine Matrix-Sitzung (inklusive ihrer Schlüssel) werden von Android nie in eine Google-Sicherung oder auf ein anderes Telefon kopiert. Auf einem neuen Gerät meldest du dich an und deine Gruppen werden von deinen anderen Geräten und den anderen Mitgliedern wiederhergestellt; für Gruppen, die nur du nutzt, ist eine Sicherungsdatei (Einstellungen → Alle Gruppen sichern) deine eigene Offline-Kopie.';
+      'MoneyLedger nimmt nicht an der automatischen App-Sicherung und Geräteübertragung von Android teil. Dein Kassenbuch und deine Matrix-Sitzung (inklusive ihrer Schlüssel) werden von Android nie in eine Google-Sicherung oder auf ein anderes Telefon kopiert. Auf einem neuen Gerät meldest du dich an und deine Gruppen werden von deinen anderen Geräten und den anderen Personen in deinen Gruppen wiederhergestellt; für Gruppen, die nur du nutzt, ist eine Sicherungsdatei (Einstellungen → Alle Gruppen sichern) deine eigene Offline-Kopie.';
 
   @override
   String get privacyDeleteTitle => 'Deine Daten löschen';
 
   @override
   String get privacyDeleteBody =>
-      '• Gruppe verlassen oder löschen (Gruppenmenü ⋮): Sie wird samt allen Einträgen von diesem Gerät entfernt (die täglichen Wiederherstellungspunkte behalten sie etwa fünf Wochen – siehe oben). Wenn du sie verlässt, erfahren die anderen Mitglieder davon.\n• Beim Abmelden bleibt das Kassenbuch dieses Kontos auf dem Gerät, damit es bei der nächsten Anmeldung wieder da ist.\n• Im lokalen Modus entfernt Einstellungen → Lokale Daten löschen alle lokalen Gruppen von diesem Gerät und beendet den lokalen Modus.\n• Wenn du die App deinstallierst (oder ihren Speicher löschst), wird alles entfernt, was sie auf dem Gerät gespeichert hat.\n• Kopien auf den Geräten anderer Mitglieder gehören ihnen: Sie behalten den Verlauf der Gruppe, einschließlich deiner Ausgaben darin.\n• Dein Matrix-Konto kannst du über deinen Homeserver deaktivieren.';
+      '• Gruppe verlassen oder löschen (Gruppenmenü ⋮): Sie wird samt allen Einträgen von diesem Gerät entfernt (die täglichen Wiederherstellungspunkte behalten sie etwa fünf Wochen – siehe oben). Wenn du sie verlässt, erfahren die anderen in der Gruppe davon.\n• Beim Abmelden bleibt das Kassenbuch dieses Kontos auf dem Gerät, damit es bei der nächsten Anmeldung wieder da ist.\n• Im lokalen Modus entfernt Einstellungen → Lokale Daten löschen alle lokalen Gruppen von diesem Gerät und beendet den lokalen Modus.\n• Wenn du die App deinstallierst (oder ihren Speicher löschst), wird alles entfernt, was sie auf dem Gerät gespeichert hat.\n• Kopien auf den Geräten anderer Personen gehören ihnen: Sie behalten den Verlauf der Gruppe, einschließlich deiner Ausgaben darin.\n• Dein Matrix-Konto kannst du über deinen Homeserver deaktivieren.';
 
   @override
   String get privacyContactTitle => 'Kontakt';
@@ -981,7 +981,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settledUp => 'Ausgeglichen';
 
   @override
-  String get notParticipating => 'Nicht beteiligt';
+  String get notParticipating => 'Du bist nicht dabei';
 
   @override
   String lastActivity(String date) {
@@ -1008,7 +1008,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get groupsEmptyBody =>
-      'Lege eine Gruppe für eine Reise, deine WG oder ein Abendessen an – und füge die Leute hinzu, mit denen du Kosten teilst.';
+      'Lege eine Gruppe für eine Reise, deine WG oder ein Abendessen an – und füge die Personen hinzu, mit denen du Kosten teilst.';
 
   @override
   String get createGroup => 'Gruppe erstellen';
@@ -1021,8 +1021,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '$n Mitglieder',
-      one: '1 Mitglied',
+      other: '$n Personen',
+      one: '1 Person',
     );
     return '$_temp0';
   }
@@ -1114,7 +1114,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get expensesEmptyAloneBody =>
-      'Bisher bist nur du in der Gruppe. Füge die Leute hinzu, mit denen du Kosten teilst – danach die erste Ausgabe.';
+      'Bisher bist nur du in der Gruppe. Füge die Personen hinzu, mit denen du Kosten teilst – danach die erste Ausgabe.';
 
   @override
   String get addPeople => 'Personen hinzufügen';
@@ -1206,7 +1206,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String restoreLocalIntoAccount(String account) {
-    return 'Diese Sicherung wurde ohne Matrix-Konto erstellt. Beim Wiederherstellen übernimmt $account ihre Gruppen: Du wirst dort ihr Mitglied, und dieses Gerät signiert deine Einträge, damit sie synchronisiert werden können.';
+    return 'Diese Sicherung wurde ohne Matrix-Konto erstellt. Beim Wiederherstellen übernimmt $account ihre Gruppen: Du bist dort mit diesem Konto dabei, und dieses Gerät signiert deine Einträge, damit sie synchronisiert werden können.';
   }
 
   @override
@@ -1297,7 +1297,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restoreLeftNote =>
-      'Gruppen, die du verlassen oder gelöscht hast, kommen auf diesem Gerät zurück. Haben dich die anderen Mitglieder aus einer Gruppe entfernt, kommt sie schreibgeschützt zurück (nur der Verlauf) – eine Entfernung nach dieser Sicherung zeigt sich bei der nächsten Synchronisierung.';
+      'Gruppen, die du verlassen oder gelöscht hast, kommen auf diesem Gerät zurück. Haben dich die anderen aus einer Gruppe entfernt, kommt sie schreibgeschützt zurück (nur der Verlauf) – eine Entfernung nach dieser Sicherung zeigt sich bei der nächsten Synchronisierung.';
 
   @override
   String get restoreAction => 'Wiederherstellen';
@@ -1345,7 +1345,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingBackupBody =>
-      'Niemand sonst speichert deine Daten. Gruppen mit anderen Mitgliedern liegen auch auf deren Geräten. Für Gruppen, die nur du nutzt, melde dich auf einem zweiten Gerät an oder speichere ab und zu eine Sicherung (Einstellungen → Alle Gruppen sichern).';
+      'Niemand sonst speichert deine Daten. Gruppen mit anderen Personen liegen auch auf deren Geräten. Für Gruppen, die nur du nutzt, melde dich auf einem zweiten Gerät an oder speichere ab und zu eine Sicherung (Einstellungen → Alle Gruppen sichern).';
 
   @override
   String get csvPreviewTitle => 'CSV importieren?';
@@ -1453,11 +1453,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get verifiedOnlyOffBody =>
-      'Aus: Jedes Gerät deiner Gruppenmitglieder (und deine eigenen) erhält deine Daten.';
+      'Aus: Jedes Gerät der Personen in deinen Gruppen (und deine eigenen) erhält deine Daten.';
 
   @override
   String get verifiedOnlyOnBody =>
-      'An: Dieses Gerät sendet nichts an Geräte, die du nicht per Emoji-Vergleich verifiziert hast – deine oder die anderer Mitglieder. Das betrifft nur, was dieses Gerät sendet: Andere Geräte synchronisieren weiter untereinander, und eine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie verifizierst.';
+      'An: Dieses Gerät sendet nichts an Geräte, die du nicht per Emoji-Vergleich verifiziert hast – deine oder die anderer Personen. Das betrifft nur, was dieses Gerät sendet: Andere Geräte synchronisieren weiter untereinander, und eine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie verifizierst.';
 
   @override
   String get verifiedOnlyConfirmTitle =>
@@ -1465,7 +1465,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get verifiedOnlyConfirmBody =>
-      'Das betrifft nur, was dieses Gerät sendet: Deine Ausgaben, Zahlungen und Gruppenänderungen gehen nur noch an Geräte, die du per Emoji-Vergleich verifiziert hast (eigene auf der Geräteseite, andere auf der Mitgliederseite). Was andere Geräte senden, ändert sich nicht – die Geräte der Mitglieder und deine anderen Geräte synchronisieren weiter untereinander, solange sie das nicht auch einschalten.\n\nNicht verifizierte Geräte – auch das neue Handy eines Mitglieds – erhalten von diesem Gerät nichts, bis du sie verifizierst, und bleiben zurück.\n\nEine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie auf der Geräteseite verifizierst.\n\nEmpfangene Einträge werden weiter angenommen; die Details zeigen, ob das signierende Gerät verifiziert ist. Gilt nur für dieses Gerät und Konto.';
+      'Das betrifft nur, was dieses Gerät sendet: Deine Ausgaben, Zahlungen und Gruppenänderungen gehen nur noch an Geräte, die du per Emoji-Vergleich verifiziert hast (eigene auf der Geräteseite, andere auf der Seite „Personen“). Was andere Geräte senden, ändert sich nicht – die Geräte der anderen Personen und deine anderen Geräte synchronisieren weiter untereinander, solange sie das nicht auch einschalten.\n\nNicht verifizierte Geräte – auch das neue Handy einer anderen Person – erhalten von diesem Gerät nichts, bis du sie verifizierst, und bleiben zurück.\n\nEine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie auf der Geräteseite verifizierst.\n\nEmpfangene Einträge werden weiter angenommen; die Details zeigen, ob das signierende Gerät verifiziert ist. Gilt nur für dieses Gerät und Konto.';
 
   @override
   String get verifiedOnlyTurnOn => 'Einschalten';
@@ -1851,14 +1851,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get welcomeMatrixBody =>
-      'Matrix ist ein offenes, dezentrales Nachrichtennetz. Wie bei E-Mail wählst du einen Anbieter (einen „Homeserver“, z. B. matrix.org) und legst dort ein kostenloses Konto an. MoneyLedger nutzt dein Matrix-Konto als deine Identität und als Ende-zu-Ende-verschlüsselten Übermittler zu den anderen Mitgliedern deiner Gruppen – deshalb meldest du dich an.';
+      'Matrix ist ein offenes, dezentrales Nachrichtennetz. Wie bei E-Mail wählst du einen Anbieter (einen „Homeserver“, z. B. matrix.org) und legst dort ein kostenloses Konto an. MoneyLedger nutzt dein Matrix-Konto als deine Identität und als Ende-zu-Ende-verschlüsselten Übermittler zu den anderen Personen in deinen Gruppen – deshalb meldest du dich an.';
 
   @override
   String get welcomePrivacyTitle => 'Wer sieht was';
 
   @override
   String get welcomePrivacyMembers =>
-      'Die Mitglieder einer Gruppe bekommen deren Ausgaben und Zahlungen auf ihre Geräte – Ende-zu-Ende-verschlüsselt.';
+      'Alle in einer Gruppe bekommen die Ausgaben und Zahlungen der Gruppe auf ihre Geräte – Ende-zu-Ende-verschlüsselt.';
 
   @override
   String get welcomePrivacyServer =>
@@ -1952,7 +1952,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get localProfileNameHint =>
-      'Gilt für neue Gruppen – in einer Gruppe benennst du dich auf der Mitgliederseite um';
+      'Gilt für neue Gruppen – in einer Gruppe benennst du dich auf ihrer Seite „Personen“ um';
 
   @override
   String get connectMatrixAccount => 'Matrix-Konto verbinden';
@@ -2007,7 +2007,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: 'Deine $count lokalen Gruppen gehören jetzt zu $account.',
       one: 'Deine lokale Gruppe gehört jetzt zu $account.',
     );
-    return '$_temp0 Du kannst Mitglieder über ihre Matrix-ID einladen.';
+    return '$_temp0 Du kannst Personen über ihre Matrix-ID einladen.';
   }
 
   @override
@@ -2026,7 +2026,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingBackgroundBody =>
-      'Die Geräte der Mitglieder tauschen Änderungen aus, solange die App läuft – unter Android auch etwa alle 15 Minuten im Hintergrund (Einstellungen).';
+      'Die Geräte in einer Gruppe tauschen Änderungen aus, solange die App läuft – unter Android auch etwa alle 15 Minuten im Hintergrund (Einstellungen).';
 
   @override
   String get onboardingLocalOnlyTitle => 'Alles bleibt auf diesem Gerät';
@@ -2171,11 +2171,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get groupResetIntro =>
-      'Wähle eine Änderung, um sie und alles danach rückgängig zu machen. Ausgaben, Zahlungen und die Gruppeneinstellungen gehen auf den Stand zurück, den sie davor auf diesem Gerät hatten. Mitglieder bleiben, wie sie sind. Alle in der Gruppe bekommen das Ergebnis als normale Änderung – und du kannst ein Zurücksetzen genauso wieder rückgängig machen.';
+      'Wähle eine Änderung, um sie und alles danach rückgängig zu machen. Ausgaben, Zahlungen und die Gruppeneinstellungen gehen auf den Stand zurück, den sie davor auf diesem Gerät hatten. Personen bleiben, wie sie sind. Alle in der Gruppe bekommen das Ergebnis als normale Änderung – und du kannst ein Zurücksetzen genauso wieder rückgängig machen.';
 
   @override
   String get groupResetLocalIntro =>
-      'Wähle eine Änderung, um sie und alles danach rückgängig zu machen. Ausgaben, Zahlungen und die Gruppeneinstellungen gehen auf den Stand davor zurück. Mitglieder bleiben, wie sie sind. Du kannst ein Zurücksetzen genauso wieder rückgängig machen.';
+      'Wähle eine Änderung, um sie und alles danach rückgängig zu machen. Ausgaben, Zahlungen und die Gruppeneinstellungen gehen auf den Stand davor zurück. Personen bleiben, wie sie sind. Du kannst ein Zurücksetzen genauso wieder rückgängig machen.';
 
   @override
   String get groupResetRetention =>
@@ -2209,8 +2209,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count Gruppen- oder Mitgliederänderungen',
-      one: '1 Gruppen- oder Mitgliederänderung',
+      other: '$count Änderungen an Gruppe oder Personen',
+      one: '1 Änderung an Gruppe oder Personen',
     );
     return '$_temp0';
   }
@@ -2367,11 +2367,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restoreExactSubtitle =>
-      'Auch spätere Änderungen rückgängig machen: Bearbeitungen werden zurückgesetzt, neuere Einträge entfernt, gelöschte kommen zurück. Mitglieder bleiben, wie sie sind.';
+      'Auch spätere Änderungen rückgängig machen: Bearbeitungen werden zurückgesetzt, neuere Einträge entfernt, gelöschte kommen zurück. Personen bleiben, wie sie sind.';
 
   @override
   String get restoreExactWarning =>
-      'Neuere Änderungen in diesen Gruppen – auch die anderer Mitglieder – werden für alle in der Gruppe überschrieben.';
+      'Neuere Änderungen in diesen Gruppen – auch die anderer Personen – werden für alle in der Gruppe überschrieben.';
 
   @override
   String get restoreExactWarningLocal =>
@@ -2399,4 +2399,41 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0 ($_temp1)';
   }
+
+  @override
+  String get createGroupPeopleLabel => 'Wer ist dabei?';
+
+  @override
+  String get createGroupPeopleHelper =>
+      'Füge die Personen hinzu, mit denen du Kosten teilst – Enter fügt die nächste hinzu. Weitere kannst du später hinzufügen.';
+
+  @override
+  String removePersonTooltip(String name) {
+    return '$name entfernen';
+  }
+
+  @override
+  String duplicatePersonHint(String name) {
+    return 'In dieser Gruppe gibt es schon $name. Du kannst die Person trotzdem hinzufügen – ein eindeutiger Name (z. B. „$name B.“) hilft, sie auseinanderzuhalten.';
+  }
+
+  @override
+  String get addAndNext => 'Hinzufügen & weitere';
+
+  @override
+  String removeMemberGetsBack(String name, String amount) {
+    return '$name bekommt noch $amount zurück.';
+  }
+
+  @override
+  String removeMemberOwes(String name, String amount) {
+    return '$name schuldet noch $amount.';
+  }
+
+  @override
+  String get removeMemberBalanceNote =>
+      'Entfernen ändert den Saldo nicht: Er bleibt in den Ausgleichsvorschlägen, bis er ausgeglichen ist.';
+
+  @override
+  String get settleUpFirst => 'Erst ausgleichen';
 }

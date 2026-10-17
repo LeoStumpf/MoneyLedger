@@ -194,7 +194,7 @@ void main() {
       // No assert from a payer missing in the dropdown; Carol is shown, marked.
       expect(tester.takeException(), isNull);
       expect(find.text('Carol'), findsWidgets);
-      expect(find.text('former member'), findsWidgets);
+      expect(find.text('no longer in the group'), findsWidgets);
       expect(find.textContaining('Split equally among 3'), findsOneWidget);
       // Opening the form changed nothing (G56 baseline).
       expect(canPop(tester), isTrue);
@@ -258,7 +258,7 @@ void main() {
         locale: const Locale('de'),
       );
       expect(tester.takeException(), isNull);
-      expect(find.text('ehemaliges Mitglied'), findsWidgets);
+      expect(find.text('nicht mehr dabei'), findsWidgets);
     });
   });
 

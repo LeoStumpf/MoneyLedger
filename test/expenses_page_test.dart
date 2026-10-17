@@ -404,7 +404,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Which participant are you'), findsOneWidget);
+      expect(find.textContaining('Which person are you'), findsOneWidget);
       // Opening the picker lists the unclaimed local participant.
       await tester.tap(find.widgetWithText(TextButton, 'Choose'));
       await tester.pumpAndSettle();

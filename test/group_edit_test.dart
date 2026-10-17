@@ -309,7 +309,7 @@ void main() {
       await tester.pumpAndSettle();
       final addMember = tester.widget<PopupMenuItem<Object?>>(
         find.ancestor(
-          of: find.text('Add member'),
+          of: find.text('Add person'),
           matching: find.byWidgetPredicate((w) => w is PopupMenuItem),
         ),
       );

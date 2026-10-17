@@ -31,7 +31,7 @@
   "signOut": "Sign out",
   "newGroup": "New group",
   "signOutConfirmTitle": "Sign out?",
-  "signOutConfirmBody": "Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn't sync — other members' changes arrive once you sign back in.",
+  "signOutConfirmBody": "Your groups and expenses stay on this device and are back when you sign in again with this account. While signed out, this device doesn't sync — other people's changes arrive once you sign back in.",
   "importFailed": "Import failed: {error}",
   "@importFailed": {
     "placeholders": {
@@ -72,8 +72,8 @@
   "somethingWentWrong": "Something went wrong",
   "signOutAndRestart": "Sign out and restart",
   "expensesTitle": "Expenses",
-  "addMember": "Add member",
-  "membersTitle": "Members",
+  "addMember": "Add person",
+  "membersTitle": "People",
   "balanceTitle": "Balance",
   "moreTooltip": "More",
   "editGroup": "Edit group",
@@ -83,7 +83,7 @@
   "addExpense": "Add expense",
   "removedFromGroupBanner": "You were removed from this group. Its history stays readable here.",
   "deleteFromThisDevice": "Delete from this device",
-  "addedToGroupBanner": "You've been added to this group. Which participant are you?",
+  "addedToGroupBanner": "You've been added to this group. Which person are you?",
   "choose": "Choose",
   "noExpensesYet": "No expenses yet.",
   "thisGroup": "This group",
@@ -112,20 +112,20 @@
       "fileName": {}
     }
   },
-  "whichParticipantAreYou": "Which participant are you?",
+  "whichParticipantAreYou": "Which person are you?",
   "imSomeoneNew": "I'm someone new",
   "yourName": "Your name",
   "nameLabel": "Name",
   "join": "Join",
   "deleteExpenseTitle": "Delete expense?",
-  "deleteExpenseBody": "\"{description}\" will be removed for all members.",
+  "deleteExpenseBody": "\"{description}\" will be removed for everyone in the group.",
   "@deleteExpenseBody": {
     "placeholders": {
       "description": {}
     }
   },
   "deleteSettlementTitle": "Delete settlement?",
-  "deleteSettlementBody": "\"{from} paid {to} {amount}\" will be removed for all members and the balance restored.",
+  "deleteSettlementBody": "\"{from} paid {to} {amount}\" will be removed for everyone in the group and the balance restored.",
   "@deleteSettlementBody": {
     "placeholders": {
       "from": {},
@@ -141,7 +141,7 @@
     }
   },
   "syncProblemTooltip": "Sync problem — tap for details",
-  "syncedWithAll": "Synced with all members",
+  "syncedWithAll": "Synced with everyone in the group",
   "peerHasNoDevice": "{peer} has no active device — will sync when they sign in",
   "@peerHasNoDevice": {
     "placeholders": {
@@ -155,7 +155,7 @@
     }
   },
   "syncProblemTitle": "Sync problem",
-  "syncProblemBody": "Could not reach other members. Your changes are saved on this device and will sync once the connection recovers.",
+  "syncProblemBody": "Could not reach the others in the group. Your changes are saved on this device and will sync once the connection recovers.",
   "lastSynced": "Last synced {ago}",
   "@lastSynced": {
     "placeholders": {
@@ -229,7 +229,7 @@
   "@splitPercent": {
     "description": "U14: screen-reader label + tooltip of the split mode segment shown as \"%\""
   },
-  "splitSelectAtLeastOne": "Select at least one participant",
+  "splitSelectAtLeastOne": "Select at least one person",
   "splitEquallyAmong": "{n, plural, =1{Split equally among 1} other{Split equally among {n}}}",
   "@splitEquallyAmong": {
     "placeholders": {
@@ -329,7 +329,7 @@
   },
   "leaveGroupTitle": "Leave group?",
   "deleteGroupTitle": "Delete group?",
-  "leaveGroupBody": "\"{group}\" will be removed from this device and the other members will see that you left. Your expenses stay in their ledger.",
+  "leaveGroupBody": "\"{group}\" will be removed from this device and the others in the group will see that you left. Your expenses stay in their ledger.",
   "@leaveGroupBody": {
     "placeholders": {
       "group": {}
@@ -350,8 +350,8 @@
   "create": "Create",
   "inviteByMatrixId": "Invite by Matrix ID",
   "addPerson": "Add person",
-  "noMembers": "No members.",
-  "formerMembers": "Former members",
+  "noMembers": "Nobody in this group yet.",
+  "formerMembers": "No longer in the group",
   "invite": "Invite",
   "invitedMember": "Invited {userId}",
   "@invitedMember": {
@@ -363,14 +363,14 @@
   "matrixIdOptionalLabel": "Matrix ID (optional)",
   "matrixIdOptionalHint": "@user:server — leave blank for a local person",
   "invalidMatrixId": "Invalid Matrix ID",
-  "formerMemberClaimed": "{matrixId} · former member",
+  "formerMemberClaimed": "{matrixId} · no longer in the group",
   "@formerMemberClaimed": {
     "placeholders": {
       "matrixId": {}
     }
   },
-  "formerMemberLocal": "Local · former member",
-  "formerMemberTag": "former member",
+  "formerMemberLocal": "Local · no longer in the group",
+  "formerMemberTag": "no longer in the group",
   "@formerMemberTag": {
     "description": "U11: marks a participant who left / was removed but is part of the edited expense (split row, payer dropdown)"
   },
@@ -388,7 +388,7 @@
   "detachMatrixAccount": "Detach Matrix account",
   "linkMatrixAccount": "Link Matrix account",
   "removeFromGroup": "Remove from group",
-  "removeMemberBody": "Remove {name} from this group?\n\nTheir expense history is kept; only their membership is cleared.",
+  "removeMemberBody": "Remove {name} from this group?\n\nTheir expense history is kept; they are just no longer in the group.",
   "@removeMemberBody": {
     "placeholders": {
       "name": {}
@@ -396,7 +396,7 @@
   },
   "remove": "Remove",
   "onboardingAddTitle": "Add anyone — Matrix or not",
-  "onboardingAddBody": "Invite people by their Matrix ID, or add local participants by name and link an account later.",
+  "onboardingAddBody": "Invite people by their Matrix ID, or add them by name only and link an account later.",
   "getStarted": "Get started",
   "devicesTitle": "Devices",
   "couldNotLoadDevices": "Could not load devices: {error}",
@@ -566,19 +566,19 @@
   },
   "privacyIntro": "MoneyLedger is an expense-sharing app without a central server. It has no account system of its own — you sign in with your Matrix account, or use the app without any account (local mode) — shows no ads, contains no analytics or tracking, and does not sell or share your data. MoneyLedger is published by Leo Stumpf, an individual developer. There is no MoneyLedger server that could receive your data.",
   "privacyLedgerTitle": "Your ledger stays on your devices",
-  "privacyLedgerBody": "Groups, participants, expenses and payments are stored only in a local database on each device signed in to a member's account. Every member of a group has a copy of that group's ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to all of its members.",
+  "privacyLedgerBody": "Groups, people, expenses and payments are stored only in a local database on each device signed in to the account of someone in the group. Everyone in a group has a copy of that group's ledger — that is how sharing works: the names, Matrix IDs, expenses and payments in a group are visible to everyone in it.",
   "privacyHomeserverTitle": "What your Matrix homeserver sees",
-  "privacyHomeserverBody": "To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the other members' devices. Your homeserver (and the homeservers of the other members) relay these messages and keep each one only until the receiving device has fetched it, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. MoneyLedger creates no rooms, saves nothing in your account's settings and never marks you as online; when it syncs, it asks your homeserver only for these messages and for encryption-key updates — not for your rooms, presence or account settings. What your homeserver still keeps is what every Matrix app needs: your account, its list of devices (this one is named “MoneyLedger”, with when and from which IP address it was last used), each device's public encryption keys and one-time keys, and the messages above until they are delivered (for a device that never comes back, until it is removed). Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.",
+  "privacyHomeserverBody": "To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the devices of the others in the group. Your homeserver (and their homeservers) relay these messages and keep each one only until the receiving device has fetched it, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. MoneyLedger creates no rooms, saves nothing in your account's settings and never marks you as online; when it syncs, it asks your homeserver only for these messages and for encryption-key updates — not for your rooms, presence or account settings. What your homeserver still keeps is what every Matrix app needs: your account, its list of devices (this one is named “MoneyLedger”, with when and from which IP address it was last used), each device's public encryption keys and one-time keys, and the messages above until they are delivered (for a device that never comes back, until it is removed). Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.",
   "privacyNoTrackingTitle": "No analytics, no servers of ours",
-  "privacyNoTrackingBody": "The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of your groups' members (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element's sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
+  "privacyNoTrackingBody": "The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element's sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
   "privacyBackgroundTitle": "Background sync on Android",
   "privacyBackgroundBody": "On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.",
   "privacyCsvTitle": "Export, backup and import",
-  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, payments, the participants' names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the participants' Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.",
+  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, payments, the people's names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people's Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.",
   "privacyBackupTitle": "Device backups",
-  "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other members; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.",
+  "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other people in your groups; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.",
   "privacyDeleteTitle": "Deleting your data",
-  "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the other members are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other members' devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
+  "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people's devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
   "privacyContactTitle": "Contact",
   "privacyContactBody": "Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.",
   "youAreOwedAmount": "You are owed {amount}",
@@ -598,7 +598,7 @@
     }
   },
   "settledUp": "Settled up",
-  "notParticipating": "Not a participant",
+  "notParticipating": "You're not in this group",
   "lastActivity": "Last activity {date}",
   "@lastActivity": {
     "placeholders": {
@@ -616,7 +616,7 @@
   "groupsEmptyBody": "Create a group for a trip, your flat or a dinner out — then add the people you share costs with.",
   "createGroup": "Create group",
   "importCsv": "Import CSV",
-  "membersCount": "{n, plural, =1{1 member} other{{n} members}}",
+  "membersCount": "{n, plural, =1{1 person} other{{n} people}}",
   "@membersCount": {
     "placeholders": {
       "n": {
@@ -765,7 +765,7 @@
       }
     }
   },
-  "restoreLocalIntoAccount": "This backup was made without a Matrix account. Restoring it moves its groups into {account}: you become their member there, and this device signs your entries so they can sync.",
+  "restoreLocalIntoAccount": "This backup was made without a Matrix account. Restoring it moves its groups into {account}: you are in them with that account, and this device signs your entries so they can sync.",
   "@restoreLocalIntoAccount": {
     "description": "G41 restore preview: a local-mode backup is restored into a signed-in Matrix account.",
     "placeholders": {
@@ -838,7 +838,7 @@
     }
   },
   "restoreTagUpToDate": "up to date",
-  "restoreLeftNote": "Groups you left or deleted come back on this device. If the other members removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.",
+  "restoreLeftNote": "Groups you left or deleted come back on this device. If the others removed you from a group, it comes back read-only (history only) — a removal after this backup shows up at the next sync.",
   "restoreAction": "Restore",
   "restoredGroups": "{count, plural, =1{Restored 1 group} other{Restored {count} groups}}",
   "@restoredGroups": {
@@ -868,7 +868,7 @@
   "backupNudgeLater": "Later",
   "backupNudgeAction": "Back up now",
   "onboardingBackupTitle": "Keep a copy",
-  "onboardingBackupBody": "Nobody else stores your ledger. Groups with other members are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).",
+  "onboardingBackupBody": "Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).",
   "csvPreviewTitle": "Import CSV?",
   "csvPreviewNewGroup": "Creates the new group “{name}”.",
   "@csvPreviewNewGroup": {
@@ -894,7 +894,7 @@
       }
     }
   },
-  "csvPreviewAmbiguous": "Several participants have the same name — the active one is used: {names}",
+  "csvPreviewAmbiguous": "Several people have the same name — the active one is used: {names}",
   "@csvPreviewAmbiguous": {
     "placeholders": {
       "names": {
@@ -1023,11 +1023,11 @@
   "@verifiedOnlyTitle": {
     "description": "G11 device-verification enforcement"
   },
-  "verifiedOnlyOffBody": "Off: every device of your group members (and your own) receives your ledger data.",
+  "verifiedOnlyOffBody": "Off: every device of the people in your groups (and your own) receives your ledger data.",
   "@verifiedOnlyOffBody": {
     "description": "G11 device-verification enforcement"
   },
-  "verifiedOnlyOnBody": "On: this device sends nothing to devices you haven't verified by emoji comparison — yours or other members'. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can't restore your groups from this device until you verify it.",
+  "verifiedOnlyOnBody": "On: this device sends nothing to devices you haven't verified by emoji comparison — yours or other people's. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can't restore your groups from this device until you verify it.",
   "@verifiedOnlyOnBody": {
     "description": "G11 device-verification enforcement"
   },
@@ -1035,7 +1035,7 @@
   "@verifiedOnlyConfirmTitle": {
     "description": "G11 device-verification enforcement"
   },
-  "verifiedOnlyConfirmBody": "This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the members page for others). It doesn't change what other devices send — members' devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including a member's new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can't restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.",
+  "verifiedOnlyConfirmBody": "This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the People page for others). It doesn't change what other devices send — other people's devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including someone's new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can't restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.",
   "@verifiedOnlyConfirmBody": {
     "description": "G11 device-verification enforcement"
   },
@@ -1439,7 +1439,7 @@
       "userId": {}
     }
   },
-  "inviteAsNewParticipant": "A new participant",
+  "inviteAsNewParticipant": "A new person",
   "amountPreview": "= {amount}",
   "@amountPreview": {
     "description": "G18: live preview of the parsed amount under an amount field, e.g. '= 1.234,00 €'",
@@ -1512,7 +1512,7 @@
   "@welcomeMatrixTitle": {
     "description": "G39 welcome page 3 title; also the login page link"
   },
-  "welcomeMatrixBody": "Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other members of your groups — that is why you sign in.",
+  "welcomeMatrixBody": "Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other people in your groups — that is why you sign in.",
   "@welcomeMatrixBody": {
     "description": "G39 welcome page 3 body"
   },
@@ -1520,7 +1520,7 @@
   "@welcomePrivacyTitle": {
     "description": "G39 welcome page 4 title"
   },
-  "welcomePrivacyMembers": "The members of a group get that group's expenses and payments on their devices — end-to-end encrypted.",
+  "welcomePrivacyMembers": "Everyone in a group gets that group's expenses and payments on their devices — end-to-end encrypted.",
   "@welcomePrivacyMembers": {
     "description": "G39 welcome page 4, point 1"
   },
@@ -1630,7 +1630,7 @@
       "name": {}
     }
   },
-  "localProfileNameHint": "Used for new groups — rename yourself inside a group on its members page",
+  "localProfileNameHint": "Used for new groups — rename yourself inside a group on its People page",
   "@localProfileNameHint": {
     "description": "G40 settings: name tile subtitle"
   },
@@ -1679,7 +1679,7 @@
   "@localModeMembersHint": {
     "description": "G40 members page hint"
   },
-  "localAdoptedBanner": "{count, plural, =1{Your local group now belongs to {account}.} other{Your {count} local groups now belong to {account}.}} You can invite members by their Matrix ID.",
+  "localAdoptedBanner": "{count, plural, =1{Your local group now belongs to {account}.} other{Your {count} local groups now belong to {account}.}} You can invite people by their Matrix ID.",
   "@localAdoptedBanner": {
     "description": "G40 groups page banner after connecting",
     "placeholders": {
@@ -1705,7 +1705,7 @@
   "@onboardingBackgroundTitle": {
     "description": "Onboarding card (Matrix)"
   },
-  "onboardingBackgroundBody": "Members' devices exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).",
+  "onboardingBackgroundBody": "The devices in a group exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).",
   "@onboardingBackgroundBody": {
     "description": "Onboarding card (Matrix)"
   },
@@ -1878,11 +1878,11 @@
   "@groupResetTitle": {
     "description": "Reset page title (G48)"
   },
-  "groupResetIntro": "Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. Members stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.",
+  "groupResetIntro": "Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked on this device before it. People stay as they are. Everyone in the group gets the result as a normal change — and you can undo a reset the same way.",
   "@groupResetIntro": {
     "description": "Reset page intro (G48)"
   },
-  "groupResetLocalIntro": "Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. Members stay as they are. You can undo a reset the same way.",
+  "groupResetLocalIntro": "Pick a change to undo it and everything after it. Expenses, payments and the group settings go back to how they looked before it. People stay as they are. You can undo a reset the same way.",
   "@groupResetLocalIntro": {
     "description": "Reset page intro in local mode (G48)"
   },
@@ -1925,7 +1925,7 @@
       }
     }
   },
-  "changeOther": "{count, plural, =1{1 group or member change} other{{count} group or member changes}}",
+  "changeOther": "{count, plural, =1{1 change to the group or its people} other{{count} changes to the group or its people}}",
   "@changeOther": {
     "description": "Change batch part (G48)",
     "placeholders": {
@@ -2102,11 +2102,11 @@
   "@restoreExactTitle": {
     "description": "G58 restore-point preview: switch — reset the groups to the snapshot's content instead of only merging"
   },
-  "restoreExactSubtitle": "Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. Members stay as they are.",
+  "restoreExactSubtitle": "Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. People stay as they are.",
   "@restoreExactSubtitle": {
     "description": "G58 restore-point preview: what the switch does"
   },
-  "restoreExactWarning": "Newer changes in these groups — also other members' — are overwritten for everyone in the group.",
+  "restoreExactWarning": "Newer changes in these groups — also other people's — are overwritten for everyone in the group.",
   "@restoreExactWarning": {
     "description": "G58 restore-point preview: warning while 'Exactly this state' is on"
   },
@@ -2133,5 +2133,67 @@
         "type": "int"
       }
     }
+  },
+  "createGroupPeopleLabel": "Who's in?",
+  "@createGroupPeopleLabel": {
+    "description": "G64 create-group page: field to add the other people by name (chips)"
+  },
+  "createGroupPeopleHelper": "Add the people you share costs with — Enter adds the next one. You can add more later.",
+  "@createGroupPeopleHelper": {
+    "description": "G64 create-group page: helper under the people field"
+  },
+  "removePersonTooltip": "Remove {name}",
+  "@removePersonTooltip": {
+    "description": "G64: delete button of a person chip on the create-group page",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicatePersonHint": "There is already a {name} in this group. You can still add them — a distinct name (e.g. \"{name} B.\") helps tell them apart.",
+  "@duplicatePersonHint": {
+    "description": "G64 (U9): non-blocking hint when the typed name already exists in the group (case-insensitive)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addAndNext": "Add & next",
+  "@addAndNext": {
+    "description": "G64: Add person dialog — adds the person and keeps the dialog open for the next one"
+  },
+  "removeMemberGetsBack": "{name} still gets {amount} back.",
+  "@removeMemberGetsBack": {
+    "description": "G64 (U10): remove-from-group dialog, the person is still owed money",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "removeMemberOwes": "{name} still owes {amount}.",
+  "@removeMemberOwes": {
+    "description": "G64 (U10): remove-from-group dialog, the person still owes money",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "removeMemberBalanceNote": "Removing doesn't change the balance: it stays in the suggested payments until it is settled.",
+  "@removeMemberBalanceNote": {
+    "description": "G64 (U10): note under the open balance in the remove dialog"
+  },
+  "settleUpFirst": "Settle up first",
+  "@settleUpFirst": {
+    "description": "G64 (U10): remove dialog action — opens the payment dialog prefilled instead of removing"
   }
 }
