@@ -31,6 +31,11 @@ class PaymentDraft {
 /// they received. Prefilled from a tapped debt row ([debtCents] set → warns
 /// when the amount exceeds what is owed), or blank from the "Record payment"
 /// action. Returns a [PaymentDraft] or null when cancelled.
+///
+/// G60 **edit mode** ([editing]): prefilled from a recorded payment (incl.
+/// its day, [initialDay]), titled "Edit payment", *Save* stays disabled
+/// until something changed; [footer] shows who recorded / last edited it
+/// (G6 attribution).
 class RecordPaymentDialog extends StatefulWidget {
   /// participant id → display name; the from/to choices.
   final Map<String, String> participants;
@@ -42,6 +47,15 @@ class RecordPaymentDialog extends StatefulWidget {
   /// The debt this dialog was opened from (same currency), if any.
   final int? debtCents;
 
+  /// G60: the payment's day (local midnight); null = today.
+  final DateTime? initialDay;
+
+  /// G60: editing a recorded payment (see the class doc).
+  final bool editing;
+
+  /// G60: shown under the fields (edit mode: the attribution footer).
+  final Widget? footer;
+
   const RecordPaymentDialog({
     super.key,
     required this.participants,
@@ -50,6 +64,9 @@ class RecordPaymentDialog extends StatefulWidget {
     this.initialTo,
     this.initialCents,
     this.debtCents,
+    this.initialDay,
+    this.editing = false,
+    this.footer,
   });
 
   @override
@@ -60,7 +77,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
   late String? _from = widget.initialFrom;
   late String? _to = widget.initialTo;
   late String _currency = widget.currency;
-  DateTime _day = dayOf(DateTime.now()); // G60
+  late DateTime _day = dayOf(widget.initialDay ?? DateTime.now()); // G60
   final TextEditingController _amount = TextEditingController();
   bool _amountPrefilled = false;
 
@@ -100,6 +117,15 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
   bool get _hasProblem =>
       _from == null || _to == null || _from == _to || _cents == null;
 
+  /// G60 edit mode: nothing differs from the recorded payment.
+  bool get _unchanged =>
+      widget.editing &&
+      _from == widget.initialFrom &&
+      _to == widget.initialTo &&
+      _cents == widget.initialCents &&
+      _currency == widget.currency &&
+      _day == dayOf(widget.initialDay ?? DateTime.now());
+
   @override
   Widget build(BuildContext context) {
     final ids = widget.participants.keys.toList();
@@ -114,7 +140,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
         cents != null &&
         _currency == widget.currency &&
         cents > debt;
-    final problem = _hasProblem;
+    final problem = _hasProblem || _unchanged;
     final l = context.l10n;
 
     DropdownMenuItem<String> item(String id) => DropdownMenuItem(
@@ -126,7 +152,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
     );
 
     return AlertDialog(
-      title: Text(l.recordPayment),
+      title: Text(widget.editing ? l.editPayment : l.recordPayment),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -204,6 +230,10 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
+            if (widget.footer != null) ...[
+              const SizedBox(height: 16),
+              widget.footer!,
+            ],
           ],
         ),
       ),
@@ -213,6 +243,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
           child: Text(l.cancel),
         ),
         FilledButton(
+          key: const Key('paymentSubmit'),
           onPressed: problem
               ? null
               : () => Navigator.of(context).pop(
@@ -224,7 +255,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                     day: _day,
                   ),
                 ),
-          child: Text(l.record),
+          child: Text(widget.editing ? l.save : l.record),
         ),
       ],
     );

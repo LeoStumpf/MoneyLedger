@@ -18,6 +18,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/expenses_provider.dart';
 import '../../features/expenses/ledger_syncer.dart';
+import '../../features/history/restore_points.dart';
+import '../../features/history/snapshot_store.dart';
 import '../database/app_database.dart';
 import '../database/daos/settings_dao.dart';
 import '../database/daos/sync_states_dao.dart';
@@ -37,6 +39,11 @@ const kBackgroundRoundTimeout = Duration(seconds: 60);
 /// (a `/sync`, a digest broadcast, the session being opened) before closing
 /// the stores under it.
 const kBackgroundInFlightGrace = Duration(seconds: 10);
+
+/// G58: the daily snapshot at the end of a round is skipped when less than
+/// this is left of the round's time budget (it waits for the next round /
+/// app start — exporting a big ledger takes a moment).
+const kBackgroundSnapshotMinRemaining = Duration(seconds: 10);
 
 /// A signed-in relay session opened for one background round — the real one
 /// wraps a Matrix `Client` restored from its store (never logged in/out here).
@@ -94,17 +101,22 @@ class BackgroundRoundResult {
   /// Whether the round broadcast its own digests (the last one was stale).
   final bool broadcastDigests;
 
+  /// G58: whether the round wrote today's snapshot (restore point).
+  final bool snapshot;
+
   const BackgroundRoundResult(
     this.status, {
     this.received = 0,
     this.sent = 0,
     this.broadcastDigests = false,
+    this.snapshot = false,
   });
 
   @override
   String toString() =>
       'BackgroundRoundResult(${status.name}, '
-      'received: $received, sent: $sent, digests: $broadcastDigests)';
+      'received: $received, sent: $sent, digests: $broadcastDigests, '
+      'snapshot: $snapshot)';
 }
 
 /// Runs one background round. Every dependency is injected:
@@ -115,6 +127,14 @@ class BackgroundRoundResult {
 /// - [openSession] — restores the relay session; `null` = signed out.
 /// - [openDatabase] — opens the account's ledger DB (per account, G4).
 /// - [abort] — completes when the round must stop early (app started).
+/// - [snapshotStores] — G58: the snapshot store of a ledger DB (by name,
+///   `createPlatformSnapshotStore` on Android). After the sync work the
+///   round takes the **daily snapshot** like an app start does
+///   ([RestorePointsService.snapshotIfDue]: once per local day — shared
+///   `snapshot_checked_day` with the app —, only if the ledger changed and
+///   has a group, 7 daily + 4 weekly kept). Null = no snapshots. Skipped
+///   when less than [snapshotMinRemaining] of the budget is left; stopped
+///   midway, it writes nothing more (the file write itself is atomic).
 /// - [abortRequests] — G18 review 2: cancels the session's homeserver
 ///   requests in flight (closes its HTTP client). Called when the round is
 ///   stopped, **before** it waits for the step in flight and closes the
@@ -142,6 +162,8 @@ Future<BackgroundRoundResult> runBackgroundRound({
   required AppDatabase Function(String mxid) openDatabase,
   Future<void>? abort,
   void Function()? abortRequests,
+  SnapshotStore? Function(String dbName)? snapshotStores,
+  Duration snapshotMinRemaining = kBackgroundSnapshotMinRemaining,
   Duration timeout = kBackgroundRoundTimeout,
   Duration quietPeriod = const Duration(seconds: 2),
   Duration pokeDebounce = const Duration(milliseconds: 300),
@@ -286,6 +308,8 @@ Future<BackgroundRoundResult> runBackgroundRound({
         pokeDebounceProvider.overrideWithValue(pokeDebounce),
         digestOnStartProvider.overrideWithValue(false),
         selfResyncRetryDelaysProvider.overrideWithValue(const []),
+        if (snapshotStores != null)
+          snapshotStoreFactoryProvider.overrideWithValue(snapshotStores),
       ],
     );
     c.listen(ledgerSyncerProvider, (_, _) {});
@@ -329,11 +353,34 @@ Future<BackgroundRoundResult> runBackgroundRound({
       }
       if (!await waitQuiet()) return _ended(aborted, t, broadcast);
     }
+
+    // G58: the daily restore point — the app may not be opened for days.
+    var snapshot = false;
+    if (snapshotStores != null) {
+      if (deadline.difference(DateTime.now()) < snapshotMinRemaining) {
+        debugPrint('[bg] snapshot skipped: round budget almost used up');
+      } else {
+        final service = c
+            .listen(restorePointsServiceProvider, (_, _) {})
+            .read();
+        if (!await guard(
+          service
+              .snapshotIfDue(
+                DateTime.fromMillisecondsSinceEpoch(now()),
+                cancelled: () => stop.isCompleted,
+              )
+              .then((wrote) => snapshot = wrote),
+        )) {
+          return _ended(aborted, t, broadcast);
+        }
+      }
+    }
     final result = BackgroundRoundResult(
       BackgroundRoundStatus.completed,
       received: t.received,
       sent: t.sent,
       broadcastDigests: broadcast,
+      snapshot: snapshot,
     );
     debugPrint('[bg] round done: $result');
     return result;

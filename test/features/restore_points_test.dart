@@ -176,6 +176,40 @@ void main() {
       expect((await service.list()).map((p) => p.name), ['2026-10-16.json']);
     });
 
+    test('G58: cancelled → nothing written, the day stays due', () async {
+      await GroupsDao(db).upsertGroupLww(
+        groupCompanion(
+          const GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
+        ),
+      );
+      final day = DateTime(2026, 10, 16, 9);
+      expect(await service.snapshotIfDue(day, cancelled: () => true), isFalse);
+      expect(store.files, isEmpty);
+      expect(await HistoryDao(db).snapshotCheckedDay(), isNull);
+      // Cancelled only after the export (checked again before the write).
+      var calls = 0;
+      expect(
+        await service.snapshotIfDue(day, cancelled: () => ++calls > 1),
+        isFalse,
+      );
+      expect(store.files, isEmpty);
+      expect(await service.snapshotIfDue(day), isTrue);
+    });
+
+    test(
+      'G58: a temp file left by an interrupted write is cleaned up',
+      () async {
+        store.files['2026-10-15.json.tmp'] = '{"half';
+        await GroupsDao(db).upsertGroupLww(
+          groupCompanion(
+            const GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
+          ),
+        );
+        expect(await service.snapshotIfDue(DateTime(2026, 10, 16)), isTrue);
+        expect(store.files.keys, ['2026-10-16.json']);
+      },
+    );
+
     test('maintain prunes the history and never throws', () async {
       await addExpense('e1', 'Dinner');
       final failing = RestorePointsService(

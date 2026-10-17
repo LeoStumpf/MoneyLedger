@@ -22,6 +22,7 @@ import 'package:money_ledger/core/sync/sync_engine.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/expenses/ledger_syncer.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/features/history/snapshot_store.dart';
 
 import '../helpers/fake_ledger_network.dart';
 
@@ -119,6 +120,9 @@ void main() {
     Duration timeout = const Duration(seconds: 10),
     Duration digestMaxAge = const Duration(minutes: 15),
     Duration inFlightGrace = const Duration(milliseconds: 200),
+    SnapshotStore? Function(String dbName)? snapshotStores,
+    Duration snapshotMinRemaining = Duration.zero,
+    int Function()? clock,
   }) => runBackgroundRound(
     tryAcquire: tryAcquire ?? () async => true,
     openSession: () async =>
@@ -131,6 +135,9 @@ void main() {
     followUpWait: Duration.zero,
     digestMaxAge: digestMaxAge,
     inFlightGrace: inFlightGrace,
+    snapshotStores: snapshotStores,
+    snapshotMinRemaining: snapshotMinRemaining,
+    clock: clock,
   );
 
   /// Alice and Bob share "Trip"; both apps ran once, Bob's is now closed.
@@ -405,6 +412,117 @@ void main() {
     expect(session.closed, isTrue);
   });
 
+  group('G58 daily snapshot', () {
+    final day1 = DateTime(2026, 10, 16, 9).millisecondsSinceEpoch;
+    final day2 = DateTime(2026, 10, 17, 9).millisecondsSinceEpoch;
+
+    test('written once per day, only when the ledger changed', () async {
+      final (a, groupId) = await sharedGroupBobClosed();
+      final store = InMemorySnapshotStore();
+      final names = <String>[];
+      SnapshotStore? stores(String name) {
+        names.add(name);
+        return store;
+      }
+
+      var result = await round(bob, snapshotStores: stores, clock: () => day1);
+      expect(result.status, BackgroundRoundStatus.completed);
+      expect(result.snapshot, isTrue);
+      expect(store.files.keys, ['2026-10-16.json']);
+      expect(store.files.values.single, contains('"account": "$bob"'));
+      expect(names.toSet(), hasLength(1));
+      expect(names.single, startsWith('money_ledger_'));
+
+      // Same day: not again — even with a new expense from Alice.
+      await a
+          .read(expenseAdderProvider.notifier)
+          .addExpense(
+            roomId: groupId,
+            description: 'G58',
+            amountCents: 100,
+            currency: 'EUR',
+            paidBy: alice,
+            splits: {alice: 50, bob: 50},
+          );
+      await net.settle();
+      result = await round(bob, snapshotStores: stores, clock: () => day1);
+      expect(result.snapshot, isFalse);
+      expect(await bobExpenseDescriptions(), ['G58']);
+
+      // Next day: changed since → today's file; the day after: unchanged.
+      result = await round(bob, snapshotStores: stores, clock: () => day2);
+      expect(result.snapshot, isTrue);
+      expect(store.files['2026-10-17.json'], contains('G58'));
+      result = await round(
+        bob,
+        snapshotStores: stores,
+        clock: () => DateTime(2026, 10, 18, 9).millisecondsSinceEpoch,
+      );
+      expect(result.snapshot, isFalse);
+      expect(store.files.keys, ['2026-10-16.json', '2026-10-17.json']);
+    });
+
+    test('no store / no group / budget almost used up → none', () async {
+      // No group yet: nothing to protect.
+      net.clientFor(bob);
+      final store = InMemorySnapshotStore();
+      var result = await round(
+        bob,
+        snapshotStores: (_) => store,
+        clock: () => day1,
+      );
+      expect(result.status, BackgroundRoundStatus.completed);
+      expect(result.snapshot, isFalse);
+
+      await sharedGroupBobClosed();
+      // Less budget left than a snapshot may take: skipped (stays due).
+      result = await round(
+        bob,
+        snapshotStores: (_) => store,
+        snapshotMinRemaining: const Duration(hours: 1),
+        clock: () => day2,
+      );
+      expect(result.status, BackgroundRoundStatus.completed);
+      expect(result.snapshot, isFalse);
+      expect(store.files, isEmpty);
+      // Without a store (web / tests) nothing either.
+      result = await round(bob, clock: () => day2);
+      expect(result.snapshot, isFalse);
+      // Next round with time left: written.
+      result = await round(
+        bob,
+        snapshotStores: (_) => store,
+        clock: () => day2,
+      );
+      expect(result.snapshot, isTrue);
+      expect(store.files.keys, ['2026-10-17.json']);
+    });
+
+    test(
+      'a stop during the snapshot waits for the write, then closes',
+      () async {
+        await sharedGroupBobClosed();
+        final store = _BlockingStore();
+        final abort = Completer<void>();
+        final done = round(
+          bob,
+          snapshotStores: (_) => store,
+          clock: () => day1,
+          abort: abort.future,
+          inFlightGrace: const Duration(seconds: 5),
+        );
+        await store.started.future;
+        abort.complete();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        store.release.complete();
+        final result = await done;
+        expect(result.status, BackgroundRoundStatus.aborted);
+        // The write in flight finished (atomic) before the DB was closed.
+        expect(store.files.keys, ['2026-10-16.json']);
+      },
+    );
+  });
+
   test('broadcasts its own digest only when the last one is stale', () async {
     final (a, groupId) = await sharedGroupBobClosed();
 
@@ -433,6 +551,19 @@ void main() {
     );
     expect(a, isNotNull);
   });
+}
+
+/// G58: a snapshot store whose writes wait for [release].
+class _BlockingStore extends InMemorySnapshotStore {
+  final started = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<void> write(String name, String content) async {
+    if (!started.isCompleted) started.complete();
+    await release.future;
+    await super.write(name, content);
+  }
 }
 
 class _ClosingSession extends FakeSession {

@@ -790,6 +790,21 @@ connected + battery not low; `lib/core/background/`) fixes that:
   cancels the OS task (cancel on sign-out and in local mode, G40). The round
   re-checks the flag (and overrides `localModeActiveProvider` /
   `ledgerIdentityProvider`, so it only ever syncs the account it opened).
+- **Daily snapshot (G58):** after the sync work (still inside the gate and
+  the 60 s bound) the round runs the G48 snapshot step
+  (`RestorePointsService.snapshotIfDue` via `restorePointsServiceProvider`
+  in its container — same `snapshot_checked_day` / fingerprint / rotation as
+  an app start, the same `<app support>/snapshots/<db name>/` directory;
+  `runBackgroundRound(snapshotStores: createPlatformSnapshotStore)` —
+  path_provider works in the headless engine, `buildMatrixClient` resolves
+  its store the same way). Skipped when less than
+  `kBackgroundSnapshotMinRemaining` (10 s) of the budget is left; a stop
+  (abort / budget) is checked between the steps (`cancelled:`) and a write
+  in flight is awaited before the DB closes (`guard` / in-flight grace);
+  the write is temp file + rename, and a leftover `*.json.tmp` (process
+  killed mid-write) is deleted by the next rotation. No history pruning in
+  the round (app start only). Tests: `background_round_test.dart` (G58
+  group), `restore_points_test.dart`.
 - The app manifest removes the plugin's `POST_NOTIFICATIONS` permission (no
   expedited / foreground workers). Web/iOS: no background sync.
 - **Debug builds only (G36):** the settings sheet has *Run background sync now
@@ -1109,7 +1124,8 @@ a backup file / digest:
   `schema_v12_migration_test.dart`, `test/features/group_history_test.dart`,
   `test/integration/group_reset_sync_test.dart` (peer adopts the revert),
   `test/history_ui_test.dart`.
-- **Rotating snapshots** (`restore_points.dart`): at app start, once per
+- **Rotating snapshots** (`restore_points.dart`): at app start — and (G58)
+  at the end of every Android **background round** (G31) — once per
   local day (`snapshot_checked_day`), the whole ledger is exported like the
   full backup (`BackupService.exportJson`, `account` = the ledger identity,
   so local mode's file restores like local mode's backup, G41); written only
@@ -1349,8 +1365,8 @@ like a pre-G49 one, so older builds accept it.
   the same *Date* field + chips (`RecordDateField`, extracted from the
   expense form; keys `paymentDate*`) → `PaymentDraft.day` →
   `ExpenseAdder.addSettlement(day:)`; a delete (tombstone) keeps the date.
-  The ledger list sorts payments by `displayDay` too. Payments still have
-  no edit. Bootstrap / backup / G48 history + reset / CSV carry it. Tests:
+  The ledger list sorts payments by `displayDay` too. Payments can be
+  edited (G60 follow-up, see "Settlements / recording payments"). Bootstrap / backup / G48 history + reset / CSV carry it. Tests:
   `schema_v14_migration_test.dart`,
   `test/integration/settlement_date_sync_test.dart`.
 
@@ -1366,6 +1382,22 @@ payment* action opens the same `RecordPaymentDialog` with from/to pickers
 `from`/`to` were always arbitrary participant ids). Expenses likewise carry
 their own currency (G29 picker on the add/edit form, default = group
 currency; balances are per currency).
+
+**Editing a payment (G60 follow-up).** Tapping a payment row in the ledger
+(or its ⋮ → *Edit*; ⋮ → *Delete* stays) runs `editPaymentFlow`
+(`settle_up.dart`): `RecordPaymentDialog(editing: true)` prefilled with
+from / to / amount / currency / day (`initialDay` = `displayDay`), titled
+*Edit payment*, *Save* (key `paymentSubmit`) disabled until something
+changed, the G6 attribution ("Added by · Last edited by") as its `footer`.
+The payment's own two sides stay selectable even if one has left.
+`ExpenseAdder.updateSettlement` writes the new version like an expense edit:
+`nextLwwClock(stored)`, `created_at` + the creator's `origin` kept, signed by
+this device (editor), stored (G48 history: source local) and relayed; same
+day as before → the stored `date` unchanged, else `storedExpenseDate`. A
+payment deleted meanwhile (or gone) → `RecordDeletedException`, nothing
+written, snackbar `paymentGone`. Read-only (removed) groups: no tap, no
+menu. Tests: `test/g60_payment_edit_test.dart`,
+`test/integration/settlement_edit_sync_test.dart`.
 
 ### Custom splits (Phase E)
 

@@ -434,6 +434,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentRecorded => 'Payment recorded';
 
   @override
+  String get edit => 'Edit';
+
+  @override
+  String get editPayment => 'Edit payment';
+
+  @override
+  String get paymentUpdated => 'Payment updated';
+
+  @override
+  String get paymentGone =>
+      'This payment was deleted in the meantime — nothing was changed.';
+
+  @override
   String get paymentFromLabel => 'From (paid)';
 
   @override

@@ -524,6 +524,10 @@ class ExpensesPage extends ConsumerWidget {
           ),
           pending: syncStatus.isRecordPending(record.updatedAt),
           attention: attention(record.origin, record.sig),
+          // G60: tap (or ⋮ → Edit) edits the payment; read-only: neither.
+          onTap: readOnly
+              ? null
+              : () => editPaymentFlow(context, ref, roomId, record),
           onDelete: readOnly
               ? null
               : () => _confirmDeleteSettlement(context, ref, record, from, to),
@@ -1432,6 +1436,9 @@ class _LedgerRow extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
 
+  /// G60: an *Edit* entry in the options menu (payments).
+  final VoidCallback? onEdit;
+
   /// G16: the expense has a note — a small icon after the title.
   final bool hasNote;
   const _LedgerRow({
@@ -1446,6 +1453,7 @@ class _LedgerRow extends StatelessWidget {
     this.attention = false,
     this.onTap,
     this.onDelete,
+    this.onEdit,
   });
 
   @override
@@ -1584,9 +1592,12 @@ class _LedgerRow extends StatelessWidget {
                 ),
                 padding: EdgeInsets.zero,
                 onSelected: (action) {
+                  if (action == 'edit') onEdit?.call();
                   if (action == 'delete') onDelete!();
                 },
                 itemBuilder: (_) => [
+                  if (onEdit != null)
+                    PopupMenuItem(value: 'edit', child: Text(l.edit)),
                   PopupMenuItem(value: 'delete', child: Text(l.delete)),
                 ],
               ),
@@ -1675,19 +1686,21 @@ class _ExpenseTile extends StatelessWidget {
 }
 
 /// A recorded payment between two participants ("Alex paid Sam") — visually
-/// distinct (handshake on green). No edit — a wrong settlement is deleted
-/// (tombstoned) and re-recorded from the balance page.
+/// distinct (handshake on green). G60: tapping it (or ⋮ → *Edit*) edits
+/// the payment; ⋮ → *Delete* tombstones it.
 class _SettlementTile extends StatelessWidget {
   final SettlementModel settlement;
   final Widget title;
   final bool pending;
   final bool attention;
+  final VoidCallback? onTap;
   final VoidCallback? onDelete;
   const _SettlementTile({
     required this.settlement,
     required this.title,
     required this.pending,
     this.attention = false,
+    this.onTap,
     this.onDelete,
   });
 
@@ -1707,6 +1720,8 @@ class _SettlementTile extends StatelessWidget {
       pending: pending,
       attention: attention,
       menuTooltip: l.settlementOptions,
+      onTap: onTap,
+      onEdit: onTap,
       onDelete: onDelete,
     );
   }

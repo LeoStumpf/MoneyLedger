@@ -16,6 +16,7 @@ import 'package:matrix/matrix.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../features/auth/auth_provider.dart';
+import '../../features/history/snapshot_store_platform.dart';
 import '../session/app_session.dart';
 import '../database/account_database.dart';
 import '../matrix/ledger_transport.dart';
@@ -188,6 +189,10 @@ Future<BackgroundRoundResult?> runBackgroundTask() async {
       openDatabase: openAccountDatabase,
       abort: Future.any([gate.abort, osStop.future]),
       abortRequests: roundHttp.close,
+      // G58: daily restore points from background rounds too. path_provider
+      // works in this headless engine (WorkManager registers the plugins;
+      // buildMatrixClient resolves its store the same way).
+      snapshotStores: createPlatformSnapshotStore,
     );
   } finally {
     gate.release();

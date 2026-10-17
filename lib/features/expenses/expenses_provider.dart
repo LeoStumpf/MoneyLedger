@@ -167,6 +167,15 @@ class LedgerWriteContext {
   }
 }
 
+/// G60: the record to edit no longer exists (deleted meanwhile, e.g. by a
+/// peer) — the edit is not written.
+class RecordDeletedException implements Exception {
+  const RecordDeletedException();
+
+  @override
+  String toString() => 'RecordDeletedException';
+}
+
 @riverpod
 class ExpenseAdder extends _$ExpenseAdder {
   @override
@@ -314,8 +323,46 @@ class ExpenseAdder extends _$ExpenseAdder {
     await w.replicate(roomId, expenseEventType, expensePayload(signed));
   });
 
-  /// Deletes a settlement as a tombstone (see [deleteExpense]). Settlements
-  /// have no edit — correcting one is delete + re-create.
+  /// G60: edits an existing payment — like [updateExpense]: the full record
+  /// is re-written with `nextLwwClock`, signed by this device as editor (the
+  /// creator's `origin` is kept) and replicated whole. [date]: the stored
+  /// ISO day, null = the day of `created_at`. Throws
+  /// [RecordDeletedException] when the payment is gone / was deleted
+  /// meanwhile (an edit must not bring it back).
+  Future<void> updateSettlement({
+    required String id,
+    required String roomId,
+    required int amountCents,
+    required String currency,
+    required String fromUser,
+    required String toUser,
+    String? date,
+  }) => _run((w) async {
+    final current = await w.expenses.getSettlementById(id);
+    if (w.db.isClosed) return;
+    if (current == null || current.deleted || current.roomId != roomId) {
+      throw const RecordDeletedException();
+    }
+    final settlement = SettlementModel(
+      id: id,
+      roomId: roomId,
+      amountCents: amountCents,
+      currency: currency,
+      fromUser: fromUser,
+      toUser: toUser,
+      createdAt: current.createdAt,
+      updatedAt: nextLwwClock(current.updatedAt),
+      date: date,
+      origin: current.origin,
+    );
+    final signed = await w.signer.settlement(settlement);
+    if (w.db.isClosed) return;
+    await w.expenses.upsertSettlementLww(settlementCompanion(signed));
+    await w.replicate(roomId, settlementEventType, settlementPayload(signed));
+  });
+
+  /// Deletes a settlement as a tombstone (see [deleteExpense]). G60: a
+  /// payment can also be edited ([updateSettlement]).
   Future<void> deleteSettlement(String id, String roomId) => _run((w) async {
     final current = await w.expenses.getSettlementById(id);
     if (current == null) return;

@@ -782,6 +782,30 @@ abstract class AppLocalizations {
   /// **'Payment recorded'**
   String get paymentRecorded;
 
+  /// G60: options-menu entry to edit a payment
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// G60: title of the payment dialog in edit mode
+  ///
+  /// In en, this message translates to:
+  /// **'Edit payment'**
+  String get editPayment;
+
+  /// No description provided for @paymentUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment updated'**
+  String get paymentUpdated;
+
+  /// G60: the edited payment was deleted (e.g. by another member) before saving
+  ///
+  /// In en, this message translates to:
+  /// **'This payment was deleted in the meantime — nothing was changed.'**
+  String get paymentGone;
+
   /// No description provided for @paymentFromLabel.
   ///
   /// In en, this message translates to:

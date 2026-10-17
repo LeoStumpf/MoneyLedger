@@ -281,6 +281,19 @@
     }
   },
   "paymentRecorded": "Payment recorded",
+  "edit": "Edit",
+  "@edit": {
+    "description": "G60: options-menu entry to edit a payment"
+  },
+  "editPayment": "Edit payment",
+  "@editPayment": {
+    "description": "G60: title of the payment dialog in edit mode"
+  },
+  "paymentUpdated": "Payment updated",
+  "paymentGone": "This payment was deleted in the meantime — nothing was changed.",
+  "@paymentGone": {
+    "description": "G60: the edited payment was deleted (e.g. by another member) before saving"
+  },
   "paymentFromLabel": "From (paid)",
   "paymentToLabel": "To (received)",
   "paymentExceedsDebt": "More than the {amount} owed",

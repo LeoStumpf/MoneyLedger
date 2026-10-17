@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../core/l10n/l10n.dart';
+import '../../models/expense_date.dart';
+import '../../models/expense_model.dart';
 import '../expenses/expenses_provider.dart';
+import '../expenses/record_attribution.dart';
 import '../groups/group_provider.dart';
 import 'balance_calculator.dart';
 import 'record_payment_dialog.dart';
@@ -73,6 +77,85 @@ Future<void> recordPaymentFlow(
     SnackBar(
       content: Text(
         error != null ? l.failedWithError(error.toString()) : l.paymentRecorded,
+      ),
+    ),
+  );
+}
+
+/// G60: edits the recorded payment [settlement] — the payment dialog in edit
+/// mode, prefilled (from, to, amount, currency, day) with the G6
+/// attribution under the fields; *Save* writes a new version
+/// ([ExpenseAdder.updateSettlement]: next LWW clock, signed by this device,
+/// origin kept, relayed). The caller only offers it in groups that aren't
+/// read-only; it keeps the same providers alive as [recordPaymentFlow].
+Future<void> editPaymentFlow(
+  BuildContext context,
+  WidgetRef ref,
+  String roomId,
+  SettlementModel settlement,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final l = context.l10n;
+  final members = ref.read(groupMembersProvider(roomId)).value ?? const [];
+  final names = ref.read(participantNamesProvider(roomId));
+  // Active participants, plus the payment's own two sides (a former member
+  // stays selectable for the payment they took part in).
+  final participants = <String, String>{
+    for (final m in members)
+      if (m.isActive) m.userId: names[m.userId] ?? m.label,
+    settlement.fromUser: names[settlement.fromUser] ?? settlement.fromUser,
+    settlement.toUser: names[settlement.toUser] ?? settlement.toUser,
+  };
+  final initialDay = settlement.displayDay;
+  final draft = await showDialog<PaymentDraft>(
+    context: context,
+    builder: (_) => RecordPaymentDialog(
+      editing: true,
+      participants: participants,
+      initialFrom: settlement.fromUser,
+      initialTo: settlement.toUser,
+      initialCents: settlement.amountCents,
+      currency: settlement.currency,
+      initialDay: initialDay,
+      footer: RecordAttribution(
+        groupId: roomId,
+        kind: RecordKind.settlement,
+        recordId: settlement.id,
+        origin: settlement.origin,
+        sig: settlement.sig,
+        createdAt: settlement.createdAt,
+        updatedAt: settlement.updatedAt,
+        members: members,
+      ),
+    ),
+  );
+  if (draft == null || !context.mounted) return;
+
+  await ref
+      .read(expenseAdderProvider.notifier)
+      .updateSettlement(
+        id: settlement.id,
+        roomId: roomId,
+        amountCents: draft.cents,
+        currency: draft.currency,
+        fromUser: draft.from,
+        toUser: draft.to,
+        // Same day as before → the stored date unchanged (as for expenses).
+        date: draft.day == initialDay
+            ? settlement.date
+            : storedExpenseDate(draft.day, settlement.createdAt),
+      );
+
+  if (!context.mounted) return;
+  final error = ref.read(expenseAdderProvider).error;
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        error is RecordDeletedException
+            ? l.paymentGone
+            : error != null
+            ? l.failedWithError(error.toString())
+            : l.paymentUpdated,
       ),
     ),
   );

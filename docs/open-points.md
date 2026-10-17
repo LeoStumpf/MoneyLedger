@@ -275,8 +275,9 @@ peers'), and SAS works with other members' devices (members page). Open:
   backup file covers the rest). A snapshot restore is the normal LWW restore
   — it brings back groups / records that are *missing* (deleted group, DB
   wiped / corrupted), not older content of records changed since (that's the
-  group reset). Background rounds (G31) don't snapshot; a phone where the app
-  is never opened gets none. A left/deleted group stays in the snapshots
+  group reset). Since G58 Android background rounds (G31) take the daily
+  snapshot too (skipped when a round is short of time); web, iOS and a
+  device with background sync off still only snapshot at app start. A left/deleted group stays in the snapshots
   until they rotate out (≈ 5 weeks, said in the privacy texts).
 
 ### Real-device smoke tests

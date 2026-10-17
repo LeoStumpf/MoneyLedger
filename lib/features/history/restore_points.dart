@@ -78,25 +78,31 @@ class RestorePointsService {
     }
   }
 
-  /// The daily snapshot step of [maintain]. Returns whether a file was
-  /// written.
-  Future<bool> snapshotIfDue(DateTime now) async {
+  /// The daily snapshot step of [maintain] (also run at the end of an
+  /// Android background round, G58). Returns whether a file was written.
+  ///
+  /// [cancelled] (G58: the background round was stopped) is checked between
+  /// the steps — once it says true nothing more is written. The file itself
+  /// is written atomically ([SnapshotStore.write]: temp file + rename), so
+  /// an interrupted snapshot never leaves a half-written `YYYY-MM-DD.json`.
+  Future<bool> snapshotIfDue(DateTime now, {bool Function()? cancelled}) async {
     final s = store;
     if (s == null) return false;
+    bool go() => _alive && !(cancelled?.call() ?? false);
     final day = snapshotDayKey(now);
     if (!snapshotCheckDue(await history.snapshotCheckedDay(), now)) {
       return false;
     }
-    if (!_alive) return false;
+    if (!go()) return false;
     // A fixed `exported_at` → the text only changes with the ledger.
     final json = await backup.exportJson(account: account, now: 0);
-    if (!_alive) return false;
+    if (!go()) return false;
     final fingerprint = sha256.convert(utf8.encode(json)).toString();
     if (fingerprint == await history.snapshotFingerprint()) {
       await history.markSnapshotChecked(day);
       return false;
     }
-    if (!_alive) return false;
+    if (!go()) return false;
     final groups = (jsonDecode(json) as Map<String, dynamic>)['groups'] as List;
     if (groups.isEmpty) {
       // Nothing to protect (yet) — no empty snapshots.
@@ -110,6 +116,8 @@ class RestorePointsService {
         '"exported_at": ${now.millisecondsSinceEpoch},',
       ),
     );
+    // Written: rotate + record it even if stopped meanwhile (both quick; an
+    // unrecorded file would only be rewritten tomorrow).
     await _rotate(s);
     if (_alive) {
       await history.markSnapshotChecked(day, fingerprint: fingerprint);
@@ -121,7 +129,14 @@ class RestorePointsService {
     final days = <DateTime, String>{};
     for (final name in await s.list()) {
       final d = parseSnapshotFileName(name);
-      if (d != null) days[d] = name;
+      if (d != null) {
+        days[d] = name;
+      } else if (name.endsWith('.json.tmp')) {
+        // G58: a write cut off before its rename (the process was killed).
+        // Writers never overlap (app and background round hold the gate),
+        // so a temp file seen after our own write is a leftover.
+        await s.delete(name);
+      }
     }
     final keep = snapshotsToKeep(days.keys);
     for (final MapEntry(key: d, value: name) in days.entries) {
