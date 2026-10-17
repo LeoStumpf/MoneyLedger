@@ -12,7 +12,7 @@ import 'package:money_ledger/core/session/app_session.dart';
 import 'package:money_ledger/core/sync/ledger_payloads.dart';
 import 'package:money_ledger/core/sync/record_signing.dart' show RecordKind;
 import 'package:money_ledger/core/sync/sync_engine.dart';
-import 'package:money_ledger/features/backup/backup_ui.dart';
+import 'package:money_ledger/features/backup/backup_restore_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/backup/ledger_backup.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
@@ -385,16 +385,27 @@ void main() {
       expect(find.byKey(const Key('noSnapshots')), findsOneWidget);
     });
 
-    testWidgets('the settings section links to it', (tester) async {
+    testWidgets('the backup page links to it (G70)', (tester) async {
       await tester.pumpWidget(
         testApp(
-          const Scaffold(body: BackupSettingsSection()),
-          overrides: testOverrides(),
+          const BackupRestorePage(),
+          overrides: [
+            ...testOverrides(),
+            snapshotsSupportedProvider.overrideWithValue(true),
+          ],
         ),
       );
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('restorePointsTile')),
+        150,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('backupPageList')),
+          matching: find.byType(Scrollable),
+        ),
+      );
       expect(find.byKey(const Key('restorePointsTile')), findsOneWidget);
-      expect(find.text('Restore points'), findsOneWidget);
+      expect(find.text('RESTORE POINTS'), findsOneWidget);
     });
   });
 }

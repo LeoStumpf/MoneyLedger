@@ -31,8 +31,8 @@ const kSettingsLocation = '/settings';
 ///   sync (G31), *Only sync with verified devices* (G11), *Devices &
 ///   security* (G56). G52 step 9 adds the relay list here (link groups also
 ///   sync in local mode — the section then shows for both);
-/// * **Backup & restore** — last backup, back up all groups, restore,
-///   restore points (G5 / G34 / G48; G70 merges them into one page);
+/// * **Backup & restore** — one tile (last backup date) opening the
+///   backup page (G70: backup file, restore points, reset one group);
 /// * **Data** — *Import CSV* (U21: was an app-bar icon);
 /// * **About**;
 /// * **Debug** — debug builds only (G36 one-off background round).

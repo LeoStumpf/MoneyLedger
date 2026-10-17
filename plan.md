@@ -805,8 +805,10 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       statistics on the balance page — after G52 step 6 (`share_plus`)
 
 ### G70. Simplify backup / restore (U23) 🟡
-- [ ] One page, three blocks (file backup, restore points, reset group) with a
-      decision aid — after G65, before G52 step 10
+- [x] One page, three blocks (file backup, restore points, reset group) with a
+      decision aid — after G65, before G52 step 10 (`/backup`)
+- [ ] Device check: smoke 8.16–8.18 (DE 360 dp, group picker → reset, local
+      mode, nudge *Back up now*, snackbars)
 
 ### G71. Accessibility + form flow (U30, U12) 🟡
 - [ ] Semantics labels, 48 dp targets, autofocus / *Next* through the form;
@@ -908,7 +910,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G67 — undo + understandable errors
 - [ ] G68 — sync sheet per person (with G52 step 9)
 - [ ] G69 — share + overview
-- [ ] G70 — simplify backup / restore
+- [x] G70 — simplify backup / restore
 - [ ] G71 — accessibility + form flow
 - [ ] G72 — local notifications (on by default)
 - [ ] G73 — manual exchange rates + fetch button (with G57)

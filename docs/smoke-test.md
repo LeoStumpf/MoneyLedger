@@ -146,17 +146,20 @@ Expected results are in *italics*.
 | 8.2 | Open the CSV in a sheet app → *one row per expense, then one per payment (Type "Payment"), decimal amounts, a share column per participant* | phone |
 | 8.3 | Settings → Data → Import CSV (or the empty groups list's button) → pick the same file → *preview "Merges into your group …"; no duplicate expenses/payments/group (idempotent merge)* | phone |
 | 8.4 | Import into a device that lacks the group → *group created with its participants (local by name)* | phone |
-| 8.5 | Settings (gear) → Back up all groups → *save dialog `moneyledger-backup-YYYY-MM-DD.json`; "Backup saved"; settings shows "Last backup: <today>"* | phone |
-| 8.6 | Settings → Restore from backup → pick that file → *preview "No new groups … already on this device"; Restore → "Restored N groups", nothing duplicated* | phone |
+| 8.5 | Settings (gear) → *Backup & restore* tile → Back up all groups → *save dialog `moneyledger-backup-YYYY-MM-DD.json`; "Backup saved"; the page and the settings tile show "Last backup: <today>"* | phone |
+| 8.6 | Settings → Backup & restore → Restore from backup → pick that file → *preview "No new groups … already on this device"; Restore → "Restored N groups", nothing duplicated* | phone |
 | 8.7 | Solo group (no other Matrix member), no backup for 30 days → *"Back up your groups" card on the groups page; Later hides it for 30 days* | phone |
-| 8.8 | Settings → Back up all groups → passphrase dialog: type one → *confirm field + strength hint; mismatch disables Save*; matching → *"Encrypting…" (≈ 1 s), "Encrypted backup saved[: name]"; the file is a `moneyledger-backup-encrypted` wrapper (no readable names)* | emu |
+| 8.8 | Settings → Backup & restore → Back up all groups → passphrase dialog: type one → *confirm field + strength hint; mismatch disables Save*; matching → *"Encrypting…" (≈ 1 s), "Encrypted backup saved[: name]"; the file is a `moneyledger-backup-encrypted` wrapper (no readable names)* | emu |
 | 8.9 | Restore that file → *"Encrypted backup" prompt*; wrong passphrase → *"Wrong passphrase — or the file was changed. Try again."*; right one → *preview incl. "Encrypted backup — unlocked…", "Everything … already on this device"; Restore = no-op* | emu |
 | 8.10 | Group settings → Data → Back up this group → *file `moneyledger-backup-<group>-YYYY-MM-DD.json` with only that group; "Last backup" unchanged* | emu |
 | 8.11 | Leave/Delete group dialog → "Back up all groups first" → *passphrase dialog over it; the result ("Backup saved …") shows inside the leave dialog* | emu |
 | 8.12 | A second own device that is verified (or synced with this one in the last 30 days) → *no backup nudge for solo groups* | phone |
 | 8.13 | (G48) Device B deletes two expenses and edits one in a shared group → on A: group settings → *Reset to an earlier state…* → newest entry "N deleted · by B" → *Undo from here* → *preview "2 entries come back · 1 change is undone"*; Reset → *"Group reset (3 changes)"*; on B the entries are back within seconds, "Last edited by A" | phone + emu |
-| 8.14 | (G48, Android) App start on a day with changes → `files/snapshots/money_ledger_<hash>/YYYY-MM-DD.json` appears (`adb -s <serial> shell run-as io.github.leostumpf.moneyledger ls -R files/snapshots`); Settings → *Restore points* lists it ("1 group · N entries"); Restore → *the normal restore preview* (no change = "already on this device") | phone |
-| 8.15 | (G48) Delete a solo group, then Settings → Restore points → yesterday's point → Restore → *the group is back* | emu |
+| 8.14 | (G48, Android) App start on a day with changes → `files/snapshots/money_ledger_<hash>/YYYY-MM-DD.json` appears (`adb -s <serial> shell run-as io.github.leostumpf.moneyledger ls -R files/snapshots`); Settings → Backup & restore → *Show restore points* lists it ("1 group · N entries"); Restore → *the normal restore preview* (no change = "already on this device") | phone |
+| 8.15 | (G48) Delete a solo group, then Settings → Backup & restore → Show restore points → yesterday's point → Restore → *the group is back* | emu |
+| 8.16 | (G70, DE, 360 dp) Einstellungen → *Sichern & Wiederherstellen* (eine Kachel mit „Letzte Sicherung: …“) → *Seite mit „Was brauchst du?“ (4 Zeilen: Rückgängig / Gruppe zurücksetzen / Wiederherstellungspunkt / neues Handy → Sicherungsdatei; mit Matrix-Konto der Zusatz „Gruppen, die du mit anderen teilst …“), dann SICHERUNGSDATEI / WIEDERHERSTELLUNGSPUNKTE / ÄNDERUNGEN IN EINER GRUPPE RÜCKGÄNGIG MACHEN*; nothing cut off, texts readable | phone |
+| 8.17 | (G70) Backup & restore → *Choose a group …* → *sheet "Which group?" sorted by name* → a group → *its "Reset to an earlier state" page*; a removed (read-only) group → *the reset page's read-only state*; local mode → *no "come back from the others" line*; web → *"Not available in the browser" instead of the restore points tile* | phone + web |
+| 8.18 | (G70) Backup nudge card → *Back up now* still starts the export directly (passphrase dialog) | phone |
 
 ## 9. Devices & verification
 

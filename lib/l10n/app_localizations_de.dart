@@ -2081,7 +2081,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restorePointsTileBody =>
-      'Automatische Kopien auf diesem Gerät, Änderungen rückgängig machen';
+      'Einen Tag auswählen und wiederherstellen';
 
   @override
   String get restorePointsIntro =>
@@ -2653,4 +2653,78 @@ class AppLocalizationsDe extends AppLocalizations {
   String actionFailedReason(String what, String reason) {
     return '$what – $reason';
   }
+
+  @override
+  String get settingsBackupTileBody =>
+      'Sicherungsdatei, automatische Kopien, Änderungen in einer Gruppe rückgängig machen';
+
+  @override
+  String get backupDecisionTitle => 'Was brauchst du?';
+
+  @override
+  String get backupDecisionUndo =>
+      'Gerade versehentlich einen Eintrag gelöscht oder geändert? Tippe direkt danach in der Meldung auf „Rückgängig“.';
+
+  @override
+  String get backupDecisionGroup =>
+      'Einen Fehler in einer Gruppe erst später bemerkt? Mach die Änderungen dieser Gruppe ab einem Zeitpunkt rückgängig – siehe unten „Änderungen in einer Gruppe rückgängig machen“.';
+
+  @override
+  String get backupDecisionDevice =>
+      'Eine ganze Gruppe ist auf diesem Gerät weg? Nimm einen Wiederherstellungspunkt.';
+
+  @override
+  String get backupDecisionDeviceWeb =>
+      'Eine ganze Gruppe ist weg? Hol sie aus einer Sicherungsdatei zurück.';
+
+  @override
+  String get backupDecisionPhone =>
+      'Neues Handy oder dieses verloren? Dann hilft nur eine Sicherungsdatei – bewahre eine aktuelle woanders als auf diesem Gerät auf.';
+
+  @override
+  String get backupDecisionPhoneMatrix =>
+      'Gruppen, die du mit anderen teilst, kommen nach der erneuten Anmeldung meist von ihnen zurück – Gruppen nur mit dir nicht.';
+
+  @override
+  String get backupFileSection => 'Sicherungsdatei';
+
+  @override
+  String get backupFileIntro =>
+      'Eine Datei mit all deinen Gruppen, die du woanders aufbewahrst – auf einem Computer oder in deiner Cloud. Du kannst sie auf jedem Gerät wiederherstellen.';
+
+  @override
+  String get backupFileGroupHint =>
+      'Nur eine Gruppe: Gruppe öffnen → Gruppeneinstellungen → Diese Gruppe sichern.';
+
+  @override
+  String get backupRestorePointsIntro =>
+      'Einmal am Tag legt MoneyLedger automatisch eine Kopie all deiner Gruppen auf diesem Gerät ab. Damit holst du Gruppen oder Einträge zurück, die hier verloren gegangen sind – mit dem Gerät ist sie aber auch weg.';
+
+  @override
+  String get backupShowRestorePoints => 'Wiederherstellungspunkte ansehen';
+
+  @override
+  String get backupRestorePointsWeb =>
+      'Im Browser nicht verfügbar: Er legt keine automatischen Kopien an. Speichere stattdessen regelmäßig eine Sicherungsdatei.';
+
+  @override
+  String get backupUndoSection =>
+      'Änderungen in einer Gruppe rückgängig machen';
+
+  @override
+  String get backupUndoIntro =>
+      'Zeigt die Änderungen einer Gruppe auf diesem Gerät und setzt die Gruppe auf den Stand vor einer davon zurück – z. B. nach einem falschen Import. Das ist eine normale Änderung: Wer die Gruppe mit dir teilt, bekommt sie auch.';
+
+  @override
+  String get backupUndoPickGroup => 'Gruppe auswählen …';
+
+  @override
+  String get backupUndoPickGroupBody =>
+      'Auch in den Einstellungen jeder Gruppe: Auf früheren Stand zurücksetzen';
+
+  @override
+  String get backupUndoNoGroups => 'Noch keine Gruppen';
+
+  @override
+  String get backupUndoPickTitle => 'Welche Gruppe?';
 }

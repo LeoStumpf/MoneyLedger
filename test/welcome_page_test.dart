@@ -255,7 +255,7 @@ void main() {
       expect(find.byKey(const Key('deleteLocalDataTile')), findsOneWidget);
       expect(find.byKey(const Key('backgroundSyncSwitch')), findsNothing);
       expect(find.byKey(const Key('verifiedOnlySwitch')), findsNothing);
-      expect(find.byKey(const Key('backupExportTile')), findsOneWidget);
+      expect(find.byKey(const Key('backupPageTile')), findsOneWidget);
     });
 
     testWidgets('German chip', (tester) async {

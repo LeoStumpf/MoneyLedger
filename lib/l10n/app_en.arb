@@ -1782,9 +1782,9 @@
   "@restorePointsTitle": {
     "description": "Settings tile + page title: on-device snapshots (G48)"
   },
-  "restorePointsTileBody": "Automatic copies on this device, undo changes",
+  "restorePointsTileBody": "Pick a day and restore it",
   "@restorePointsTileBody": {
-    "description": "Settings tile subtitle (G48)"
+    "description": "G70: subtitle of the Backup & restore page tile opening the restore points"
   },
   "restorePointsIntro": "Once a day, when something changed, MoneyLedger keeps a copy of all your groups on this device — the last 7 days plus 4 older weeks. These copies never leave this device.",
   "@restorePointsIntro": {
@@ -2480,5 +2480,85 @@
         "type": "String"
       }
     }
+  },
+  "settingsBackupTileBody": "Backup file, automatic copies, undo changes in a group",
+  "@settingsBackupTileBody": {
+    "description": "G70: settings page tile opening the Backup & restore page"
+  },
+  "backupDecisionTitle": "What do you need?",
+  "@backupDecisionTitle": {
+    "description": "G70: heading of the decision aid on the Backup & restore page"
+  },
+  "backupDecisionUndo": "Just deleted or changed an entry by mistake? Tap “Undo” in the message that appears right after.",
+  "@backupDecisionUndo": {
+    "description": "G70: decision aid line"
+  },
+  "backupDecisionGroup": "Noticed a mistake in a group only later? Undo that group’s changes from a point in time — see “Undo changes in one group” below.",
+  "@backupDecisionGroup": {
+    "description": "G70: decision aid line"
+  },
+  "backupDecisionDevice": "A whole group is gone from this device? Use a restore point.",
+  "@backupDecisionDevice": {
+    "description": "G70: decision aid line (platforms with restore points)"
+  },
+  "backupDecisionDeviceWeb": "A whole group is gone? Bring it back from a backup file.",
+  "@backupDecisionDeviceWeb": {
+    "description": "G70: decision aid line (web: no restore points)"
+  },
+  "backupDecisionPhone": "New phone, or this one lost? Only a backup file helps — keep a recent one somewhere other than this device.",
+  "@backupDecisionPhone": {
+    "description": "G70: decision aid line"
+  },
+  "backupDecisionPhoneMatrix": "Groups you share with others usually come back from them after you sign in again — groups only you are in don’t.",
+  "@backupDecisionPhoneMatrix": {
+    "description": "G70: decision aid, Matrix account only"
+  },
+  "backupFileSection": "Backup file",
+  "@backupFileSection": {
+    "description": "G70: Backup & restore page section header"
+  },
+  "backupFileIntro": "A file with all your groups that you keep somewhere else — on a computer or in your cloud. You can restore it on any device.",
+  "@backupFileIntro": {
+    "description": "G70: explanation of the backup file block"
+  },
+  "backupFileGroupHint": "Just one group: open the group → Group settings → Back up this group.",
+  "@backupFileGroupHint": {
+    "description": "G70: hint under the backup file block"
+  },
+  "backupRestorePointsIntro": "Once a day, MoneyLedger automatically keeps a copy of all your groups on this device. It brings back groups or entries that went missing here — but it is gone together with the device.",
+  "@backupRestorePointsIntro": {
+    "description": "G70: explanation of the restore points block"
+  },
+  "backupShowRestorePoints": "Show restore points",
+  "@backupShowRestorePoints": {
+    "description": "G70: tile opening the restore points page"
+  },
+  "backupRestorePointsWeb": "Not available in the browser: it keeps no automatic copies. Save a backup file regularly instead.",
+  "@backupRestorePointsWeb": {
+    "description": "G70: web / no snapshot store"
+  },
+  "backupUndoSection": "Undo changes in one group",
+  "@backupUndoSection": {
+    "description": "G70: Backup & restore page section header"
+  },
+  "backupUndoIntro": "Lists a group’s changes on this device and puts the group back to how it was before one of them — e.g. after a wrong import. That is a normal change: people you share the group with get it too.",
+  "@backupUndoIntro": {
+    "description": "G70: explanation of the reset block"
+  },
+  "backupUndoPickGroup": "Choose a group …",
+  "@backupUndoPickGroup": {
+    "description": "G70: tile opening the group picker for the reset page"
+  },
+  "backupUndoPickGroupBody": "Also in each group’s settings: Reset to an earlier state",
+  "@backupUndoPickGroupBody": {
+    "description": "G70: subtitle of the pick-group tile"
+  },
+  "backupUndoNoGroups": "No groups yet",
+  "@backupUndoNoGroups": {
+    "description": "G70: subtitle of the pick-group tile when there are no groups"
+  },
+  "backupUndoPickTitle": "Which group?",
+  "@backupUndoPickTitle": {
+    "description": "G70: title of the group picker sheet"
   }
 }

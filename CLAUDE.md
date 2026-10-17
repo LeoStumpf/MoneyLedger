@@ -260,7 +260,8 @@ lib/
       backup_crypto.dart       # G34: optional passphrase encryption (Argon2id + AES-256-GCM wrapper)
       backup_service.dart      # BackupService: export all groups / preview / restore (DB seam)
       backup_providers.dart    # last-backup + nudge providers (backupNudgeProvider)
-      backup_ui.dart           # settings-sheet section, restore + CSV preview dialogs, nudge card
+      backup_ui.dart           # settings-page tile, export / restore flows, restore + CSV preview dialogs, nudge card
+      backup_restore_page.dart # G70 /backup: decision aid + backup file / restore points / reset one group
       ledger_csv.dart          # Pure-Dart RFC4180 codec: buildGroupCsv / parseGroupCsv
       csv_export.dart          # DB → CSV seam (buildGroupCsvForExport) + csvFileName
       csv_import.dart          # CsvImporter: preview + LWW merge-by-id back into Drift; resolveCsvNames
@@ -984,11 +985,36 @@ at **~52 records**, a flat digest at **~720**. Hence:
 
 Ledger data exists only on members' devices, so a group nobody else has a copy
 of (solo, or only local people) is lost with the device. The **full backup** is
-the lossless answer: settings page (gear on the groups page) → *Back up all
-groups* writes **one JSON file for the whole account**, *Restore from backup*
-merges one back. `lib/features/backup/`: `ledger_backup.dart` is the pure codec
+the lossless answer: settings page (gear on the groups page) → *Backup &
+restore* (G70 page) → *Back up all groups* writes **one JSON file for the
+whole account**, *Restore from backup* merges one back.
+`lib/features/backup/`: `ledger_backup.dart` is the pure codec
 (+ the nudge logic), `backup_service.dart` (`BackupService`,
 `backupServiceProvider`) the DB seam, `backup_ui.dart` the UI.
+
+**One "Backup & restore" page (G70, U23).** The four ways back — backup
+file, restore points (G48), resetting one group (G48) and the snackbar
+*Undo* (G67) — are explained side by side on `BackupRestorePage`
+(`kBackupLocation` = `/backup`, `backup_restore_page.dart`; an "in" page in
+`routerRedirect`). The settings page's *Backup & restore* section is one
+compact tile (`backupPageTile`, `BackupSettingsSection`: *Last backup: …* +
+chevron). The page: a **decision aid** card (`backupDecisionAid`: just
+deleted → *Undo* in the snackbar; mistake noticed later → reset the group;
+a whole group gone here → a restore point (web: a backup file); new / lost
+phone → only a backup file, plus — Matrix accounts only — "shared groups
+usually come back from the others"), then three blocks: **Backup file**
+(intro, last backup, `backupExportTile`, `backupRestoreTile`, hint to *Back
+up this group* in the group settings — G52 step 10's note about link-group
+invite keys in the file goes here, the per-file warning into the restore
+preview), **Restore points** (`snapshotsSupportedProvider`: intro +
+`restorePointsTile` → `/restore-points`; else `noSnapshotsHint`), **Undo
+changes in one group** (`resetPickGroupTile` → bottom sheet of all groups
+sorted by name → `/groups/<id>/reset`; disabled with no groups; the reset
+page handles read-only groups). Group settings keep *Back up this group* and
+*Reset*; the nudge card's *Back up now* still exports directly. CSV import
+stays in the settings page's *Data* section. Tests:
+`test/backup_restore_page_test.dart` (EN + DE, 360 dp, Matrix / local / no
+snapshots, navigation).
 
 **Format** (`moneyledger-backup-YYYY-MM-DD.json`, pretty-printed, plain text
 unless a passphrase is set — see *Encrypted backups* below):
@@ -1045,10 +1071,10 @@ account** are allowed (warning): their groups land in this account's DB, where
 we may not be a participant ("not participating").
 
 **Nudges:** onboarding has a 4th card "Keep a copy". The settings page's
-*Backup & restore* section shows *Last backup: <date> / never* (`AppSettings`
-`last_backup_at`, device-local, per account, written after a successful
-save); its flows run on the page's own context (G65 — the sheet used to have
-to close first). The groups page shows a
+*Backup & restore* tile and the G70 backup page show *Last backup: <date> /
+never* (`AppSettings` `last_backup_at`, device-local, per account, written
+after a successful save); the flows run on the page's own context (G65 — the
+sheet used to have to close first). The groups page shows a
 dismissible `BackupNudgeCard` (`backupNudgeProvider`) when some group has **no
 other active claimed member** (`unprotectedGroups`) and there was no backup in
 `kBackupNudgeInterval` (30 days); *Later* snoozes it 30 days
@@ -1186,7 +1212,8 @@ a backup file / digest:
   newest + the newest of each of the next 4 older calendar weeks.
   **Web: none** (`snapshotStoreFactoryProvider` → null; the page says so —
   the in-DB history still allows resets, a backup file covers the rest);
-  the offline demo neither. Settings → *Restore points* (`/restore-points`,
+  the offline demo neither. Settings → *Backup & restore* → *Show restore
+  points* (`/restore-points`,
   `RestorePointsPage`) lists them (date, groups, entries) → *Restore* = the
   normal restore (`BackupRestorer.previewAndRestore`, shared with the file
   restore: preview → confirm → LWW merge → poke). An LWW restore brings back
@@ -1769,7 +1796,8 @@ serves the engine's Roboto itself + two fallback subsets (G43, see Building).
   *Account* (MXID `accountTile` + `signOutTile` → `confirmSignOut`; local
   mode: `LocalModeSettingsSection`), *Sync & devices* (Matrix only: sync
   text, `backgroundSyncSwitch`, `VerifiedOnlySyncTile`, `devicesTile` — G52
-  step 9 adds the relays here), *Backup & restore* (`BackupSettingsSection`),
+  step 9 adds the relays here), *Backup & restore* (`BackupSettingsSection` —
+  since G70 one tile → `/backup`),
   *Data* (`importCsvTile`), *About* (`aboutTile`), *Debug* (debug builds +
   Android only). The group ⋮ menu keeps only *Add person*
   (`addPersonMenuItem`; G52's *Invite* goes here), *Archive / Unarchive*

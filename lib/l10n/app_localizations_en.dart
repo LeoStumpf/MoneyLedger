@@ -2057,8 +2057,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restorePointsTitle => 'Restore points';
 
   @override
-  String get restorePointsTileBody =>
-      'Automatic copies on this device, undo changes';
+  String get restorePointsTileBody => 'Pick a day and restore it';
 
   @override
   String get restorePointsIntro =>
@@ -2625,4 +2624,77 @@ class AppLocalizationsEn extends AppLocalizations {
   String actionFailedReason(String what, String reason) {
     return '$what — $reason';
   }
+
+  @override
+  String get settingsBackupTileBody =>
+      'Backup file, automatic copies, undo changes in a group';
+
+  @override
+  String get backupDecisionTitle => 'What do you need?';
+
+  @override
+  String get backupDecisionUndo =>
+      'Just deleted or changed an entry by mistake? Tap “Undo” in the message that appears right after.';
+
+  @override
+  String get backupDecisionGroup =>
+      'Noticed a mistake in a group only later? Undo that group’s changes from a point in time — see “Undo changes in one group” below.';
+
+  @override
+  String get backupDecisionDevice =>
+      'A whole group is gone from this device? Use a restore point.';
+
+  @override
+  String get backupDecisionDeviceWeb =>
+      'A whole group is gone? Bring it back from a backup file.';
+
+  @override
+  String get backupDecisionPhone =>
+      'New phone, or this one lost? Only a backup file helps — keep a recent one somewhere other than this device.';
+
+  @override
+  String get backupDecisionPhoneMatrix =>
+      'Groups you share with others usually come back from them after you sign in again — groups only you are in don’t.';
+
+  @override
+  String get backupFileSection => 'Backup file';
+
+  @override
+  String get backupFileIntro =>
+      'A file with all your groups that you keep somewhere else — on a computer or in your cloud. You can restore it on any device.';
+
+  @override
+  String get backupFileGroupHint =>
+      'Just one group: open the group → Group settings → Back up this group.';
+
+  @override
+  String get backupRestorePointsIntro =>
+      'Once a day, MoneyLedger automatically keeps a copy of all your groups on this device. It brings back groups or entries that went missing here — but it is gone together with the device.';
+
+  @override
+  String get backupShowRestorePoints => 'Show restore points';
+
+  @override
+  String get backupRestorePointsWeb =>
+      'Not available in the browser: it keeps no automatic copies. Save a backup file regularly instead.';
+
+  @override
+  String get backupUndoSection => 'Undo changes in one group';
+
+  @override
+  String get backupUndoIntro =>
+      'Lists a group’s changes on this device and puts the group back to how it was before one of them — e.g. after a wrong import. That is a normal change: people you share the group with get it too.';
+
+  @override
+  String get backupUndoPickGroup => 'Choose a group …';
+
+  @override
+  String get backupUndoPickGroupBody =>
+      'Also in each group’s settings: Reset to an earlier state';
+
+  @override
+  String get backupUndoNoGroups => 'No groups yet';
+
+  @override
+  String get backupUndoPickTitle => 'Which group?';
 }

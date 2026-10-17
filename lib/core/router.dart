@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../features/history/group_reset_page.dart';
 import '../features/history/restore_points_page.dart';
 import '../features/about/about_page.dart';
+import '../features/backup/backup_restore_page.dart';
 import '../features/local/local_setup_page.dart';
 import '../features/welcome/welcome_page.dart';
 import 'session/app_session.dart';
@@ -64,8 +65,9 @@ const _signedOutEntryPages = {kWelcomeLocation, kLocalSetupLocation};
 ///   splash (never guess either page); not seen → forced onboarding; seen →
 ///   bounce off the auth / entry pages, bare root, splash and a stale
 ///   onboarding screen to the groups list. Local mode has no devices page.
-///   The settings pages (`/settings`, `/groups/:id/settings`, G65) are
-///   "in" pages: signed out they redirect like any other.
+///   The settings pages (`/settings`, `/groups/:id/settings`, G65; the
+///   backup page `/backup`, G70) are "in" pages: signed out they redirect
+///   like any other.
 String? routerRedirect({
   required AppSessionKind session,
   required WelcomeStatus welcome,
@@ -180,6 +182,11 @@ GoRouter router(Ref ref) {
       GoRoute(path: '/devices', builder: (_, _) => const DevicesPage()),
       // G65: the app settings page (was a sheet) — signed in or local mode.
       GoRoute(path: kSettingsLocation, builder: (_, _) => const SettingsPage()),
+      // G70: backup file + restore points + per-group reset on one page.
+      GoRoute(
+        path: kBackupLocation,
+        builder: (_, _) => const BackupRestorePage(),
+      ),
       GoRoute(path: '/about', builder: (_, _) => const AboutPage()),
       GoRoute(
         path: '/about/privacy',

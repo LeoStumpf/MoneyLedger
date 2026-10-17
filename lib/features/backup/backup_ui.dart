@@ -23,7 +23,7 @@ import '../groups/group_provider.dart';
 import '../history/group_history.dart' show GroupResetPlan;
 import '../history/group_reset.dart'
     show GroupResetService, groupResetServiceProvider;
-import '../history/restore_points_page.dart' show kRestorePointsLocation;
+import 'backup_restore_page.dart' show kBackupLocation;
 import 'backup_crypto.dart';
 import 'backup_files.dart';
 import 'backup_providers.dart';
@@ -33,8 +33,10 @@ import 'ledger_backup.dart';
 
 // ── settings page section ────────────────────────────────────────────────────
 
-/// "Backup & restore" section of the settings page (G65): last backup date,
-/// back up, restore, restore points. The flows run on the page's context.
+/// "Backup & restore" section of the settings page (G65): since G70 (U23)
+/// one compact tile — the last backup date — that opens the
+/// [kBackupLocation] page with the backup file, the restore points and the
+/// per-group reset explained side by side.
 class BackupSettingsSection extends ConsumerWidget {
   const BackupSettingsSection({super.key});
 
@@ -42,43 +44,16 @@ class BackupSettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final last = ref.watch(lastBackupAtProvider).value;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // G65: the page's section header names it — here only the date.
-        ListTile(
-          leading: const Icon(Icons.event_available_outlined),
-          title: Text(
-            last == null
-                ? l.lastBackupNever
-                : l.lastBackupAt(context.date(last)),
-            key: const Key('lastBackupText'),
-          ),
-        ),
-        ListTile(
-          key: const Key('backupExportTile'),
-          leading: const Icon(Icons.save_alt),
-          title: Text(l.backupExportTitle),
-          subtitle: Text(l.backupExportBody),
-          onTap: () => exportFullBackup(context, ref),
-        ),
-        ListTile(
-          key: const Key('backupRestoreTile'),
-          leading: const Icon(Icons.settings_backup_restore),
-          title: Text(l.backupRestoreTitle),
-          subtitle: Text(l.backupRestoreBody),
-          onTap: () => restoreFullBackup(context, ref),
-        ),
-        // G48: on-device snapshots + "reset a group" explained.
-        ListTile(
-          key: const Key('restorePointsTile'),
-          leading: const Icon(Icons.history),
-          title: Text(l.restorePointsTitle),
-          subtitle: Text(l.restorePointsTileBody),
-          onTap: () => context.push(kRestorePointsLocation),
-        ),
-      ],
+    return ListTile(
+      key: const Key('backupPageTile'),
+      leading: const Icon(Icons.settings_backup_restore),
+      title: Text(
+        last == null ? l.lastBackupNever : l.lastBackupAt(context.date(last)),
+        key: const Key('lastBackupText'),
+      ),
+      subtitle: Text(l.settingsBackupTileBody),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push(kBackupLocation),
     );
   }
 }

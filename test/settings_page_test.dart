@@ -88,9 +88,7 @@ void main() {
         for (final key in [
           'verifiedOnlySwitch',
           'devicesTile',
-          'backupExportTile',
-          'backupRestoreTile',
-          'restorePointsTile',
+          'backupPageTile', // G70: one entry → the backup page
           'importCsvTile',
           'aboutTile',
         ]) {
@@ -276,7 +274,7 @@ void main() {
         expect(find.byKey(const Key('devicesTile')), findsNothing);
         for (final key in [
           'deleteLocalDataTile',
-          'backupExportTile',
+          'backupPageTile',
           'importCsvTile',
           'aboutTile',
         ]) {

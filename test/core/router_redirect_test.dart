@@ -287,7 +287,7 @@ void main() {
   // "in" pages.
   group('routerRedirect — settings pages (G65)', () {
     const local = AppSessionKind.local;
-    const pages = ['/settings', '/groups/g1/settings'];
+    const pages = ['/settings', '/groups/g1/settings', '/backup'];
     test('signed out → login (or the welcome)', () {
       for (final loc in pages) {
         expect(redirect(false, loc), '/login', reason: loc);

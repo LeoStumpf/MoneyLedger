@@ -1,5 +1,5 @@
-/// Backup UI (G5) + CSV import preview (G13): settings page entries (G65), the
-/// restore / CSV preview dialogs and the groups-page nudge card.
+/// Backup UI (G5) + CSV import preview (G13): the backup page entries
+/// (G70), the restore / CSV preview dialogs and the groups-page nudge card.
 library;
 
 import 'dart:async';
@@ -11,6 +11,7 @@ import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/backup/backup_crypto.dart';
 import 'package:money_ledger/features/backup/backup_providers.dart';
+import 'package:money_ledger/features/backup/backup_restore_page.dart';
 import 'package:money_ledger/features/backup/backup_service.dart';
 import 'package:money_ledger/features/backup/backup_ui.dart';
 import 'package:money_ledger/features/backup/csv_import.dart';
@@ -19,14 +20,15 @@ import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_exit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
-import 'package:money_ledger/features/settings/settings_page.dart';
+import 'package:money_ledger/features/history/restore_points.dart'
+    show snapshotsSupportedProvider;
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/l10n.dart';
 import 'helpers/test_providers.dart';
 
-/// A surface tall enough for the whole settings page (its list is lazy).
+/// A surface tall enough for the whole backup page (its list is lazy).
 void _tall(WidgetTester tester) {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(800, 2400);
@@ -34,18 +36,22 @@ void _tall(WidgetTester tester) {
 }
 
 void main() {
-  group('settings page (G65)', () {
+  group('backup page (G70; was the settings section, G65)', () {
     testWidgets('shows the backup section: never backed up', (tester) async {
       _tall(tester);
       await tester.pumpWidget(
         testApp(
-          const SettingsPage(),
-          overrides: testOverrides(isLoggedIn: true),
+          const BackupRestorePage(),
+          overrides: [
+            ...testOverrides(isLoggedIn: true),
+            snapshotsSupportedProvider.overrideWithValue(true),
+          ],
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('BACKUP & RESTORE'), findsOneWidget);
+      expect(find.text('Backup & restore'), findsOneWidget); // app bar
+      expect(find.text('BACKUP FILE'), findsOneWidget);
       expect(find.text('Last backup: never'), findsOneWidget);
       expect(find.byKey(const Key('backupExportTile')), findsOneWidget);
       expect(find.text('Back up all groups'), findsOneWidget);
@@ -59,13 +65,16 @@ void main() {
       _tall(tester);
       await tester.pumpWidget(
         testApp(
-          const SettingsPage(),
-          overrides: testOverrides(isLoggedIn: true),
+          const BackupRestorePage(),
+          overrides: [
+            ...testOverrides(isLoggedIn: true),
+            snapshotsSupportedProvider.overrideWithValue(true),
+          ],
         ),
       );
       await tester.pumpAndSettle();
       // No file dialog in tests → the export fails; what matters is that the
-      // result shows as a snackbar on the settings page.
+      // result shows as a snackbar on the backup page.
       await tester.ensureVisible(find.byKey(const Key('backupExportTile')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('backupExportTile')));
@@ -86,9 +95,12 @@ void main() {
       final at = DateTime(2026, 10, 1, 12).millisecondsSinceEpoch;
       await tester.pumpWidget(
         testApp(
-          const SettingsPage(),
+          const BackupRestorePage(),
           locale: const Locale('de'),
-          overrides: testOverrides(isLoggedIn: true, lastBackupAt: at),
+          overrides: [
+            ...testOverrides(isLoggedIn: true, lastBackupAt: at),
+            snapshotsSupportedProvider.overrideWithValue(true),
+          ],
         ),
       );
       await tester.pumpAndSettle();

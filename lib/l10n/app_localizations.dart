@@ -3308,10 +3308,10 @@ abstract class AppLocalizations {
   /// **'Restore points'**
   String get restorePointsTitle;
 
-  /// Settings tile subtitle (G48)
+  /// G70: subtitle of the Backup & restore page tile opening the restore points
   ///
   /// In en, this message translates to:
-  /// **'Automatic copies on this device, undo changes'**
+  /// **'Pick a day and restore it'**
   String get restorePointsTileBody;
 
   /// Restore points page intro (G48)
@@ -4153,6 +4153,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{what} — {reason}'**
   String actionFailedReason(String what, String reason);
+
+  /// G70: settings page tile opening the Backup & restore page
+  ///
+  /// In en, this message translates to:
+  /// **'Backup file, automatic copies, undo changes in a group'**
+  String get settingsBackupTileBody;
+
+  /// G70: heading of the decision aid on the Backup & restore page
+  ///
+  /// In en, this message translates to:
+  /// **'What do you need?'**
+  String get backupDecisionTitle;
+
+  /// G70: decision aid line
+  ///
+  /// In en, this message translates to:
+  /// **'Just deleted or changed an entry by mistake? Tap “Undo” in the message that appears right after.'**
+  String get backupDecisionUndo;
+
+  /// G70: decision aid line
+  ///
+  /// In en, this message translates to:
+  /// **'Noticed a mistake in a group only later? Undo that group’s changes from a point in time — see “Undo changes in one group” below.'**
+  String get backupDecisionGroup;
+
+  /// G70: decision aid line (platforms with restore points)
+  ///
+  /// In en, this message translates to:
+  /// **'A whole group is gone from this device? Use a restore point.'**
+  String get backupDecisionDevice;
+
+  /// G70: decision aid line (web: no restore points)
+  ///
+  /// In en, this message translates to:
+  /// **'A whole group is gone? Bring it back from a backup file.'**
+  String get backupDecisionDeviceWeb;
+
+  /// G70: decision aid line
+  ///
+  /// In en, this message translates to:
+  /// **'New phone, or this one lost? Only a backup file helps — keep a recent one somewhere other than this device.'**
+  String get backupDecisionPhone;
+
+  /// G70: decision aid, Matrix account only
+  ///
+  /// In en, this message translates to:
+  /// **'Groups you share with others usually come back from them after you sign in again — groups only you are in don’t.'**
+  String get backupDecisionPhoneMatrix;
+
+  /// G70: Backup & restore page section header
+  ///
+  /// In en, this message translates to:
+  /// **'Backup file'**
+  String get backupFileSection;
+
+  /// G70: explanation of the backup file block
+  ///
+  /// In en, this message translates to:
+  /// **'A file with all your groups that you keep somewhere else — on a computer or in your cloud. You can restore it on any device.'**
+  String get backupFileIntro;
+
+  /// G70: hint under the backup file block
+  ///
+  /// In en, this message translates to:
+  /// **'Just one group: open the group → Group settings → Back up this group.'**
+  String get backupFileGroupHint;
+
+  /// G70: explanation of the restore points block
+  ///
+  /// In en, this message translates to:
+  /// **'Once a day, MoneyLedger automatically keeps a copy of all your groups on this device. It brings back groups or entries that went missing here — but it is gone together with the device.'**
+  String get backupRestorePointsIntro;
+
+  /// G70: tile opening the restore points page
+  ///
+  /// In en, this message translates to:
+  /// **'Show restore points'**
+  String get backupShowRestorePoints;
+
+  /// G70: web / no snapshot store
+  ///
+  /// In en, this message translates to:
+  /// **'Not available in the browser: it keeps no automatic copies. Save a backup file regularly instead.'**
+  String get backupRestorePointsWeb;
+
+  /// G70: Backup & restore page section header
+  ///
+  /// In en, this message translates to:
+  /// **'Undo changes in one group'**
+  String get backupUndoSection;
+
+  /// G70: explanation of the reset block
+  ///
+  /// In en, this message translates to:
+  /// **'Lists a group’s changes on this device and puts the group back to how it was before one of them — e.g. after a wrong import. That is a normal change: people you share the group with get it too.'**
+  String get backupUndoIntro;
+
+  /// G70: tile opening the group picker for the reset page
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a group …'**
+  String get backupUndoPickGroup;
+
+  /// G70: subtitle of the pick-group tile
+  ///
+  /// In en, this message translates to:
+  /// **'Also in each group’s settings: Reset to an earlier state'**
+  String get backupUndoPickGroupBody;
+
+  /// G70: subtitle of the pick-group tile when there are no groups
+  ///
+  /// In en, this message translates to:
+  /// **'No groups yet'**
+  String get backupUndoNoGroups;
+
+  /// G70: title of the group picker sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Which group?'**
+  String get backupUndoPickTitle;
 }
 
 class _AppLocalizationsDelegate
