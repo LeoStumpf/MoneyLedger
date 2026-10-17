@@ -412,22 +412,33 @@ class _PersonBalanceRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: Insets.s),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(color: color),
-              ),
-              Text(
-                context.money(cents.abs(), currency),
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: kTabularFigures,
+          // Flexible + scaleDown: at a large font size (G71, 200 %) the
+          // label / amount shrink instead of overflowing the row.
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  label,
+                  textAlign: TextAlign.end,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(color: color),
                 ),
-              ),
-            ],
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Text(
+                    context.money(cents.abs(), currency),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: kTabularFigures,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

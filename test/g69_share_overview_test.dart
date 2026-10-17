@@ -317,14 +317,14 @@ void main() {
       });
     }
 
-    testWidgets('German at 200 % font size: no overflow', (tester) async {
+    testWidgets('German at 200 % font size: no overflow (person rows too)', (
+      tester,
+    ) async {
       _phone(tester);
       await tester.pumpWidget(
         _routed(
           const BalancePage(roomId: _g),
-          // Settled: only the G69 parts (the person rows above overflow at
-          // 200 % — pre-existing, G71 device pass).
-          _overrides(debts: const []),
+          _overrides(),
           const Locale('de'),
           textScale: 2,
         ),

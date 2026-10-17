@@ -804,7 +804,7 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [x] "Who pays whom" as share text, group list sorted by activity, simple
       statistics on the balance page (`share_plus` added here; G52 step 6
       reuses `text_sharer.dart`)
-- [ ] `_PersonBalanceRow` (balance page) overflows 12 px at 360 dp / 200 % font
+- [x] `_PersonBalanceRow` (balance page) overflowed 12 px at 360 dp / 200 % font — fixed (Flexible + scaleDown, test)
 
 ### G70. Simplify backup / restore (U23) 🟡
 - [x] One page, three blocks (file backup, restore points, reset group) with a
