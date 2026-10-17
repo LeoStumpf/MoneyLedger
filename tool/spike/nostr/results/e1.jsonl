@@ -1,0 +1,22 @@
+{"at":"2026-10-17T08:30:41.332490Z","relay":"wss://nos.lol","frame":10001,"content":9502,"ok":true,"msg":"","okMs":110,"storedAndServed":true,"notices":[]}
+{"at":"2026-10-17T08:30:47.851117Z","relay":"wss://nos.lol","frame":50001,"content":49502,"ok":true,"msg":"","okMs":163,"storedAndServed":true,"notices":[]}
+{"at":"2026-10-17T08:30:54.271618Z","relay":"wss://nos.lol","frame":100001,"content":99502,"ok":false,"msg":"invalid: event too large: 99991","okMs":184,"storedAndServed":false,"notices":[]}
+{"at":"2026-10-17T08:31:00.746460Z","relay":"wss://nos.lol","frame":125001,"content":124502,"ok":false,"msg":"invalid: event too large: 124991","okMs":197,"storedAndServed":false,"notices":[]}
+{"at":"2026-10-17T08:31:07.239924Z","relay":"wss://nos.lol","frame":130001,"content":129502,"ok":false,"msg":"invalid: event too large: 129991","okMs":231,"storedAndServed":false,"notices":[]}
+{"at":"2026-10-17T08:31:13.444257Z","relay":"wss://nos.lol","step":"nip09-delete","ids":2,"ok":true,"msg":""}
+{"at":"2026-10-17T08:31:15.480239Z","relay":"wss://nos.lol","step":"after-delete","stillServed":0,"of":2}
+{"at":"2026-10-17T08:31:15.758660Z","relay":"wss://nostr.mom","frame":10001,"content":9502,"ok":true,"msg":"","okMs":72,"storedAndServed":true,"notices":[]}
+{"at":"2026-10-17T08:31:22.199975Z","relay":"wss://nostr.mom","frame":50001,"content":49502,"ok":true,"msg":"","okMs":147,"storedAndServed":true,"notices":[]}
+{"at":"2026-10-17T08:31:28.619576Z","relay":"wss://nostr.mom","frame":100001,"content":99502,"ok":false,"msg":"invalid: event too large: 99991","okMs":189,"storedAndServed":false,"notices":[]}
+{"at":"2026-10-17T08:31:35.066176Z","relay":"wss://nostr.mom","frame":125001,"content":124502,"ok":false,"msg":"invalid: event too large: 124991","okMs":191,"storedAndServed":false,"notices":[]}
+{"at":"2026-10-17T08:31:41.533251Z","relay":"wss://nostr.mom","frame":130001,"content":129502,"ok":false,"msg":"invalid: event too large: 129991","okMs":214,"storedAndServed":false,"notices":[]}
+{"at":"2026-10-17T08:31:47.724748Z","relay":"wss://nostr.mom","step":"nip09-delete","ids":2,"ok":true,"msg":""}
+{"at":"2026-10-17T08:31:49.819211Z","relay":"wss://nostr.mom","step":"after-delete","stillServed":0,"of":2}
+{"at":"2026-10-17T08:31:59.232683Z","relay":"wss://nos.lol","frame":65529,"content":65030,"ok":true,"msg":"","okMs":228,"storedAndServed":true,"notices":[]}
+{"at":"2026-10-17T08:32:05.691123Z","relay":"wss://nos.lol","frame":65561,"content":65062,"ok":false,"msg":"invalid: event too large: 65551","okMs":175,"storedAndServed":false,"notices":[]}
+{"at":"2026-10-17T08:32:11.920933Z","relay":"wss://nos.lol","step":"nip09-delete","ids":1,"ok":true,"msg":""}
+{"at":"2026-10-17T08:32:13.958057Z","relay":"wss://nos.lol","step":"after-delete","stillServed":0,"of":1}
+{"at":"2026-10-17T08:32:14.461377Z","relay":"wss://nostr.mom","frame":65529,"content":65030,"ok":true,"msg":"","okMs":185,"storedAndServed":true,"notices":[]}
+{"at":"2026-10-17T08:32:20.819274Z","relay":"wss://nostr.mom","frame":65561,"content":65062,"ok":false,"msg":"invalid: event too large: 65551","okMs":152,"storedAndServed":false,"notices":[]}
+{"at":"2026-10-17T08:32:27.012244Z","relay":"wss://nostr.mom","step":"nip09-delete","ids":1,"ok":true,"msg":""}
+{"at":"2026-10-17T08:32:29.047790Z","relay":"wss://nostr.mom","step":"after-delete","stillServed":0,"of":1}

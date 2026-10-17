@@ -1,0 +1,14 @@
+{"at":"2026-10-17T08:33:38.956576Z","relay":"wss://nos.lol","author":"72c2477c","ok":true,"msg":""}
+{"at":"2026-10-17T08:33:44.062867Z","relay":"wss://nos.lol","author":"ad427c2e","ok":true,"msg":""}
+{"at":"2026-10-17T08:33:49.142951Z","relay":"wss://nos.lol","author":"aca2338e","ok":true,"msg":""}
+{"at":"2026-10-17T08:33:54.248304Z","relay":"wss://nos.lol","returned":3,"distinctAuthors":3,"allHaveD":true,"verifiedAndDecrypted":3,"pass":true}
+{"at":"2026-10-17T08:34:18.114875Z","relay":"wss://nos.lol","step":"nip09-delete","ids":1,"ok":true,"msg":""}
+{"at":"2026-10-17T08:34:20.194621Z","relay":"wss://nos.lol","step":"nip09-delete","ids":1,"ok":true,"msg":""}
+{"at":"2026-10-17T08:34:22.283688Z","relay":"wss://nos.lol","step":"nip09-delete","ids":1,"ok":true,"msg":""}
+{"at":"2026-10-17T08:34:58.239431Z","relay":"wss://nostr.mom","author":"9c722d8c","ok":true,"msg":""}
+{"at":"2026-10-17T08:35:03.345550Z","relay":"wss://nostr.mom","author":"f483ec3e","ok":true,"msg":""}
+{"at":"2026-10-17T08:35:08.449467Z","relay":"wss://nostr.mom","author":"4300d9cb","ok":true,"msg":""}
+{"at":"2026-10-17T08:35:13.539961Z","relay":"wss://nostr.mom","returned":3,"distinctAuthors":3,"allHaveD":true,"verifiedAndDecrypted":3,"pass":true}
+{"at":"2026-10-17T08:35:37.362906Z","relay":"wss://nostr.mom","step":"nip09-delete","ids":1,"ok":true,"msg":""}
+{"at":"2026-10-17T08:35:39.439833Z","relay":"wss://nostr.mom","step":"nip09-delete","ids":1,"ok":true,"msg":""}
+{"at":"2026-10-17T08:35:41.520160Z","relay":"wss://nostr.mom","step":"nip09-delete","ids":1,"ok":true,"msg":""}

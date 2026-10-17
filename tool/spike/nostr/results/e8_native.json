@@ -1,0 +1,19 @@
+{
+  "records": 200,
+  "jsonBytes": 98553,
+  "deriveMs": 0.056,
+  "jsonEncodeMs": 1.542,
+  "packMs (gzip+gcm+b64)": 2.506,
+  "contentChars": 17330,
+  "signMs (id+bip340)": 17.877,
+  "frameBytes": 17829,
+  "verify1Ms": 12.284,
+  "verify20Ms": 244.978,
+  "unpackMs (b64+gcm+gunzip+json)": 2.178,
+  "pack+signMs": 21.924999999999997,
+  "signedJsonBytes": 181773,
+  "signedContentChars": 76458,
+  "contentChars@500": 41098,
+  "contentChars@1000": 80570,
+  "note": "median of 15 (verify20: of 5), after one warm-up; native; "
+}

@@ -1,0 +1,4 @@
+# Standalone spike package (G51); the app root excludes tool/spike/**.
+analyzer:
+  language:
+    strict-casts: false

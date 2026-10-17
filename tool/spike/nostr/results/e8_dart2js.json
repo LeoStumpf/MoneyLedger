@@ -1,0 +1,19 @@
+{
+  "records": 200,
+  "jsonBytes": 98553,
+  "deriveMs": 1,
+  "jsonEncodeMs": 3,
+  "packMs (gzip+gcm+b64)": 15,
+  "contentChars": 17822,
+  "signMs (id+bip340)": 228,
+  "frameBytes": 18321,
+  "verify1Ms": 159,
+  "verify20Ms": 4911,
+  "unpackMs (b64+gcm+gunzip+json)": 7,
+  "pack+signMs": 246,
+  "signedJsonBytes": 181773,
+  "signedContentChars": 76978,
+  "contentChars@500": 42386,
+  "contentChars@1000": 83198,
+  "note": "median of 15 (verify20: of 5), after one warm-up; dart2js"
+}

@@ -1,0 +1,12 @@
+name: nostr_spike
+description: G51 Nostr spike for MoneyLedger link groups. Never imported by the app.
+publish_to: none
+environment:
+  sdk: ^3.8.0
+dependencies:
+  bip340: ^0.3.1
+  pointycastle: ^4.0.0
+  cryptography: ^2.9.0
+  web_socket_channel: ^3.0.3
+  archive: ^4.0.0
+  crypto: ^3.0.3

@@ -1,0 +1,24 @@
+{"at":"2026-10-17T08:33:03.218688Z","relay":"wss://nos.lol","label":"v1","created_at":1792225953,"id":"ee9b96358ae2","ok":true,"msg":""}
+{"at":"2026-10-17T08:33:08.278927Z","relay":"wss://nos.lol","label":"v2 (+1 s)","created_at":1792225954,"id":"28bb2a37034f","ok":true,"msg":""}
+{"at":"2026-10-17T08:33:13.331009Z","relay":"wss://nos.lol","check":"only v2","returned":["28bb2a37034f"],"pass":true}
+{"at":"2026-10-17T08:33:13.440899Z","relay":"wss://nos.lol","label":"same-second higher id first","created_at":1792225955,"id":"aa0b1947a00a","ok":true,"msg":""}
+{"at":"2026-10-17T08:33:18.502053Z","relay":"wss://nos.lol","label":"same-second lower id second","created_at":1792225955,"id":"5f2d5ff9bfe2","ok":true,"msg":""}
+{"at":"2026-10-17T08:33:23.540292Z","relay":"wss://nos.lol","check":"lowest id of t0+2","returned":["5f2d5ff9bfe2"],"pass":true}
+{"at":"2026-10-17T08:33:23.672704Z","relay":"wss://nos.lol","label":"same-second lower id first","created_at":1792225956,"id":"927f02954f90","ok":true,"msg":""}
+{"at":"2026-10-17T08:33:28.716861Z","relay":"wss://nos.lol","label":"same-second higher id second","created_at":1792225956,"id":"ed5e997388a0","ok":false,"msg":"replaced: have newer event"}
+{"at":"2026-10-17T08:33:33.756366Z","relay":"wss://nos.lol","check":"lowest id of t0+3","returned":["927f02954f90"],"pass":true}
+{"at":"2026-10-17T08:33:33.838964Z","relay":"wss://nos.lol","label":"older created_at after newer","created_at":1792225943,"id":"4b65967bc5de","ok":false,"msg":"replaced: have newer event"}
+{"at":"2026-10-17T08:33:38.876664Z","relay":"wss://nos.lol","check":"still lowest id of t0+3","returned":["927f02954f90"],"pass":true}
+{"at":"2026-10-17T08:34:16.031978Z","relay":"wss://nos.lol","step":"nip09-delete","ids":7,"ok":true,"msg":""}
+{"at":"2026-10-17T08:34:22.521189Z","relay":"wss://nostr.mom","label":"v1","created_at":1792226032,"id":"530f747574cb","ok":true,"msg":""}
+{"at":"2026-10-17T08:34:27.563923Z","relay":"wss://nostr.mom","label":"v2 (+1 s)","created_at":1792226033,"id":"96973e6170af","ok":true,"msg":""}
+{"at":"2026-10-17T08:34:32.630635Z","relay":"wss://nostr.mom","check":"only v2","returned":["96973e6170af"],"pass":true}
+{"at":"2026-10-17T08:34:32.737937Z","relay":"wss://nostr.mom","label":"same-second higher id first","created_at":1792226034,"id":"654069de966d","ok":true,"msg":""}
+{"at":"2026-10-17T08:34:37.781907Z","relay":"wss://nostr.mom","label":"same-second lower id second","created_at":1792226034,"id":"3b453ab71a14","ok":true,"msg":""}
+{"at":"2026-10-17T08:34:42.821647Z","relay":"wss://nostr.mom","check":"lowest id of t0+2","returned":["3b453ab71a14"],"pass":true}
+{"at":"2026-10-17T08:34:42.928383Z","relay":"wss://nostr.mom","label":"same-second lower id first","created_at":1792226035,"id":"237f79931320","ok":true,"msg":""}
+{"at":"2026-10-17T08:34:47.969017Z","relay":"wss://nostr.mom","label":"same-second higher id second","created_at":1792226035,"id":"a06c3e9f4fef","ok":false,"msg":"replaced: have newer event"}
+{"at":"2026-10-17T08:34:53.007526Z","relay":"wss://nostr.mom","check":"lowest id of t0+3","returned":["237f79931320"],"pass":true}
+{"at":"2026-10-17T08:34:53.082133Z","relay":"wss://nostr.mom","label":"older created_at after newer","created_at":1792226022,"id":"082af03668a2","ok":false,"msg":"replaced: have newer event"}
+{"at":"2026-10-17T08:34:58.155649Z","relay":"wss://nostr.mom","check":"still lowest id of t0+3","returned":["237f79931320"],"pass":true}
+{"at":"2026-10-17T08:35:35.283255Z","relay":"wss://nostr.mom","step":"nip09-delete","ids":7,"ok":true,"msg":""}

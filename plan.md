@@ -613,11 +613,24 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       `posting_policy`, linked terms); a relay excluding app data / encrypted
       blobs → propose a replacement to Leo (stop point)
       → done 2026-10-17 (design doc §9.4): nos.lol + nostr.mom ALLOWED (same
-      operator), damus + primal GREY → **waiting for Leo** (option A: own
-      relay, option B: accept primal's company terms)
-- [ ] Two devices exchange a snapshot via 2–3 public relays (kind 31847,
-      30-day expiry); measure latency, size limits, retention over a few days
-      (design doc §12)
+      operator), damus + primal GREY → Leo chose **option C: only nos.lol +
+      nostr.mom** (custom relay = mitigation for the single operator)
+- [x] Spike (2026-10-17, `tool/spike/nostr/`, design doc §16): **GO for
+      G52**. Real cap 65 536 B event JSON (not the advertised 131 072 frame)
+      → `kLinkContentBudget` 60 000 chars (~690 unsigned / ~1 200 signed
+      records in 8 parts); replace + `replaced:` OK; live p50 ~140 ms;
+      6 fresh keys no rate limit; native pack+sign 22 ms; both relays share
+      one IP (separate DBs)
+- [ ] Retention checks (`dart run bin/check_retention.dart` in
+      `tool/spike/nostr/`, read-only): +1 d 2026-10-18, **+3 d 2026-10-20 =
+      gate before G52 step 5 (sync engine)**, +7 d 2026-10-24 (§12
+      criterion), +14 d 2026-10-31, +31 d 2026-11-17 (probe gone)
+- [ ] **Leo:** web signature verify misses the target (dart2js `bip340`
+      4.9 s for 20 events) — proposal: verify on native only, web relies on
+      the AES-GCM tag (§3.3 / §16); alternatives: verify only new events,
+      faster secp256k1 lib
+- [ ] Moved to the G52 device pass: two networks, Pixel, real Chrome
+      timing, E9 headless Android
 
 ### G52. Link groups (implementation, incl. app key) 🟠
 - [ ] Sub-steps defined after G51 (design doc §13, incl. Reset invite link,
@@ -782,7 +795,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G59 — smarter split defaults (prefill from current split, "fill the rest")
 - [x] G62 — reset page empty after update / new group (found in DEV-H)
 - [x] G50 — no-login link groups design doc (`docs/design/no-login-sharing.md`) — signed off by Leo 2026-10-17 (§14)
-- [ ] G51 — Nostr spike
+- [x] G51 — Nostr spike — GO (2026-10-17); retention checks + web-verify decision open
 - [ ] G52 — link groups implementation
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder

@@ -1,0 +1,16 @@
+{"at":"2026-10-17T08:41:36.353973Z","relay":"wss://nos.lol","key":0,"ok":true,"msg":"","note":"only to nos.lol"}
+{"at":"2026-10-17T08:41:46.405778Z","step":"cross-relay","servedByNostrMom":false}
+{"at":"2026-10-17T08:41:46.470225Z","relay":"wss://nos.lol","key":0,"frame":4761,"ok":true,"msg":"duplicate: have this event","okMs":62}
+{"at":"2026-10-17T08:41:46.470901Z","relay":"wss://nostr.mom","key":0,"frame":4761,"ok":true,"msg":"","okMs":56}
+{"at":"2026-10-17T08:41:52.592376Z","relay":"wss://nos.lol","key":1,"frame":4769,"ok":true,"msg":"","okMs":68}
+{"at":"2026-10-17T08:41:52.593079Z","relay":"wss://nostr.mom","key":1,"frame":4769,"ok":true,"msg":"","okMs":64}
+{"at":"2026-10-17T08:41:58.782615Z","relay":"wss://nos.lol","key":2,"frame":4765,"ok":true,"msg":"","okMs":135}
+{"at":"2026-10-17T08:41:58.783522Z","relay":"wss://nostr.mom","key":2,"frame":4765,"ok":true,"msg":"","okMs":81}
+{"at":"2026-10-17T08:42:04.907089Z","relay":"wss://nos.lol","key":3,"frame":4769,"ok":true,"msg":"","okMs":56}
+{"at":"2026-10-17T08:42:04.907940Z","relay":"wss://nostr.mom","key":3,"frame":4769,"ok":true,"msg":"","okMs":70}
+{"at":"2026-10-17T08:42:11.021206Z","relay":"wss://nos.lol","key":4,"frame":4761,"ok":true,"msg":"","okMs":53}
+{"at":"2026-10-17T08:42:11.021682Z","relay":"wss://nostr.mom","key":4,"frame":4761,"ok":true,"msg":"","okMs":61}
+{"at":"2026-10-17T08:42:17.137081Z","relay":"wss://nos.lol","key":5,"frame":4769,"ok":true,"msg":"","okMs":64}
+{"at":"2026-10-17T08:42:17.137623Z","relay":"wss://nostr.mom","key":5,"frame":4769,"ok":true,"msg":"","okMs":63}
+{"at":"2026-10-17T08:42:23.139684Z","relay":"wss://nos.lol","notices":[]}
+{"at":"2026-10-17T08:42:23.147719Z","relay":"wss://nostr.mom","notices":[]}

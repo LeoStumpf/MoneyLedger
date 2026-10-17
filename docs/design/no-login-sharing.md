@@ -5,6 +5,8 @@ for G51 (spike), G52 (link groups), G53 (mixed groups + lock) and G54 ("Why
 Matrix?" + welcome reorder). It contains no code. Product decisions by Leo
 (2026-10-16) are taken as given. Where this doc decides something new, it
 says so, and the decision is repeated in §14 "Open questions for Leo".
+G51 (spike, 2026-10-17): default relays decided (nos.lol + nostr.mom, §9.4),
+results and the G52 go / no-go in §16.
 
 ## 0. Decisions at a glance
 
@@ -13,10 +15,10 @@ says so, and the decision is repeated in §14 "Open questions for Leo".
 | 1 | Default invite | **Link group**: an invite link / QR code shared over WhatsApp & co. Friends install the app, open the link and pick their participant. No account. Matrix stays as the optional **secure mode**. |
 | 2 | When the link channel starts | A new group stays **device-only** until the first *Invite*. Inviting opens the link channel: the secret is created and publishing starts. A solo group never talks to a relay. |
 | 3 | Transport | **Public Nostr relays.** Each device publishes **one addressable event per group** (custom kind in 30000–39999, proposal `31847`). The event holds that device's **whole group snapshot**: bootstrap JSON → gzip → AES-256-GCM → base64. Readers fetch every event with the group's `d` tag and LWW-merge them through the existing `RecordGate` and DAOs. |
-| 4 | Relays | Defaults `relay.damus.io`, `nos.lol`, `relay.primal.net`. Every event goes to all of them. The user can add a custom relay. NIP-40 `expiration` 30 days, refreshed while the group is in use (decided 2026-10-17). |
+| 4 | Relays | Defaults **`nos.lol` and `nostr.mom`** only (decided by Leo 2026-10-17, §9.4 option C: the only free relays whose published terms allow this use; damus + primal dropped as grey zone). Every event goes to both. **Both have one operator and one host** (§16), so the user can add a custom relay as the mitigation. NIP-40 `expiration` 30 days, refreshed while the group is in use (decided 2026-10-17). |
 | 5 | Keys | `link secret` (32 random bytes, in the URL `#fragment`) → HKDF-SHA256 → **topic** (`d` tag), **encryption key**. A random **secp256k1 key per (device, group)** signs the Nostr events. Nothing is reused across groups. |
 | 6 | App key (W5) | **Recommendation: no secret app key.** Use a public, versioned HKDF salt that lives in the source. A secret `--dart-define` key would very likely have to be published as part of the AGPL Corresponding Source. It also breaks F-Droid / self-build interoperability, and anyone can pull it out of the APK (§4.4). |
-| 7 | Size | Budget: ≤ 100 000 base64 chars of `content` per event (nos.lol frame limit: 131 072 B). The usage profile (~200 records) is ~25 KB. A bigger group is **sharded into up to 8 addressable parts**. LWW makes the parts order- and generation-independent. |
+| 7 | Size | Budget: ≤ **60 000** base64 chars of `content` per event (G51: both relays advertise a 131 072-byte frame but refuse any **event over 65 536 bytes** with `invalid: event too large`; §16). The usage profile (~200 unsigned records) is ~17 KB of content. A bigger group is **sharded into up to 8 addressable parts**. LWW makes the parts order- and generation-independent. |
 | 8 | Identity | No accounts and no signatures in link groups. "Who am I" is **device-local**: `link_channels.my_participant_id`. Member records in a pure link group carry **no claim** on the wire. Each event's header names the publisher's participant, only as a hint for the "taken" marks in the picker. |
 | 9 | Gate | Per-group policy in `RecordGate`. In a **link group** (unsigned meta), unsigned versions are accepted. Content validation, wrong-group checks, the future-clock drop and LWW still apply. The Matrix membership gate doesn't apply. Matrix replication never targets link groups. |
 | 10 | Mixed + lock (G53) | The **signed meta** carries `link: {epoch, secret}` while a link is open. Unsigned versions are accepted only while it is open and are shown "via link, not verified". **Lock** = a signed meta without `link`: the channel is closed and any later unsigned version is refused. |
@@ -103,7 +105,7 @@ content = "1:" + base64(nonce ‖ ct)
 
 ### 3.3 Event signature
 
-NIP-01 requires a BIP-340 Schnorr signature over `sha256([0,pubkey,created_at,kind,tags,content])`. We sign with the per-group key. On receive we verify the signature, which is cheap and catches broken relays, though relays (strfry) verify too.
+NIP-01 requires a BIP-340 Schnorr signature over `sha256([0,pubkey,created_at,kind,tags,content])`. We sign with the per-group key. On receive we verify the signature, which is cheap and catches broken relays, though relays (strfry) verify too. **G51 (§16):** verifying is cheap natively (12 ms) but not on the web (≈ 160–170 ms per event in dart2js), and it adds no security on top of the AEAD (§3.2: the AAD already binds the content to the pubkey; anyone with the link can make a valid key anyway). Proposal for G52: verify on native only; on the web rely on the AEAD + the relays' own verification (§16 open point 2).
 
 ### 3.4 App key (W5) — AGPL analysis and recommendation
 
@@ -136,7 +138,7 @@ Leo owns his own code, but the binary combines AGPL code he doesn't own: the `ma
 - **Addressable range.** NIP-01 defines `30000 <= n < 40000` as addressable: "for each combination of `kind`, `pubkey` and the `d` tag value, only the latest event MUST be stored by relays, older versions MAY be discarded." Ties on `created_at` keep the **lowest id**, which is why we keep `created_at` strictly increasing per (pubkey, d) (§4.5).
 - **Proposed kind: `31847`.** It is unregistered (checked against the NIPs README kind table on 2026-10-17). Check again before release; registering it with a NIPs PR is optional.
 - **Why not NIP-78 kind 30078.** NIP-78 ("arbitrary custom app data") says relays *should require NIP-42 AUTH and serve these events only to the author's pubkey*. That makes them author-private: a friend (a different pubkey) couldn't read our snapshot on a NIP-78-conforming relay. Our model needs exactly **cross-author reads by `d` tag**, so 30078 is the wrong kind.
-- **Unknown kinds.** All three default relays run **strfry**, which stores any valid event; the policy plugins decide. nos.lol says "accepts notes, except spammy ones". Acceptance of a custom kind and of ~100 KB events has to be **measured in G51**, not assumed.
+- **Unknown kinds.** Both default relays run **strfry** 1.1.3, which stores any valid event; the policy plugins decide. nos.lol says "accepts notes, except spammy ones". **Measured in G51 (§16):** kind 31847 is accepted, stored and served by both; events are capped at **65 536 bytes** of event JSON (not the advertised 131 072-byte frame).
 - **Don't use NIP-70 `["-"]`.** Relays MUST reject protected events unless the author AUTHs (NIP-42), which is extra complexity. It is listed as a later option to make third-party re-broadcasting harder.
 
 ### 4.2 Event
@@ -155,7 +157,7 @@ Leo owns his own code, but the binary combines AGPL code he doesn't own: the `ma
 
 ### 4.3 Subscriptions and fetch
 
-- **Filter.** `{"kinds":[31847], "#d":[<topics of all my link groups and their parts>]}`, one `REQ` per relay. Single-letter tags are indexed by relays (NIP-01). Relay limits: `max_subscriptions` 20 (nos.lol / primal), 200 (damus); `max_limit` 500 per filter.
+- **Filter.** `{"kinds":[31847], "#d":[<topics of all my link groups and their parts>]}`, one `REQ` per relay. Single-letter tags are indexed by relays (NIP-01). Relay limits: `max_subscriptions` 20 (nos.lol), 50 (nostr.mom); `max_limit` 500 per filter.
 - **Live, app in the foreground.** One WebSocket per relay and one subscription covering all groups. `since` is set to the newest `created_at` seen minus 60 s. The subscription is re-issued when the group set changes, closed 30 s after the app is paused and reopened on resume. Reconnects back off: 2 s → 4 → … → 5 min, plus jitter.
 - **Full fetch** (on join, on app start, on "pull to refresh"): `REQ` without `since`, wait for `EOSE` (timeout 10 s per relay), then `CLOSE`.
 - **Dedup.** `link_peers` stores the last event id per (group, pubkey). An event already processed is skipped before decrypting.
@@ -167,7 +169,7 @@ Leo owns his own code, but the binary combines AGPL code he doesn't own: the `ma
 - **Debounce:** 3 s; at most 1 publish per group per 5 s per relay.
 - **Inbound merges.** Republishing after an inbound merge makes every device's event a full, merged copy, so one surviving phone is enough to bring a new joiner up to date. It converges: a merge that changes nothing publishes nothing.
 - **Refresh:** republish an unchanged snapshot when the last publish is > 10 days old, so `expiration` keeps moving while anyone opens the group.
-- **Relay replies:** `OK true` → record success per relay. `OK false` with a NIP-01 prefix (`rate-limited:`, `invalid:`, `blocked:`, `restricted:`, `pow:`, `error:`) → back off that relay (rate-limited: 1 min doubling to 1 h; blocked / restricted / invalid: mark it "rejects our events" in settings and stop retrying until the next app start). `duplicate:` counts as success.
+- **Relay replies:** `OK true` → record success per relay. `OK false` with a NIP-01 prefix (`rate-limited:`, `invalid:`, `blocked:`, `restricted:`, `pow:`, `error:`) → back off that relay (rate-limited: 1 min doubling to 1 h; blocked / restricted / invalid: mark it "rejects our events" in settings and stop retrying until the next app start). `duplicate:` counts as success. **`replaced: have newer event`** (an `OK false` strfry sends when it already holds a newer — or same-second lower-id — event for that address, G51 E2) is **not** a relay failure: it means our `created_at` wasn't ahead (§4.5) → bump `last_created_at` past the relay's event and republish once. `invalid: event too large: <n>` means the sharding budget was exceeded (a bug, §5.4), not "rejects our events".
 - **Sync health.** A group counts as **delivered** when ≥ 1 relay said `OK true`. 0 of N for 2 consecutive attempts → `SyncHealth` failing for link groups (same threshold as G24).
 
 ### 4.5 Clock
@@ -181,13 +183,16 @@ On adding or first using a relay, `GET https://<relay>` with `Accept: applicatio
 - cache the result for 7 days;
 - refuse a custom relay with `auth_required` / `payment_required` ("this relay needs an account").
 
-Measured on 2026-10-17:
+- **NIP-11 doesn't tell the event size limit.** Both defaults advertise only `max_message_length` 131 072, but refuse events over 65 536 bytes (strfry's `maxEventSize`, G51). G52 therefore uses the fixed `kLinkContentBudget` (§5.4) for every relay and treats a smaller advertised `max_message_length` / `max_content_length` of a custom relay as a lower budget for it.
 
-| Relay | max_message_length | max_subscriptions | NIPs (relevant) | Software |
-|-------|-------------------|-------------------|-----------------|----------|
-| relay.damus.io | 1 000 000 | 200 | 1, 11, 40, 59, 70 | strfry |
-| nos.lol | 131 072 | 20 | 1, 11, 40, 70 (ToS link) | strfry |
-| relay.primal.net | 1 000 000 | 20 | 1, 11, 40, 70 | strfry |
+Measured on 2026-10-17 (defaults decided by Leo the same day, §9.4):
+
+| Relay | max_message_length | event size limit (G51) | max_subscriptions | NIPs (relevant) | Software | Status |
+|-------|-------------------|------------------------|-------------------|-----------------|----------|--------|
+| nos.lol | 131 072 | **65 536** | 20 | 1, 9, 11, 40, 70 (ToS link) | strfry 1.1.3 | **default** |
+| nostr.mom | 131 072 | **65 536** | 50 | 1, 9, 11, 40, 70 (ToS link) | strfry 1.1.3 | **default** |
+| relay.damus.io | 1 000 000 | — | 200 | 1, 11, 40, 59, 70 | strfry | dropped (grey zone, §9.4) |
+| relay.primal.net | 1 000 000 | — | 20 | 1, 11, 40, 70 | strfry | dropped (grey zone, §9.4) |
 
 ## 5. Snapshot and merge semantics
 
@@ -235,13 +240,13 @@ A per-peer detail sheet lists each known publisher (participant from `me`, "last
 
 ### 5.4 Size
 
-- **Estimate.** 200 unsigned records ≈ 70 KB JSON → gzip ≈ 15–20 KB → +base64 ≈ 25 KB.
-- **Mixed groups.** Signatures (~250 B of random base64 per record) don't compress, so ~200 signed records ≈ 60–70 KB of content. That's still inside the budget.
-- **Budget.** `kLinkContentBudget` = 100 000 chars of `content` per event (nos.lol's 131 072-byte frame minus the event envelope and JSON escaping margin).
+- **Measured (G51 E8, §16).** 200 unsigned records ≈ 98.6 KB JSON → gzip + AES-GCM + base64 = **17 330 chars** of content (≈ 87 chars / record; 500 records → 41 100, 1 000 → 80 600).
+- **Mixed groups.** Signatures (`origin` + `sig`, random base64) don't compress: 200 signed records = **76 458 chars**, i.e. **2 parts** already at 200 records (≈ 380 chars / record).
+- **Budget.** `kLinkContentBudget` = **60 000 chars** of `content` per event. Both default relays advertise a 131 072-byte frame (`max_message_length`), but refuse every **event** whose JSON exceeds **65 536 bytes** (`OK false "invalid: event too large: <n>"`, G51 E1: 65 519 B accepted, 65 551 B refused on both). Our envelope (id, pubkey, sig, `created_at`, `kind`, the `d` / `expiration` / `alt` tags) is ≈ 490 bytes, so 60 000 chars of content give an event of ≈ 60 500 bytes and an `EVENT` frame of ≈ 60 510 bytes: ~5 KB headroom for a part suffix on `d`, a later tag, or a relay that counts slightly differently. (The frame limit itself is then never close: 60 510 of 131 072.)
 - **Sharding.** Over budget → `parts` = 2, 4 or 8. Records are assigned by `fnv1a(id) % parts`. Part `i` is published under `d = topic` (i = 0) or `d = topic + "." + i`. Every part carries meta + all members + its slice, like G14's self-contained bootstrap parts.
 - **Readers** always subscribe to the topic and `.1`–`.7`, which is cheap.
 - **Shrinking.** When `parts` drops, the publisher replaces the now-unused parts with a header-only part with `expiration` = now + 1 day. LWW makes mixed generations harmless: an old part only offers older versions.
-- **Ceiling** ≈ 8 × 75 KB compressed ≈ 3–5k records. Beyond that: "This group is too big for link sharing — use Matrix" (§10).
+- **Ceiling** ≈ 8 × 60 000 chars ≈ **5 000 unsigned records** (≈ 690 per part minus the per-part header), but only ≈ **1 200 signed records** in a mixed group. Beyond that: "This group is too big for link sharing — use Matrix" (§10).
 
 ## 6. Identity and participants
 
@@ -415,7 +420,7 @@ The first *Invite* in a group shows the disclosure (§9.2) and then opens the ch
 ### 9.2 Texts
 
 - **First-use disclosure** (before the first invite or join on a device; one screen, EN+DE, explicit *Continue*):
-  > "Shared groups sync through public Nostr relays (damus.io, nos.lol, primal.net). They store your group encrypted — only people with the link can read it. The relays see your IP address and when you sync. Anyone with the link can see and change the group. Want accounts and verified devices? Use Matrix (secure mode)."
+  > "Shared groups sync through two public Nostr relays, nos.lol and nostr.mom (one operator). They are independent services with their own terms (linked in Settings → Relays). They store your group encrypted — only people with the link can read it. The relays see your IP address and when you sync, and may keep data longer than the 30 days we ask for. Anyone with the link can see and change the group. You can add your own relay in Settings. Want accounts and verified devices? Use Matrix (secure mode)."
   It links to "Why Matrix?" (§10.2).
 - **PRIVACY.md + the in-app `privacy*` keys:**
   - a new section "Shared (link) groups" covering the above, the relay operators as independent third parties with their own terms, the 30-day expiry request (not a guarantee), and the backup containing the link key;
@@ -431,7 +436,7 @@ Public relays exist for social notes. Some operators may not want opaque app blo
 - `expiration` set;
 - an `alt` tag that says what it is;
 - user-configurable relays;
-- spread over three relays, so none carries everything;
+- the defaults are only relays whose published terms allow this use (§9.4); they share one operator, so the custom relay setting is the fallback;
 - back off on `rate-limited` / `blocked`;
 - a short project page "For relay operators" (what we publish, how to block: kind 31847).
 
@@ -457,10 +462,10 @@ NIP-11 `posting_policy` or `retention` field**, and none declares
 
 | Relay | Class | Terms source | Limits (NIP-11) | Notes |
 |---|---|---|---|---|
-| **relay.damus.io** (current default) | **GREY** | none — NIP-11 has no terms field; `damus.io/terms`, `/privacy`, `/eula` → 404 | frame 1 000 000, subs 200, NIP-40 ✓ | Only the Damus *app* EULA exists, scoped to "our mobile application Damus" |
-| **nos.lol** (current default) | **ALLOWED** | NIP-11 `terms_of_service` → wikifreedia.xyz/nos.lol | frame **131 072**, subs 20, NIP-40 ✓ | No kind / content restriction; rate limits by pubkey and fresh keys |
-| **relay.primal.net** (current default) | **GREY** (leans allowed) | none in NIP-11; company ToS primal.net/terms (Primal Systems Inc.) | frame 1 000 000, subs 20, NIP-40 ✓ | ToS covers "Services, including but not limited to" the apps; the relay isn't named. If it applies, it only forbids illegal / harmful content |
-| nostr.mom | **ALLOWED** | NIP-11 `terms_of_service` → wikifreedia.xyz/nostr.mom | frame 131 072, subs 50, NIP-40 ✓ | **Same operator as nos.lol** (same NIP-11 pubkey `c5fadeb5…`, same wiki author); "stricter" spam + nudity filter |
+| **relay.damus.io** (former default, dropped) | **GREY** | none — NIP-11 has no terms field; `damus.io/terms`, `/privacy`, `/eula` → 404 | frame 1 000 000, subs 200, NIP-40 ✓ | Only the Damus *app* EULA exists, scoped to "our mobile application Damus" |
+| **nos.lol** (default) | **ALLOWED** | NIP-11 `terms_of_service` → wikifreedia.xyz/nos.lol | frame **131 072**, subs 20, NIP-40 ✓ | No kind / content restriction; rate limits by pubkey and fresh keys |
+| **relay.primal.net** (former default, dropped) | **GREY** (leans allowed) | none in NIP-11; company ToS primal.net/terms (Primal Systems Inc.) | frame 1 000 000, subs 20, NIP-40 ✓ | ToS covers "Services, including but not limited to" the apps; the relay isn't named. If it applies, it only forbids illegal / harmful content |
+| **nostr.mom** (default since option C) | **ALLOWED** | NIP-11 `terms_of_service` → wikifreedia.xyz/nostr.mom | frame 131 072, subs 50, NIP-40 ✓ | **Same operator as nos.lol** (same NIP-11 pubkey `c5fadeb5…`, same wiki author); "stricter" spam + nudity filter |
 | relay.nostr.net | GREY | none (description only, contact nostr.net = a link list) | frame 262 144, subs 100, `max_limit` 100, NIP-40 ✓ | "public relay operated by aljaz@nostr.si" |
 | offchain.pub | GREY | none (description only) | frame 131 072, subs 20, NIP-40 ✓ | "public nostr relay running strfry"; same NIP-11 pubkey as nostr.bitcoiner.social |
 | nostr.oxtr.dev | GREY | none (description is a motto) | frame 131 072, subs 40, NIP-40 ✓ | — |
@@ -495,20 +500,21 @@ NIP-11 `posting_policy` or `retention` field**, and none declares
 - **nostr.wine** — https://nostr.wine/terms: *"That some services, such as but not limited to the privilege to publish content may require payment(s)"*; NIP-11 `"payment_required":true,"restricted_writes":true`. → EXCLUDED (paid).
 - **nostr-pub.wellorder.net** — NIP-11: `"description": "Relay for the (NIP-05 verified) Nostr community."` → EXCLUDED.
 
-**Limits that matter for the budget (§5.4).** Of the ALLOWED relays, nos.lol and nostr.mom both cap the frame at **131 072 bytes**. The 100 000-char `content` budget fits: about 1 KB of envelope and tags leaves ≈ 130 000 bytes. "~100 KB" therefore means at most ~100 000 base64 chars, i.e. ≈ 73 KB of gzip'd ciphertext, never 100 KB of binary. Typical 20–30 KB events are far below it. Every checked relay supports NIP-40. None publishes a retention period: nos.lol only says "Only recent logs are kept", which is about logs, not events. So retention stays a G51 E7 measurement.
+**Limits that matter for the budget (§5.4).** Of the ALLOWED relays, nos.lol and nostr.mom both advertise a **131 072-byte** frame. G51 E1 then measured the real cap: both refuse any **event over 65 536 bytes** (`invalid: event too large`), well below the frame. The budget is therefore **60 000 chars of `content`** (≈ 44 KB of gzip'd ciphertext; event ≈ 60 500 B, frame ≈ 60 510 B — §5.4, §16). Typical 200-record events (≈ 17 KB) are far below it. Every checked relay supports NIP-40. None publishes a retention period: nos.lol only says "Only recent logs are kept", which is about logs, not events. So retention stays a G51 E7 measurement.
 
-**Result: the "no grey zone" condition fails for two of the three current defaults.** relay.damus.io has no published terms for the relay at all. relay.primal.net has only a company-wide ToS that doesn't name the relay. **This is a stop point for Leo (§14 Q3/Q12).** Only nos.lol and nostr.mom are ALLOWED, and they share **one operator**: one policy change or outage hits both. No free, independent third public relay was found whose terms allow (or even address) this use. The free relays either publish nothing or describe themselves for social "notes". The relays with real terms are paid or forbid blobs. **Three independent ALLOWED free relays are not available today.**
+**Result: the "no grey zone" condition failed for two of the three former defaults.** relay.damus.io has no published terms for the relay at all. relay.primal.net has only a company-wide ToS that doesn't name the relay. This was a stop point for Leo (§14 Q3/Q12), **resolved the same day with option C** (below). Only nos.lol and nostr.mom are ALLOWED, and they share **one operator**: one policy change or outage hits both. No free, independent third public relay was found whose terms allow (or even address) this use. The free relays either publish nothing or describe themselves for social "notes". The relays with real terms are paid or forbid blobs. **Three independent ALLOWED free relays are not available today.**
 
-**Recommendation (for Leo to choose; the defaults are not changed until then):**
+**Decided by Leo (2026-10-17): option C — defaults = nos.lol + nostr.mom only.** Both are ALLOWED; damus and primal are dropped as grey zone; there is no relay of our own. Users can add a custom relay (Settings → Relays), which is also the answer to the **single-operator risk**: both defaults have one operator, one terms page author and — measured in G51 — **one host** (both names resolve to 142.132.206.70, nginx in front of two separate strfry databases, §16). One policy change, ban or outage on that machine stops every link group that hasn't got a custom relay. Mitigations in G52: the relay settings show per-relay status ("rejects our events" / unreachable) and the group's sync cloud turns failing when 0 of N relays accept (§4.4), so the user sees it; a custom relay entered by any member keeps that member's devices syncing (others need it too — the link carries no relay hints, §14 Q3); and the default list can change with an app update (re-run this check then). A self-hosted relay (option A) stays the fallback if the operator ever objects.
+
+The options as they were put to Leo (for the record):
 - **Option A — strict (recommended if "no grey zone" is literal):** defaults = **nos.lol + nostr.mom + a relay Leo runs himself** (strfry, on his own server or a small VPS), with a published one-page policy that explicitly allows kind 31847 and states its limits and retention. The custom-relay setting stays. Costs: one more service to run and pay for, plus a legal / privacy role as operator (the relay sees IPs, so PRIVACY.md must name Leo as relay operator). It also weakens the "no MoneyLedger server" claim (welcome page 2, G39), so the wording must change to "an optional relay run by the developer, one of three". Damus and Primal are dropped.
 - **Option B — no own server:** defaults = **nos.lol + nostr.mom + relay.primal.net**, if Leo accepts the reading that Primal's company ToS ("services, including but not limited to …") covers its "Primal Public Relay". Read that way, the ToS restricts only illegal / harmful content, and our use is allowed. Damus is dropped either way (it has no terms at all). The risk is that two of the three defaults have one operator, so G52's "rejects our events" status must cope with losing both at once.
 - **Not recommended:** keeping damus (silent terms), any description-only relay (relay.nostr.net, offchain.pub, nostr.oxtr.dev, relay.nostr.place), or paid relays (users are anonymous, there is no payment flow).
 - Whichever option is chosen: re-run this check before release and on every change to the default list. G52's NIP-11 discovery (§4.6) should store each relay's `terms_of_service` URL and show it in the relay settings.
 
-**Disclosure text (§9.2) with the chosen set**, e.g. for option B:
-> "Shared groups sync through public Nostr relays: nos.lol and nostr.mom (one operator) and relay.primal.net (Primal Systems Inc.). They are independent services with their own terms (linked in Settings → Relays). They store your group encrypted — only people with the link can read it. The relays see your IP address and when you sync, and may keep data longer than the 30 days we ask for. Anyone with the link can see and change the group. Want accounts and verified devices? Use Matrix (secure mode)."
+- **Option C — chosen:** nos.lol + nostr.mom only, custom relay as the mitigation (above).
 
-For option A, replace the relay clause with "nos.lol and nostr.mom (one operator) and a relay run by the MoneyLedger developer". PRIVACY.md lists each default relay with its operator and terms URL: wikifreedia.xyz/nos.lol, wikifreedia.xyz/nostr.mom, primal.net/terms (or the own relay's policy page). The "For relay operators" page stays: kind 31847, the `alt` tag, volume, and how to block.
+**Disclosure text (§9.2) with the chosen set (option C)** — see §9.2 for the final wording ("…two public Nostr relays, nos.lol and nostr.mom (one operator)…"). PRIVACY.md lists each default relay with its operator and terms URL: wikifreedia.xyz/nos.lol, wikifreedia.xyz/nostr.mom, and says that both run on one server of one operator. The "For relay operators" page stays: kind 31847, the `alt` tag, volume, and how to block.
 
 ## 10. Mixed groups, lock, and "Why Matrix" (G53, G54)
 
@@ -554,7 +560,7 @@ After the lock:
 | Infrastructure | Public relays run by volunteers, no guarantees, terms not meant for this | A homeserver you choose (or run), with clear terms; Matrix is an open standard |
 | Who sees metadata | Every relay: your IP, timing, group size | Only your own homeserver (who talks to whom) |
 | Old data | A link leaked later decrypts archived copies | End-to-end encrypted to-device messages; the server keeps nothing |
-| Size | A few thousand records | ~30k records, ~80 members |
+| Size | ~5 000 records (~1 200 in a mixed group) | ~30k records, ~80 members |
 
 **The cost:** an account at a Matrix homeserver (free, e.g. matrix.org) and a sign-in. For us there are also **two sync worlds** to maintain: twice the code paths and twice the test matrix. That is the honest reason the doc keeps Matrix as the "better" mode and doesn't build link groups into a second secure system.
 
@@ -585,7 +591,7 @@ No other nudges.
 
 | Need | Package | License | Web | Notes |
 |---|---|---|---|---|
-| BIP-340 Schnorr sign / verify | **`bip340` 0.3.1** (fiatjaf) | MIT | yes | Tiny, depends on `pointycastle` + `crypto`. BigInt arithmetic, not constant-time — acceptable for per-group throwaway keys; G51 measures speed on web. |
+| BIP-340 Schnorr sign / verify | **`bip340` 0.3.1** (fiatjaf) | MIT | yes | Tiny, depends on `pointycastle` + `crypto`. BigInt arithmetic, not constant-time — acceptable for per-group throwaway keys. G51: sign 18 ms / verify 12 ms native, **232 / 172 ms in dart2js** (Dart BigInt in JS) — see §16 for the consequence. |
 | secp256k1 curve, key generation | **`pointycastle` 4.0.0** (Bouncy Castle) | MIT | yes | Widely used. Pubkey = x-only of `G·d`. |
 | WebSocket | **`web_socket_channel` 3.0.3** (dart.dev) | BSD-3 | yes | Already transitive (matrix SDK). Becomes a direct dependency. |
 | gzip on web | **`archive` 4.x** | MIT | yes | Already transitive. `dart:io` `gzip` on native would also work, but one code path is simpler. |
@@ -605,22 +611,22 @@ All recommended licenses (MIT, BSD-3, Apache-2.0) are AGPL-3.0-or-later-compatib
 
 ## 12. G51 — Spike plan
 
-A separate Dart package `tool/spike/nostr/` (like `tool/bench/`, never part of the app) using exactly the recommended deps. It runs as two processes on two networks (laptop + Pixel via `dart compile exe`, or Termux) against damus, nos.lol and primal. A Flutter web build of the same code checks browser WebSockets and the BIP-340 speed of dart2js.
+A separate Dart package `tool/spike/nostr/` (like `tool/bench/`, never part of the app) using exactly the recommended deps. It runs as two processes on two networks (laptop + Pixel via `dart compile exe`, or Termux) against the default relays — after Leo's 2026-10-17 decision only **nos.lol and nostr.mom** (§9.4 option C). A Flutter web build of the same code checks browser WebSockets and the BIP-340 speed of dart2js. (As run in G51: laptop only, two processes on one network; the Pixel, the second network, browser WebSockets and E9 moved to the G52 device pass — §16.)
 
 | # | Experiment | Pass criterion |
 |---|---|---|
-| E1 | Publish kind 31847 events with random content of 10 / 50 / 100 / 120 / 500 / 900 KB; record `OK` + message per relay | ≥ 2 of 3 relays accept **100 KB** custom-kind events; rejections come with a readable `OK false` prefix |
+| E1 | Publish kind 31847 events with random content of 10 / 50 / 100 / ~125 KB **frames** (only up to the advertised 131 072-byte limit; expiration +10 min, then a NIP-09 deletion); record `OK` + message per relay | both relays accept **100 KB** custom-kind events; rejections come with a readable `OK false` prefix |
 | E2 | Addressable semantics: v1 then v2 (same d, +1 s); same-second v2; a REQ returns only the newest | Only the newest returned on every accepting relay |
 | E3 | Cross-author `#d` filter: 3 pubkeys, same d | All 3 returned, nothing else |
 | E4 | Live latency: B subscribed, A publishes 50× (every 10 s) | p50 < 1.5 s, p95 < 5 s on ≥ 2 relays |
 | E5 | Full fetch: connect → EOSE time for 1 topic with 5 events | < 3 s p95 |
-| E6 | Rate limit: 30 publishes in 60 s, then 1/min | Note the first `rate-limited`; our 1 per 5 s per group policy stays below it |
+| E6 | ~~Rate limit: 30 publishes in 60 s~~ (no hammering, Leo's condition): 6 events from 6 fresh keys (= 6 groups from one IP) at our pace, ≥ 5 s apart | No `rate-limited` at our pace; note any |
 | E7 | Retention: events with `expiration` +30 d fetched at 1 h, 1 d, 3 d, 7 d, 14 d; one with +10 min | 30-d event present at 7 d on ≥ 2 relays; the 10-min one gone (or at least not served) |
 | E8 | Crypto cost: HKDF + gzip + AES-GCM + base64 for a 200-record snapshot; BIP-340 sign + verify; on the Pixel (AOT) and in Chrome (dart2js) | Pack + sign ≤ 100 ms native, ≤ 500 ms web; verify 20 events ≤ 1 s web |
 | E9 | Background: an Android WorkManager one-off with one WebSocket fetch + publish (the G36 debug trigger) | Works headless within 20 s |
-| E10 | NIP-11 of the three relays (+ 2 alternates, e.g. `relay.nostr.band`, `nostr.mom`) | Recorded in the report |
+| E10 | NIP-11 of the default relays (+ alternates) | Recorded in §9.4 / §4.6 |
 
-**Output:** a short report (append it to this doc §15) with numbers, chosen budget, chosen default relays, and a go / no-go for G52.
+**Output:** a short report with numbers, chosen budget, chosen default relays, and a go / no-go for G52 — **§16**.
 
 **No-go triggers:**
 - < 2 relays accept 100 KB → lower the budget, or shard by default at 40 KB;
@@ -660,7 +666,7 @@ Each step is a commit with tests. The fakes come first.
 ## 14. Risks and open questions for Leo
 
 **Risks**
-- **Relay policy can change at any time.** Custom kinds or blobs may get blocked. Mitigations: 3 relays + custom relay, NIP-11 checks, clear "rejects our events" status. The worst case, all three block, needs a new default list via an app update.
+- **Relay policy can change at any time.** Custom kinds or blobs may get blocked. Mitigations: custom relay, NIP-11 checks, clear "rejects our events" status. **Single operator:** both defaults (nos.lol, nostr.mom) have one operator and run on one host (§9.4, §16), so one decision or outage blocks both at once; a new default list then needs an app update, and until then only groups whose members added a custom relay keep syncing.
 - **Leaked links.** People will forward them. The UI must say what a link means at the point of sharing.
 - **Two sync worlds:** more code, more tests, more support. Mixed groups (G53) are the most complex part. Its scoped exceptions in the gate need a security review like G18.
 - **"Pure link groups can't go wrong" isn't true.** A malicious link holder can wipe the group (tombstones). G48 restore points and *Reset group* are the recovery path, and the doc should say so in the invite sheet's help.
@@ -669,7 +675,7 @@ Each step is a commit with tests. The fakes come first.
 **Open questions — decided by Leo on 2026-10-17**
 1. **App key (W5):** → **Public salt** `kLinkSaltV1` (no secret key; §3.4).
 2. **Event kind:** → **`31847`**; registering it in the NIPs repo is optional, later.
-3. **Default relays:** → damus, nos.lol, primal, every event to all three; **no** `r=` relay hints in v1; a custom relay is an expert setting. **G51 terms check (§9.4): damus and primal are GREY — the defaults must change; options A / B there, pending Leo.**
+3. **Default relays:** → originally damus, nos.lol, primal. **G51 terms check (§9.4): damus and primal are GREY → Leo decided option C on 2026-10-17: defaults = `nos.lol` + `nostr.mom` only**, every event to both; **no** `r=` relay hints in v1; a custom relay is an expert setting and the mitigation for the single-operator risk. Size consequence: `kLinkContentBudget` = 60 000 chars (both refuse events > 65 536 B, §5.4 / §16).
 4. **Group name hint `n=`:** → **Yes.**
 5. **Landing page + App Links:** → **Yes**, as a `LeoStumpf.github.io` user-site repo **shared by all of Leo's apps** (per-app path `/moneyledger/…`, one `assetlinks.json` with a statement per package). Created in G52 once the link handler exists.
 6. **In-app QR scanner:** → **No**; the system camera opens the link.
@@ -689,7 +695,88 @@ Each step is a commit with tests. The fakes come first.
 - NIP-40 (expiration; "SHOULD delete", "MAY persist", not a security feature): https://github.com/nostr-protocol/nips/blob/master/40.md
 - NIP-78 (app-specific data, kind 30078, author-only via NIP-42): https://github.com/nostr-protocol/nips/blob/master/78.md
 - NIP-31 (`alt` tag), NIP-70 (protected events), NIP-09 (deletion), kind registry: https://github.com/nostr-protocol/nips (README kinds table, read 2026-10-17)
-- Relay NIP-11 documents fetched 2026-10-17: `https://relay.damus.io`, `https://nos.lol`, `https://relay.primal.net` (`Accept: application/nostr+json`)
+- Relay NIP-11 documents fetched 2026-10-17: `https://relay.damus.io`, `https://nos.lol`, `https://relay.primal.net`, `https://nostr.mom` (`Accept: application/nostr+json`)
+- G51 spike code + raw results: `tool/spike/nostr/` (`results/*.jsonl`, `retention_ids.json`)
 - BIP-340: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
 - pub.dev API (versions, licenses, platforms, 2026-10-17): `bip340`, `pointycastle`, `web_socket_channel`, `archive`, `qr`, `qr_flutter`, `nostr`, `dart_nostr`, `ndk`, `nostr_core_dart`, `mobile_scanner`
 - GPLv3 §1 / §6 text: repo `LICENSE` (AGPL-3.0)
+
+## 16. G51 spike results (2026-10-17)
+
+**Setup.** `tool/spike/nostr/` — a standalone Dart package (own `pubspec.yaml`, never imported by the app) with the §11 deps: `bip340` 0.3.1 (MIT), `pointycastle` 4.0.0 (MIT), `cryptography` 2.9.0 (Apache-2.0), `web_socket_channel` 3.0.3 (BSD-3), `archive` 4.5.2 (MIT; pulls in `posix` 6.5.2, MIT), `crypto` 3.0.7 (BSD-3) — all AGPL-compatible. `lib/link_crypto.dart` (pure Dart, also compiles with dart2js): HKDF topic / key with the public `kLinkSaltV1` (§3.1), gzip + AES-256-GCM envelope with the §3.2 AAD, NIP-01 id + BIP-340 sign / verify (BIP-340 test vector 0 passes), NIP-09 deletion; `lib/relay.dart`: one WebSocket per relay, `EVENT`/`OK`, `REQ`/`EOSE`/`CLOSE`, live subscriptions. `bin/selftest.dart` checks the crypto offline. Raw results: `results/*.jsonl`, `results/e8_*.json`.
+
+**Politeness (Leo's condition).** Only nos.lol and nostr.mom; synthetic data encrypted under throwaway secrets, never real data; every test event carried `expiration` = now + 10 min (except one E7 probe, +30 d); E1–E4 published NIP-09 deletions afterwards (`OK true`, the deleted ids weren't served any more 2 s later); ≥ 5 s between publishes per key; no burst / rate-limit hammering. Total ≈ 55 events from ≈ 13 keys per relay over ~15 minutes, < 1 MB per relay.
+
+**Network facts.** nos.lol and nostr.mom resolve to the **same IP (142.132.206.70)**, nginx in front, both strfry 1.1.3 — but they are **separate databases**: an event published only to nos.lol was not served by nostr.mom 10 s later (E6). So the two defaults give storage redundancy but **no host / operator redundancy** (§9.4).
+
+### Results
+
+| # | Experiment (as run) | nos.lol | nostr.mom | Criterion |
+|---|---|---|---|---|
+| E1 | kind 31847, frames 10 000 / 50 000 / 65 529 / 65 561 / 100 001 / 125 001 / 130 001 B | 10 k, 50 k, 65 529 ✓ (`OK true`, stored + served); ≥ 65 561 ✗ `invalid: event too large: <event bytes>` | same | **fails "100 KB"** → budget lowered (below) |
+| E1 | effective limit | event JSON ≤ **65 536 B** (65 519 ✓, 65 551 ✗) — NIP-11 says only `max_message_length` 131 072 | same | readable prefix ✓ |
+| E2 | addressable replace: v1 → v2 (+1 s); same-second pairs in both orders; older `created_at` after newer | only newest served ✓; same second → **lowest id** kept ✓ (the higher id gets `OK false "replaced: have newer event"`); an older event → same `replaced:` | same | ✓ |
+| E3 | 3 fresh keys, one `d`, `#d` filter | 3 events, 3 authors, all verify + decrypt, nothing else ✓ | same | ✓ |
+| E4 | live: subscriber + publisher (2 processes, laptop), 20 publishes every 10 s (one address, replaced each time), ~1.2 KB frames | delivery p50 **137 ms**, p95 **193 ms** (max 223); `OK` p50 47 ms | p50 **145 ms**, p95 **182 ms** (max 221); `OK` p50 45 ms | p50 < 1.5 s, p95 < 5 s ✓ |
+| E5 | fresh connection → `REQ` 2 topics (4 events) → `EOSE`, 10 runs | connect 105–119 ms, REQ→EOSE 35–95 ms, total p50 147 / max 206 ms | connect 105–110 ms, REQ→EOSE 35–38 ms, total p50 144 / max 148 ms | < 3 s p95 ✓ |
+| E6 | 6 fresh keys (= 6 groups from one IP), one 4.8 KB event each, 6 s apart, both relays | 6/6 `OK true`, no `rate-limited`, no NOTICE | 6/6 `OK true`, no `rate-limited` | ✓ (at our pace; the whole spike — ≈ 55 events from ≈ 13 fresh keys per relay in 15 min — never triggered a limit) |
+| E7 | retention probes published 08:42:44 UTC (+30 d and +10 min), see below | +0 h both served; **+15 min and +1 h: 30-d served, 10-min probe gone** (NIP-40 honoured) | same | 30-d probe at 7 d — **pending** |
+| E8 | crypto, 200-record snapshot (synthetic bootstrap shape, unsigned, 98 553 B JSON) | see next table | | |
+| E9 | Android headless round | **skipped — covered by the G52 device pass** | | |
+| E10 | NIP-11 | §4.6 / §9.4 | | ✓ |
+
+**E8 — crypto cost** (median of 15 after a warm-up; laptop i7-8550U; native = `dart compile exe`, web = `dart compile js -O2` run in node 20 / V8 — Chrome's engine, but not a browser):
+
+| Step | native (AOT) | dart2js (node) | Criterion |
+|---|---|---|---|
+| HKDF (topic + key) | 0.06 ms | 1 ms | |
+| JSON encode | 1.5 ms | 3 ms | |
+| pack: gzip + AES-GCM + base64 | 2.5 ms | 15 ms | |
+| NIP-01 id + BIP-340 sign | 18 ms | 228–232 ms | |
+| **pack + sign** | **22 ms** | **246–250 ms** | ≤ 100 ms native ✓, ≤ 500 ms web ✓ |
+| verify 1 event | 12 ms | 159–172 ms | |
+| **verify 20 events** | 245 ms | **4.9 s** | ≤ 1 s web **✗** |
+| unpack: base64 + GCM + gunzip + JSON | 2.2 ms | 7 ms | |
+| content size, 200 unsigned records | 17 330 chars | 17 822 chars (pure-Dart deflate) | |
+| content size, 200 signed records (mixed) | 76 458 chars | 76 978 chars | |
+| content size, 500 / 1 000 unsigned | 41 098 / 80 570 chars | 42 386 / 83 198 chars | |
+
+The web cost is all BIP-340: `bip340` does its curve math with Dart `BigInt`, which dart2js implements in Dart rather than with JS `BigInt`. Everything else is fast enough everywhere.
+
+### Chosen content budget
+
+**`kLinkContentBudget` = 60 000 chars of `content`** (was 100 000). The binding limit is not the advertised 131 072-byte frame but strfry's **65 536-byte event** cap (event JSON = frame − 10 bytes for `["EVENT",…]`). Our envelope is ≈ 490 B, so a 60 000-char event is ≈ 60 500 B (frame ≈ 60 510 B): ~5 KB headroom. Consequences (§5.4): 200 unsigned records = 17 K (one part, 29 % of the budget); a part holds ≈ 690 unsigned records → ceiling ≈ 5 000 with 8 parts; a **mixed** group needs 2 parts already at 200 signed records and tops out at ≈ 1 200 signed records.
+
+### Go / no-go for G52 (§12 triggers)
+
+- *< 2 relays accept 100 KB* → **triggered** (both cap at 65 536 B). §12's own remedy applies: lower the budget (60 000) and shard; the typical group is 3× below it. Not a blocker.
+- *Custom kinds blocked* → **not triggered** (31847 accepted, stored, served, replaced and deleted as specified on both).
+- *Retention < 3 days* → **open** until the E7 check at +3 d (2026-10-20).
+
+**Verdict: GO for G52** — with the 60 000-char budget, `replaced:` handled as in §4.4, and the web signature-verify decision below. **Condition:** the E7 check on 2026-10-20 (+3 d) must show the 30-day probe still served on both relays; if it's gone on both, stop before G52's sync engine (step 5) and revisit (shorter refresh interval than 10 days, or a self-hosted relay). The 7-d / 14-d checks only tune the refresh interval.
+
+### E7 follow-up
+
+Probes (one throwaway key `8083fed6…`, two `d` tags, same events on both relays) are listed in `tool/spike/nostr/retention_ids.json`. Check (read-only, nothing is published; appends to `results/retention.jsonl`):
+
+```
+cd tool/spike/nostr && dart run bin/check_retention.dart
+```
+
+| When | Date (UTC) | Expect |
+|---|---|---|
+| +1 h | 2026-10-17 ≥ 09:43 | 30-d served; 10-min probe gone (expired 08:52:44) — **done: as expected on both** (also at +15 min) |
+| +1 d | 2026-10-18 ≥ 08:43 | 30-d served |
+| **+3 d (gate)** | **2026-10-20 ≥ 08:43** | 30-d served on both → retention criterion passed |
+| +7 d | 2026-10-24 ≥ 08:43 | 30-d served on ≥ 1 relay (§12 E7 criterion: on both) |
+| +14 d | 2026-10-31 ≥ 08:43 | informational (the 10-day refresh keeps real groups fresh) |
+| +31 d | 2026-11-17 | 30-d probe gone (NIP-40 honoured) |
+
+### Open points
+
+1. **Two networks / Pixel / browser.** E4 ran with both processes on this laptop (one IP, one network); E8 web ran in node, not Chrome; E9 (headless Android) was skipped. All three move to the **G52 device pass** (§13 step 13): Pixel ↔ emulator/laptop over different networks, the web build in Chrome (browser WebSockets, real dart2js timing), and a WorkManager round with one fetch + publish.
+2. **Signature verify on the web** (E8 ✗): 160–170 ms per event. Proposal: G52 verifies BIP-340 **on native only**; on the web it skips the check and relies on the AES-GCM AAD (binds content to kind / topic / pubkey — a forger needs the link secret, and then could just sign with its own key) plus the relays' own verification. Alternatives if Leo wants verify everywhere: verify only new events (dedup via `link_peers` first — a normal fetch then has 0–3 new events), or a faster secp256k1 on web (JS-`BigInt` implementation / WebCrypto doesn't do secp256k1). Signing (≈ 230 ms per publish, debounced) is acceptable as is.
+3. **`replaced: have newer event`** is an `OK false` that isn't a failure (E2) — added to §4.4; G52's `FakeRelayNetwork` must emit it for the same-second-higher-id and older-`created_at` cases.
+4. **NIP-11 doesn't advertise the 65 536-byte event cap.** For custom relays G52 can't learn it either; it uses the same 60 000 budget and drops to the custom relay's advertised `max_message_length` / `max_content_length` when smaller.
+5. **Single host.** nos.lol and nostr.mom are one machine (separate databases). The custom-relay setting is the only mitigation in v1; re-check the defaults before release (§9.4).
+6. **Third-party notices.** Not changed in G51: the spike isn't shipped. G52 adds `bip340`, `pointycastle`, `web_socket_channel`, `archive` (+ its `posix`) to `THIRD_PARTY_NOTICES.md` when they become app dependencies (`cryptography` is already listed).

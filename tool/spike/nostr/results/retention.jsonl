@@ -1,0 +1,12 @@
+{"at":"2026-10-17T08:42:58.830846Z","relay":"wss://nos.lol","probe":"30d","ageHours":"0.0","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-17T08:42:58.950628Z","relay":"wss://nos.lol","probe":"10min","ageHours":"0.0","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-17T08:42:59.177571Z","relay":"wss://nostr.mom","probe":"30d","ageHours":"0.0","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-17T08:42:59.286930Z","relay":"wss://nostr.mom","probe":"10min","ageHours":"0.0","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-17T08:58:07.384506Z","relay":"wss://nos.lol","probe":"30d","ageHours":"0.3","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-17T08:58:07.452201Z","relay":"wss://nos.lol","probe":"10min","ageHours":"0.3","servedById":false,"servedByD":0,"eose":true}
+{"at":"2026-10-17T08:58:07.739017Z","relay":"wss://nostr.mom","probe":"30d","ageHours":"0.3","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-17T08:58:07.805737Z","relay":"wss://nostr.mom","probe":"10min","ageHours":"0.3","servedById":false,"servedByD":0,"eose":true}
+{"at":"2026-10-17T09:45:41.022411Z","relay":"wss://nos.lol","probe":"30d","ageHours":"1.0","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-17T09:45:41.095887Z","relay":"wss://nos.lol","probe":"10min","ageHours":"1.0","servedById":false,"servedByD":0,"eose":true}
+{"at":"2026-10-17T09:45:41.359044Z","relay":"wss://nostr.mom","probe":"30d","ageHours":"1.0","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-17T09:45:41.430390Z","relay":"wss://nostr.mom","probe":"10min","ageHours":"1.0","servedById":false,"servedByD":0,"eose":true}

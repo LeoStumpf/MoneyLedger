@@ -1,0 +1,46 @@
+{
+  "note": "G51 E7 retention probes (synthetic, encrypted with a throwaway secret). Check with: dart run bin/check_retention.dart",
+  "published_at": "2026-10-17T08:42:44.000Z",
+  "pubkey": "8083fed6983119e95193e504c1792904fb5c9e1fd3e5b36d1b4aa11a744b1f2f",
+  "kind": 31847,
+  "relays": [
+    "wss://nos.lol",
+    "wss://nostr.mom"
+  ],
+  "probes": [
+    {
+      "label": "30d",
+      "id": "28eca85fa1d07a774c7b5bd24f832f7f0d188f8a80fe78e7d6134e9aa877db61",
+      "d": "a926ec0d37565347ac2d300bf9762958d6d67110761343c185c883fc48311ef5",
+      "created_at": 1792226564,
+      "expiration": 1794818564,
+      "publish": {
+        "wss://nos.lol": {
+          "ok": true,
+          "msg": ""
+        },
+        "wss://nostr.mom": {
+          "ok": true,
+          "msg": ""
+        }
+      }
+    },
+    {
+      "label": "10min",
+      "id": "c82ecda5bf8a335ab7a65915b86ca09971e89242b4ee4db5f1c37e7a01065ce7",
+      "d": "ce39add3ea2d9756851c3dd60f52d2dc074aea566a79d644d00c4533f8873839",
+      "created_at": 1792226564,
+      "expiration": 1792227164,
+      "publish": {
+        "wss://nos.lol": {
+          "ok": true,
+          "msg": ""
+        },
+        "wss://nostr.mom": {
+          "ok": true,
+          "msg": ""
+        }
+      }
+    }
+  ]
+}
