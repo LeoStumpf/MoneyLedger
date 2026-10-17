@@ -582,7 +582,7 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       undated (open point)
 
 ### G50. No-login link groups — design doc 🟠 (stop: needs Leo's sign-off)
-- [ ] `docs/design/no-login-sharing.md`: invite link / QR (group secret in
+- [x] `docs/design/no-login-sharing.md`: invite link / QR (group secret in
       the `#fragment`), key derivation, one addressable Nostr event per device
       and group with the gzip + AES-GCM snapshot (≤ 100 KB, NIP-40 expiry
       ~60 days), relay list (damus, primal, nos.lol) + custom relay, live
@@ -743,7 +743,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G49 — expense date
 - [x] G59 — smarter split defaults (prefill from current split, "fill the rest")
 - [x] G62 — reset page empty after update / new group (found in DEV-H)
-- [ ] G50 — no-login link groups design doc (+ app key) — stop for Leo's sign-off
+- [~] G50 — no-login link groups design doc written (`docs/design/no-login-sharing.md`, 14 open questions in §14) — **waiting for Leo's sign-off**; G51–G54 blocked until then
 - [ ] G51 — Nostr spike
 - [ ] G52 — link groups implementation
 - [ ] G53 — mixed groups + lock group
