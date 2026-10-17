@@ -264,6 +264,14 @@
   "@splitRescale": {
     "description": "Split editor action: scale the entered amounts so they add up to the total"
   },
+  "splitSetTotalToSum": "Set total to the sum",
+  "@splitSetTotalToSum": {
+    "description": "Split editor action (Exact): the entered amounts exceed the expense amount — set the expense amount to their sum"
+  },
+  "splitFineTuneAsAmounts": "Fine-tune as amounts",
+  "@splitFineTuneAsAmounts": {
+    "description": "Split editor action (Shares): switch to exact amounts prefilled from the shares, to adjust them"
+  },
   "splitPutRestHere": "Put the rest here",
   "splitShareMore": "One share more",
   "splitShareLess": "One share less",

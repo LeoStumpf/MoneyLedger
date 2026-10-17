@@ -395,6 +395,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splitRescale => 'Rescale proportionally';
 
   @override
+  String get splitSetTotalToSum => 'Set total to the sum';
+
+  @override
+  String get splitFineTuneAsAmounts => 'Fine-tune as amounts';
+
+  @override
   String get splitPutRestHere => 'Put the rest here';
 
   @override

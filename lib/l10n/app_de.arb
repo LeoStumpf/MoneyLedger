@@ -102,6 +102,8 @@
   "splitEnterAmountFirst": "Gib zuerst den Betrag ein",
   "splitDistribute": "Verteilen",
   "splitRescale": "Proportional anpassen",
+  "splitSetTotalToSum": "Gesamtbetrag auf die Summe setzen",
+  "splitFineTuneAsAmounts": "Als Beträge feinjustieren",
   "splitPutRestHere": "Rest hier eintragen",
   "splitShareMore": "Ein Anteil mehr",
   "splitShareLess": "Ein Anteil weniger",

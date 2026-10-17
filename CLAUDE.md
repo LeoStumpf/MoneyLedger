@@ -1455,7 +1455,22 @@ change.** Only the add/edit form changed.
     (visible while something is left, space reserved) adds the whole
     remainder to that row. Percent works in hundredths with the same
     actions. Hint line "Empty fields share the rest · 0 = not involved".
-  - **Shares:** −/+ steppers per row (min 0, − disabled at 0).
+  - **Live remainder + more actions (G61 follow-up, Leo 2026-10-17: keep
+    the *Distribute* button):** the "X left" / "X too much" label (key
+    `splitRemaining`, error colour, `titleSmall`) sits in **one wrapping
+    row** (`Wrap`) with the actions and updates on every keystroke.
+    Exact, rows sum to more than the amount (or no amount yet but rows
+    typed): **Set total to the sum** (`splitSetTotal`) next to *Rescale* —
+    the editor calls `SplitEditor.onSetTotal(cents)` (only offered when the
+    callback is given and the sum is 1 … `kMaxAmountCents`);
+    `AddExpensePage` writes it into its amount field via
+    `formatAmountInput` (locale format), so the split adds up.
+  - **Shares:** −/+ steppers per row (min 0, − disabled at 0). **Fine-tune
+    as amounts** (`splitFineTune`, shown with an amount and ≥ 1 share):
+    switches to Exact via the normal complete-split conversion, forced even
+    where a mode switch would be a "peek" (`_switchTo(convert: true)`) —
+    4:1 on 5 € → 4.00 / 1.00, rows stay "auto" so *Distribute* re-balances
+    after a tweak.
   - **Rows (G61):** names wrap onto up to two lines (MXID localparts share
     long prefixes — one ellipsized line made rows indistinguishable on a
     phone); Shares / Percent show the resolved amount under the name, not in

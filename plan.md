@@ -696,11 +696,13 @@ Switching split modes or editing amounts today starts from blanks; make the
 ### G61. Split follow-ups (found in G59) 🟢
 - [x] Try live auto-fill of open rows (Tricount-style) instead of the button —
       **Leo 2026-10-17: keep the button**, add more actions instead (below)
-- [ ] Too much distributed → also **"Set total to the sum"** (next to the
+- [x] Too much distributed → also **"Set total to the sum"** (next to the
       existing *Rescale proportionally*)
-- [ ] A clearly visible **live** "X left / X too much" next to *Distribute*
-- [ ] Shares mode: a **"Fine-tune as amounts"** action that switches to Exact
+- [x] A clearly visible **live** "X left / X too much" next to *Distribute*
+- [x] Shares mode: a **"Fine-tune as amounts"** action that switches to Exact
       (the existing conversion), e.g. 4:1 → 4/5 amounts to adjust
+- [ ] Device check: *Set total to the sum* while the amount field is scrolled
+      off-screen (feedback visible enough?)
 - [x] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
 - [x] Check the new split rows at phone width (long names, Shares steppers)
 - [x] Rows with long names sharing a prefix are indistinguishable

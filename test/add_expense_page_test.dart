@@ -213,6 +213,77 @@ void main() {
       }
     });
 
+    // G61: the Exact rows add up to more than the amount → "Set total to
+    // the sum" writes the sum into the amount field (locale format) and the
+    // saved expense has that amount and the typed split.
+    testWidgets('German: "Gesamtbetrag auf die Summe setzen" updates the '
+        'amount and the saved split', (tester) async {
+      final (db, net) = await seedGroup();
+      final bob = net.clientFor('@bob:x.org');
+      final received = <TransportMessage>[];
+      bob.onMessage.listen(received.add);
+
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          locale: const Locale('de'),
+          overrides: [
+            ...signingUiOverrides(),
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith(
+              (ref) => net.clientFor('@alice:x.org'),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Beschreibung'),
+        'Pizza',
+      );
+      final amount = find.widgetWithText(TextFormField, 'Betrag');
+      await tester.enterText(amount, '10');
+      await tester.pump();
+      await tester.ensureVisible(find.text('Genau'));
+      await tester.tap(find.text('Genau'));
+      await tester.pumpAndSettle();
+      final rows = find.descendant(
+        of: find.byType(SplitEditor),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(rows.at(0), '8,5');
+      await tester.enterText(rows.at(1), '5');
+      await tester.pumpAndSettle();
+      expect(find.text('3,50\u00a0CHF zu viel'), findsOneWidget);
+      FilledButton add() =>
+          tester.widget<FilledButton>(find.byKey(const Key('submitExpense')));
+      expect(add().onPressed, isNull);
+
+      final setTotal = find.byKey(const Key('splitSetTotal'));
+      await tester.ensureVisible(setTotal);
+      await tester.pumpAndSettle();
+      expect(find.text('Gesamtbetrag auf die Summe setzen'), findsOneWidget);
+      await tester.tap(setTotal);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextFormField>(amount).controller!.text, '13,50');
+      expect(find.text('Ergibt den Gesamtbetrag'), findsOneWidget);
+      expect(setTotal, findsNothing);
+      expect(add().onPressed, isNotNull);
+
+      await tester.tap(find.byKey(const Key('submitExpense')));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+      expect(received, hasLength(1));
+      expect(received.first.content['amount'], 1350);
+      expect(received.first.content['split'], {
+        '@alice:x.org': 850,
+        '@bob:x.org': 500,
+      });
+      final saved = await ExpensesDao(db).getExpensesForRoom('g1');
+      expect(saved.single.amountCents, 1350);
+    });
+
     testWidgets('the payer dropdown sets paid_by', (tester) async {
       final (db, net) = await seedGroup();
       final bob = net.clientFor('@bob:x.org');

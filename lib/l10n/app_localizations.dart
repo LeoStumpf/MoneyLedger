@@ -710,6 +710,18 @@ abstract class AppLocalizations {
   /// **'Rescale proportionally'**
   String get splitRescale;
 
+  /// Split editor action (Exact): the entered amounts exceed the expense amount — set the expense amount to their sum
+  ///
+  /// In en, this message translates to:
+  /// **'Set total to the sum'**
+  String get splitSetTotalToSum;
+
+  /// Split editor action (Shares): switch to exact amounts prefilled from the shares, to adjust them
+  ///
+  /// In en, this message translates to:
+  /// **'Fine-tune as amounts'**
+  String get splitFineTuneAsAmounts;
+
   /// No description provided for @splitPutRestHere.
   ///
   /// In en, this message translates to:

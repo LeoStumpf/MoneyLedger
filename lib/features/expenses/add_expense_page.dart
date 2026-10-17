@@ -526,6 +526,13 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                   _plan = p;
                                   _planUpdates++;
                                 }),
+                                // G61: "Set total to the sum".
+                                onSetTotal: (cents) => setState(
+                                  () => _amountCtrl.text = formatAmountInput(
+                                    cents,
+                                    context.localeName,
+                                  ),
+                                ),
                               ),
                               const SizedBox(height: Insets.xl),
                               // G16: optional free-text note.

@@ -83,6 +83,15 @@ class SplitPlan {
 ///   the open rows (largest remainder); the per-row button puts the whole
 ///   remainder on that row; *Rescale proportionally* scales every amount when
 ///   no open row can absorb the difference (e.g. after the total changed).
+///
+/// G61 follow-ups:
+/// - The remainder ("X left" / "X too much") is shown prominently in one
+///   wrapping row with the actions, live on every keystroke.
+/// - **Set total to the sum** (Exact, the rows add up to more than the amount
+///   — or there is no amount yet): calls [onSetTotal] with the sum, so the
+///   parent sets its amount field and the split adds up.
+/// - **Fine-tune as amounts** (Shares, with an amount and at least one share):
+///   switches to Exact with the shares converted to amounts.
 class SplitEditor extends StatefulWidget {
   final List<MemberModel> members;
   final int totalCents;
@@ -93,6 +102,10 @@ class SplitEditor extends StatefulWidget {
   final Map<String, int>? initialSplit;
   final ValueChanged<SplitPlan> onPlanChanged;
 
+  /// Sets the expense amount (the parent owns that field) — enables *Set
+  /// total to the sum* in Exact mode. Null → the action isn't offered.
+  final ValueChanged<int>? onSetTotal;
+
   const SplitEditor({
     super.key,
     required this.members,
@@ -100,6 +113,7 @@ class SplitEditor extends StatefulWidget {
     required this.currency,
     required this.onPlanChanged,
     this.initialSplit,
+    this.onSetTotal,
   });
 
   @override
@@ -308,9 +322,12 @@ class _SplitEditorState extends State<SplitEditor> {
     }
   }
 
-  void _switchTo(SplitMode target) {
+  /// [convert]: always convert the current split (never a peek) — *Fine-tune
+  /// as amounts*.
+  void _switchTo(SplitMode target, {bool convert = false}) {
     if (target == _mode) return;
     final peek =
+        !convert &&
         _seeded.contains(target) &&
         !_changedSinceSwitch &&
         widget.totalCents == _totalAtSwitch;
@@ -693,7 +710,7 @@ class _SplitEditorState extends State<SplitEditor> {
     );
   }
 
-  /// The status text plus, when it helps, one action (G59).
+  /// The status text plus, when it helps, the actions (G59 / G61).
   Widget _statusLine(SplitResult result, TextStyle? small, int remaining) {
     final ok = Theme.of(context).colorScheme.primary;
     final bad = Theme.of(context).colorScheme.error;
@@ -707,7 +724,10 @@ class _SplitEditorState extends State<SplitEditor> {
         );
       case SplitMode.exact:
         if (widget.totalCents <= 0) {
-          return Text(l.splitEnterAmountFirst, style: small);
+          // No amount yet: amounts typed first can become the total.
+          return _actionRow(Text(l.splitEnterAmountFirst, style: small), [
+            ?_setTotalButton(),
+          ]);
         }
         if (remaining == 0 && result.isValid) {
           return Text(l.splitAddsUpToTotal, style: small?.copyWith(color: ok));
@@ -716,14 +736,22 @@ class _SplitEditorState extends State<SplitEditor> {
           remaining > 0
               ? l.splitLeft(_money(remaining))
               : l.splitTooMuch(_money(-remaining)),
-          small?.copyWith(color: bad),
           SplitMode.exact,
+          extra: remaining < 0 ? _setTotalButton() : null,
         );
       case SplitMode.shares:
-        return Text(
+        final text = Text(
           result.isValid ? l.splitByWeight : l.splitEnterWeight,
           style: small?.copyWith(color: result.isValid ? null : bad),
         );
+        if (!result.isValid || widget.totalCents <= 0) return text;
+        return _actionRow(text, [
+          TextButton(
+            key: const Key('splitFineTune'),
+            onPressed: () => _switchTo(SplitMode.exact, convert: true),
+            child: Text(l.splitFineTuneAsAmounts),
+          ),
+        ]);
       case SplitMode.percent:
         if (remaining == 0 && result.isValid) {
           return Text(l.splitAddsUpTo100, style: small?.copyWith(color: ok));
@@ -732,15 +760,40 @@ class _SplitEditorState extends State<SplitEditor> {
           remaining > 0
               ? l.splitLeft(_percent(remaining))
               : l.splitTooMuch(_percent(-remaining)),
-          small?.copyWith(color: bad),
           SplitMode.percent,
         );
     }
   }
 
-  /// [text] with *Distribute* (some open row can take `total − typed`) or
-  /// else *Rescale proportionally* (something to scale).
-  Widget _withAction(String text, TextStyle? style, SplitMode mode) {
+  /// *Set total to the sum* — when [SplitEditor.onSetTotal] is given and the
+  /// Exact rows sum to a storable amount other than the total.
+  Widget? _setTotalButton() {
+    final setTotal = widget.onSetTotal;
+    if (setTotal == null) return null;
+    final sum = _allValues(_exactCents).values.fold<int>(0, (a, b) => a + b);
+    if (!isValidAmountCents(sum) || sum == widget.totalCents) return null;
+    return TextButton(
+      key: const Key('splitSetTotal'),
+      onPressed: () => setTotal(sum),
+      child: Text(context.l10n.splitSetTotalToSum),
+    );
+  }
+
+  /// [label] followed by [actions] in one row that wraps on narrow screens.
+  Widget _actionRow(Widget label, List<Widget> actions) {
+    if (actions.isEmpty) return label;
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: Insets.s,
+      children: [label, ...actions],
+    );
+  }
+
+  /// The live remainder [text] (G61: prominent) with *Distribute* (some open
+  /// row can take `total − typed`) or else *Rescale proportionally*
+  /// (something to scale), plus [extra].
+  Widget _withAction(String text, SplitMode mode, {Widget? extra}) {
+    final theme = Theme.of(context);
     final l = context.l10n;
     final exact = mode == SplitMode.exact;
     final ctrl = exact ? _exactCtrl : _percentCtrl;
@@ -756,20 +809,28 @@ class _SplitEditorState extends State<SplitEditor> {
     final canRescale = _allValues(value).isNotEmpty;
     final action = canDistribute
         ? TextButton(
+            key: const Key('splitDistribute'),
             onPressed: () => _distribute(mode),
             child: Text(l.splitDistribute),
           )
         : canRescale
         ? TextButton(
+            key: const Key('splitRescale'),
             onPressed: () => _rescale(mode),
             child: Text(l.splitRescale),
           )
         : null;
-    return Row(
-      children: [
-        Expanded(child: Text(text, style: style)),
-        ?action,
-      ],
+    return _actionRow(
+      Text(
+        text,
+        key: const Key('splitRemaining'),
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: theme.colorScheme.error,
+          fontWeight: FontWeight.w600,
+          fontFeatures: kTabularFigures,
+        ),
+      ),
+      [?action, ?extra],
     );
   }
 }
