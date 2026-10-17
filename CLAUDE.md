@@ -1141,7 +1141,29 @@ a backup file / digest:
   normal restore (`BackupRestorer.previewAndRestore`, shared with the file
   restore: preview → confirm → LWW merge → poke). An LWW restore brings back
   **missing** groups / records (deleted group, wiped DB), not older content
-  of changed records — that's the group reset. Local mode: its snapshots are
+  of changed records — that's the group reset. **G58 "Exactly this state"**
+  (restore points only — `BackupRestorer.of(ref, exactState: true)`; not for
+  a picked backup file): a switch in the restore preview (default off =
+  merge; `RestorePreviewDialog(exactPlans:, onExactChanged:)`, keys
+  `restoreExactSwitch` / `restoreExactWarning` / `restoreExactTag-<gid>`)
+  shows per group "N come back / M undone / K removed" and warns that newer
+  changes — also other members' — are overwritten for everyone. On confirm
+  the merge runs first (missing groups, records, participants — unchanged),
+  then `GroupResetService.resetGroupsToSnapshot` re-plans each group that
+  exists here and this account is an **active** participant of
+  (`planToSnapshot`; removed / not participating → merge only) and applies it
+  exactly like a G48 reset (`apply`: `nextLwwClock`, origin kept, signed /
+  `pendingSign`, one transaction, source `revert`, relay ≤
+  `kResetLiveRelayMax`, poke). The planner is shared: `planGroupResetTo(
+  target: ResetTarget)` — `historyResetTarget` (G48, `planGroupReset`) or
+  `snapshotResetTarget` (absent in the snapshot = didn't exist → tombstone;
+  an unparsable entry / missing meta = left alone; `held`: only content
+  whose (kind, id, version hash) is in this device's `record_history` is
+  written again — a hand-edited snapshot can't make it sign new content).
+  Participants are never part of a plan. Tests:
+  `test/features/exact_state_plan_test.dart`,
+  `test/integration/exact_state_restore_sync_test.dart`,
+  `test/exact_state_restore_ui_test.dart`. Local mode: its snapshots are
   deleted with its ledger (`localDatabaseDeleterProvider` →
   `deleteLedgerFilesAndSnapshots`, after *Delete local data* and after an
   adoption). Android backup stays off (G32); PRIVACY.md + the in-app

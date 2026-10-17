@@ -2094,7 +2094,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restorePointsHowItWorks =>
-      'Restoring brings back groups and entries that are missing here (e.g. a deleted group). To undo changes inside a group, open the group → ⋮ → Reset to an earlier state.';
+      'Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → ⋮ → Reset to an earlier state.';
 
   @override
   String get restorePointsEmpty =>
@@ -2328,4 +2328,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keepEditing => 'Keep editing';
+
+  @override
+  String get restoreExactTitle => 'Exactly this state';
+
+  @override
+  String get restoreExactSubtitle =>
+      'Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. Members stay as they are.';
+
+  @override
+  String get restoreExactWarning =>
+      'Newer changes in these groups — also other members\' — are overwritten for everyone in the group.';
+
+  @override
+  String get restoreExactWarningLocal =>
+      'Newer changes in these groups are overwritten.';
+
+  @override
+  String get restoreExactTagMeta => 'group settings';
+
+  @override
+  String get restoreTagMergeOnly => 'only missing entries';
+
+  @override
+  String restoreExactDone(int groups, int changes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      groups,
+      locale: localeName,
+      other: 'Restored $groups groups',
+      one: 'Restored 1 group',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      changes,
+      locale: localeName,
+      other: '$changes changes',
+      one: '1 change',
+    );
+    return '$_temp0 ($_temp1)';
+  }
 }

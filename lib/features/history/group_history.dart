@@ -1,4 +1,5 @@
 import '../../core/database/daos/history_dao.dart';
+import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../core/sync/record_validation.dart';
 import '../../core/sync/record_version.dart';
@@ -264,7 +265,7 @@ class ResetChange {
 }
 
 /// Everything a reset of one group to the state before history entry
-/// [beforeId] would write.
+/// [beforeId] (or, G58, to a snapshot's state) would write.
 class GroupResetPlan {
   const GroupResetPlan({
     required this.groupId,
@@ -272,9 +273,12 @@ class GroupResetPlan {
     required this.changes,
     this.meta,
     this.skipped = 0,
+    this.arriving = 0,
   });
 
   final String groupId;
+
+  /// The history point of a G48 reset (0 for a G58 snapshot target).
   final int beforeId;
   final List<ResetChange> changes;
 
@@ -282,7 +286,13 @@ class GroupResetPlan {
   final GroupModel? meta;
 
   /// Earlier versions that break today's content rules — left as they are.
+  /// G58: also target versions this device never held ([ResetTarget.held]).
   final int skipped;
+
+  /// G58: live records of the target this device doesn't store at all — the
+  /// restore's LWW merge brings them back (verified like any restore), not
+  /// this plan; counted in the preview's "come back".
+  final int arriving;
 
   int _count(ResetEffect e) => changes.where((c) => c.effect == e).length;
   int get restored => _count(ResetEffect.restored);
@@ -291,12 +301,153 @@ class GroupResetPlan {
   bool get isEmpty => changes.isEmpty && meta == null;
 }
 
+/// G58: the state a reset brings a group back to — per record the target
+/// version (a tombstone = deleted then; **absent = didn't exist then**).
+/// Built from the version history ([historyResetTarget], G48) or from a
+/// snapshot / backup group payload ([snapshotResetTarget]).
+class ResetTarget {
+  const ResetTarget({
+    required this.expenses,
+    required this.settlements,
+    this.meta,
+    this.knows,
+    this.held,
+  });
+
+  /// Expense / payment id → its target version.
+  final Map<String, ExpenseModel> expenses;
+  final Map<String, SettlementModel> settlements;
+
+  /// The target group meta; null → the meta is left as it is.
+  final GroupModel? meta;
+
+  /// Whether the target says anything about a record at all; one it doesn't
+  /// know is left alone ("didn't exist then" can't be concluded). Null =
+  /// knows every record.
+  final bool Function(RecordKind kind, String id)? knows;
+
+  /// `<kind>|<id>|<version hash>` of every version this device has stored
+  /// (its history). When set, a target **content** that isn't in it is not
+  /// written (counted as skipped): a reset only ever brings back content
+  /// this device itself held — a hand-edited snapshot file can't make it
+  /// sign something new. Tombstones need no check (they keep today's
+  /// content). Null = every target version is usable (history targets).
+  final Set<String>? held;
+
+  bool _knows(RecordKind kind, String id) => knows?.call(kind, id) ?? true;
+
+  bool _usable(RecordKind kind, String id, String hash) =>
+      held?.contains('${kind.wire}|$id|$hash') ?? true;
+}
+
+/// G48: the state of group [groupId] before history entry [beforeId] — per
+/// record the newest entry appended before it. Records the history never
+/// saw at all (written outside the DAOs, e.g. adopted from the pre-G4
+/// legacy ledger) are unknown: their past is unknown, so "didn't exist
+/// then" can't be concluded.
+ResetTarget historyResetTarget({
+  required String groupId,
+  required int beforeId,
+  required List<HistoryEntry> entries,
+}) {
+  final latest = <String, HistoryEntry>{};
+  final known = <String>{};
+  for (final e in entries) {
+    if (e.groupId != groupId) continue;
+    final k = _key(e);
+    known.add(k);
+    if (e.id >= beforeId) continue;
+    final have = latest[k];
+    if (have == null || e.id > have.id) latest[k] = e;
+  }
+  final expenses = <String, ExpenseModel>{};
+  final settlements = <String, SettlementModel>{};
+  GroupModel? meta;
+  for (final e in latest.values) {
+    switch (e.kind) {
+      case RecordKind.expense:
+        if (e.expense case final x?) expenses[e.recordId] = x;
+      case RecordKind.settlement:
+        if (e.settlement case final x?) settlements[e.recordId] = x;
+      case RecordKind.meta:
+        meta = e.meta;
+      case RecordKind.member:
+        break;
+    }
+  }
+  return ResetTarget(
+    expenses: expenses,
+    settlements: settlements,
+    meta: meta,
+    knows: (kind, id) => known.contains('${kind.wire}|$id'),
+  );
+}
+
+/// G58: the state of a backed-up / snapshotted [group] (a bootstrap-shaped
+/// payload: `meta`, `expenses`, `settlements`, tombstones included) as a
+/// reset target — "exactly this state": a record the snapshot doesn't list
+/// didn't exist then. [history]: this device's version history of the group
+/// ([ResetTarget.held] — only content this device stored is written again).
+/// A record entry that doesn't parse is unknown (left alone); a missing or
+/// unreadable `meta` leaves the meta alone.
+ResetTarget snapshotResetTarget(
+  Map<String, dynamic> group, {
+  required List<HistoryEntry> history,
+}) {
+  final gid = group['group'] as String;
+  final unknown = <String>{};
+  Iterable<Map<String, dynamic>> section(String name) sync* {
+    for (final r in group[name] as List? ?? const []) {
+      if (r is Map) yield Map<String, dynamic>.from(r);
+    }
+  }
+
+  final expenses = <String, ExpenseModel>{};
+  for (final r in section('expenses')) {
+    final e = expenseFromPayload(r);
+    if (e == null || e.roomId != gid) {
+      if (r['id'] is String) {
+        unknown.add('${RecordKind.expense.wire}|${r['id']}');
+      }
+      continue;
+    }
+    expenses[e.id] = e;
+  }
+  final settlements = <String, SettlementModel>{};
+  for (final r in section('settlements')) {
+    final s = settlementFromPayload(r);
+    if (s == null || s.roomId != gid) {
+      if (r['id'] is String) {
+        unknown.add('${RecordKind.settlement.wire}|${r['id']}');
+      }
+      continue;
+    }
+    settlements[s.id] = s;
+  }
+  final rawMeta = group['meta'];
+  final meta = rawMeta is Map
+      ? groupMetaFromPayload(Map<String, dynamic>.from(rawMeta))
+      : null;
+  return ResetTarget(
+    expenses: expenses,
+    settlements: settlements,
+    meta: meta != null && meta.roomId == gid ? meta : null,
+    knows: (kind, id) => !unknown.contains('${kind.wire}|$id'),
+    held: {
+      for (final h in history)
+        if (h.groupId == gid) '${h.kind.wire}|${h.recordId}|${h.versionHash}',
+    },
+  );
+}
+
 /// Plans resetting group [groupId] to its state before history entry
-/// [beforeId] (see the library doc). [expenses] / [settlements]: every
-/// stored record of the group **incl. tombstones**; [meta]: the stored group
-/// meta. Records the history only knows from [beforeId] on (created later)
-/// are deleted; records it doesn't know at all are left alone; the meta is
-/// only reset when the history has an earlier version. [now] stamps the new clocks (`nextLwwClock`).
+/// [beforeId] (see the library doc) — [planGroupResetTo] with
+/// [historyResetTarget]. [expenses] / [settlements]: every stored record of
+/// the group **incl. tombstones**; [meta]: the stored group meta. Records the
+/// history only knows from [beforeId] on (created later) are deleted;
+/// records it doesn't know at all are left alone; the meta is only reset
+/// when the history has an earlier version. [now] stamps the new clocks
+/// (`nextLwwClock`).
 GroupResetPlan planGroupReset({
   required String groupId,
   required int beforeId,
@@ -305,28 +456,47 @@ GroupResetPlan planGroupReset({
   required List<SettlementModel> settlements,
   required GroupModel? meta,
   int? now,
+}) => planGroupResetTo(
+  groupId: groupId,
+  beforeId: beforeId,
+  target: historyResetTarget(
+    groupId: groupId,
+    beforeId: beforeId,
+    entries: entries,
+  ),
+  expenses: expenses,
+  settlements: settlements,
+  meta: meta,
+  now: now,
+);
+
+/// The one reset planner (G48 history reset, G58 "exactly this state"
+/// snapshot restore): the new versions that make group [groupId]'s stored
+/// [expenses] / [settlements] (incl. tombstones) and [meta] equal to
+/// [target]. Per record the target knows: live now, absent or a tombstone
+/// in the target → *removed* (a tombstone of today's content); deleted now,
+/// live in the target → *restored*; other content → *reverted*. A target
+/// version breaking today's content rules (or not [ResetTarget.held]) is
+/// skipped. Participants are never touched.
+GroupResetPlan planGroupResetTo({
+  required String groupId,
+  required ResetTarget target,
+  required List<ExpenseModel> expenses,
+  required List<SettlementModel> settlements,
+  required GroupModel? meta,
+  int beforeId = 0,
+  int? now,
 }) {
-  final target = <String, HistoryEntry>{};
-  // Records the history knows at all. One it never saw (written outside the
-  // DAOs, e.g. adopted from the pre-G4 legacy ledger) is left alone — its
-  // past is unknown, so "didn't exist then" can't be concluded.
-  final known = <String>{};
-  for (final e in entries) {
-    if (e.groupId != groupId) continue;
-    known.add(_key(e));
-    if (e.id >= beforeId) continue;
-    final k = _key(e);
-    final have = target[k];
-    if (have == null || e.id > have.id) target[k] = e;
-  }
   final changes = <ResetChange>[];
   var skipped = 0;
+  final storedExpenses = <String>{};
+  final storedSettlements = <String>{};
 
   for (final cur in expenses) {
     if (cur.roomId != groupId) continue;
-    if (!known.contains('${RecordKind.expense.wire}|${cur.id}')) continue;
-    final then = target['${RecordKind.expense.wire}|${cur.id}'];
-    final old = then?.expense;
+    storedExpenses.add(cur.id);
+    if (!target._knows(RecordKind.expense, cur.id)) continue;
+    final old = target.expenses[cur.id];
     final clock = nextLwwClock(cur.updatedAt, now: now);
     if (old == null || old.deleted) {
       if (cur.deleted) continue;
@@ -345,7 +515,12 @@ GroupResetPlan planGroupReset({
         : ResetEffect.reverted;
     if (effect == null) continue;
     final next = _expense(old, clock, deleted: false, origin: cur);
-    if (expenseProblem(next) != null) {
+    if (!target._usable(
+          RecordKind.expense,
+          cur.id,
+          computeExpenseVersionHash(old),
+        ) ||
+        expenseProblem(next) != null) {
       skipped++;
       continue;
     }
@@ -354,9 +529,9 @@ GroupResetPlan planGroupReset({
 
   for (final cur in settlements) {
     if (cur.roomId != groupId) continue;
-    if (!known.contains('${RecordKind.settlement.wire}|${cur.id}')) continue;
-    final then = target['${RecordKind.settlement.wire}|${cur.id}'];
-    final old = then?.settlement;
+    storedSettlements.add(cur.id);
+    if (!target._knows(RecordKind.settlement, cur.id)) continue;
+    final old = target.settlements[cur.id];
     final clock = nextLwwClock(cur.updatedAt, now: now);
     if (old == null || old.deleted) {
       if (cur.deleted) continue;
@@ -375,7 +550,12 @@ GroupResetPlan planGroupReset({
         : ResetEffect.reverted;
     if (effect == null) continue;
     final next = _settlement(old, clock, deleted: false, origin: cur);
-    if (settlementProblem(next) != null) {
+    if (!target._usable(
+          RecordKind.settlement,
+          cur.id,
+          computeSettlementVersionHash(old),
+        ) ||
+        settlementProblem(next) != null) {
       skipped++;
       continue;
     }
@@ -383,7 +563,7 @@ GroupResetPlan planGroupReset({
   }
 
   GroupModel? metaChange;
-  final oldMeta = target['${RecordKind.meta.wire}|$groupId']?.meta;
+  final oldMeta = target.meta;
   if (meta != null && oldMeta != null && !_sameMeta(oldMeta, meta)) {
     final next = GroupModel(
       roomId: groupId,
@@ -392,12 +572,25 @@ GroupResetPlan planGroupReset({
       categories: oldMeta.categories,
       updatedAt: nextLwwClock(meta.updatedAt, now: now),
     );
-    if (groupMetaProblem(next) == null) {
+    if (target._usable(
+          RecordKind.meta,
+          groupId,
+          groupMetaVersionHash(oldMeta),
+        ) &&
+        groupMetaProblem(next) == null) {
       metaChange = next;
     } else {
       skipped++;
     }
   }
+
+  final arriving =
+      target.expenses.values
+          .where((e) => !e.deleted && !storedExpenses.contains(e.id))
+          .length +
+      target.settlements.values
+          .where((s) => !s.deleted && !storedSettlements.contains(s.id))
+          .length;
 
   // Newest first in the preview (by creation time).
   int createdOf(ResetChange c) =>
@@ -409,6 +602,7 @@ GroupResetPlan planGroupReset({
     changes: changes,
     meta: metaChange,
     skipped: skipped,
+    arriving: arriving,
   );
 }
 

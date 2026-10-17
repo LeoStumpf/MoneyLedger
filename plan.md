@@ -662,10 +662,13 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [x] Snapshots also from Android background rounds (today: app start only)
 - [ ] Device check: `[bg] round done: … snapshot: true` + new file in `snapshots/`
 - [x] Offline demo seed: back-fill history so the reset page isn't empty
-- [ ] Snapshot restore **"exactly this state"** as an option (Leo
+- [x] Snapshot restore **"exactly this state"** as an option (Leo
       2026-10-17: yes) — per group a reset to the snapshot's content (new
       versions, `nextLwwClock`, participants never reset); preview warns that
       newer changes of others are overwritten
+- [ ] Device check: restore points with *Exactly this state* on, German, phone
+      width (per-group count line wraps); snackbar wording counts groups +
+      versions together
 - [x] Decide: encrypt snapshot files — **no** (Leo 2026-10-17; private app
       dir like the DB, Android backup off)
 - [x] Concurrent resets by two members converge per record (mix) — **LWW as

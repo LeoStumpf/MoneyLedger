@@ -3359,7 +3359,7 @@ abstract class AppLocalizations {
   /// Restore points page: what a restore does vs. a group reset (G48)
   ///
   /// In en, this message translates to:
-  /// **'Restoring brings back groups and entries that are missing here (e.g. a deleted group). To undo changes inside a group, open the group → ⋮ → Reset to an earlier state.'**
+  /// **'Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → ⋮ → Reset to an earlier state.'**
   String get restorePointsHowItWorks;
 
   /// Restore points page: none yet (G48)
@@ -3649,6 +3649,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep editing'**
   String get keepEditing;
+
+  /// G58 restore-point preview: switch — reset the groups to the snapshot's content instead of only merging
+  ///
+  /// In en, this message translates to:
+  /// **'Exactly this state'**
+  String get restoreExactTitle;
+
+  /// G58 restore-point preview: what the switch does
+  ///
+  /// In en, this message translates to:
+  /// **'Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. Members stay as they are.'**
+  String get restoreExactSubtitle;
+
+  /// G58 restore-point preview: warning while 'Exactly this state' is on
+  ///
+  /// In en, this message translates to:
+  /// **'Newer changes in these groups — also other members\' — are overwritten for everyone in the group.'**
+  String get restoreExactWarning;
+
+  /// G58 restore-point preview: warning in local mode
+  ///
+  /// In en, this message translates to:
+  /// **'Newer changes in these groups are overwritten.'**
+  String get restoreExactWarningLocal;
+
+  /// G58 restore-point preview, per group: name / currency / categories go back too
+  ///
+  /// In en, this message translates to:
+  /// **'group settings'**
+  String get restoreExactTagMeta;
+
+  /// G58 restore-point preview, per group: this group can't be reset exactly (you aren't an active member) — only the merge
+  ///
+  /// In en, this message translates to:
+  /// **'only missing entries'**
+  String get restoreTagMergeOnly;
+
+  /// G58 snackbar after an exact-state restore
+  ///
+  /// In en, this message translates to:
+  /// **'{groups, plural, =1{Restored 1 group} other{Restored {groups} groups}} ({changes, plural, =1{1 change} other{{changes} changes}})'**
+  String restoreExactDone(int groups, int changes);
 }
 
 class _AppLocalizationsDelegate

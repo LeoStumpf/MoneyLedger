@@ -8,6 +8,8 @@ import '../../core/sync/sync_engine.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
+import '../../models/member_model.dart' show claimedBy;
+import '../backup/ledger_backup.dart' show LedgerBackup;
 import '../expenses/expenses_provider.dart';
 import 'group_history.dart';
 
@@ -16,7 +18,8 @@ import 'group_history.dart';
 const kResetLiveRelayMax = 25;
 
 /// G48: reads a group's version history and applies a reset plan
-/// ([planGroupReset]) as **new versions** — signed by this device like any
+/// ([planGroupReset]; G58: or a snapshot's state, [planToSnapshot]) as
+/// **new versions** — signed by this device like any
 /// local edit (`pendingSign` while its key isn't ready), stored in one
 /// transaction (history source `revert`) and relayed to the group's members
 /// so their devices adopt the reset too.
@@ -58,6 +61,58 @@ class GroupResetService {
       settlements: settlements,
       meta: meta,
     );
+  }
+
+  /// G58 "exactly this state": the reset of backed-up / snapshotted
+  /// [group] (a backup group payload) to that content — or null when it
+  /// can't be reset here: the group isn't stored on this device (the normal
+  /// restore brings it back), or [me] (this device's account, `local:self`
+  /// in local mode) isn't an **active** participant of it (removed →
+  /// read-only history, G26; never part of it → not ours to rewrite).
+  /// Participants are never part of a plan.
+  Future<GroupResetPlan?> planToSnapshot(
+    Map<String, dynamic> group, {
+    required String me,
+  }) async {
+    final gid = group['group'] as String;
+    final meta = await groups.getGroup(gid);
+    if (meta == null || !_alive) return null;
+    final self = claimedBy(await write.members.getMembers(gid), me);
+    if (self == null || !self.isActive || !_alive) return null;
+    final entries = await history.entriesForGroup(gid);
+    final expenses = await _expenses.getAllExpensesForGroup(gid);
+    final settlements = await _expenses.getAllSettlementsForGroup(gid);
+    return planGroupResetTo(
+      groupId: gid,
+      target: snapshotResetTarget(group, history: entries),
+      expenses: expenses,
+      settlements: settlements,
+      meta: meta,
+    );
+  }
+
+  /// G58: after the normal (LWW) restore of [backup], makes each group in
+  /// [groupIds] exactly equal to its content in [backup] — re-planned on
+  /// what is stored **now** (the merge may just have brought records back)
+  /// and applied like a reset ([apply]: new signed versions, one
+  /// transaction per group, relayed, poked). Groups that can't be reset
+  /// ([planToSnapshot] null) or need nothing are skipped. Returns the number
+  /// of versions written.
+  Future<int> resetGroupsToSnapshot(
+    LedgerBackup backup,
+    Iterable<String> groupIds, {
+    required String me,
+  }) async {
+    final wanted = groupIds.toSet();
+    var written = 0;
+    for (final g in backup.groups) {
+      if (!_alive) return written;
+      if (!wanted.contains(g['group'])) continue;
+      final plan = await planToSnapshot(g, me: me);
+      if (plan == null || plan.isEmpty || !_alive) continue;
+      written += await apply(plan);
+    }
+    return written;
   }
 
   /// Signs, stores and relays [plan]. Returns the number of versions

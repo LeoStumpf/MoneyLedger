@@ -272,10 +272,23 @@ peers'), and SAS works with other members' devices (members page). Open:
   dir, plaintext JSON like the DB itself, app-private, Android backup off):
   daily at app start if the ledger changed, 7 daily + 4 weekly. **Not on
   web** (no file system; the in-DB history still allows resetting a group, a
-  backup file covers the rest). A snapshot restore is the normal LWW restore
-  — it brings back groups / records that are *missing* (deleted group, DB
-  wiped / corrupted), not older content of records changed since (that's the
-  group reset). Since G58 Android background rounds (G31) take the daily
+  backup file covers the rest). A snapshot restore is by default the normal
+  LWW restore — it brings back groups / records that are *missing* (deleted
+  group, DB wiped / corrupted), not older content of records changed since.
+  G58 added the opt-in **"Exactly this state"**: after the merge, each group
+  that exists here (and we're an active member of) is reset to the
+  snapshot's expenses / payments / meta (shared G48 planner, new signed
+  versions, everybody adopts them). Limits: it only writes **content this
+  device itself stored** (the version must be in its `record_history`), so
+  a snapshot version whose history entry was pruned (20 000-row cap moved
+  the floor past it) or a record written outside the DAOs is skipped
+  (counted in the preview) — snapshots are ≤ ~5 weeks old, history keeps
+  90 days, so normally nothing is skipped. Participants are never reset
+  (missing ones come back via the merge); removed / not-participating /
+  left groups only get the merge. Not offered for a picked backup file (it
+  may come from another device / account — most content would be skipped,
+  and the per-group reset covers this device's own past). Like a reset,
+  a concurrent newer edit by a peer wins (LWW). Since G58 Android background rounds (G31) take the daily
   snapshot too (skipped when a round is short of time); web, iOS and a
   device with background sync off still only snapshot at app start. A left/deleted group stays in the snapshots
   until they rotate out (≈ 5 weeks, said in the privacy texts).

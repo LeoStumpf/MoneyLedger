@@ -1819,7 +1819,7 @@
   "@restorePointsIntro": {
     "description": "Restore points page intro (G48)"
   },
-  "restorePointsHowItWorks": "Restoring brings back groups and entries that are missing here (e.g. a deleted group). To undo changes inside a group, open the group → ⋮ → Reset to an earlier state.",
+  "restorePointsHowItWorks": "Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → ⋮ → Reset to an earlier state.",
   "@restorePointsHowItWorks": {
     "description": "Restore points page: what a restore does vs. a group reset (G48)"
   },
@@ -2089,5 +2089,41 @@
   "keepEditing": "Keep editing",
   "@keepEditing": {
     "description": "G56: discard-changes dialog: stay on the form"
+  },
+  "restoreExactTitle": "Exactly this state",
+  "@restoreExactTitle": {
+    "description": "G58 restore-point preview: switch — reset the groups to the snapshot's content instead of only merging"
+  },
+  "restoreExactSubtitle": "Also undo what changed since: edits go back, newer entries are removed, deleted ones come back. Members stay as they are.",
+  "@restoreExactSubtitle": {
+    "description": "G58 restore-point preview: what the switch does"
+  },
+  "restoreExactWarning": "Newer changes in these groups — also other members' — are overwritten for everyone in the group.",
+  "@restoreExactWarning": {
+    "description": "G58 restore-point preview: warning while 'Exactly this state' is on"
+  },
+  "restoreExactWarningLocal": "Newer changes in these groups are overwritten.",
+  "@restoreExactWarningLocal": {
+    "description": "G58 restore-point preview: warning in local mode"
+  },
+  "restoreExactTagMeta": "group settings",
+  "@restoreExactTagMeta": {
+    "description": "G58 restore-point preview, per group: name / currency / categories go back too"
+  },
+  "restoreTagMergeOnly": "only missing entries",
+  "@restoreTagMergeOnly": {
+    "description": "G58 restore-point preview, per group: this group can't be reset exactly (you aren't an active member) — only the merge"
+  },
+  "restoreExactDone": "{groups, plural, =1{Restored 1 group} other{Restored {groups} groups}} ({changes, plural, =1{1 change} other{{changes} changes}})",
+  "@restoreExactDone": {
+    "description": "G58 snackbar after an exact-state restore",
+    "placeholders": {
+      "groups": {
+        "type": "int"
+      },
+      "changes": {
+        "type": "int"
+      }
+    }
   }
 }

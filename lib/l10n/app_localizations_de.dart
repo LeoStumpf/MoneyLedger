@@ -2117,7 +2117,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restorePointsHowItWorks =>
-      'Wiederherstellen holt Gruppen und Einträge zurück, die hier fehlen (z. B. eine gelöschte Gruppe). Um Änderungen innerhalb einer Gruppe rückgängig zu machen: Gruppe öffnen → ⋮ → Auf früheren Stand zurücksetzen.';
+      'Wiederherstellen holt Gruppen und Einträge zurück, die hier fehlen (z. B. eine gelöschte Gruppe). Mit „Genau diesen Stand“ werden auch spätere Änderungen in diesen Gruppen rückgängig gemacht. Um Änderungen in einer einzelnen Gruppe rückgängig zu machen: Gruppe öffnen → ⋮ → Auf früheren Stand zurücksetzen.';
 
   @override
   String get restorePointsEmpty =>
@@ -2354,4 +2354,42 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get keepEditing => 'Weiter bearbeiten';
+
+  @override
+  String get restoreExactTitle => 'Genau diesen Stand';
+
+  @override
+  String get restoreExactSubtitle =>
+      'Auch spätere Änderungen rückgängig machen: Bearbeitungen werden zurückgesetzt, neuere Einträge entfernt, gelöschte kommen zurück. Mitglieder bleiben, wie sie sind.';
+
+  @override
+  String get restoreExactWarning =>
+      'Neuere Änderungen in diesen Gruppen – auch die anderer Mitglieder – werden für alle in der Gruppe überschrieben.';
+
+  @override
+  String get restoreExactWarningLocal =>
+      'Neuere Änderungen in diesen Gruppen werden überschrieben.';
+
+  @override
+  String get restoreExactTagMeta => 'Gruppeneinstellungen';
+
+  @override
+  String get restoreTagMergeOnly => 'nur fehlende Einträge';
+
+  @override
+  String restoreExactDone(int groups, int changes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      groups,
+      locale: localeName,
+      other: '$groups Gruppen wiederhergestellt',
+      one: '1 Gruppe wiederhergestellt',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      changes,
+      locale: localeName,
+      other: '$changes Änderungen',
+      one: '1 Änderung',
+    );
+    return '$_temp0 ($_temp1)';
+  }
 }

@@ -16,7 +16,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../groups/group_provider.dart';
+import '../history/group_history.dart' show GroupResetPlan;
+import '../history/group_reset.dart'
+    show GroupResetService, groupResetServiceProvider;
 import '../history/restore_points_page.dart' show kRestorePointsLocation;
 import 'backup_crypto.dart';
 import 'backup_files.dart';
@@ -451,18 +455,32 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
 /// The account-bound part of a restore (G19: captured from `ref` before the
 /// first await): preview → confirm → merge → poke the restored groups. Shared
 /// by the file restore and the on-device snapshots (G48).
+///
+/// G58: with [exactState] (restore points only) the preview also offers
+/// *Exactly this state* — after the merge, each group that exists here and
+/// this account is an active member of is reset to the snapshot's content
+/// ([GroupResetService.resetGroupsToSnapshot]).
 class BackupRestorer {
-  BackupRestorer._(this.service, this.engine, this.me);
+  BackupRestorer._(this.service, this.engine, this.me, this.reset, this.shared);
 
-  factory BackupRestorer.of(WidgetRef ref) => BackupRestorer._(
-    ref.read(backupServiceProvider),
-    ref.read(syncEngineProvider),
-    ref.read(currentUserIdProvider),
-  );
+  factory BackupRestorer.of(WidgetRef ref, {bool exactState = false}) =>
+      BackupRestorer._(
+        ref.read(backupServiceProvider),
+        ref.read(syncEngineProvider),
+        ref.read(currentUserIdProvider),
+        exactState ? ref.read(groupResetServiceProvider) : null,
+        !ref.read(localModeActiveProvider),
+      );
 
   final BackupService service;
   final SyncEngine engine;
   final String me;
+
+  /// G58: set when *Exactly this state* is offered.
+  final GroupResetService? reset;
+
+  /// Peers receive an exact-state reset (false in local mode).
+  final bool shared;
 
   /// Shows the preview of [backup]; on confirm restores it. Returns whether
   /// something was restored. Errors propagate (the caller shows them).
@@ -474,11 +492,27 @@ class BackupRestorer {
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final preview = await service.preview(backup, myMxid: me);
+    final reset = this.reset;
+    Map<String, GroupResetPlan>? exactPlans;
+    if (reset != null && me.isNotEmpty) {
+      exactPlans = {};
+      for (final (i, g) in preview.groups.indexed) {
+        if (g.isNew || g.wasLeft || g.removed) continue;
+        final plan = await reset.planToSnapshot(backup.groups[i], me: me);
+        if (plan != null) exactPlans[g.summary.groupId] = plan;
+      }
+    }
     if (!context.mounted) return false;
+    var exact = false;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) =>
-          RestorePreviewDialog(preview: preview, encrypted: encrypted),
+      builder: (_) => RestorePreviewDialog(
+        preview: preview,
+        encrypted: encrypted,
+        exactPlans: exactPlans,
+        exactShared: shared,
+        onExactChanged: (v) => exact = v,
+      ),
     );
     if (ok != true) return false;
     List<String> restored;
@@ -502,6 +536,17 @@ class BackupRestorer {
     }
     for (final id in restored) {
       engine.pokeGroup(id);
+    }
+    if (exact && reset != null && exactPlans != null) {
+      final written = await reset.resetGroupsToSnapshot(
+        backup,
+        exactPlans.keys.where(restored.contains),
+        me: me,
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.restoreExactDone(restored.length, written))),
+      );
+      return true;
     }
     messenger.showSnackBar(
       SnackBar(content: Text(l.restoredGroups(restored.length))),
@@ -589,16 +634,56 @@ class _BackupUnlockDialogState extends State<BackupUnlockDialog> {
 }
 
 /// What a restore would do; pops `true` to restore.
-class RestorePreviewDialog extends StatelessWidget {
+///
+/// G58: with [exactPlans] (restore points) it offers *Exactly this state*
+/// (off by default = the merge); the choice is reported to
+/// [onExactChanged]. While on, the groups that can be reset show what the
+/// reset does, plus a warning that newer changes are overwritten.
+class RestorePreviewDialog extends StatefulWidget {
   final RestorePreview preview;
 
   /// The file was an encrypted backup (unlocked with the passphrase).
   final bool encrypted;
+
+  /// G58: group id → the exact-state reset of each group that can be reset
+  /// (exists here, this account is an active member). Null = no option.
+  final Map<String, GroupResetPlan>? exactPlans;
+
+  /// Peers receive the exact-state reset (false in local mode).
+  final bool exactShared;
+  final ValueChanged<bool>? onExactChanged;
   const RestorePreviewDialog({
     super.key,
     required this.preview,
     this.encrypted = false,
+    this.exactPlans,
+    this.exactShared = true,
+    this.onExactChanged,
   });
+
+  @override
+  State<RestorePreviewDialog> createState() => _RestorePreviewDialogState();
+}
+
+class _RestorePreviewDialogState extends State<RestorePreviewDialog> {
+  bool _exact = false;
+
+  RestorePreview get preview => widget.preview;
+  bool get encrypted => widget.encrypted;
+
+  /// The exact-state counts of one group: "N come back · M undone · K
+  /// removed" (or "up to date").
+  String _exactTag(GroupResetPlan p) {
+    final l = context.l10n;
+    final back = p.restored + p.arriving;
+    final parts = [
+      if (back > 0) l.resetPreviewRestored(back),
+      if (p.reverted > 0) l.resetPreviewReverted(p.reverted),
+      if (p.removed > 0) l.resetPreviewRemoved(p.removed),
+      if (p.meta != null) l.restoreExactTagMeta,
+    ];
+    return parts.isEmpty ? l.restoreTagUpToDate : parts.join(' · ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -609,6 +694,12 @@ class RestorePreviewDialog extends StatelessWidget {
     );
     final exportedAt = preview.backup.exportedAt;
     final anyLeft = preview.groups.any((g) => g.wasLeft || g.removed);
+    final exactPlans = widget.exactPlans;
+    final offerExact = exactPlans != null && exactPlans.isNotEmpty;
+    final exact = offerExact && _exact;
+    final skipped = exact
+        ? exactPlans.values.fold(0, (n, p) => n + p.skipped)
+        : 0;
     return AlertDialog(
       key: const Key('restorePreviewDialog'),
       title: Text(l.restorePreviewTitle),
@@ -669,6 +760,27 @@ class RestorePreviewDialog extends StatelessWidget {
               l.restoreChanges(preview.changes),
               key: const Key('restoreChanges'),
             ),
+            if (offerExact) ...[
+              const SizedBox(height: Insets.s),
+              SwitchListTile(
+                key: const Key('restoreExactSwitch'),
+                contentPadding: EdgeInsets.zero,
+                value: _exact,
+                title: Text(l.restoreExactTitle),
+                subtitle: Text(l.restoreExactSubtitle),
+                onChanged: (v) {
+                  setState(() => _exact = v);
+                  widget.onExactChanged?.call(v);
+                },
+              ),
+              if (exact)
+                _Warning(
+                  key: const Key('restoreExactWarning'),
+                  text: widget.exactShared
+                      ? l.restoreExactWarning
+                      : l.restoreExactWarningLocal,
+                ),
+            ],
             const SizedBox(height: Insets.m),
             for (final g in preview.groups)
               Padding(
@@ -683,21 +795,38 @@ class RestorePreviewDialog extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: Insets.s),
-                    Text(
-                      g.removed
-                          ? l.restoreTagRemoved
-                          : g.wasLeft
-                          ? l.restoreTagLeft
-                          : g.isNew
-                          ? l.restoreTagNew
-                          : g.changes == 0
-                          ? l.restoreTagUpToDate
-                          : l.restoreTagChanges(g.changes),
-                      style: muted,
-                    ),
+                    if (exactPlans?[g.summary.groupId] case final p? when exact)
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          _exactTag(p),
+                          key: Key('restoreExactTag-${g.summary.groupId}'),
+                          style: muted,
+                          textAlign: TextAlign.end,
+                        ),
+                      )
+                    else if (exact && !g.isNew && !g.wasLeft && !g.removed)
+                      Text(l.restoreTagMergeOnly, style: muted)
+                    else
+                      Text(
+                        g.removed
+                            ? l.restoreTagRemoved
+                            : g.wasLeft
+                            ? l.restoreTagLeft
+                            : g.isNew
+                            ? l.restoreTagNew
+                            : g.changes == 0
+                            ? l.restoreTagUpToDate
+                            : l.restoreTagChanges(g.changes),
+                        style: muted,
+                      ),
                   ],
                 ),
               ),
+            if (skipped > 0) ...[
+              const SizedBox(height: Insets.s),
+              Text(l.resetPreviewSkipped(skipped), style: muted),
+            ],
             if (anyLeft) ...[
               const SizedBox(height: Insets.s),
               Text(

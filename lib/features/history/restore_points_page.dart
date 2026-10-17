@@ -106,7 +106,7 @@ class RestorePointsPage extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     // Captured before the first await (G19).
     final service = ref.read(restorePointsServiceProvider);
-    final restorer = BackupRestorer.of(ref);
+    final restorer = BackupRestorer.of(ref, exactState: true);
     try {
       final backup = await service.read(point.name);
       if (!context.mounted) return;
