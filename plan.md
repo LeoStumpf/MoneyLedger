@@ -523,7 +523,7 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       reality; CLAUDE.md, README, open-points updated
 - [x] Headless Chrome (CDP): welcome, untouched login, local mode → zero
       requests outside the app's origin
-- [ ] Manual browser pass (network tab): local mode, untouched login, then
+- [x] Manual browser pass (network tab): local mode, untouched login, then
       "Check server" contacts only the entered server → `docs/smoke-test.md`
 
 ### G44. Small release fixes (goal 6/7) 🟠
@@ -544,7 +544,7 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [x] Decide device display name ("MoneyLedger") + whether the profile-name
       refresh should stay automatic; document what the homeserver still keeps
       (account, devices, keys, undelivered messages, who talks to whom)
-- [ ] Two-device smoke (sync, invite, SAS) + `docs/smoke-test.md`
+- [x] Two-device smoke (sync, invite, SAS) + `docs/smoke-test.md` (DEV-H)
 
 ### G46. UX quick wins (goal 2) 🟠
 - [x] "Which participant are you?" dialog: dismiss = cancel (not "I'm new")
