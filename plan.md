@@ -644,7 +644,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] 8. Background round link phase
 - [ ] 9. Settings: relay list + status, peers sheet
 - [ ] 10. Leave / delete unpublish; backup carries the secret (+ warning)
-- [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; Play App Signing fingerprint from Leo later), demo seed
+- [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed
 - [ ] 12. Reset invite link
 - [ ] 13. Device pass (Pixel + emulator + web)
 
@@ -670,8 +670,8 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       bundled Noto set; `docs/open-points.md`)
 - [x] Flutter upgrades may move the engine's Roboto path (reminder only — — `check_web_build.sh`
       catches it; rerun `tool/fonts/make_web_fonts.py --roboto-path …`)
-- [ ] Optional copy: welcome / connect flow says nothing is contacted until
-      you confirm your server
+- [x] Optional copy: welcome / connect flow says nothing is contacted until
+      you confirm your server — **no** (Leo 2026-10-17)
 
 ### G56. UX follow-ups (found in G46) 🟢
 - [x] Members page: full MXID as subtitle — shorten / tuck away?
@@ -700,8 +700,9 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       dir like the DB, Android backup off)
 - [x] Concurrent resets by two members converge per record (mix) — **LWW as
       today, no merge UI** (Leo 2026-10-17; `docs/open-points.md`)
-- [ ] A peer's live record within 30 s of a bootstrap is absorbed into the base
-      batch (history doesn't record message type / relaying sender)
+- [x] A peer's live record within 30 s of a bootstrap is absorbed into the base
+      batch (history doesn't record message type / relaying sender) —
+      **accepted as a limit** (Leo 2026-10-17; `docs/open-points.md`)
 
 ### G59. Smarter split defaults (Leo, 2026-10-17) 🟡
 Switching split modes or editing amounts today starts from blanks; make the

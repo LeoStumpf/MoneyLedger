@@ -292,6 +292,11 @@ peers'), and SAS works with other members' devices (members page). Open:
   snapshot too (skipped when a round is short of time); web, iOS and a
   device with background sync off still only snapshot at app start. A left/deleted group stays in the snapshots
   until they rotate out (≈ 5 weeks, said in the privacy texts).
+- **Arrival batch absorbs early live records** (G62): a peer's live record
+  arriving ≤ 30 s (`kBaseArrivalGap`) after a group's bootstrap counts as
+  part of the arrival (base) batch and can't be undone on its own — the
+  history doesn't store the message type / relaying sender. Rare (right
+  after joining); accepted as a limit (Leo 2026-10-17).
 
 ### Real-device smoke tests
 Flows that can only be verified on a real device + homeserver, not in
