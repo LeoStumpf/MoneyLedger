@@ -159,7 +159,9 @@ peers'), and SAS works with other members' devices (members page). Open:
   future protocol could sign the raw payload (minus transport fields) so
   unknown optional fields survive older verifiers.
 - **Built-in category set is fixed** (10 ids); an unknown id from a newer
-  peer is kept verbatim and shown as "Other". No category statistics yet.
+  peer is kept verbatim and shown as "Other". Category statistics: only
+  the balance page overview (G69) — totals per category, no time ranges or
+  charts.
   Per-group custom categories: G47 below.
 - **Archive is device-local** (not synced to your other devices) and only
   ledger activity (expenses / payments incl. deletions) un-archives; member

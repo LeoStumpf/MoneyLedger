@@ -46,6 +46,10 @@ and sees only ciphertext.
   group's list (text, category chips, "involving me").
 - Multi-currency **balances** with greedy debt simplification (explained in
   the app; each currency is settled separately), plus settlements.
+  **Share** "who pays whom" as plain text through the system share sheet
+  (e.g. into the trip's chat), and an **overview** per currency: total
+  spent, what everyone paid vs. their share, the biggest categories. The
+  groups list is sorted by last activity.
 - **Archive** settled groups on this device (⋮ → *Archive group*, or the group settings): they move
   into a collapsed *Archived* section and come back by themselves when
   something new is added.
@@ -104,6 +108,8 @@ smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
   `riverpod_annotation` — code-gen state management
 - [`drift`](https://pub.dev/packages/drift) 2.35 — local SQLite ORM (`sqlite3` 3.x)
 - [`go_router`](https://pub.dev/packages/go_router) — navigation
+- [`share_plus`](https://pub.dev/packages/share_plus) — system share sheet
+  (BSD-3-Clause)
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE
   strings from ARB files (`lib/l10n/`), number/date/currency formatting
 

@@ -801,8 +801,10 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       link groups — **with G52 step 9** (peers sheet)
 
 ### G69. Share + overview (U17, U20, U19) 🟡
-- [ ] "Who pays whom" as share text, group list sorted by activity, simple
-      statistics on the balance page — after G52 step 6 (`share_plus`)
+- [x] "Who pays whom" as share text, group list sorted by activity, simple
+      statistics on the balance page (`share_plus` added here; G52 step 6
+      reuses `text_sharer.dart`)
+- [ ] `_PersonBalanceRow` (balance page) overflows 12 px at 360 dp / 200 % font
 
 ### G70. Simplify backup / restore (U23) 🟡
 - [x] One page, three blocks (file backup, restore points, reset group) with a
@@ -910,7 +912,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G66 — currencies
 - [x] G67 — undo + understandable errors
 - [ ] G68 — sync sheet per person (with G52 step 9)
-- [ ] G69 — share + overview
+- [x] G69 — share + overview
 - [x] G70 — simplify backup / restore
 - [x] G71 — accessibility + form flow
 - [ ] G72 — local notifications (on by default)

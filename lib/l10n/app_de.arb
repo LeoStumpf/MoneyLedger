@@ -696,5 +696,20 @@
   "backupUndoPickGroup": "Gruppe auswählen …",
   "backupUndoPickGroupBody": "Auch in den Einstellungen jeder Gruppe: Auf früheren Stand zurücksetzen",
   "backupUndoNoGroups": "Noch keine Gruppen",
-  "backupUndoPickTitle": "Welche Gruppe?"
+  "backupUndoPickTitle": "Welche Gruppe?",
+  "shareBalances": "„Wer zahlt wem“ teilen",
+  "shareBalanceTitle": "{group} – wer zahlt wem",
+  "shareAllSettled": "Alles ausgeglichen.",
+  "shareCurrencyHeader": "In {currency}:",
+  "shareDebtLine": "{from} → {to}: {amount}",
+  "shareFooter": "Erstellt mit MoneyLedger",
+  "shareCopiedFallback": "Teilen geht hier nicht – der Text wurde in die Zwischenablage kopiert.",
+  "statsSection": "Übersicht",
+  "statsTotalSpent": "Gesamtausgaben",
+  "statsExpenseCount": "{count, plural, =1{1 Ausgabe} other{{count} Ausgaben}}",
+  "statsPerPerson": "Bezahlt und Anteil pro Person",
+  "statsPaid": "bezahlt {amount}",
+  "statsShare": "Anteil {amount}",
+  "statsByCategory": "Nach Kategorie",
+  "statsMoreCategories": "{count, plural, =1{1 weitere Kategorie} other{{count} weitere Kategorien}}"
 }

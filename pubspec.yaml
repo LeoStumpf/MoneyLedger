@@ -64,6 +64,9 @@ dependencies:
   bip340: ^0.3.1
   pointycastle: ^4.0.0
   web_socket_channel: ^3.0.3
+  # G69: system share sheet ("who pays whom" as text; G52's invite sheet)
+  # — BSD-3-Clause, no Google services (F-Droid ok).
+  share_plus: ^13.3.1
 
 dev_dependencies:
   flutter_test:

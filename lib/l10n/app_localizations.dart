@@ -4279,6 +4279,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Which group?'**
   String get backupUndoPickTitle;
+
+  /// G69: balance page app-bar action (tooltip) sharing the suggested payments as text
+  ///
+  /// In en, this message translates to:
+  /// **'Share who pays whom'**
+  String get shareBalances;
+
+  /// G69: first line of the shared text
+  ///
+  /// In en, this message translates to:
+  /// **'{group} – who pays whom'**
+  String shareBalanceTitle(String group);
+
+  /// G69: shared text when nobody owes anything
+  ///
+  /// In en, this message translates to:
+  /// **'All settled up.'**
+  String get shareAllSettled;
+
+  /// G69: shared text, header of one currency's payments (several currencies)
+  ///
+  /// In en, this message translates to:
+  /// **'In {currency}:'**
+  String shareCurrencyHeader(String currency);
+
+  /// G69: shared text, one suggested payment (payer → payee: amount)
+  ///
+  /// In en, this message translates to:
+  /// **'{from} → {to}: {amount}'**
+  String shareDebtLine(String from, String to, String amount);
+
+  /// G69: last line of the shared text
+  ///
+  /// In en, this message translates to:
+  /// **'Made with MoneyLedger'**
+  String get shareFooter;
+
+  /// G69: snackbar when the system share sheet is unavailable (e.g. desktop browser)
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing isn’t available here – the text was copied to the clipboard.'**
+  String get shareCopiedFallback;
+
+  /// G69: balance page section with the group's statistics
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get statsSection;
+
+  /// G69: statistics, sum of all expenses in one currency
+  ///
+  /// In en, this message translates to:
+  /// **'Total spent'**
+  String get statsTotalSpent;
+
+  /// G69: statistics, number of expenses under the total
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 expense} other{{count} expenses}}'**
+  String statsExpenseCount(int count);
+
+  /// G69: statistics sub-heading
+  ///
+  /// In en, this message translates to:
+  /// **'Paid and share per person'**
+  String get statsPerPerson;
+
+  /// G69: statistics, what a person paid
+  ///
+  /// In en, this message translates to:
+  /// **'paid {amount}'**
+  String statsPaid(String amount);
+
+  /// G69: statistics, a person's share of the expenses
+  ///
+  /// In en, this message translates to:
+  /// **'share {amount}'**
+  String statsShare(String amount);
+
+  /// G69: statistics sub-heading
+  ///
+  /// In en, this message translates to:
+  /// **'By category'**
+  String get statsByCategory;
+
+  /// G69: statistics, the smaller categories summed in one row
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more category} other{{count} more categories}}'**
+  String statsMoreCategories(int count);
 }
 
 class _AppLocalizationsDelegate

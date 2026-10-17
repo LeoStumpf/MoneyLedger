@@ -2,16 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/platform/text_sharer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/names_line.dart';
 import '../../core/widgets/person_avatar.dart';
+import '../../models/expense_category.dart';
+import '../../models/expense_model.dart';
+import '../../models/group_model.dart';
 import '../../models/member_model.dart';
+import '../expenses/expense_category_ui.dart';
 import '../expenses/expenses_provider.dart';
 import '../groups/group_provider.dart';
 import 'balance_calculator.dart';
 import 'balance_provider.dart';
+import 'balance_share.dart';
+import 'group_stats.dart';
 import 'settle_up.dart';
 
 /// Per-participant net balance per currency, derived from the simplified
@@ -41,6 +48,30 @@ class BalancePage extends ConsumerStatefulWidget {
 }
 
 class _BalancePageState extends ConsumerState<BalancePage> {
+  Future<void> _share(
+    GroupModel? group,
+    List<DebtEntry> debts,
+    String Function(String) nameOf,
+  ) async {
+    final l = context.l10n;
+    final title = l.shareBalanceTitle(group?.name ?? '');
+    final text = buildBalanceShareText(
+      l: l,
+      groupName: group?.name ?? '',
+      debts: debts,
+      nameOf: nameOf,
+    );
+    final outcome = await shareOrCopy(
+      ref.read(textSharerProvider),
+      text,
+      subject: title,
+    );
+    if (!mounted || outcome == ShareOutcome.shared) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l.shareCopiedFallback)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final debts = ref.watch(balanceForRoomProvider(widget.roomId));
@@ -57,12 +88,25 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     final busy = adderState.isLoading;
     // Kept alive for the dialog: members (choices) + group (default currency).
     ref.watch(groupMembersProvider(widget.roomId));
-    ref.watch(ledgerGroupsProvider);
+    final group = ref
+        .watch(ledgerGroupsProvider)
+        .value
+        ?.where((g) => g.roomId == widget.roomId)
+        .firstOrNull;
+    // G69 (U19): the overview is computed from the live expenses.
+    final expenses =
+        ref.watch(expensesForRoomProvider(widget.roomId)).value ??
+        const <ExpenseModel>[];
+    final stats = groupStats(
+      expenses,
+      customCategories: group?.categories ?? const <CustomCategory>[],
+    );
     String nameOf(String id) => names[id] ?? localpartOf(id);
     final l = context.l10n;
     final theme = Theme.of(context);
     final nets = netsFromDebts(debts);
     final multiCurrency = nets.length > 1;
+    final nothingYet = debts.isEmpty && stats.isEmpty;
 
     void record({DebtEntry? debt}) =>
         recordPaymentFlow(context, ref, widget.roomId, myId: myId, debt: debt);
@@ -71,6 +115,14 @@ class _BalancePageState extends ConsumerState<BalancePage> {
       appBar: AppBar(
         title: Text(l.balanceTitle),
         actions: [
+          // G69 (U17): "who pays whom" as text for the group's chat.
+          if (!nothingYet)
+            IconButton(
+              key: const Key('shareBalances'),
+              icon: const Icon(Icons.share_outlined),
+              tooltip: l.shareBalances,
+              onPressed: () => _share(group, debts, nameOf),
+            ),
           if (canRecord)
             IconButton(
               key: const Key('recordPayment'),
@@ -82,7 +134,7 @@ class _BalancePageState extends ConsumerState<BalancePage> {
       ),
       body: Stack(
         children: [
-          debts.isEmpty
+          nothingYet
               ? EmptyState(
                   key: const Key('allSettledUp'),
                   icon: Icons.celebration_outlined,
@@ -97,6 +149,10 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                     Insets.xxl,
                   ),
                   children: [
+                    // Expenses, but nobody owes anything: say so above the
+                    // overview.
+                    if (debts.isEmpty)
+                      const ContentWidth(child: _SettledCard()),
                     // G16: several currencies are never netted against
                     // each other — say so once at the top.
                     if (multiCurrency)
@@ -220,6 +276,19 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                                 ),
                               ),
                           ],
+                        ),
+                      ),
+                    // G69 (U19): total, paid vs. share, categories.
+                    for (final st in stats)
+                      ContentWidth(
+                        child: _StatsSection(
+                          stats: st,
+                          title: stats.length > 1
+                              ? '${l.statsSection} · ${st.currency}'
+                              : l.statsSection,
+                          nameOf: (id) => id == myId ? l.you : nameOf(id),
+                          avatarNameOf: nameOf,
+                          myId: myId,
                         ),
                       ),
                   ],
@@ -438,6 +507,325 @@ class _DebtRow extends StatelessWidget {
         ],
       ),
       onTap: onTap,
+    );
+  }
+}
+
+/// Expenses exist but nobody owes anything (G69: the page then still shows
+/// the overview below this card).
+class _SettledCard extends StatelessWidget {
+  const _SettledCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Card(
+      key: const Key('allSettledUpCard'),
+      margin: const EdgeInsets.only(top: Insets.m),
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.l),
+        child: Row(
+          children: [
+            Icon(Icons.celebration_outlined, color: scheme.primary),
+            const SizedBox(width: Insets.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.allSettledUp, style: theme.textTheme.titleMedium),
+                  Text(
+                    l.allSettledUpBody,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// How many categories the overview lists before summing up the rest.
+const kStatsTopCategories = 5;
+
+/// G69 (U19): the overview of one currency — total spent, what everyone
+/// paid vs. their share, and the biggest categories as simple bars.
+class _StatsSection extends StatelessWidget {
+  final CurrencyStats stats;
+  final String title;
+  final String Function(String id) nameOf;
+  final String Function(String id) avatarNameOf;
+  final String myId;
+  const _StatsSection({
+    required this.stats,
+    required this.title,
+    required this.nameOf,
+    required this.avatarNameOf,
+    required this.myId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final currency = stats.currency;
+    final top = stats.categories.take(kStatsTopCategories).toList();
+    final rest = stats.categories.skip(kStatsTopCategories).toList();
+    final restCents = rest.fold<int>(0, (sum, c) => sum + c.cents);
+    Widget subHeading(String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(
+        Insets.l,
+        Insets.m,
+        Insets.l,
+        Insets.xs,
+      ),
+      child: Semantics(
+        header: true,
+        child: Text(
+          text,
+          style: theme.textTheme.labelMedium?.copyWith(color: muted),
+        ),
+      ),
+    );
+    return Column(
+      key: Key('stats-$currency'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(title),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: Insets.s),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                MergeSemantics(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      Insets.l,
+                      Insets.m,
+                      Insets.l,
+                      Insets.s,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l.statsTotalSpent,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                l.statsExpenseCount(stats.count),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: Insets.s),
+                        Text(
+                          context.money(stats.total, currency),
+                          key: Key('statsTotal-$currency'),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: kTabularFigures,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(),
+                subHeading(l.statsPerPerson),
+                for (final p in stats.people)
+                  MergeSemantics(
+                    key: Key('statsPerson-$currency-${p.id}'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.l,
+                        vertical: Insets.s,
+                      ),
+                      child: Row(
+                        children: [
+                          PersonAvatar(
+                            id: p.id,
+                            name: avatarNameOf(p.id),
+                            size: 32,
+                          ),
+                          const SizedBox(width: Insets.m),
+                          // Amounts under the name: fits 360 dp at
+                          // 200 % font size too.
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  nameOf(p.id),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: p.id == myId
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                                Wrap(
+                                  spacing: Insets.m,
+                                  children: [
+                                    Text(
+                                      l.statsPaid(
+                                        context.money(p.paid, currency),
+                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            fontFeatures: kTabularFigures,
+                                          ),
+                                    ),
+                                    Text(
+                                      l.statsShare(
+                                        context.money(p.share, currency),
+                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: muted,
+                                            fontFeatures: kTabularFigures,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (top.isNotEmpty) ...[
+                  const Divider(),
+                  subHeading(l.statsByCategory),
+                  for (final c in top)
+                    _CategoryBar(
+                      key: Key('statsCategory-$currency-${c.category?.key}'),
+                      category: c.category,
+                      label: c.category?.label(l) ?? l.categoryNone,
+                      cents: c.cents,
+                      total: stats.total,
+                      currency: currency,
+                    ),
+                  if (rest.isNotEmpty)
+                    _CategoryBar(
+                      key: Key('statsCategoryRest-$currency'),
+                      category: null,
+                      label: l.statsMoreCategories(rest.length),
+                      cents: restCents,
+                      total: stats.total,
+                      currency: currency,
+                      showIcon: false,
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One category of the overview: icon, name, amount and a bar of its share
+/// of the total (the bar is decorative — the amount is read out).
+class _CategoryBar extends StatelessWidget {
+  final ResolvedCategory? category;
+  final String label;
+  final int cents;
+  final int total;
+  final String currency;
+  final bool showIcon;
+  const _CategoryBar({
+    super.key,
+    required this.category,
+    required this.label,
+    required this.cents,
+    required this.total,
+    required this.currency,
+    this.showIcon = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final colors = categoryColors(context, category);
+    final fraction = total <= 0 ? 0.0 : (cents / total).clamp(0.0, 1.0);
+    return MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Insets.l,
+          vertical: Insets.s,
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 32,
+              child: showIcon
+                  ? CategoryIconTile(category: category, size: 32)
+                  : null,
+            ),
+            const SizedBox(width: Insets.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                      const SizedBox(width: Insets.s),
+                      Text(
+                        context.money(cents, currency),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: kTabularFigures,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Insets.xs),
+                  ExcludeSemantics(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.s),
+                      child: LinearProgressIndicator(
+                        value: fraction,
+                        minHeight: 6,
+                        color: colors.foreground,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

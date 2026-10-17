@@ -25,6 +25,7 @@ The version-exact list of all packages (direct and transitive) is in
 | `bip340` (BIP-340 Schnorr sign / verify of link-group Nostr events, G52) | 0.3.1 | MIT |
 | `pointycastle` (secp256k1 curve for `bip340`, G52) | 4.0.0 | MIT |
 | `web_socket_channel` (Nostr relay WebSockets, G52; pulls in `web_socket`, BSD-3-Clause) | 3.0.3 | BSD-3-Clause |
+| `share_plus` (system share sheet — "who pays whom" as text, G69; G52 invite sheet; pulls in `share_plus_platform_interface`, `cross_file`, `mime`, all BSD-3-Clause, and the Android `androidx.core` / `kotlinx-coroutines-android`, Apache-2.0 — no Google Play services) | 13.3.1 | BSD-3-Clause |
 | `flutter`, `flutter_localizations` (SDK) | 3.44 | BSD-3-Clause |
 | `go_router`, `http` (G36), `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
 | `sqflite` | 2.4.4+2 | BSD-2-Clause |

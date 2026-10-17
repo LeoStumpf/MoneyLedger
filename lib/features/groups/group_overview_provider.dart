@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../models/expense_model.dart';
+import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../balance/balance_calculator.dart';
 import '../expenses/expenses_provider.dart';
@@ -95,4 +96,46 @@ GroupOverview groupOverview(Ref ref, String groupId) {
     for (final c in m.keys.toList()..sort()) c: m[c]!,
   };
   return (owed: sorted(owed), owing: sorted(owing));
+}
+
+/// The creation time (ms) encoded in a UUIDv7 [id] (its first 48 bits), or
+/// null when [id] isn't one (an old / imported group id).
+int? uuidV7Millis(String id) {
+  final m = RegExp(
+    r'^([0-9a-fA-F]{8})-([0-9a-fA-F]{4})-7[0-9a-fA-F]{3}-',
+  ).firstMatch(id);
+  if (m == null) return null;
+  return int.parse('${m[1]}${m[2]}', radix: 16);
+}
+
+/// G69 (U20): when a group was last active, for the groups list order —
+/// the newest record ([GroupOverview.lastActivityAt], what the card shows),
+/// but never earlier than the group's creation (its UUIDv7 id), so a new,
+/// still empty group sits on top. Null: neither is known.
+int? groupActivityAt(GroupModel group, GroupOverview overview) {
+  final created = uuidV7Millis(group.roomId);
+  final last = overview.lastActivityAt;
+  if (created == null) return last;
+  if (last == null) return created;
+  return last > created ? last : created;
+}
+
+/// [entries] sorted by [groupActivityAt], newest first; groups without any
+/// known activity last; ties by name (case-insensitive), then id.
+List<(GroupModel, GroupOverview)> sortGroupsByActivity(
+  Iterable<(GroupModel, GroupOverview)> entries,
+) {
+  final keyed = [for (final e in entries) (groupActivityAt(e.$1, e.$2), e)];
+  keyed.sort((a, b) {
+    final (ta, (ga, _)) = a;
+    final (tb, (gb, _)) = b;
+    if (ta != tb) {
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return tb.compareTo(ta);
+    }
+    final n = ga.name.toLowerCase().compareTo(gb.name.toLowerCase());
+    return n != 0 ? n : ga.roomId.compareTo(gb.roomId);
+  });
+  return [for (final (_, e) in keyed) e];
 }

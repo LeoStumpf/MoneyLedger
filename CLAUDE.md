@@ -24,6 +24,7 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 - [`sqflite`](https://pub.dev/packages/sqflite) — required by the matrix SDK's internal SQLite store
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE UI strings (ARB) + locale formatting (G12)
 - [`package_info_plus`](https://pub.dev/packages/package_info_plus) 10.x — app version on the About page
+- [`share_plus`](https://pub.dev/packages/share_plus) 13.x (BSD-3) — system share sheet (G69 balance text; G52 invite sheet), via `core/platform/text_sharer.dart`
 - [`file_picker`](https://pub.dev/packages/file_picker) 13.x — CSV/backup save + open (static `FilePicker.saveFile` / `pickFile`, web download included)
 - `vodozemac` (Ed25519 verify), [`canonical_json`](https://pub.dev/packages/canonical_json) + [`crypto`](https://pub.dev/packages/crypto) (SHA-256) — G6 signed records
 - [`cryptography`](https://pub.dev/packages/cryptography) 2.9 (Apache-2.0) — encrypted backups (G34): its **pure-Dart** `DartArgon2id` + `DartAesGcm` on every platform
@@ -253,6 +254,8 @@ lib/
       ledger_search_provider.dart # G16: per-group search state (null = search bar closed)
     balance/
       balance_calculator.dart  # Pure function: List<Expense> + settlements → List<DebtEntry>
+      balance_share.dart       # G69 pure "who pays whom" share text
+      group_stats.dart         # G69 pure overview stats (total, paid vs. share, categories)
       balance_provider.dart    # Riverpod: watches Drift streams, recomputes on change
       record_payment_dialog.dart # G28 "X paid Y" dialog (any two participants)
     backup/                    # Full JSON backup (G5) + CSV export/import (Phase D, G13) — see "Backup" below
@@ -1500,6 +1503,41 @@ payment deleted meanwhile (or gone) → `RecordDeletedException`, nothing
 written, snackbar `paymentGone`. Read-only (removed) groups: no tap, no
 menu. Tests: `test/g60_payment_edit_test.dart`,
 `test/integration/settlement_edit_sync_test.dart`.
+
+### Share, overview, groups order (G69)
+
+- **Share "who pays whom" (U17):** balance page app bar → *Share*
+  (`shareBalances`, hidden when the group has neither debts nor expenses).
+  Pure `buildBalanceShareText` (`features/balance/balance_share.dart`):
+  title "<group> – wer zahlt wem", one line per suggested payment
+  "Ben → Anna: 42,10 €" (per currency a block "In CHF:" when there are
+  several; never netted), no debts → "Alles ausgeglichen.", footer
+  "Erstellt mit MoneyLedger" — no link, no tracking, **names only, never
+  "you"** (the others read it). Sent via `textSharerProvider`
+  (`core/platform/text_sharer.dart`, test seam) → `SharePlus.instance.share`
+  (Android chooser / browser Web Share API); a throw (no Web Share API,
+  e.g. desktop Firefox — share_plus's mailto fallback stays off) →
+  `shareOrCopy` copies to the clipboard + snackbar `shareCopiedFallback`.
+  Nothing new leaves the device except what the user sends (system sheet) —
+  no PRIVACY.md change.
+- **Overview (U19):** below the balances, per currency (`stats-<CUR>`):
+  total spent + count, per person *paid* / *share* (under the name — fits
+  360 dp at 200 % font), the 5 biggest categories as bars
+  (`kStatsTopCategories`; the rest summed in one row; no category → "No
+  category"). Pure `groupStats` (`features/balance/group_stats.dart`):
+  live expenses only (payments are transfers), categories resolved like the
+  ledger (`resolveCategory`), malformed splits skipped like the balances.
+  A settled group with expenses shows `_SettledCard` + the overview (the
+  full-page empty state only when there is nothing at all).
+- **Groups list order (U20):** non-archived groups sorted by
+  `groupActivityAt` = max(`GroupOverview.lastActivityAt` — newest record
+  `created_at`, what the card shows —, the group's creation from its
+  UUIDv7 id, `uuidV7Millis`), newest first; unknown last; ties by name.
+  `sortGroupsByActivity` (`group_overview_provider.dart`). The archived
+  section keeps its DB order.
+- Tests: `test/features/g69_share_stats_sort_test.dart`,
+  `test/g69_share_overview_test.dart` (EN + DE, 360 dp, 200 % font, groups
+  order), `test/g71_accessibility_test.dart` (overview guidelines).
 
 ### Undo + read-only details (G67)
 

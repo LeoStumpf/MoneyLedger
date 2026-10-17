@@ -247,6 +247,34 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('balance page: G69 overview + share action', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(const BalancePage(roomId: _g), _overrides()),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.byKey(const Key('shareBalances'))),
+      isSemantics(tooltip: 'Share who pays whom', isButton: true),
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('statsCategory-EUR-food')),
+      200,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.text('Overview')),
+      isSemantics(isHeader: true),
+    );
+    expect(
+      tester.getSemantics(find.text('By category')),
+      isSemantics(isHeader: true),
+    );
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
   testWidgets('payment dialog', (tester) async {
     _phone(tester);
     final handle = tester.ensureSemantics();

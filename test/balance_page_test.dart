@@ -324,6 +324,11 @@ void main() {
                 ),
               ]),
             ),
+            // G69: the overview reads the expenses — static, a Drift watch
+            // stream never settles under the fake clock (G33).
+            expensesForRoomProvider.overrideWith(
+              (ref, g) => Stream.value(const <ExpenseModel>[]),
+            ),
             balanceForRoomProvider.overrideWith(
               (ref, g) => const [
                 DebtEntry(from: bob, to: alice, cents: 1000, currency: 'CHF'),

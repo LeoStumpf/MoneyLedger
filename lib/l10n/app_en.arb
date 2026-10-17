@@ -2564,5 +2564,106 @@
   "backupUndoPickTitle": "Which group?",
   "@backupUndoPickTitle": {
     "description": "G70: title of the group picker sheet"
+  },
+  "shareBalances": "Share who pays whom",
+  "@shareBalances": {
+    "description": "G69: balance page app-bar action (tooltip) sharing the suggested payments as text"
+  },
+  "shareBalanceTitle": "{group} – who pays whom",
+  "@shareBalanceTitle": {
+    "description": "G69: first line of the shared text",
+    "placeholders": {
+      "group": {
+        "type": "String"
+      }
+    }
+  },
+  "shareAllSettled": "All settled up.",
+  "@shareAllSettled": {
+    "description": "G69: shared text when nobody owes anything"
+  },
+  "shareCurrencyHeader": "In {currency}:",
+  "@shareCurrencyHeader": {
+    "description": "G69: shared text, header of one currency's payments (several currencies)",
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "shareDebtLine": "{from} → {to}: {amount}",
+  "@shareDebtLine": {
+    "description": "G69: shared text, one suggested payment (payer → payee: amount)",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "shareFooter": "Made with MoneyLedger",
+  "@shareFooter": {
+    "description": "G69: last line of the shared text"
+  },
+  "shareCopiedFallback": "Sharing isn’t available here – the text was copied to the clipboard.",
+  "@shareCopiedFallback": {
+    "description": "G69: snackbar when the system share sheet is unavailable (e.g. desktop browser)"
+  },
+  "statsSection": "Overview",
+  "@statsSection": {
+    "description": "G69: balance page section with the group's statistics"
+  },
+  "statsTotalSpent": "Total spent",
+  "@statsTotalSpent": {
+    "description": "G69: statistics, sum of all expenses in one currency"
+  },
+  "statsExpenseCount": "{count, plural, =1{1 expense} other{{count} expenses}}",
+  "@statsExpenseCount": {
+    "description": "G69: statistics, number of expenses under the total",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statsPerPerson": "Paid and share per person",
+  "@statsPerPerson": {
+    "description": "G69: statistics sub-heading"
+  },
+  "statsPaid": "paid {amount}",
+  "@statsPaid": {
+    "description": "G69: statistics, what a person paid",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "statsShare": "share {amount}",
+  "@statsShare": {
+    "description": "G69: statistics, a person's share of the expenses",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "statsByCategory": "By category",
+  "@statsByCategory": {
+    "description": "G69: statistics sub-heading"
+  },
+  "statsMoreCategories": "{count, plural, =1{1 more category} other{{count} more categories}}",
+  "@statsMoreCategories": {
+    "description": "G69: statistics, the smaller categories summed in one row",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

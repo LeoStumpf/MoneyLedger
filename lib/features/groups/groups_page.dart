@@ -350,10 +350,12 @@ class _GroupsBody extends ConsumerWidget {
         final archived = [
           for (final g in groups) ref.watch(groupArchivedProvider(g.roomId)),
         ];
-        final active = [
+        // G69 (U20): most recently active first (the current trip on top);
+        // the archived section keeps its order.
+        final active = sortGroupsByActivity([
           for (var i = 0; i < groups.length; i++)
             if (!archived[i]) (groups[i], overviews[i]),
-        ];
+        ]);
         final hidden = [
           for (var i = 0; i < groups.length; i++)
             if (archived[i]) (groups[i], overviews[i]),

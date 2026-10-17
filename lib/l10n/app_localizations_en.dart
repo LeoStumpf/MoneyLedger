@@ -2700,4 +2700,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backupUndoPickTitle => 'Which group?';
+
+  @override
+  String get shareBalances => 'Share who pays whom';
+
+  @override
+  String shareBalanceTitle(String group) {
+    return '$group – who pays whom';
+  }
+
+  @override
+  String get shareAllSettled => 'All settled up.';
+
+  @override
+  String shareCurrencyHeader(String currency) {
+    return 'In $currency:';
+  }
+
+  @override
+  String shareDebtLine(String from, String to, String amount) {
+    return '$from → $to: $amount';
+  }
+
+  @override
+  String get shareFooter => 'Made with MoneyLedger';
+
+  @override
+  String get shareCopiedFallback =>
+      'Sharing isn’t available here – the text was copied to the clipboard.';
+
+  @override
+  String get statsSection => 'Overview';
+
+  @override
+  String get statsTotalSpent => 'Total spent';
+
+  @override
+  String statsExpenseCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count expenses',
+      one: '1 expense',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsPerPerson => 'Paid and share per person';
+
+  @override
+  String statsPaid(String amount) {
+    return 'paid $amount';
+  }
+
+  @override
+  String statsShare(String amount) {
+    return 'share $amount';
+  }
+
+  @override
+  String get statsByCategory => 'By category';
+
+  @override
+  String statsMoreCategories(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more categories',
+      one: '1 more category',
+    );
+    return '$_temp0';
+  }
 }
