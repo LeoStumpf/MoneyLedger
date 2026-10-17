@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_theme.dart';
@@ -59,15 +60,14 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     // A name still in the field (typed, not yet added) counts too.
     final pending = _personCtrl.text.trim();
     final people = [..._people, if (pending.isNotEmpty) pending];
+    final errors = ActionErrors.of(context);
     final groupId = await ref
         .read(groupCreatorProvider.notifier)
         .create(_nameCtrl.text.trim(), _currency, people: people);
     if (!mounted) return;
     final error = ref.read(groupCreatorProvider).error;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.failedWithError(error.toString()))),
-      );
+      errors.show(error);
     } else if (groupId != null) {
       // G46: open the new group right away. Replacing this page keeps the
       // groups list underneath, so Back from the group lands there.

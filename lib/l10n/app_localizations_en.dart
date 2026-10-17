@@ -33,16 +33,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get required => 'Required';
 
   @override
-  String failedWithError(Object error) {
-    return 'Failed: $error';
-  }
-
-  @override
-  String errorWithDetail(Object error) {
-    return 'Error: $error';
-  }
-
-  @override
   String get groupsTitle => 'Groups';
 
   @override
@@ -185,11 +175,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String deletedGroup(Object group) {
     return 'Deleted \"$group\"';
-  }
-
-  @override
-  String exportFailed(Object error) {
-    return 'Export failed: $error';
   }
 
   @override
@@ -605,11 +590,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get devicesTitle => 'Devices';
-
-  @override
-  String couldNotLoadDevices(Object error) {
-    return 'Could not load devices: $error';
-  }
 
   @override
   String get thisDevice => 'This device';
@@ -1290,11 +1270,6 @@ class AppLocalizationsEn extends AppLocalizations {
       one: 'Restored 1 group',
     );
     return '$_temp0';
-  }
-
-  @override
-  String restoreFailed(String error) {
-    return 'Restore failed: $error';
   }
 
   @override
@@ -2127,11 +2102,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restorePointRestore => 'Restore';
 
   @override
-  String restorePointsLoadFailed(String error) {
-    return 'Couldn\'t read the restore points: $error';
-  }
-
-  @override
   String get groupResetMenu => 'Reset to an earlier state…';
 
   @override
@@ -2496,4 +2466,163 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get currencyNoMatch => 'No currency found';
+
+  @override
+  String expenseDeletedSnack(String description) {
+    return 'Deleted \"$description\"';
+  }
+
+  @override
+  String get paymentDeletedSnack => 'Payment deleted';
+
+  @override
+  String expenseAddedSnack(String description) {
+    return 'Added \"$description\"';
+  }
+
+  @override
+  String expenseUpdatedSnack(String description) {
+    return 'Saved \"$description\"';
+  }
+
+  @override
+  String get undoDone => 'Undone';
+
+  @override
+  String get undoChangedMeanwhile =>
+      'Can\'t undo — this entry was changed in the meantime. Nothing was changed.';
+
+  @override
+  String get deletePayment => 'Delete payment';
+
+  @override
+  String get deleteExpenseAction => 'Delete expense';
+
+  @override
+  String get expenseDetailsTitle => 'Expense';
+
+  @override
+  String get paymentDetailsTitle => 'Payment';
+
+  @override
+  String get detailsReadOnlyHint =>
+      'You can only look at this — you\'re no longer part of this group.';
+
+  @override
+  String get detailsSplitHeading => 'Split';
+
+  @override
+  String get detailsNoteHeading => 'Note';
+
+  @override
+  String get detailsDateHeading => 'Date';
+
+  @override
+  String get detailsCategoryHeading => 'Category';
+
+  @override
+  String get errorDetails => 'Details';
+
+  @override
+  String get errorDetailsTitle => 'Error details';
+
+  @override
+  String get errorInterruptedTitle => 'That didn\'t go through';
+
+  @override
+  String get errorInterruptedHint =>
+      'The app was switching accounts or closing the ledger. Please try again.';
+
+  @override
+  String get errorRelayTitle =>
+      'Your Matrix account can\'t be reached right now';
+
+  @override
+  String get errorRelayHint =>
+      'You may be signed out, or encryption isn\'t ready yet. Try again in a moment.';
+
+  @override
+  String get errorRecordGoneTitle => 'This entry was deleted in the meantime';
+
+  @override
+  String get errorRecordGoneHint => 'Nothing was changed.';
+
+  @override
+  String get errorTooLargeTitle => 'Too much data for one message';
+
+  @override
+  String get errorTooLargeHint =>
+      'This group is too large to send in one go. Please report this problem.';
+
+  @override
+  String get errorLinkOnlyTitle => 'Not possible in a link group';
+
+  @override
+  String get errorLinkOnlyHint =>
+      'A group shared by link can\'t have Matrix IDs.';
+
+  @override
+  String get errorFileTitle => 'Couldn\'t read or write the file';
+
+  @override
+  String get errorFileHint =>
+      'Check that the location is writable and the device has free space.';
+
+  @override
+  String get errorStorageTitle => 'Couldn\'t save on this device';
+
+  @override
+  String get errorStorageHint =>
+      'The device storage reported an error. Free some space and try again.';
+
+  @override
+  String get errorTimeoutTitle => 'That took too long';
+
+  @override
+  String get errorTimeoutHint => 'Check your connection and try again.';
+
+  @override
+  String get errorNetworkTitle => 'No connection';
+
+  @override
+  String get errorNetworkHint =>
+      'Check your internet connection and try again.';
+
+  @override
+  String get errorInvalidDataTitle => 'The data couldn\'t be read';
+
+  @override
+  String get errorInvalidDataHint =>
+      'It seems damaged or isn\'t in the expected format.';
+
+  @override
+  String get errorUnknownTitle => 'Something went wrong';
+
+  @override
+  String get errorUnknownHint =>
+      'Please try again. The details help if you report the problem.';
+
+  @override
+  String get exportFailedTitle => 'Export failed';
+
+  @override
+  String get importFailedTitle => 'Import failed';
+
+  @override
+  String get restoreFailedTitle => 'Restore failed';
+
+  @override
+  String get loadDevicesFailedTitle => 'Couldn\'t load devices';
+
+  @override
+  String get loadRestorePointsFailedTitle =>
+      'Couldn\'t read the restore points';
+
+  @override
+  String get loadFailedTitle => 'Couldn\'t load the data';
+
+  @override
+  String actionFailedReason(String what, String reason) {
+    return '$what — $reason';
+  }
 }

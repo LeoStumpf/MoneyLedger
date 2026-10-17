@@ -33,16 +33,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get required => 'Pflichtfeld';
 
   @override
-  String failedWithError(Object error) {
-    return 'Fehlgeschlagen: $error';
-  }
-
-  @override
-  String errorWithDetail(Object error) {
-    return 'Fehler: $error';
-  }
-
-  @override
   String get groupsTitle => 'Gruppen';
 
   @override
@@ -186,11 +176,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String deletedGroup(Object group) {
     return '„$group“ gelöscht';
-  }
-
-  @override
-  String exportFailed(Object error) {
-    return 'Export fehlgeschlagen: $error';
   }
 
   @override
@@ -608,11 +593,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get devicesTitle => 'Geräte';
-
-  @override
-  String couldNotLoadDevices(Object error) {
-    return 'Geräte konnten nicht geladen werden: $error';
-  }
 
   @override
   String get thisDevice => 'Dieses Gerät';
@@ -1302,11 +1282,6 @@ class AppLocalizationsDe extends AppLocalizations {
       one: '1 Gruppe wiederhergestellt',
     );
     return '$_temp0';
-  }
-
-  @override
-  String restoreFailed(String error) {
-    return 'Wiederherstellen fehlgeschlagen: $error';
   }
 
   @override
@@ -2150,11 +2125,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get restorePointRestore => 'Wiederherstellen';
 
   @override
-  String restorePointsLoadFailed(String error) {
-    return 'Wiederherstellungspunkte konnten nicht gelesen werden: $error';
-  }
-
-  @override
   String get groupResetMenu => 'Auf früheren Stand zurücksetzen …';
 
   @override
@@ -2523,4 +2493,164 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get currencyNoMatch => 'Keine Währung gefunden';
+
+  @override
+  String expenseDeletedSnack(String description) {
+    return '„$description“ gelöscht';
+  }
+
+  @override
+  String get paymentDeletedSnack => 'Zahlung gelöscht';
+
+  @override
+  String expenseAddedSnack(String description) {
+    return '„$description“ hinzugefügt';
+  }
+
+  @override
+  String expenseUpdatedSnack(String description) {
+    return '„$description“ gespeichert';
+  }
+
+  @override
+  String get undoDone => 'Rückgängig gemacht';
+
+  @override
+  String get undoChangedMeanwhile =>
+      'Rückgängig nicht möglich – der Eintrag wurde inzwischen geändert. Es wurde nichts verändert.';
+
+  @override
+  String get deletePayment => 'Zahlung löschen';
+
+  @override
+  String get deleteExpenseAction => 'Ausgabe löschen';
+
+  @override
+  String get expenseDetailsTitle => 'Ausgabe';
+
+  @override
+  String get paymentDetailsTitle => 'Zahlung';
+
+  @override
+  String get detailsReadOnlyHint =>
+      'Du kannst das nur ansehen – du gehörst nicht mehr zu dieser Gruppe.';
+
+  @override
+  String get detailsSplitHeading => 'Aufteilung';
+
+  @override
+  String get detailsNoteHeading => 'Notiz';
+
+  @override
+  String get detailsDateHeading => 'Datum';
+
+  @override
+  String get detailsCategoryHeading => 'Kategorie';
+
+  @override
+  String get errorDetails => 'Details';
+
+  @override
+  String get errorDetailsTitle => 'Fehlerdetails';
+
+  @override
+  String get errorInterruptedTitle => 'Das hat nicht geklappt';
+
+  @override
+  String get errorInterruptedHint =>
+      'Die App hat gerade das Konto gewechselt oder die Daten geschlossen. Bitte versuch es noch einmal.';
+
+  @override
+  String get errorRelayTitle => 'Dein Matrix-Konto ist gerade nicht erreichbar';
+
+  @override
+  String get errorRelayHint =>
+      'Vielleicht bist du abgemeldet oder die Verschlüsselung ist noch nicht bereit. Versuch es gleich noch einmal.';
+
+  @override
+  String get errorRecordGoneTitle => 'Dieser Eintrag wurde inzwischen gelöscht';
+
+  @override
+  String get errorRecordGoneHint => 'Es wurde nichts geändert.';
+
+  @override
+  String get errorTooLargeTitle => 'Zu viele Daten für eine Nachricht';
+
+  @override
+  String get errorTooLargeHint =>
+      'Diese Gruppe ist zu groß, um sie auf einmal zu senden. Bitte melde dieses Problem.';
+
+  @override
+  String get errorLinkOnlyTitle => 'In einer Link-Gruppe nicht möglich';
+
+  @override
+  String get errorLinkOnlyHint =>
+      'Eine per Link geteilte Gruppe kann keine Matrix-IDs haben.';
+
+  @override
+  String get errorFileTitle =>
+      'Die Datei konnte nicht gelesen oder geschrieben werden';
+
+  @override
+  String get errorFileHint =>
+      'Prüfe, ob der Speicherort beschreibbar ist und genug Platz frei ist.';
+
+  @override
+  String get errorStorageTitle => 'Speichern auf diesem Gerät fehlgeschlagen';
+
+  @override
+  String get errorStorageHint =>
+      'Der Gerätespeicher hat einen Fehler gemeldet. Schaffe etwas Platz und versuch es noch einmal.';
+
+  @override
+  String get errorTimeoutTitle => 'Das hat zu lange gedauert';
+
+  @override
+  String get errorTimeoutHint =>
+      'Prüfe deine Verbindung und versuch es noch einmal.';
+
+  @override
+  String get errorNetworkTitle => 'Keine Verbindung';
+
+  @override
+  String get errorNetworkHint =>
+      'Prüfe deine Internetverbindung und versuch es noch einmal.';
+
+  @override
+  String get errorInvalidDataTitle => 'Die Daten konnten nicht gelesen werden';
+
+  @override
+  String get errorInvalidDataHint =>
+      'Sie scheinen beschädigt zu sein oder haben ein unerwartetes Format.';
+
+  @override
+  String get errorUnknownTitle => 'Etwas ist schiefgelaufen';
+
+  @override
+  String get errorUnknownHint =>
+      'Bitte versuch es noch einmal. Die Details helfen, wenn du das Problem meldest.';
+
+  @override
+  String get exportFailedTitle => 'Export fehlgeschlagen';
+
+  @override
+  String get importFailedTitle => 'Import fehlgeschlagen';
+
+  @override
+  String get restoreFailedTitle => 'Wiederherstellen fehlgeschlagen';
+
+  @override
+  String get loadDevicesFailedTitle => 'Geräte konnten nicht geladen werden';
+
+  @override
+  String get loadRestorePointsFailedTitle =>
+      'Wiederherstellungspunkte konnten nicht gelesen werden';
+
+  @override
+  String get loadFailedTitle => 'Die Daten konnten nicht geladen werden';
+
+  @override
+  String actionFailedReason(String what, String reason) {
+    return '$what – $reason';
+  }
 }

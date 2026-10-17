@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
@@ -31,6 +32,7 @@ Future<void> exitGroupFlow(
   GroupExitKind kind,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
   final l = context.l10n;
   final group = await ref.read(groupsDaoProvider).getGroup(roomId);
   if (!context.mounted) return;
@@ -54,9 +56,7 @@ Future<void> exitGroupFlow(
       : exiter.delete(roomId));
   final error = ref.read(groupExiterProvider).error;
   if (error != null) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.failedWithError(error.toString()))),
-    );
+    errors.show(error);
     return;
   }
   messenger.showSnackBar(
@@ -83,6 +83,7 @@ Future<void> toggleGroupArchive(
   required bool unsettled,
 }) async {
   final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
   final l = context.l10n;
   // Captured for the snackbar's undo, which may run after this page is gone.
   final settings = ref.read(settingsDaoProvider);
@@ -95,9 +96,7 @@ Future<void> toggleGroupArchive(
   }
   final error = ref.read(groupArchiverProvider).error;
   if (error != null) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.failedWithError(error.toString()))),
-    );
+    errors.show(error);
     return;
   }
   if (archived) {
@@ -131,8 +130,7 @@ Future<void> editGroupFlow(
   WidgetRef ref,
   String roomId,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
-  final l = context.l10n;
+  final errors = ActionErrors.of(context);
   final group = await ref.read(groupsDaoProvider).getGroup(roomId);
   if (group == null || !context.mounted) return;
   // G66: the group's currencies first in the picker.
@@ -154,9 +152,7 @@ Future<void> editGroupFlow(
       .edit(roomId, name: result.name, currency: result.currency);
   final error = ref.read(groupEditorProvider).error;
   if (error != null) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.failedWithError(error.toString()))),
-    );
+    errors.show(error);
   }
 }
 
@@ -178,6 +174,7 @@ Future<void> exportGroupCsvFlow(
   String roomId,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
   final l = context.l10n;
   final groups = ref.read(groupsDaoProvider);
   final members = ref.read(membersDaoProvider);
@@ -203,8 +200,6 @@ Future<void> exportGroupCsvFlow(
     );
   } catch (e) {
     // e.g. the file couldn't be written — tell the user (G15).
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.exportFailed(e.toString()))),
-    );
+    errors.show(e, what: l.exportFailedTitle);
   }
 }

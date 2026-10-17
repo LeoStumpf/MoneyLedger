@@ -191,7 +191,9 @@ void main() {
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Failed: Bad state: db closed'), findsOneWidget);
+      // G67: friendly text; the raw error only behind Details.
+      expect(find.text("That didn't go through"), findsOneWidget);
+      expect(find.textContaining('db closed'), findsNothing);
     });
 
     // G18 review: the inviter decides which participant the invited account

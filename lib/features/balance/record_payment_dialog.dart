@@ -26,6 +26,12 @@ class PaymentDraft {
   });
 }
 
+/// G67: returned by [RecordPaymentDialog] in edit mode when the user chose
+/// *Delete payment* (the caller confirms and deletes).
+class PaymentDeleteRequest {
+  const PaymentDeleteRequest();
+}
+
 /// Record a payment between **any two participants** (G28, Splitwise-style):
 /// "X paid Y" — settles a debt of a local person, or a creditor records money
 /// they received. Prefilled from a tapped debt row ([debtCents] set → warns
@@ -60,6 +66,10 @@ class RecordPaymentDialog extends StatefulWidget {
   /// region …); [currency] is always offered.
   final List<String> suggestedCurrencies;
 
+  /// G67 (edit mode): offer *Delete payment* — pops a
+  /// [PaymentDeleteRequest] instead of a [PaymentDraft].
+  final bool canDelete;
+
   const RecordPaymentDialog({
     super.key,
     required this.participants,
@@ -72,6 +82,7 @@ class RecordPaymentDialog extends StatefulWidget {
     this.editing = false,
     this.footer,
     this.suggestedCurrencies = const [],
+    this.canDelete = false,
   });
 
   @override
@@ -254,6 +265,16 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
         ),
       ),
       actions: [
+        if (widget.editing && widget.canDelete)
+          TextButton(
+            key: const Key('paymentDelete'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () =>
+                Navigator.of(context).pop(const PaymentDeleteRequest()),
+            child: Text(l.deletePayment),
+          ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l.cancel),

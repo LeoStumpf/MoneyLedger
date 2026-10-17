@@ -146,18 +146,6 @@ abstract class AppLocalizations {
   /// **'Required'**
   String get required;
 
-  /// Snackbar after a failed action; error is technical text
-  ///
-  /// In en, this message translates to:
-  /// **'Failed: {error}'**
-  String failedWithError(Object error);
-
-  /// No description provided for @errorWithDetail.
-  ///
-  /// In en, this message translates to:
-  /// **'Error: {error}'**
-  String errorWithDetail(Object error);
-
   /// No description provided for @groupsTitle.
   ///
   /// In en, this message translates to:
@@ -397,12 +385,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deleted \"{group}\"'**
   String deletedGroup(Object group);
-
-  /// Snackbar when writing the CSV export failed (G15).
-  ///
-  /// In en, this message translates to:
-  /// **'Export failed: {error}'**
-  String exportFailed(Object error);
 
   /// No description provided for @exportedFile.
   ///
@@ -1081,12 +1063,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Devices'**
   String get devicesTitle;
-
-  /// No description provided for @couldNotLoadDevices.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not load devices: {error}'**
-  String couldNotLoadDevices(Object error);
 
   /// No description provided for @thisDevice.
   ///
@@ -2113,12 +2089,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{Restored 1 group} other{Restored {count} groups}}'**
   String restoredGroups(int count);
-
-  /// No description provided for @restoreFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Restore failed: {error}'**
-  String restoreFailed(String error);
 
   /// No description provided for @backupNudgeTitle.
   ///
@@ -3386,12 +3356,6 @@ abstract class AppLocalizations {
   /// **'Restore'**
   String get restorePointRestore;
 
-  /// Error on the restore points page (G48)
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t read the restore points: {error}'**
-  String restorePointsLoadFailed(String error);
-
   /// Group settings tile (G48; was a ⋮ menu item before G65)
   ///
   /// In en, this message translates to:
@@ -3913,6 +3877,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No currency found'**
   String get currencyNoMatch;
+
+  /// G67: snackbar after deleting an expense (with Undo)
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted \"{description}\"'**
+  String expenseDeletedSnack(String description);
+
+  /// G67: snackbar after deleting a payment (with Undo)
+  ///
+  /// In en, this message translates to:
+  /// **'Payment deleted'**
+  String get paymentDeletedSnack;
+
+  /// G67: snackbar after adding an expense (with Undo)
+  ///
+  /// In en, this message translates to:
+  /// **'Added \"{description}\"'**
+  String expenseAddedSnack(String description);
+
+  /// G67: snackbar after editing an expense (with Undo)
+  ///
+  /// In en, this message translates to:
+  /// **'Saved \"{description}\"'**
+  String expenseUpdatedSnack(String description);
+
+  /// G67: snackbar after a successful undo
+  ///
+  /// In en, this message translates to:
+  /// **'Undone'**
+  String get undoDone;
+
+  /// G67: undo found a newer version (someone else changed it)
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t undo — this entry was changed in the meantime. Nothing was changed.'**
+  String get undoChangedMeanwhile;
+
+  /// G67: delete action in the edit-payment dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Delete payment'**
+  String get deletePayment;
+
+  /// G67: delete action (tooltip) in the edit-expense app bar
+  ///
+  /// In en, this message translates to:
+  /// **'Delete expense'**
+  String get deleteExpenseAction;
+
+  /// G67 (U15): title of the read-only expense details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Expense'**
+  String get expenseDetailsTitle;
+
+  /// G67 (U15): title of the read-only payment details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Payment'**
+  String get paymentDetailsTitle;
+
+  /// G67 (U15): hint in the read-only details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'You can only look at this — you\'re no longer part of this group.'**
+  String get detailsReadOnlyHint;
+
+  /// G67 (U15): heading of the per-person shares in the details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Split'**
+  String get detailsSplitHeading;
+
+  /// G67 (U15): heading of the note in the details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get detailsNoteHeading;
+
+  /// G67 (U15): heading of the date in the details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get detailsDateHeading;
+
+  /// G67 (U15): heading of the category in the details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get detailsCategoryHeading;
+
+  /// G67: action that shows the technical error text
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get errorDetails;
+
+  /// G67: title of the dialog with the technical error text
+  ///
+  /// In en, this message translates to:
+  /// **'Error details'**
+  String get errorDetailsTitle;
+
+  /// G67: action error — DB closed / account switched
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t go through'**
+  String get errorInterruptedTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'The app was switching accounts or closing the ledger. Please try again.'**
+  String get errorInterruptedHint;
+
+  /// G67: action error — transport unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Your Matrix account can\'t be reached right now'**
+  String get errorRelayTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'You may be signed out, or encryption isn\'t ready yet. Try again in a moment.'**
+  String get errorRelayHint;
+
+  /// G67: action error — record deleted meanwhile
+  ///
+  /// In en, this message translates to:
+  /// **'This entry was deleted in the meantime'**
+  String get errorRecordGoneTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was changed.'**
+  String get errorRecordGoneHint;
+
+  /// G67: action error — payload too large
+  ///
+  /// In en, this message translates to:
+  /// **'Too much data for one message'**
+  String get errorTooLargeTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'This group is too large to send in one go. Please report this problem.'**
+  String get errorTooLargeHint;
+
+  /// G67: action error — Matrix change in a link-only group
+  ///
+  /// In en, this message translates to:
+  /// **'Not possible in a link group'**
+  String get errorLinkOnlyTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'A group shared by link can\'t have Matrix IDs.'**
+  String get errorLinkOnlyHint;
+
+  /// G67: action error — file system
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read or write the file'**
+  String get errorFileTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'Check that the location is writable and the device has free space.'**
+  String get errorFileHint;
+
+  /// G67: action error — database error
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save on this device'**
+  String get errorStorageTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'The device storage reported an error. Free some space and try again.'**
+  String get errorStorageHint;
+
+  /// G67: action error — timeout
+  ///
+  /// In en, this message translates to:
+  /// **'That took too long'**
+  String get errorTimeoutTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get errorTimeoutHint;
+
+  /// G67: action error — network
+  ///
+  /// In en, this message translates to:
+  /// **'No connection'**
+  String get errorNetworkTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get errorNetworkHint;
+
+  /// G67: action error — malformed data
+  ///
+  /// In en, this message translates to:
+  /// **'The data couldn\'t be read'**
+  String get errorInvalidDataTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'It seems damaged or isn\'t in the expected format.'**
+  String get errorInvalidDataHint;
+
+  /// G67: action error — unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get errorUnknownTitle;
+
+  /// G67: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'Please try again. The details help if you report the problem.'**
+  String get errorUnknownHint;
+
+  /// G67: what failed (first line of the error)
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed'**
+  String get exportFailedTitle;
+
+  /// G67: what failed (first line of the error)
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed'**
+  String get importFailedTitle;
+
+  /// G67: what failed (first line of the error)
+  ///
+  /// In en, this message translates to:
+  /// **'Restore failed'**
+  String get restoreFailedTitle;
+
+  /// G67: what failed (first line of the error)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load devices'**
+  String get loadDevicesFailedTitle;
+
+  /// G67: what failed (first line of the error)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the restore points'**
+  String get loadRestorePointsFailedTitle;
+
+  /// G67: a list/page failed to load (first line of the error)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the data'**
+  String get loadFailedTitle;
+
+  /// G67: one-line action error inside a dialog: what failed + the friendly reason
+  ///
+  /// In en, this message translates to:
+  /// **'{what} — {reason}'**
+  String actionFailedReason(String what, String reason);
 }
 
 class _AppLocalizationsDelegate

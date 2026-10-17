@@ -20,6 +20,9 @@ import 'record_date_field.dart';
 import 'split_editor.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
 import 'record_attribution.dart';
+import 'record_actions.dart';
+import 'record_undo.dart' show UndoableWrite;
+import '../../core/widgets/action_error.dart';
 
 /// Add (default) or edit an expense — pass [initial] to prefill the form and
 /// save the submit as an LWW edit of the same record.
@@ -247,6 +250,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       );
       return;
     }
+    final errors = ActionErrors.of(context);
     final input = await showCategoryDialog(
       context,
       existing: _customCategories,
@@ -261,11 +265,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     if (!mounted) return;
     final error = ref.read(groupEditorProvider).error;
     if (id == null || error != null) {
-      if (error != null) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l.failedWithError(error.toString()))),
-        );
-      }
+      if (error != null) errors.show(error);
       return;
     }
     final group = await ref.read(groupsDaoProvider).getGroup(widget.roomId);
@@ -305,10 +305,15 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         initialSplit.values.fold<int>(0, (a, b) => a + b) == amountCents;
     final splits = keepSplit ? initialSplit : result.shares;
 
+    final snack = UndoSnack.of(context, ref);
+    final errors = ActionErrors.of(context);
+    final l = context.l10n;
+    final description = _descCtrl.text.trim();
     final initial = widget.initial;
+    final UndoableWrite? write;
     if (initial != null) {
       // Edit: same record id and creation time, fresh clock; payer editable.
-      await ref
+      write = await ref
           .read(expenseAdderProvider.notifier)
           .updateExpense(
             id: initial.id,
@@ -327,7 +332,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                 : storedExpenseDate(_day, initial.createdAt),
           );
     } else {
-      await ref
+      write = await ref
           .read(expenseAdderProvider.notifier)
           .addExpense(
             roomId: widget.roomId,
@@ -342,12 +347,37 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           );
     }
 
-    final error = ref.read(expenseAdderProvider).error;
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.failedWithError(error.toString()))),
-      );
-    } else if (mounted) {
+    if (write == null) {
+      final error = mounted ? ref.read(expenseAdderProvider).error : null;
+      if (error != null) errors.show(error);
+      return;
+    }
+    // G67 (U13): "Added …" / "Saved …" · Undo, on the group page.
+    snack.show(
+      initial == null
+          ? l.expenseAddedSnack(description)
+          : l.expenseUpdatedSnack(description),
+      write,
+    );
+    if (mounted) {
+      setState(() => _saved = true);
+      context.pop();
+    }
+  }
+
+  /// G67 (U13): *Delete* from the edit form — the same confirmation and
+  /// "Deleted · Undo" as the list's ⋮ → *Delete*; leaves the form.
+  Future<void> _delete() async {
+    final initial = widget.initial;
+    if (initial == null) return;
+    if (!await confirmDeleteExpense(context, initial) || !mounted) return;
+    final deleted = await deleteExpenseFlow(
+      context,
+      ref,
+      initial,
+      skipConfirm: true,
+    );
+    if (deleted && mounted) {
       setState(() => _saved = true);
       context.pop();
     }
@@ -374,7 +404,18 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         if (!didPop) _confirmDiscard();
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(_isEdit ? l.editExpense : l.addExpense)),
+        appBar: AppBar(
+          title: Text(_isEdit ? l.editExpense : l.addExpense),
+          actions: [
+            if (_isEdit)
+              IconButton(
+                key: const Key('deleteExpenseButton'),
+                tooltip: l.deleteExpenseAction,
+                icon: const Icon(Icons.delete_outline),
+                onPressed: adderState.isLoading ? null : _delete,
+              ),
+          ],
+        ),
         // G17: the form scrolls and the submit button sits below it — the body
         // shrinks with the keyboard, so the button always stays visible above
         // it (it used to be covered at the end of the form).

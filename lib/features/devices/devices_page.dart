@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/matrix/device_gateway.dart';
@@ -27,8 +28,12 @@ class DevicesPage extends ConsumerWidget {
       appBar: AppBar(title: Text(l.devicesTitle)),
       body: devicesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) =>
-            Center(child: Text(l.couldNotLoadDevices(e.toString()))),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ActionErrorView(error: e, what: l.loadDevicesFailedTitle),
+          ),
+        ),
         data: (devices) => ListView(
           children: [
             Padding(
@@ -162,8 +167,13 @@ class _MemberDevicesSheet extends ConsumerWidget {
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()),
               ),
-              error: (e, _) =>
-                  ListTile(title: Text(l.couldNotLoadDevices(e.toString()))),
+              error: (e, _) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: ActionErrorView(
+                  error: e,
+                  what: l.loadDevicesFailedTitle,
+                ),
+              ),
               data: (devices) => devices.isEmpty
                   ? ListTile(title: Text(l.memberHasNoDevices))
                   : Flexible(

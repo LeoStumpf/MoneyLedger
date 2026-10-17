@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/session/app_session.dart';
@@ -25,6 +26,7 @@ Future<void> showAddPersonDialog(
   String roomId,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
   final l = context.l10n;
   // G40: local mode has no Matrix accounts — a name only.
   final local = ref.read(localModeActiveProvider);
@@ -58,14 +60,14 @@ Future<void> showAddPersonDialog(
   if (result == null) return;
 
   final error = await addOne(result.name, result.matrixId);
+  if (error != null) {
+    errors.show(error);
+    return;
+  }
   messenger.showSnackBar(
     SnackBar(
       content: Text(
-        error != null
-            ? l.failedWithError(error.toString())
-            : l.addedMember(
-                result.name.isNotEmpty ? result.name : result.matrixId,
-              ),
+        l.addedMember(result.name.isNotEmpty ? result.name : result.matrixId),
       ),
     ),
   );
@@ -230,17 +232,16 @@ class _AddPersonDialogState extends State<AddPersonDialog> {
                 onSubmitted: (_) => _submit(),
               ),
             ],
-            if (_added.isNotEmpty || _addError != null) ...[
+            if (_addError case final error?) ...[
+              const SizedBox(height: Insets.m),
+              ActionErrorView(key: const Key('addPersonError'), error: error),
+            ] else if (_added.isNotEmpty) ...[
               const SizedBox(height: Insets.m),
               Text(
-                _addError != null
-                    ? l.failedWithError(_addError.toString())
-                    : l.addedMember(_added.join(', ')),
+                l.addedMember(_added.join(', ')),
                 key: const Key('addPersonStatus'),
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: _addError != null
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.onSurfaceVariant,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],

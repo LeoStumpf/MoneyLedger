@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 
 import '../../core/session/app_session.dart';
 import '../../core/l10n/l10n.dart';
@@ -84,8 +85,12 @@ class GroupMembersPage extends ConsumerWidget {
         children: [
           membersAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                Center(child: Text(l.errorWithDetail(e.toString()))),
+            error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ActionErrorView(error: e, what: l.loadFailedTitle),
+              ),
+            ),
             data: (all) {
               final members = all.where((m) => m.isActive).toList();
               final former = all.where((m) => !m.isActive).toList();
@@ -193,6 +198,7 @@ class GroupMembersPage extends ConsumerWidget {
     List<MemberModel> members,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final errors = ActionErrors.of(context);
     final l = context.l10n;
     final mxid = await showTextPrompt(
       context,
@@ -237,15 +243,11 @@ class GroupMembersPage extends ConsumerWidget {
         .read(memberAdderProvider.notifier)
         .invite(roomId, mxid, participantId: participantId);
     final error = ref.read(memberAdderProvider).error;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          error != null
-              ? l.failedWithError(error.toString())
-              : l.invitedMember(mxid),
-        ),
-      ),
-    );
+    if (error != null) {
+      errors.show(error);
+      return;
+    }
+    messenger.showSnackBar(SnackBar(content: Text(l.invitedMember(mxid))));
   }
 }
 
@@ -309,6 +311,7 @@ class _FormerMemberTile extends ConsumerWidget {
     String name,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final errors = ActionErrors.of(context);
     final l = context.l10n;
     final adder = ref.read(memberAdderProvider.notifier);
     // A claimed participant goes through add() (reactivates + bootstraps their
@@ -317,15 +320,11 @@ class _FormerMemberTile extends ConsumerWidget {
         ? adder.add(roomId, mxid)
         : adder.reactivate(roomId, member.userId));
     final error = ref.read(memberAdderProvider).error;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          error != null
-              ? l.failedWithError(error.toString())
-              : l.readdedMember(name),
-        ),
-      ),
-    );
+    if (error != null) {
+      errors.show(error);
+      return;
+    }
+    messenger.showSnackBar(SnackBar(content: Text(l.readdedMember(name))));
   }
 }
 
@@ -478,6 +477,7 @@ class _MemberTile extends ConsumerWidget {
     String action,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final errors = ActionErrors.of(context);
     final l = context.l10n;
     final adder = ref.read(memberAdderProvider.notifier);
     // The write that ran, if any, and how to read its outcome afterwards.
@@ -543,9 +543,7 @@ class _MemberTile extends ConsumerWidget {
     if (!context.mounted) return;
     final error = errorOf?.call();
     if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
+      errors.show(error);
     }
   }
 

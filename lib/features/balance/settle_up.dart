@@ -8,6 +8,8 @@ import '../../models/expense_model.dart';
 import '../expenses/expenses_provider.dart';
 import '../expenses/group_currencies.dart';
 import '../expenses/record_attribution.dart';
+import '../expenses/record_actions.dart';
+import '../../core/widgets/action_error.dart';
 import '../groups/group_provider.dart';
 import 'balance_calculator.dart';
 import 'record_payment_dialog.dart';
@@ -27,7 +29,8 @@ Future<void> recordPaymentFlow(
   required String myId,
   DebtEntry? debt,
 }) async {
-  final messenger = ScaffoldMessenger.of(context);
+  final snack = UndoSnack.of(context, ref);
+  final errors = ActionErrors.of(context);
   final l = context.l10n;
   final members = ref.read(groupMembersProvider(roomId)).value ?? const [];
   final names = ref.read(participantNamesProvider(roomId));
@@ -71,7 +74,7 @@ Future<void> recordPaymentFlow(
   );
   if (draft == null || !context.mounted) return;
 
-  await ref
+  final write = await ref
       .read(expenseAdderProvider.notifier)
       .addSettlement(
         roomId: roomId,
@@ -82,15 +85,13 @@ Future<void> recordPaymentFlow(
         day: draft.day,
       );
 
-  if (!context.mounted) return;
-  final error = ref.read(expenseAdderProvider).error;
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        error != null ? l.failedWithError(error.toString()) : l.paymentRecorded,
-      ),
-    ),
-  );
+  if (write != null) {
+    // G67 (U13): "Payment recorded" · Undo.
+    snack.show(l.paymentRecorded, write);
+    return;
+  }
+  final error = context.mounted ? ref.read(expenseAdderProvider).error : null;
+  if (error != null) errors.show(error);
 }
 
 /// G60: edits the recorded payment [settlement] — the payment dialog in edit
@@ -105,7 +106,8 @@ Future<void> editPaymentFlow(
   String roomId,
   SettlementModel settlement,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
+  final snack = UndoSnack.of(context, ref);
+  final errors = ActionErrors.of(context);
   final l = context.l10n;
   final members = ref.read(groupMembersProvider(roomId)).value ?? const [];
   final names = ref.read(participantNamesProvider(roomId));
@@ -128,10 +130,11 @@ Future<void> editPaymentFlow(
     groupCurrency: group?.currency,
   );
   if (!context.mounted) return;
-  final draft = await showDialog<PaymentDraft>(
+  final result = await showDialog<Object>(
     context: context,
     builder: (_) => RecordPaymentDialog(
       editing: true,
+      canDelete: true,
       participants: participants,
       initialFrom: settlement.fromUser,
       initialTo: settlement.toUser,
@@ -151,9 +154,21 @@ Future<void> editPaymentFlow(
       ),
     ),
   );
-  if (draft == null || !context.mounted) return;
+  if (result == null || !context.mounted) return;
+  if (result is PaymentDeleteRequest) {
+    // G67 (U13): delete from the edit dialog — same confirm + undo.
+    await deleteSettlementFlow(
+      context,
+      ref,
+      settlement,
+      fromName: participants[settlement.fromUser] ?? settlement.fromUser,
+      toName: participants[settlement.toUser] ?? settlement.toUser,
+    );
+    return;
+  }
+  final draft = result as PaymentDraft;
 
-  await ref
+  final write = await ref
       .read(expenseAdderProvider.notifier)
       .updateSettlement(
         id: settlement.id,
@@ -168,19 +183,16 @@ Future<void> editPaymentFlow(
             : storedExpenseDate(draft.day, settlement.createdAt),
       );
 
-  if (!context.mounted) return;
-  final error = ref.read(expenseAdderProvider).error;
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        error is RecordDeletedException
-            ? l.paymentGone
-            : error != null
-            ? l.failedWithError(error.toString())
-            : l.paymentUpdated,
-      ),
-    ),
-  );
+  if (write != null) {
+    snack.show(l.paymentUpdated, write);
+    return;
+  }
+  final error = context.mounted ? ref.read(expenseAdderProvider).error : null;
+  if (error is RecordDeletedException) {
+    snack.show(l.paymentGone, null);
+  } else if (error != null) {
+    errors.show(error);
+  }
 }
 
 /// The debt *Settle up* proposes for [myId] (G17): the first suggested

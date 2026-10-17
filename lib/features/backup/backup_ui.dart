@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart'
     show debugPrint, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
+import '../../core/errors/action_errors.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
@@ -89,7 +91,11 @@ class BackupExportOutcome {
   /// False when the user cancelled (passphrase or save dialog).
   final bool saved;
   final String? message;
-  const BackupExportOutcome._(this.saved, this.message);
+
+  /// G67: the failure, for [ActionErrors] (Details); [message] is its
+  /// one-line friendly form (shown inside the leave / delete dialog).
+  final Object? error;
+  const BackupExportOutcome._(this.saved, this.message, [this.error]);
   static const cancelled = BackupExportOutcome._(false, null);
 }
 
@@ -202,7 +208,14 @@ Future<BackupExportOutcome> runBackupExport(
       ),
     );
   } catch (e) {
-    return BackupExportOutcome._(false, l.exportFailed(e.toString()));
+    return BackupExportOutcome._(
+      false,
+      l.actionFailedReason(
+        l.exportFailedTitle,
+        describeActionError(e, l).title,
+      ),
+      e,
+    );
   }
 }
 
@@ -210,8 +223,12 @@ Future<BackupExportOutcome> runBackupExport(
 /// `last_backup_at`; the result shows as a snackbar.
 Future<void> exportFullBackup(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
+  final l = context.l10n;
   final outcome = await runBackupExport(context, ref);
-  if (outcome.message != null) {
+  if (outcome.error case final e?) {
+    errors.show(e, what: l.exportFailedTitle);
+  } else if (outcome.message != null) {
     messenger.showSnackBar(SnackBar(content: Text(outcome.message!)));
   }
 }
@@ -224,13 +241,17 @@ Future<void> exportGroupBackup(
   required String groupName,
 }) async {
   final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
+  final l = context.l10n;
   final outcome = await runBackupExport(
     context,
     ref,
     groupId: groupId,
     groupName: groupName,
   );
-  if (outcome.message != null) {
+  if (outcome.error case final e?) {
+    errors.show(e, what: l.exportFailedTitle);
+  } else if (outcome.message != null) {
     messenger.showSnackBar(SnackBar(content: Text(outcome.message!)));
   }
 }
@@ -405,15 +426,14 @@ Future<String?> unlockEncryptedBackup(
 Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
   final restorer = BackupRestorer.of(ref);
   final decrypt = ref.read(backupDecrypterProvider);
   String? text;
   try {
     text = await ref.read(backupFilePickerProvider)();
   } catch (e) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.restoreFailed(e.toString()))),
-    );
+    errors.show(e, what: l.restoreFailedTitle);
     return;
   }
   if (text == null) return; // cancelled
@@ -430,9 +450,7 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
   } on BackupFormatException catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(backupErrorMessage(e, l))));
   } catch (e) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.restoreFailed(e.toString()))),
-    );
+    errors.show(e, what: l.restoreFailedTitle);
   }
 }
 
@@ -909,15 +927,14 @@ class _Warning extends StatelessWidget {
 Future<void> importCsvWithPreview(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
   final importer = ref.read(csvImporterProvider.notifier);
   final String? text;
   try {
     text = await pickTextFile(LedgerFileKind.csv);
   } catch (e) {
     // The picked file couldn't be read (G15: never fail silently).
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.importFailed(e.toString()))),
-    );
+    errors.show(e, what: l.importFailedTitle);
     return;
   }
   if (text == null) return; // cancelled
@@ -954,9 +971,7 @@ Future<void> importCsvWithPreview(BuildContext context, WidgetRef ref) async {
       ),
     );
   } catch (e) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.importFailed(e.toString()))),
-    );
+    errors.show(e, what: l.importFailedTitle);
   }
 }
 

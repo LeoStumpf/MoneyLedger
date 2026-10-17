@@ -788,9 +788,13 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       G57 bundle if ever); display decimals = min(ISO, 2)
 
 ### G67. Undo + understandable errors (U13, U25, U15) 🟠
-- [ ] Undo snackbar for delete (confirm dialog stays — Leo) / record payment, *Delete* in the edit form,
+- [x] Undo snackbar for delete (confirm dialog stays — Leo) / record payment, *Delete* in the edit form,
       `describeActionError` instead of raw "Failed: …" (29 places), detail
       sheet in read-only groups
+- [ ] Device check: undo snackbar (8 s, TalkBack), undone delete reaches the
+      peer, details sheet + removed/archived banners at 360 dp / 200 % font,
+      *Details* dialog from a snackbar
+- [ ] Not done: *Try again* button on error snackbars
 
 ### G68. Sync sheet per person (U24) 🟡
 - [ ] Tappable cloud, status per person, *Sync now*; same sheet for Matrix and
@@ -901,7 +905,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G64 — people when creating a group (before G52 step 6/7)
 - [x] G65 — group settings + settings page (before G52 step 6/9)
 - [x] G66 — currencies
-- [ ] G67 — undo + understandable errors
+- [x] G67 — undo + understandable errors
 - [ ] G68 — sync sheet per person (with G52 step 9)
 - [ ] G69 — share + overview
 - [ ] G70 — simplify backup / restore

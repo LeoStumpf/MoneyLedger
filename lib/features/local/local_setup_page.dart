@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
@@ -35,7 +36,7 @@ class _LocalSetupPageState extends ConsumerState<LocalSetupPage> {
       setState(() => _error = l.localSetupNameRequired);
       return;
     }
-    final messenger = ScaffoldMessenger.of(context);
+    final errors = ActionErrors.of(context);
     setState(() {
       _error = null;
       _busy = true;
@@ -45,9 +46,7 @@ class _LocalSetupPageState extends ConsumerState<LocalSetupPage> {
     } catch (e) {
       // Not stored: local mode works for this run, but would be gone after a
       // restart — say so (G15).
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(e.toString()))),
-      );
+      errors.show(e);
     }
     if (mounted) setState(() => _busy = false);
     // The router moves on (onboarding / groups) once the profile is set.

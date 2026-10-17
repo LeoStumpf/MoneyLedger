@@ -503,7 +503,7 @@ GroupResetPlan planGroupResetTo({
       changes.add(
         ResetChange.expense(
           ResetEffect.removed,
-          _expense(cur, clock, deleted: true, origin: cur),
+          resetExpenseVersion(cur, clock, deleted: true, origin: cur),
         ),
       );
       continue;
@@ -514,7 +514,7 @@ GroupResetPlan planGroupResetTo({
         ? null
         : ResetEffect.reverted;
     if (effect == null) continue;
-    final next = _expense(old, clock, deleted: false, origin: cur);
+    final next = resetExpenseVersion(old, clock, deleted: false, origin: cur);
     if (!target._usable(
           RecordKind.expense,
           cur.id,
@@ -538,7 +538,7 @@ GroupResetPlan planGroupResetTo({
       changes.add(
         ResetChange.settlement(
           ResetEffect.removed,
-          _settlement(cur, clock, deleted: true, origin: cur),
+          resetSettlementVersion(cur, clock, deleted: true, origin: cur),
         ),
       );
       continue;
@@ -549,7 +549,12 @@ GroupResetPlan planGroupResetTo({
         ? null
         : ResetEffect.reverted;
     if (effect == null) continue;
-    final next = _settlement(old, clock, deleted: false, origin: cur);
+    final next = resetSettlementVersion(
+      old,
+      clock,
+      deleted: false,
+      origin: cur,
+    );
     if (!target._usable(
           RecordKind.settlement,
           cur.id,
@@ -609,7 +614,7 @@ GroupResetPlan planGroupResetTo({
 /// [content]'s fields as a new unsigned version at [clock]; the creator's
 /// `origin` comes from [origin] (the stored record — origin never changes),
 /// falling back to [content]'s.
-ExpenseModel _expense(
+ExpenseModel resetExpenseVersion(
   ExpenseModel content,
   int clock, {
   required bool deleted,
@@ -631,7 +636,7 @@ ExpenseModel _expense(
   origin: origin.origin ?? content.origin,
 );
 
-SettlementModel _settlement(
+SettlementModel resetSettlementVersion(
   SettlementModel content,
   int clock, {
   required bool deleted,
@@ -652,14 +657,20 @@ SettlementModel _settlement(
 
 /// Same content (the G27 hash with the clock and tombstone flag ignored).
 bool _sameExpense(ExpenseModel a, ExpenseModel b) =>
-    computeExpenseVersionHash(_expense(a, 0, deleted: false, origin: a)) ==
-    computeExpenseVersionHash(_expense(b, 0, deleted: false, origin: a));
+    computeExpenseVersionHash(
+      resetExpenseVersion(a, 0, deleted: false, origin: a),
+    ) ==
+    computeExpenseVersionHash(
+      resetExpenseVersion(b, 0, deleted: false, origin: a),
+    );
 
 bool _sameSettlement(SettlementModel a, SettlementModel b) =>
     computeSettlementVersionHash(
-      _settlement(a, 0, deleted: false, origin: a),
+      resetSettlementVersion(a, 0, deleted: false, origin: a),
     ) ==
-    computeSettlementVersionHash(_settlement(b, 0, deleted: false, origin: a));
+    computeSettlementVersionHash(
+      resetSettlementVersion(b, 0, deleted: false, origin: a),
+    );
 
 bool _sameMeta(GroupModel a, GroupModel b) =>
     groupMetaVersionHash(

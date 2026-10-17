@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -99,15 +100,12 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
 
   /// One of the three choices: remember the welcome, then go on.
   Future<void> _choose(String location) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
+    final errors = ActionErrors.of(context);
     try {
       await ref.read(devicePrefsProvider.notifier).markWelcomeSeen();
     } catch (e) {
       // Not stored (the welcome shows again next start) — go on anyway.
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(e.toString()))),
-      );
+      errors.show(e);
     }
     if (mounted) context.go(location);
   }

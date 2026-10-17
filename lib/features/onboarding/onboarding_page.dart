@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
@@ -49,16 +50,13 @@ class OnboardingPage extends ConsumerWidget {
         ];
 
   Future<void> _getStarted(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
+    final errors = ActionErrors.of(context);
     try {
       await ref.read(onboardingControllerProvider.notifier).markSeen();
     } catch (e) {
       // The flag couldn't be stored (DB error): say so instead of a dead
       // button (G15). The user can retry.
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(e.toString()))),
-      );
+      errors.show(e);
       return;
     }
     if (context.mounted) context.go('/groups');

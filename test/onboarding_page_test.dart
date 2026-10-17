@@ -101,7 +101,9 @@ void main() {
     await tester.tap(find.byKey(const Key('getStartedBtn')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Failed: Bad state: disk full'), findsOneWidget);
+    // G67: friendly text; the raw error only behind Details.
+    expect(find.text("Couldn't save on this device"), findsOneWidget);
+    expect(find.textContaining('disk full'), findsNothing);
     expect(find.text('groups-home'), findsNothing);
   });
 }

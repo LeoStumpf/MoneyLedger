@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_theme.dart';
@@ -58,7 +59,10 @@ class RestorePointsPage extends ConsumerWidget {
                   ),
                 ],
                 error: (e, _) => [
-                  para(l.restorePointsLoadFailed(e.toString())),
+                  ActionErrorView(
+                    error: e,
+                    what: l.loadRestorePointsFailedTitle,
+                  ),
                 ],
                 data: (list) => list.isEmpty
                     ? [
@@ -104,6 +108,7 @@ class RestorePointsPage extends ConsumerWidget {
   ) async {
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
+    final errors = ActionErrors.of(context);
     // Captured before the first await (G19).
     final service = ref.read(restorePointsServiceProvider);
     final restorer = BackupRestorer.of(ref, exactState: true);
@@ -114,9 +119,7 @@ class RestorePointsPage extends ConsumerWidget {
     } on BackupFormatException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(backupErrorMessage(e, l))));
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.restoreFailed(e.toString()))),
-      );
+      errors.show(e, what: l.restoreFailedTitle);
     }
   }
 }

@@ -1474,6 +1474,34 @@ written, snackbar `paymentGone`. Read-only (removed) groups: no tap, no
 menu. Tests: `test/g60_payment_edit_test.dart`,
 `test/integration/settlement_edit_sync_test.dart`.
 
+### Undo + read-only details (G67)
+
+- **Undo (U13):** deletes keep their confirmation (Leo) and then show
+  "Deleted …" / "Payment deleted" with *Undo* (8 s, `UndoSnack` in
+  `features/expenses/record_actions.dart`); *Record payment*, adding /
+  editing an expense and editing a payment show their confirmation with
+  *Undo* too. `ExpenseAdder` writes return an `UndoableWrite`
+  (`record_undo.dart`: the version written + the content before; null =
+  created). `RecordUndoer.undo` re-reads the record, the pure `planUndo`
+  checks the stored version is still **exactly** the one written (clock +
+  G27 hash — someone else's newer change → `UndoOutcome.changedMeanwhile`,
+  nothing written, snackbar `undoChangedMeanwhile`), then applies it through
+  `GroupResetService.apply` (a one-record G48 reset: `nextLwwClock`, the
+  creator's `origin` kept, signed by this device / `pendingSign` / unsigned
+  in a link-only group, history source `revert`, relayed). Undoing a
+  creation writes a tombstone.
+- **Delete in the forms:** edit-expense app bar (`deleteExpenseButton`) and
+  the edit-payment dialog (`paymentDelete` → `PaymentDeleteRequest`) — same
+  confirm + undo (`deleteExpenseFlow` / `deleteSettlementFlow`).
+- **Read-only details (U15):** in a group we were removed from, tapping an
+  expense / payment opens a details sheet (`record_details_sheet.dart`:
+  amount, payer, day, category, split per person, note, attribution).
+  The removed / archived banners put their action below the text
+  (`forceActionsBelow` — at 360 dp it overflowed).
+- Tests: `test/integration/record_undo_sync_test.dart`,
+  `test/features/record_undo_test.dart`, `test/core/action_errors_test.dart`,
+  `test/g67_undo_errors_test.dart`.
+
 ### Custom splits (Phase E)
 
 An expense can be divided **unequally**. The split is already a
@@ -1789,9 +1817,20 @@ provider's `.future` in a `ProviderContainer` test.
 
 **Router pattern:** `routerProvider` is `keepAlive: true` and uses `refreshListenable` (a `ValueNotifier`, toggled) to rerun the redirect when `appSessionProvider`, `welcomeStatusProvider`, `connectingAccountProvider` **or** `onboardingGateProvider` changes (G39/G40: `routerRedirect({session, welcome, onboarding, connecting, location})` — prefs loading → `/splash`; signed out + welcome not seen → `/welcome` (+ public pages); signed out + seen → login / register / welcome / local setup / public; local mode = "in" like an account (own onboarding flag, no `/devices`); connecting → only login / register / public; `initialLocation` is `/splash`; tested in `test/core/router_redirect_test.dart` + the end-to-end flow in `router_provider_test.dart`). The rest of this paragraph describes the onboarding part. Do **not** make it non-keepAlive — that recreates the `GoRouter` on every auth state change, which crashes at the default initial location `/`. `routerRedirect(isLoggedIn, OnboardingStatus, location)` is the pure, unit-tested seam: signed-out users reach only `/login` + `/register`; signed in, the one-time **onboarding** flag (`onboarding_seen` in the per-account `AppSettings`) is tri-state (G25, `OnboardingGate` in `onboarding_provider.dart`): **unknown** (DB/flag still loading, incl. reloading after an account switch) → neutral `/splash`; **notSeen** → forced `/onboarding`; **seen** → off auth pages / `/` / `/splash` / `/onboarding` to `/groups`. If the flag hasn't loaded after `kOnboardingFlagTimeout` (8 s) or the stream errors, the gate logs and latches *seen* for that account (never strands the user on the splash; a late "not seen" doesn't yank them to onboarding). The wiring is tested end-to-end in `test/core/router_provider_test.dart` (listen to `routerProvider` in a container test — unlistened providers are paused; don't `pumpAndSettle` on the splash, its spinner never settles).
 
-**Errors in user actions (G15):** a user-initiated action that fails must
-show it (snackbar `l.failedWithError` / `exportFailed` / `importFailed`, or
-an error state) — never only `debugPrint`. Mutator notifiers expose the result
+**Errors in user actions (G15, G67):** a user-initiated action that fails
+must show it — never only `debugPrint`, and **never the raw exception text**
+(G67, U25): capture `ActionErrors.of(context)` (`core/widgets/action_error.dart`)
+**before the first await** and call `errors.show(error, what: l.exportFailedTitle)`
+(`what` optional) → a friendly snackbar from the pure
+`describeActionError(error, l)` (`core/errors/action_errors.dart`:
+`classifyActionError` → interrupted (DB closed / account switched) ·
+relayUnavailable · recordGone · tooLarge · linkOnly · file · storage ·
+timeout · network · invalidData · unknown; by type, else by text) with the
+raw text only behind *Details* (dialog, *Copy*). Inline (a failed list /
+an error inside a dialog): `ActionErrorView(error:, what:)` (collapsed
+*Details*). `failedWithError` / `errorWithDetail` are gone; CSV row errors
+(`csvImportInvalidRow`) and `backupErrorMessage` stay as they are (already
+friendly). Mutator notifiers expose the result
 via `AsyncValue.guard` → read `.error` after awaiting, and only for the action
 that actually ran. Background send failures go to `SyncHealth` (the
 SyncEngine's repair / bootstrap answers use `_sendTracked`); malformed inbound

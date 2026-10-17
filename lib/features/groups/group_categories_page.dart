@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_theme.dart';
@@ -121,14 +122,13 @@ class GroupCategoriesPage extends ConsumerWidget {
     WidgetRef ref,
     List<CustomCategory> existing,
   ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
+    final errors = ActionErrors.of(context);
     final input = await showCategoryDialog(context, existing: existing);
     if (input == null) return;
     await ref
         .read(groupEditorProvider.notifier)
         .addCategory(roomId, name: input.name, icon: input.icon);
-    _reportError(ref, messenger, l);
+    _reportError(ref, errors);
   }
 
   Future<void> _edit(
@@ -151,24 +151,15 @@ class GroupCategoriesPage extends ConsumerWidget {
     WidgetRef ref,
     CustomCategory updated,
   ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
+    final errors = ActionErrors.of(context);
     await ref
         .read(groupEditorProvider.notifier)
         .updateCategory(roomId, updated);
-    _reportError(ref, messenger, l);
+    _reportError(ref, errors);
   }
 
-  void _reportError(
-    WidgetRef ref,
-    ScaffoldMessengerState messenger,
-    AppLocalizations l,
-  ) {
+  void _reportError(WidgetRef ref, ActionErrors errors) {
     final error = ref.read(groupEditorProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
-    }
+    if (error != null) errors.show(error);
   }
 }

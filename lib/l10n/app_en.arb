@@ -11,19 +11,6 @@
   "ok": "OK",
   "done": "Done",
   "required": "Required",
-  "failedWithError": "Failed: {error}",
-  "@failedWithError": {
-    "description": "Snackbar after a failed action; error is technical text",
-    "placeholders": {
-      "error": {}
-    }
-  },
-  "errorWithDetail": "Error: {error}",
-  "@errorWithDetail": {
-    "placeholders": {
-      "error": {}
-    }
-  },
   "groupsTitle": "Groups",
   "devicesTooltip": "Devices & security",
   "settingsTooltip": "Settings",
@@ -95,13 +82,6 @@
   "@deletedGroup": {
     "placeholders": {
       "group": {}
-    }
-  },
-  "exportFailed": "Export failed: {error}",
-  "@exportFailed": {
-    "description": "Snackbar when writing the CSV export failed (G15).",
-    "placeholders": {
-      "error": {}
     }
   },
   "exportedFile": "Exported {fileName}",
@@ -397,12 +377,6 @@
   "onboardingAddBody": "Invite people by their Matrix ID, or add them by name only and link an account later.",
   "getStarted": "Get started",
   "devicesTitle": "Devices",
-  "couldNotLoadDevices": "Could not load devices: {error}",
-  "@couldNotLoadDevices": {
-    "placeholders": {
-      "error": {}
-    }
-  },
   "thisDevice": "This device",
   "verified": "Verified",
   "notVerified": "Not verified",
@@ -842,14 +816,6 @@
     "placeholders": {
       "count": {
         "type": "int"
-      }
-    }
-  },
-  "restoreFailed": "Restore failed: {error}",
-  "@restoreFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
       }
     }
   },
@@ -1858,15 +1824,6 @@
   "@restorePointRestore": {
     "description": "Button on a restore point (G48)"
   },
-  "restorePointsLoadFailed": "Couldn't read the restore points: {error}",
-  "@restorePointsLoadFailed": {
-    "description": "Error on the restore points page (G48)",
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
   "groupResetMenu": "Reset to an earlier state…",
   "@groupResetMenu": {
     "description": "Group settings tile (G48; was a ⋮ menu item before G65)"
@@ -2316,5 +2273,212 @@
   "currencyNoMatch": "No currency found",
   "@currencyNoMatch": {
     "description": "G66: the search matched no currency"
+  },
+  "expenseDeletedSnack": "Deleted \"{description}\"",
+  "@expenseDeletedSnack": {
+    "description": "G67: snackbar after deleting an expense (with Undo)",
+    "placeholders": {
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentDeletedSnack": "Payment deleted",
+  "@paymentDeletedSnack": {
+    "description": "G67: snackbar after deleting a payment (with Undo)"
+  },
+  "expenseAddedSnack": "Added \"{description}\"",
+  "@expenseAddedSnack": {
+    "description": "G67: snackbar after adding an expense (with Undo)",
+    "placeholders": {
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "expenseUpdatedSnack": "Saved \"{description}\"",
+  "@expenseUpdatedSnack": {
+    "description": "G67: snackbar after editing an expense (with Undo)",
+    "placeholders": {
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "undoDone": "Undone",
+  "@undoDone": {
+    "description": "G67: snackbar after a successful undo"
+  },
+  "undoChangedMeanwhile": "Can't undo — this entry was changed in the meantime. Nothing was changed.",
+  "@undoChangedMeanwhile": {
+    "description": "G67: undo found a newer version (someone else changed it)"
+  },
+  "deletePayment": "Delete payment",
+  "@deletePayment": {
+    "description": "G67: delete action in the edit-payment dialog"
+  },
+  "deleteExpenseAction": "Delete expense",
+  "@deleteExpenseAction": {
+    "description": "G67: delete action (tooltip) in the edit-expense app bar"
+  },
+  "expenseDetailsTitle": "Expense",
+  "@expenseDetailsTitle": {
+    "description": "G67 (U15): title of the read-only expense details sheet"
+  },
+  "paymentDetailsTitle": "Payment",
+  "@paymentDetailsTitle": {
+    "description": "G67 (U15): title of the read-only payment details sheet"
+  },
+  "detailsReadOnlyHint": "You can only look at this — you're no longer part of this group.",
+  "@detailsReadOnlyHint": {
+    "description": "G67 (U15): hint in the read-only details sheet"
+  },
+  "detailsSplitHeading": "Split",
+  "@detailsSplitHeading": {
+    "description": "G67 (U15): heading of the per-person shares in the details sheet"
+  },
+  "detailsNoteHeading": "Note",
+  "@detailsNoteHeading": {
+    "description": "G67 (U15): heading of the note in the details sheet"
+  },
+  "detailsDateHeading": "Date",
+  "@detailsDateHeading": {
+    "description": "G67 (U15): heading of the date in the details sheet"
+  },
+  "detailsCategoryHeading": "Category",
+  "@detailsCategoryHeading": {
+    "description": "G67 (U15): heading of the category in the details sheet"
+  },
+  "errorDetails": "Details",
+  "@errorDetails": {
+    "description": "G67: action that shows the technical error text"
+  },
+  "errorDetailsTitle": "Error details",
+  "@errorDetailsTitle": {
+    "description": "G67: title of the dialog with the technical error text"
+  },
+  "errorInterruptedTitle": "That didn't go through",
+  "@errorInterruptedTitle": {
+    "description": "G67: action error — DB closed / account switched"
+  },
+  "errorInterruptedHint": "The app was switching accounts or closing the ledger. Please try again.",
+  "@errorInterruptedHint": {
+    "description": "G67: action error hint"
+  },
+  "errorRelayTitle": "Your Matrix account can't be reached right now",
+  "@errorRelayTitle": {
+    "description": "G67: action error — transport unavailable"
+  },
+  "errorRelayHint": "You may be signed out, or encryption isn't ready yet. Try again in a moment.",
+  "@errorRelayHint": {
+    "description": "G67: action error hint"
+  },
+  "errorRecordGoneTitle": "This entry was deleted in the meantime",
+  "@errorRecordGoneTitle": {
+    "description": "G67: action error — record deleted meanwhile"
+  },
+  "errorRecordGoneHint": "Nothing was changed.",
+  "@errorRecordGoneHint": {
+    "description": "G67: action error hint"
+  },
+  "errorTooLargeTitle": "Too much data for one message",
+  "@errorTooLargeTitle": {
+    "description": "G67: action error — payload too large"
+  },
+  "errorTooLargeHint": "This group is too large to send in one go. Please report this problem.",
+  "@errorTooLargeHint": {
+    "description": "G67: action error hint"
+  },
+  "errorLinkOnlyTitle": "Not possible in a link group",
+  "@errorLinkOnlyTitle": {
+    "description": "G67: action error — Matrix change in a link-only group"
+  },
+  "errorLinkOnlyHint": "A group shared by link can't have Matrix IDs.",
+  "@errorLinkOnlyHint": {
+    "description": "G67: action error hint"
+  },
+  "errorFileTitle": "Couldn't read or write the file",
+  "@errorFileTitle": {
+    "description": "G67: action error — file system"
+  },
+  "errorFileHint": "Check that the location is writable and the device has free space.",
+  "@errorFileHint": {
+    "description": "G67: action error hint"
+  },
+  "errorStorageTitle": "Couldn't save on this device",
+  "@errorStorageTitle": {
+    "description": "G67: action error — database error"
+  },
+  "errorStorageHint": "The device storage reported an error. Free some space and try again.",
+  "@errorStorageHint": {
+    "description": "G67: action error hint"
+  },
+  "errorTimeoutTitle": "That took too long",
+  "@errorTimeoutTitle": {
+    "description": "G67: action error — timeout"
+  },
+  "errorTimeoutHint": "Check your connection and try again.",
+  "@errorTimeoutHint": {
+    "description": "G67: action error hint"
+  },
+  "errorNetworkTitle": "No connection",
+  "@errorNetworkTitle": {
+    "description": "G67: action error — network"
+  },
+  "errorNetworkHint": "Check your internet connection and try again.",
+  "@errorNetworkHint": {
+    "description": "G67: action error hint"
+  },
+  "errorInvalidDataTitle": "The data couldn't be read",
+  "@errorInvalidDataTitle": {
+    "description": "G67: action error — malformed data"
+  },
+  "errorInvalidDataHint": "It seems damaged or isn't in the expected format.",
+  "@errorInvalidDataHint": {
+    "description": "G67: action error hint"
+  },
+  "errorUnknownTitle": "Something went wrong",
+  "@errorUnknownTitle": {
+    "description": "G67: action error — unknown"
+  },
+  "errorUnknownHint": "Please try again. The details help if you report the problem.",
+  "@errorUnknownHint": {
+    "description": "G67: action error hint"
+  },
+  "exportFailedTitle": "Export failed",
+  "@exportFailedTitle": {
+    "description": "G67: what failed (first line of the error)"
+  },
+  "importFailedTitle": "Import failed",
+  "@importFailedTitle": {
+    "description": "G67: what failed (first line of the error)"
+  },
+  "restoreFailedTitle": "Restore failed",
+  "@restoreFailedTitle": {
+    "description": "G67: what failed (first line of the error)"
+  },
+  "loadDevicesFailedTitle": "Couldn't load devices",
+  "@loadDevicesFailedTitle": {
+    "description": "G67: what failed (first line of the error)"
+  },
+  "loadRestorePointsFailedTitle": "Couldn't read the restore points",
+  "@loadRestorePointsFailedTitle": {
+    "description": "G67: what failed (first line of the error)"
+  },
+  "loadFailedTitle": "Couldn't load the data",
+  "@loadFailedTitle": {
+    "description": "G67: a list/page failed to load (first line of the error)"
+  },
+  "actionFailedReason": "{what} — {reason}",
+  "@actionFailedReason": {
+    "description": "G67: one-line action error inside a dialog: what failed + the friendly reason",
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
   }
 }

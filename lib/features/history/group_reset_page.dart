@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 
 import '../../core/database/daos/history_dao.dart';
 import '../../core/l10n/l10n.dart';
@@ -76,7 +77,10 @@ class GroupResetPage extends ConsumerWidget {
             if (history.hasError)
               Padding(
                 padding: const EdgeInsets.all(Insets.page),
-                child: Text(l.failedWithError(history.error.toString())),
+                child: ActionErrorView(
+                  error: history.error!,
+                  what: l.loadFailedTitle,
+                ),
               )
             else if (!history.hasValue)
               const Padding(
@@ -128,6 +132,7 @@ class GroupResetPage extends ConsumerWidget {
   ) async {
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
+    final errors = ActionErrors.of(context);
     final nav = Navigator.of(context);
     // Captured before the first await (G19).
     final service = ref.read(groupResetServiceProvider);
@@ -153,9 +158,7 @@ class GroupResetPage extends ConsumerWidget {
       messenger.showSnackBar(SnackBar(content: Text(l.resetDone(written))));
       if (nav.mounted) nav.maybePop();
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(e.toString()))),
-      );
+      errors.show(e);
     }
   }
 }

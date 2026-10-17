@@ -30,9 +30,11 @@ import 'expense_filter.dart';
 import 'expenses_provider.dart';
 import 'ledger_search_provider.dart';
 import 'ledger_syncer.dart';
-import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../models/record_signature.dart';
 import 'record_attribution.dart';
+import 'record_actions.dart';
+import 'record_details_sheet.dart';
+import '../../core/widgets/action_error.dart';
 
 /// G65 (U22): the group ⋮ menu — the frequent actions only (G52 adds
 /// *Invite* here); the rest is on the group settings page.
@@ -232,6 +234,10 @@ class ExpensesPage extends ConsumerWidget {
         children: [
           if (removed)
             MaterialBanner(
+              key: const Key('removedBanner'),
+              // G67: at 360 dp an inline action squeezed the text into a
+              // sliver (overflow) — the action goes below.
+              forceActionsBelow: true,
               content: Text(l.removedFromGroupBanner),
               leading: const Icon(Icons.person_off_outlined),
               actions: [
@@ -245,6 +251,7 @@ class ExpensesPage extends ConsumerWidget {
           if (archived && search == null)
             MaterialBanner(
               key: const Key('archivedBanner'),
+              forceActionsBelow: true,
               content: Text(l.archivedBanner),
               leading: const Icon(Icons.archive_outlined),
               actions: [
@@ -335,14 +342,13 @@ class ExpensesPage extends ConsumerWidget {
     List<CustomCategory> customCategories = const [],
   }) {
     final l = context.l10n;
-    if (expensesAsync.hasError) {
+    final loadError = expensesAsync.error ?? settlementsAsync.error;
+    if (loadError != null) {
       return Center(
-        child: Text(l.errorWithDetail(expensesAsync.error.toString())),
-      );
-    }
-    if (settlementsAsync.hasError) {
-      return Center(
-        child: Text(l.errorWithDetail(settlementsAsync.error.toString())),
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.page),
+          child: ActionErrorView(error: loadError, what: l.loadFailedTitle),
+        ),
       );
     }
     if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
@@ -464,12 +470,22 @@ class ExpensesPage extends ConsumerWidget {
           pending: syncStatus.isRecordPending(record.updatedAt),
           attention: attention(record.origin, record.sig),
           // G60: tap (or ⋮ → Edit) edits the payment; read-only: neither.
+          // G67 (U15): read-only → a details sheet to look at it.
           onTap: readOnly
+              ? () => showSettlementDetails(context, record, from: from, to: to)
+              : () => editPaymentFlow(context, ref, roomId, record),
+          onEdit: readOnly
               ? null
               : () => editPaymentFlow(context, ref, roomId, record),
           onDelete: readOnly
               ? null
-              : () => _confirmDeleteSettlement(context, ref, record, from, to),
+              : () => deleteSettlementFlow(
+                  context,
+                  ref,
+                  record,
+                  fromName: from,
+                  toName: to,
+                ),
         );
       }
       final expense = record as ExpenseModel;
@@ -482,11 +498,19 @@ class ExpensesPage extends ConsumerWidget {
         effect: myId == null ? null : expenseEffectFor(expense, myId),
         pending: syncStatus.isRecordPending(expense.updatedAt),
         attention: attention(expense.origin, expense.sig),
+        // G67 (U15): read-only → a details sheet to look at it.
         onTap: readOnly
-            ? null
+            ? () => showExpenseDetails(
+                context,
+                expense,
+                names: names,
+                category: resolveCategory(expense.category, customCategories),
+              )
             : () =>
                   context.push('/groups/$roomId/expenses/edit', extra: expense),
-        onDelete: readOnly ? null : () => _confirmDelete(context, ref, expense),
+        onDelete: readOnly
+            ? null
+            : () => deleteExpenseFlow(context, ref, expense),
       );
     }
 
@@ -591,7 +615,7 @@ class ExpensesPage extends ConsumerWidget {
     final unclaimed = members
         .where((m) => m.isActive && m.matrixId == null)
         .toList();
-    final messenger = ScaffoldMessenger.of(context);
+    final errors = ActionErrors.of(context);
     final l = context.l10n;
     // G46: `null` = dismissed (barrier tap / back) → nothing happens;
     // `(member: null)` = "I'm someone new".
@@ -626,11 +650,7 @@ class ExpensesPage extends ConsumerWidget {
       await ref.read(memberAdderProvider.notifier).joinAsNew(roomId, name);
     }
     final error = ref.read(memberAdderProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
-    }
+    if (error != null) errors.show(error);
   }
 
   Future<String?> _promptName(BuildContext context) {
@@ -642,100 +662,6 @@ class ExpensesPage extends ConsumerWidget {
       cancelLabel: l.cancel,
       confirmLabel: l.join,
     );
-  }
-
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    ExpenseModel expense,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.deleteExpenseTitle),
-        content: Text(l.deleteExpenseBody(expense.description)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l.delete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    await ref
-        .read(expenseAdderProvider.notifier)
-        .deleteExpense(expense.id, roomId);
-    final error = ref.read(expenseAdderProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
-    }
-  }
-
-  Future<void> _confirmDeleteSettlement(
-    BuildContext context,
-    WidgetRef ref,
-    SettlementModel settlement,
-    String fromName,
-    String toName,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-    final amount = context.money(settlement.amountCents, settlement.currency);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.deleteSettlementTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l.deleteSettlementBody(fromName, toName, amount)),
-            // G6: who recorded (and last changed) this payment.
-            const SizedBox(height: Insets.m),
-            RecordAttribution(
-              groupId: roomId,
-              kind: RecordKind.settlement,
-              recordId: settlement.id,
-              origin: settlement.origin,
-              sig: settlement.sig,
-              createdAt: settlement.createdAt,
-              updatedAt: settlement.updatedAt,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l.delete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    await ref
-        .read(expenseAdderProvider.notifier)
-        .deleteSettlement(settlement.id, roomId);
-    final error = ref.read(expenseAdderProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
-    }
   }
 }
 
@@ -1459,6 +1385,7 @@ class _SettlementTile extends StatelessWidget {
   final bool pending;
   final bool attention;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   const _SettlementTile({
     required this.settlement,
@@ -1466,6 +1393,7 @@ class _SettlementTile extends StatelessWidget {
     required this.pending,
     this.attention = false,
     this.onTap,
+    this.onEdit,
     this.onDelete,
   });
 
@@ -1486,7 +1414,7 @@ class _SettlementTile extends StatelessWidget {
       attention: attention,
       menuTooltip: l.settlementOptions,
       onTap: onTap,
-      onEdit: onTap,
+      onEdit: onEdit,
       onDelete: onDelete,
     );
   }

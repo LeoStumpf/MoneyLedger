@@ -26,6 +26,7 @@ import '../../models/expense_date.dart' show storedExpenseDate;
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart' show nextLwwClock;
 import '../history/snapshot_store.dart';
+import 'record_undo.dart' show UndoableWrite;
 
 part 'expenses_provider.g.dart';
 
@@ -194,14 +195,22 @@ class ExpenseAdder extends _$ExpenseAdder {
   /// Runs one write: loading → result, with every dependency captured up
   /// front (see [LedgerWriteContext]). The final state is only set while this
   /// notifier is still mounted (the page may have been popped meanwhile).
-  Future<void> _run(Future<void> Function(LedgerWriteContext w) body) async {
+  ///
+  /// G67: returns what the body returned (the [UndoableWrite] of a delete /
+  /// a new record), or null when it failed (the error is in [state]).
+  Future<T?> _run<T>(Future<T?> Function(LedgerWriteContext w) body) async {
     final w = LedgerWriteContext(ref);
     state = const AsyncLoading();
-    final result = await AsyncValue.guard(() => body(w));
+    T? value;
+    final result = await AsyncValue.guard(() async {
+      value = await body(w);
+    });
     if (ref.mounted) state = result;
+    return result.hasError ? null : value;
   }
 
-  Future<void> addExpense({
+  /// G67: returns the [UndoableWrite] (undo = delete it again).
+  Future<UndoableWrite?> addExpense({
     required String roomId,
     required String description,
     required int amountCents,
@@ -229,14 +238,16 @@ class ExpenseAdder extends _$ExpenseAdder {
       date: day == null ? null : storedExpenseDate(day, createdAt),
     );
     final signed = await w.signer.expense(expense, creating: true);
-    if (w.db.isClosed) return;
+    if (w.db.isClosed) return null;
     // Local-first: persist to Drift immediately so the expense is saved
     // and visible even offline. Replication is best-effort afterwards.
     await w.expenses.upsertExpenseLww(expenseCompanion(signed));
     await w.replicate(roomId, expenseEventType, expensePayload(signed));
+    return UndoableWrite.expense(writtenExpense: signed);
   });
 
-  Future<void> addSettlement({
+  /// G67: returns the [UndoableWrite] (undo = delete it again).
+  Future<UndoableWrite?> addSettlement({
     required String roomId,
     required int amountCents,
     required String currency,
@@ -258,17 +269,18 @@ class ExpenseAdder extends _$ExpenseAdder {
       date: day == null ? null : storedExpenseDate(day, createdAt),
     );
     final signed = await w.signer.settlement(settlement, creating: true);
-    if (w.db.isClosed) return;
+    if (w.db.isClosed) return null;
     // Local-first: persist before replicating (see addExpense).
     await w.expenses.upsertSettlementLww(settlementCompanion(signed));
     await w.replicate(roomId, settlementEventType, settlementPayload(signed));
+    return UndoableWrite.settlement(writtenSettlement: signed);
   });
 
   /// Edits an existing expense: the full record is re-written with a fresh
   /// LWW clock and replicated whole — concurrent edits of the same expense
   /// converge to the latest writer on every device. [date] (G49): the stored
   /// ISO day (`YYYY-MM-DD`), null = none (the day of [createdAt]).
-  Future<void> updateExpense({
+  Future<UndoableWrite?> updateExpense({
     required String id,
     required String roomId,
     required String description,
@@ -299,39 +311,51 @@ class ExpenseAdder extends _$ExpenseAdder {
       origin: current?.origin,
     );
     final signed = await w.signer.expense(expense);
-    if (w.db.isClosed) return;
+    if (w.db.isClosed) return null;
     await w.expenses.upsertExpenseLww(expenseCompanion(signed));
     await w.replicate(roomId, expenseEventType, expensePayload(signed));
+    return UndoableWrite.expense(
+      writtenExpense: signed,
+      beforeExpense: current,
+    );
   });
 
   /// Deletes an expense as a tombstone: the row is kept (deleted = true, fresh
   /// LWW clock) and replicated, so anti-entropy propagates the deletion and a
   /// stale peer can never resurrect it.
-  Future<void> deleteExpense(String id, String roomId) => _run((w) async {
-    final current = await w.expenses.getExpenseById(id);
-    if (current == null) return;
-    final tombstone = ExpenseModel(
-      id: current.id,
-      roomId: current.roomId,
-      description: current.description,
-      amountCents: current.amountCents,
-      currency: current.currency,
-      paidBy: current.paidBy,
-      splitsJson: current.splitsJson,
-      createdAt: current.createdAt,
-      updatedAt: nextLwwClock(current.updatedAt),
-      deleted: true,
-      category: current.category,
-      note: current.note,
-      date: current.date,
-      origin: current.origin,
-    );
-    // A delete is a signed version too ("deleted by").
-    final signed = await w.signer.expense(tombstone);
-    if (w.db.isClosed) return;
-    await w.expenses.upsertExpenseLww(expenseCompanion(signed));
-    await w.replicate(roomId, expenseEventType, expensePayload(signed));
-  });
+  ///
+  /// G67: returns the [UndoableWrite] (undo = the content before, as a new
+  /// version); null when there was nothing to delete.
+  Future<UndoableWrite?> deleteExpense(String id, String roomId) =>
+      _run((w) async {
+        final current = await w.expenses.getExpenseById(id);
+        if (current == null || current.deleted) return null;
+        final tombstone = ExpenseModel(
+          id: current.id,
+          roomId: current.roomId,
+          description: current.description,
+          amountCents: current.amountCents,
+          currency: current.currency,
+          paidBy: current.paidBy,
+          splitsJson: current.splitsJson,
+          createdAt: current.createdAt,
+          updatedAt: nextLwwClock(current.updatedAt),
+          deleted: true,
+          category: current.category,
+          note: current.note,
+          date: current.date,
+          origin: current.origin,
+        );
+        // A delete is a signed version too ("deleted by").
+        final signed = await w.signer.expense(tombstone);
+        if (w.db.isClosed) return null;
+        await w.expenses.upsertExpenseLww(expenseCompanion(signed));
+        await w.replicate(roomId, expenseEventType, expensePayload(signed));
+        return UndoableWrite.expense(
+          writtenExpense: signed,
+          beforeExpense: current,
+        );
+      });
 
   /// G60: edits an existing payment — like [updateExpense]: the full record
   /// is re-written with `nextLwwClock`, signed by this device as editor (the
@@ -339,7 +363,7 @@ class ExpenseAdder extends _$ExpenseAdder {
   /// ISO day, null = the day of `created_at`. Throws
   /// [RecordDeletedException] when the payment is gone / was deleted
   /// meanwhile (an edit must not bring it back).
-  Future<void> updateSettlement({
+  Future<UndoableWrite?> updateSettlement({
     required String id,
     required String roomId,
     required int amountCents,
@@ -349,7 +373,7 @@ class ExpenseAdder extends _$ExpenseAdder {
     String? date,
   }) => _run((w) async {
     final current = await w.expenses.getSettlementById(id);
-    if (w.db.isClosed) return;
+    if (w.db.isClosed) return null;
     if (current == null || current.deleted || current.roomId != roomId) {
       throw const RecordDeletedException();
     }
@@ -366,16 +390,23 @@ class ExpenseAdder extends _$ExpenseAdder {
       origin: current.origin,
     );
     final signed = await w.signer.settlement(settlement);
-    if (w.db.isClosed) return;
+    if (w.db.isClosed) return null;
     await w.expenses.upsertSettlementLww(settlementCompanion(signed));
     await w.replicate(roomId, settlementEventType, settlementPayload(signed));
+    return UndoableWrite.settlement(
+      writtenSettlement: signed,
+      beforeSettlement: current,
+    );
   });
 
   /// Deletes a settlement as a tombstone (see [deleteExpense]). G60: a
-  /// payment can also be edited ([updateSettlement]).
-  Future<void> deleteSettlement(String id, String roomId) => _run((w) async {
+  /// payment can also be edited ([updateSettlement]). G67: returns the
+  /// [UndoableWrite] like [deleteExpense].
+  Future<UndoableWrite?> deleteSettlement(String id, String roomId) => _run((
+    w,
+  ) async {
     final current = await w.expenses.getSettlementById(id);
-    if (current == null) return;
+    if (current == null || current.deleted) return null;
     final tombstone = SettlementModel(
       id: current.id,
       roomId: current.roomId,
@@ -390,8 +421,12 @@ class ExpenseAdder extends _$ExpenseAdder {
       origin: current.origin,
     );
     final signed = await w.signer.settlement(tombstone);
-    if (w.db.isClosed) return;
+    if (w.db.isClosed) return null;
     await w.expenses.upsertSettlementLww(settlementCompanion(signed));
     await w.replicate(roomId, settlementEventType, settlementPayload(signed));
+    return UndoableWrite.settlement(
+      writtenSettlement: signed,
+      beforeSettlement: current,
+    );
   });
 }

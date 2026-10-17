@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/l10n/l10n.dart';
@@ -123,14 +124,11 @@ class _LocalModeSheet extends ConsumerWidget {
 /// (with a cancel button) on top of the still-active local profile. After a
 /// successful sign-in the local ledger moves into that account.
 Future<void> startConnectAccount(BuildContext context, WidgetRef ref) async {
-  final messenger = ScaffoldMessenger.maybeOf(context);
-  final l = context.l10n;
+  final errors = ActionErrors.maybeOf(context);
   try {
     await ref.read(devicePrefsProvider.notifier).setConnecting(true);
   } catch (e) {
-    messenger?.showSnackBar(
-      SnackBar(content: Text(l.failedWithError(e.toString()))),
-    );
+    errors?.show(e);
   }
 }
 
@@ -206,7 +204,7 @@ class LocalModeSettingsSection extends ConsumerWidget {
 /// three choices fit someone who didn't want an account).
 Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
-  final messenger = ScaffoldMessenger.maybeOf(context);
+  final errors = ActionErrors.maybeOf(context);
   // Captured before any await (G19).
   final db = ref.read(appDatabaseProvider);
   final prefs = ref.read(devicePrefsProvider.notifier);
@@ -251,9 +249,7 @@ Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
       container
           .read(signedOutLandingProvider.notifier)
           .set(SignedOutLanding.login);
-      messenger?.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(e.toString()))),
-      );
+      errors?.show(e);
     },
   );
 }

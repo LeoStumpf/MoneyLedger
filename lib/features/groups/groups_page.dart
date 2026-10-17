@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/matrix/crypto_status.dart';
 import '../../core/session/app_session.dart';
@@ -302,7 +303,12 @@ class _GroupsBody extends ConsumerWidget {
     final l = context.l10n;
     return groupsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text(l.errorWithDetail(e.toString()))),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.page),
+          child: ActionErrorView(error: e, what: l.loadFailedTitle),
+        ),
+      ),
       data: (groups) {
         if (groups.isEmpty && restoring) {
           return EmptyState(

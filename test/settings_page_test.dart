@@ -169,10 +169,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('signOutConfirm')));
       await tester.pumpAndSettle();
-      expect(
-        find.text('Failed: Bad state: server unreachable'),
-        findsOneWidget,
-      );
+      // G67: a friendly message, the raw text only behind Details.
+      expect(find.text('Something went wrong'), findsOneWidget);
+      expect(find.textContaining('server unreachable'), findsNothing);
+      expect(find.byKey(const Key('actionErrorDetails')), findsOneWidget);
     });
 
     testWidgets('CSV import runs on the page and reports a failure', (

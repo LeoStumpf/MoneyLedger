@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/background/background_scheduler.dart';
@@ -130,7 +131,7 @@ class _MatrixAccountSection extends ConsumerWidget {
 /// reopened on the next sign-in with the same account.
 Future<void> confirmSignOut(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
-  final messenger = ScaffoldMessenger.of(context);
+  final errors = ActionErrors.of(context);
   final auth = ref.read(authProvider.notifier);
   final ok = await showDialog<bool>(
     context: context,
@@ -155,9 +156,7 @@ Future<void> confirmSignOut(BuildContext context, WidgetRef ref) async {
   if (!context.mounted) return;
   final error = ref.read(authProvider).error;
   if (error != null) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l.failedWithError(error.toString()))),
-    );
+    errors.show(error);
   }
 }
 
@@ -249,6 +248,7 @@ class _DebugBackgroundRunTile extends ConsumerWidget {
       ),
       onTap: () async {
         final messenger = ScaffoldMessenger.maybeOf(context);
+        final errors = ActionErrors.maybeOf(context);
         try {
           await ref
               .read(backgroundSchedulerProvider)
@@ -257,9 +257,7 @@ class _DebugBackgroundRunTile extends ConsumerWidget {
             SnackBar(content: Text(l.debugRunBackgroundSyncQueued)),
           );
         } catch (e) {
-          messenger?.showSnackBar(
-            SnackBar(content: Text(l.failedWithError(e.toString()))),
-          );
+          errors?.show(e);
         }
       },
     );
