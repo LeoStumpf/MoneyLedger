@@ -534,8 +534,8 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [x] Follow-up: release APK signing block checked (2026-10-17): only the v2
       signature (0x7109871a) + verity padding — no dependency-info block
       (0x504b4453)
-- [ ] Optional opt-in "debug log" export (release builds now log nothing,
-      SDK only `wtf`)
+- [x] Optional opt-in "debug log" export — **decided 2026-10-17: no** (release
+      builds stay silent; debug builds + logcat for diagnosis)
 
 ### G45. Minimal Matrix footprint (goal 5) 🟠
 - [x] Minimal `syncFilter` (no rooms, presence, account data) +
@@ -583,7 +583,7 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       column; schema v13 (forgets expense refusals like v7); payments
       undated (open point)
 
-### G50. No-login link groups — design doc 🟠 (stop: needs Leo's sign-off)
+### G50. No-login link groups — design doc 🟠 (signed off 2026-10-17)
 - [x] `docs/design/no-login-sharing.md`: invite link / QR (group secret in
       the `#fragment`), key derivation, one addressable Nostr event per device
       and group with the gzip + AES-GCM snapshot (≤ 100 KB, NIP-40 expiry
@@ -594,18 +594,32 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       ToS grey zone, "Why Matrix instead of a link" section (identity +
       signatures, removal sticks, multi-device recovery, own homeserver,
       no third-party relays, scale), positioning "link = default"
-- [ ] **App key** (W5): group key = HKDF(link secret, salt = app key) so the
-      link alone can't decrypt relay data (a hurdle, not security); app key
-      from a gitignored `--dart-define` file in release builds, public default
-      otherwise — check against AGPL "Corresponding Source" first; key version
-      in the link
+- [x] **App key** (W5): group key = HKDF(link secret, salt = app key) so the
+      link alone can't decrypt relay data (a hurdle, not security) —
+      **decided 2026-10-17: public versioned salt `kLinkSaltV1`** (no secret
+      key: AGPL Corresponding Source, F-Droid builds); key version in the link
+- [x] Leo's sign-off of §14 (2026-10-17): kind 31847; damus + nos.lol +
+      primal, no `r=` hints; `n=` name in the link; landing page in a
+      **multi-app** `LeoStumpf.github.io` user-site repo (link
+      `https://leostumpf.github.io/moneyledger/join#…`); no in-app scanner;
+      link secret in backups (with warning); `by` hint; channel opens on the
+      first invite; **Reset invite link in the first version**; web too;
+      relay operators **not** contacted — but no grey zone: check each
+      relay's terms first (G51); Matrix users' groups stay Matrix (+ mixed
+      via link, G53); **expiry 30 days, refreshed after 10**
 
 ### G51. Nostr spike 🟡
-- [ ] Two devices exchange a snapshot via 2–3 public relays; measure latency,
-      size limits, retention over a few days
+- [ ] **First:** read each default relay's published terms / policy (NIP-11
+      `posting_policy`, linked terms); a relay excluding app data / encrypted
+      blobs → propose a replacement to Leo (stop point)
+- [ ] Two devices exchange a snapshot via 2–3 public relays (kind 31847,
+      30-day expiry); measure latency, size limits, retention over a few days
+      (design doc §12)
 
 ### G52. Link groups (implementation, incl. app key) 🟠
-- [ ] Sub-steps defined after G50/G51
+- [ ] Sub-steps defined after G51 (design doc §13, incl. Reset invite link,
+      the multi-app `LeoStumpf.github.io` repo — Play App Signing
+      fingerprint from Leo later)
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] A Matrix group can open a link channel ("Invite by link"); Matrix
@@ -624,11 +638,11 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [ ] Welcome/onboarding reordered for "link = default", Matrix as the upgrade
 
 ### G55. Web glyph coverage without Google (found in G43) 🟢
-- [ ] Emoji / CJK / Arabic typed by users render as boxes on web and cause
-      local 404 retries: mirror the engine's Noto fallback set (~725 files,
-      ~30 MB, OFL) into `build/web/fonts/` at build time, or accept + document
-- [ ] Flutter upgrades may move the engine's Roboto path — `check_web_build.sh`
-      catches it; rerun `tool/fonts/make_web_fonts.py --roboto-path …`
+- [x] Emoji / CJK / Arabic typed by users render as boxes on web and cause
+      local 404 retries — **decided 2026-10-17: accept + document** (no
+      bundled Noto set; `docs/open-points.md`)
+- [x] Flutter upgrades may move the engine's Roboto path (reminder only — — `check_web_build.sh`
+      catches it; rerun `tool/fonts/make_web_fonts.py --roboto-path …`)
 - [ ] Optional copy: welcome / connect flow says nothing is contacted until
       you confirm your server
 
@@ -640,16 +654,22 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 
 ### G57. Custom-category follow-ups (found in G47) 🟢
 - [ ] Concurrent category edits lose one (whole meta is LWW) — per-category
-      merge if it matters; duplicate names only blocked in the dialog
+      merge if it matters; duplicate names only blocked in the dialog —
+      **Leo 2026-10-17: later**, together with the link-group wire changes
 - [x] Offline demo seed: add a custom category (screenshots)
 
 ### G58. Restore-point follow-ups (found in G48) 🟢
 - [x] Snapshots also from Android background rounds (today: app start only)
 - [ ] Device check: `[bg] round done: … snapshot: true` + new file in `snapshots/`
 - [x] Offline demo seed: back-fill history so the reset page isn't empty
-- [ ] Decide: snapshot restore "exactly this state" (overwrite newer content)?
-- [ ] Decide: encrypt snapshot files (plaintext like the DB today)
-- [ ] Concurrent resets by two members converge per record (mix) — merge UI?
+- [ ] Snapshot restore **"exactly this state"** as an option (Leo
+      2026-10-17: yes) — per group a reset to the snapshot's content (new
+      versions, `nextLwwClock`, participants never reset); preview warns that
+      newer changes of others are overwritten
+- [x] Decide: encrypt snapshot files — **no** (Leo 2026-10-17; private app
+      dir like the DB, Android backup off)
+- [x] Concurrent resets by two members converge per record (mix) — **LWW as
+      today, no merge UI** (Leo 2026-10-17; `docs/open-points.md`)
 - [ ] A peer's live record within 30 s of a bootstrap is absorbed into the base
       batch (history doesn't record message type / relaying sender)
 
@@ -674,7 +694,13 @@ Switching split modes or editing amounts today starts from blanks; make the
 - [x] Payments can't be edited — a wrong day means delete + re-record
 
 ### G61. Split follow-ups (found in G59) 🟢
-- [ ] Try live auto-fill of open rows (Tricount-style) instead of the button
+- [x] Try live auto-fill of open rows (Tricount-style) instead of the button —
+      **Leo 2026-10-17: keep the button**, add more actions instead (below)
+- [ ] Too much distributed → also **"Set total to the sum"** (next to the
+      existing *Rescale proportionally*)
+- [ ] A clearly visible **live** "X left / X too much" next to *Distribute*
+- [ ] Shares mode: a **"Fine-tune as amounts"** action that switches to Exact
+      (the existing conversion), e.g. 4:1 → 4/5 amounts to adjust
 - [x] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
 - [x] Check the new split rows at phone width (long names, Shares steppers)
 - [x] Rows with long names sharing a prefix are indistinguishable
@@ -747,12 +773,12 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G49 — expense date
 - [x] G59 — smarter split defaults (prefill from current split, "fill the rest")
 - [x] G62 — reset page empty after update / new group (found in DEV-H)
-- [~] G50 — no-login link groups design doc written (`docs/design/no-login-sharing.md`, 14 open questions in §14) — **waiting for Leo's sign-off**; G51–G54 blocked until then
+- [x] G50 — no-login link groups design doc (`docs/design/no-login-sharing.md`) — signed off by Leo 2026-10-17 (§14)
 - [ ] G51 — Nostr spike
 - [ ] G52 — link groups implementation
 - [ ] G53 — mixed groups + lock group
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
-- [ ] G55 — web glyph coverage without Google (found in G43)
+- [x] G55 — web glyph coverage without Google (found in G43) — accepted as is (Leo 2026-10-17); Flutter-upgrade reminder kept in G55
 - [x] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel) — done 2026-10-17: all pass; found G62
 - [ ] G58 — restore-point follow-ups (found in G48)
 - [ ] G60 — expense-date follow-ups (found in G49)

@@ -379,6 +379,7 @@ for further accounts would be needed to make use of it (test devices only).
   fallback set at build time (725 files listed in `main.dart.js`, ≈ 30 MB,
   downloaded from fonts.gstatic.com by the build machine, OFL) into
   `build/web/fonts/` — full parity, nothing fetched by users from Google.
+  **Accepted as is (Leo, 2026-10-17):** the web is secondary, the app stays small.
 - **Only Roboto Regular** on the web (as before with the CDN): bold weights are
   synthesized by the engine.
 - **Engine paths.** The Roboto file name is the engine's (`roboto/v32/…`);

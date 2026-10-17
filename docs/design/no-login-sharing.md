@@ -1,6 +1,6 @@
 # G50 — No-login link groups (Nostr relays)
 
-Status: **design, waiting for Leo's sign-off** (plan.md G50). This is the spec
+Status: **signed off by Leo on 2026-10-17** (plan.md G50; decisions in §14). This is the spec
 for G51 (spike), G52 (link groups), G53 (mixed groups + lock) and G54 ("Why
 Matrix?" + welcome reorder). It contains no code. Product decisions by Leo
 (2026-10-16) are taken as given. Where this doc decides something new, it
@@ -13,7 +13,7 @@ says so, and the decision is repeated in §14 "Open questions for Leo".
 | 1 | Default invite | **Link group**: an invite link / QR code shared over WhatsApp & co. Friends install the app, open the link and pick their participant. No account. Matrix stays as the optional **secure mode**. |
 | 2 | When the link channel starts | A new group stays **device-only** until the first *Invite*. Inviting opens the link channel: the secret is created and publishing starts. A solo group never talks to a relay. |
 | 3 | Transport | **Public Nostr relays.** Each device publishes **one addressable event per group** (custom kind in 30000–39999, proposal `31847`). The event holds that device's **whole group snapshot**: bootstrap JSON → gzip → AES-256-GCM → base64. Readers fetch every event with the group's `d` tag and LWW-merge them through the existing `RecordGate` and DAOs. |
-| 4 | Relays | Defaults `relay.damus.io`, `nos.lol`, `relay.primal.net`. Every event goes to all of them. The user can add a custom relay. NIP-40 `expiration` 60 days, refreshed while the group is in use. |
+| 4 | Relays | Defaults `relay.damus.io`, `nos.lol`, `relay.primal.net`. Every event goes to all of them. The user can add a custom relay. NIP-40 `expiration` 30 days, refreshed while the group is in use (decided 2026-10-17). |
 | 5 | Keys | `link secret` (32 random bytes, in the URL `#fragment`) → HKDF-SHA256 → **topic** (`d` tag), **encryption key**. A random **secp256k1 key per (device, group)** signs the Nostr events. Nothing is reused across groups. |
 | 6 | App key (W5) | **Recommendation: no secret app key.** Use a public, versioned HKDF salt that lives in the source. A secret `--dart-define` key would very likely have to be published as part of the AGPL Corresponding Source. It also breaks F-Droid / self-build interoperability, and anyone can pull it out of the APK (§4.4). |
 | 7 | Size | Budget: ≤ 100 000 base64 chars of `content` per event (nos.lol frame limit: 131 072 B). The usage profile (~200 records) is ~25 KB. A bigger group is **sharded into up to 8 addressable parts**. LWW makes the parts order- and generation-independent. |
@@ -45,7 +45,7 @@ says so, and the decision is repeated in §14 "Open questions for Leo".
 ### 2.1 Format
 
 ```
-https://leostumpf.github.io/MoneyLedger/join#v=1&k=<secret>&n=<name>
+https://leostumpf.github.io/moneyledger/join#v=1&k=<secret>&n=<name>
 moneyledger://join#v=1&k=<secret>&n=<name>
 ```
 
@@ -63,7 +63,7 @@ moneyledger://join#v=1&k=<secret>&n=<name>
 
 | Situation | Behaviour |
 |-----------|-----------|
-| App installed, Android | An intent filter for `moneyledger://join` (like the SSO callback). For the https form, an **App Link** with `autoVerify="true"` on `leostumpf.github.io` with `pathPrefix /MoneyLedger/join`. Verification needs `https://leostumpf.github.io/.well-known/assetlinks.json` at the **domain root**: a `LeoStumpf.github.io` user-site repo with `.nojekyll`, holding the release + upload key fingerprints. Without verification, Android asks "Open with" or opens the browser, which then shows the landing page. |
+| App installed, Android | An intent filter for `moneyledger://join` (like the SSO callback). For the https form, an **App Link** with `autoVerify="true"` on `leostumpf.github.io` with `pathPrefix /moneyledger/join`. Verification needs `https://leostumpf.github.io/.well-known/assetlinks.json` at the **domain root**: a `LeoStumpf.github.io` user-site repo with `.nojekyll` (decided 2026-10-17: **shared by all of Leo's apps** — `assetlinks.json` is a list of statements, one per package, and each app gets its own path prefix `/<appname>/`; the root page lists the apps), holding the release + upload key fingerprints (public certificate fingerprints only; the Play App Signing fingerprint is added once known). Without verification, Android asks "Open with" or opens the browser, which then shows the landing page. |
 | App not installed | The landing page `join.html` (GitHub Pages, static, no analytics, no external requests) says "Open in MoneyLedger" (a `moneyledger://join#…` button built **in JS from `location.hash`**) and links to Play / F-Droid / the web app. After installing, the user taps the link again. The welcome page also has **"Join with an invite link" → Paste**. |
 | Deferred deep link through the Play install referrer | **Rejected.** It would hand the secret to Google Play. |
 | Web app | The web build uses the hash URL strategy, so the link becomes `https://<web>/#/join?v=1&k=…`. The secret is still inside the fragment. |
@@ -151,7 +151,7 @@ Leo owns his own code, but the binary combines AGPL code he doesn't own: the `ma
 
 - `alt` (NIP-31) tells generic clients what the event is.
 - There is no `p`, `t` or client tag, to avoid extra metadata.
-- `expiration` (NIP-40) = now + 60 days. NIP-40 says relays **SHOULD** delete expired events but **MAY persist them indefinitely**, and that expiration is **not a security feature**. We treat it as hygiene, not as privacy.
+- `expiration` (NIP-40) = now + 30 days. NIP-40 says relays **SHOULD** delete expired events but **MAY persist them indefinitely**, and that expiration is **not a security feature**. We treat it as hygiene, not as privacy.
 
 ### 4.3 Subscriptions and fetch
 
@@ -166,7 +166,7 @@ Leo owns his own code, but the binary combines AGPL code he doesn't own: the `ma
 - **Trigger:** any change to the group's stored state. That means a local write *or* an inbound merge that changed a row (`snapshotDigest` ≠ `last_published_hash`).
 - **Debounce:** 3 s; at most 1 publish per group per 5 s per relay.
 - **Inbound merges.** Republishing after an inbound merge makes every device's event a full, merged copy, so one surviving phone is enough to bring a new joiner up to date. It converges: a merge that changes nothing publishes nothing.
-- **Refresh:** republish an unchanged snapshot when the last publish is > 20 days old, so `expiration` keeps moving while anyone opens the group.
+- **Refresh:** republish an unchanged snapshot when the last publish is > 10 days old, so `expiration` keeps moving while anyone opens the group.
 - **Relay replies:** `OK true` → record success per relay. `OK false` with a NIP-01 prefix (`rate-limited:`, `invalid:`, `blocked:`, `restricted:`, `pow:`, `error:`) → back off that relay (rate-limited: 1 min doubling to 1 h; blocked / restricted / invalid: mark it "rejects our events" in settings and stop retrying until the next app start). `duplicate:` counts as success.
 - **Sync health.** A group counts as **delivered** when ≥ 1 relay said `OK true`. 0 of N for 2 consecutive attempts → `SyncHealth` failing for link groups (same threshold as G24).
 
@@ -347,7 +347,7 @@ expenses.link_author / settlements.link_author / members.link_author  TEXT NULL
   3. Purge as today and drop `link_channels`.
 - In a link group, *Leave* = *Delete from this device*. Our participant stays in the ledger (debts are history). There is no "X left" record.
 - **Delete local data** (local mode) does the same per link group, best-effort with a 5 s timeout, before `wipeAll()`. The confirmation lists "N shared groups — the others keep their copies".
-- **Removing a person** in a link group only marks the participant `removed`; it doesn't revoke the key. The UI says so: "They can still open the group with the link. To lock them out, create a new invite link." A **Reset invite link** action (new epoch + secret: publish under the new topic, empty the old) is proposed as a late G52 step (§14 Q10).
+- **Removing a person** in a link group only marks the participant `removed`; it doesn't revoke the key. The UI says so: "They can still open the group with the link. To lock them out, create a new invite link." A **Reset invite link** action (new epoch + secret: publish under the new topic, empty the old) ships in the first version (G52, §14 Q10). The remaining people get the new link **directly** (share sheet / QR — the default); a pointer to the new topic on the old channel would be readable by the removed person too, so it is only used for one's own further devices, if at all (G52 evaluates both).
 
 ## 8. App integration
 
@@ -418,7 +418,7 @@ The first *Invite* in a group shows the disclosure (§9.2) and then opens the ch
   > "Shared groups sync through public Nostr relays (damus.io, nos.lol, primal.net). They store your group encrypted — only people with the link can read it. The relays see your IP address and when you sync. Anyone with the link can see and change the group. Want accounts and verified devices? Use Matrix (secure mode)."
   It links to "Why Matrix?" (§10.2).
 - **PRIVACY.md + the in-app `privacy*` keys:**
-  - a new section "Shared (link) groups" covering the above, the relay operators as independent third parties with their own terms, the 60-day expiry request (not a guarantee), and the backup containing the link key;
+  - a new section "Shared (link) groups" covering the above, the relay operators as independent third parties with their own terms, the 30-day expiry request (not a guarantee), and the backup containing the link key;
   - the "local mode sends nothing" passages changed to "groups you don't share send nothing".
 - Settings shows the relay list with "Add relay…" / remove / restore defaults.
 
@@ -435,7 +435,7 @@ Public relays exist for social notes. Some operators may not want opaque app blo
 - back off on `rate-limited` / `blocked`;
 - a short project page "For relay operators" (what we publish, how to block: kind 31847).
 
-**Optional:** ask the damus / nos.lol / primal operators before release (§14 Q12). nos.lol publishes terms (wikifreedia link in its NIP-11); read them before release.
+**Decided (2026-10-17, §14 Q12):** operators are **not** contacted. Condition: no grey zone — G51 first reads each default relay's published policy / terms (NIP-11 `posting_policy`, nos.lol's linked terms, damus / primal pages). A relay whose terms exclude app data or opaque encrypted blobs is dropped from the defaults and replaced by one that explicitly allows it (Leo is asked before the replacement). Fallback if relays become a problem: a self-hosted relay entered as the custom relay (Nostr is an open network, any relay works). The in-app disclosure (§9.2) and the "For relay operators" page stay.
 
 ## 10. Mixed groups, lock, and "Why Matrix" (G53, G54)
 
@@ -542,7 +542,7 @@ A separate Dart package `tool/spike/nostr/` (like `tool/bench/`, never part of t
 | E4 | Live latency: B subscribed, A publishes 50× (every 10 s) | p50 < 1.5 s, p95 < 5 s on ≥ 2 relays |
 | E5 | Full fetch: connect → EOSE time for 1 topic with 5 events | < 3 s p95 |
 | E6 | Rate limit: 30 publishes in 60 s, then 1/min | Note the first `rate-limited`; our 1 per 5 s per group policy stays below it |
-| E7 | Retention: events with `expiration` +60 d fetched at 1 h, 1 d, 3 d, 7 d, 14 d; one with +10 min | 60-d event present at 7 d on ≥ 2 relays; the 10-min one gone (or at least not served) |
+| E7 | Retention: events with `expiration` +30 d fetched at 1 h, 1 d, 3 d, 7 d, 14 d; one with +10 min | 30-d event present at 7 d on ≥ 2 relays; the 10-min one gone (or at least not served) |
 | E8 | Crypto cost: HKDF + gzip + AES-GCM + base64 for a 200-record snapshot; BIP-340 sign + verify; on the Pixel (AOT) and in Chrome (dart2js) | Pack + sign ≤ 100 ms native, ≤ 500 ms web; verify 20 events ≤ 1 s web |
 | E9 | Background: an Android WorkManager one-off with one WebSocket fetch + publish (the G36 debug trigger) | Works headless within 20 s |
 | E10 | NIP-11 of the three relays (+ 2 alternates, e.g. `relay.nostr.band`, `nostr.mom`) | Recorded in the report |
@@ -570,7 +570,7 @@ Each step is a commit with tests. The fakes come first.
 9. **Settings:** relay list (+ NIP-11 check), status; link group sync icon + peers sheet.
 10. **Leave / delete / Delete local data** unpublish; backup carries the secret + preview warning; *Rejoin link* after a restore.
 11. **Docs:** PRIVACY.md + `privacy*` keys, CLAUDE.md architecture section, THIRD_PARTY_NOTICES, README, `docs/smoke-test.md` (two-device link pass), landing page `join.html` + `assetlinks.json` (user-site repo), offline demo seed with one link group (`FakeRelayNetwork`-backed demo transport).
-12. *(optional)* **Reset invite link** (new secret, empty the old topic).
+12. **Reset invite link** (new secret + epoch, empty the old topic; the new link is shared directly with the remaining people — §7.3, §14 Q10).
 13. **Device pass** (Pixel + emulator + web): create → invite via QR → join → edit both sides → background round → leave.
 
 **G53 — mixed + lock**
@@ -593,21 +593,21 @@ Each step is a commit with tests. The fakes come first.
 - **"Pure link groups can't go wrong" isn't true.** A malicious link holder can wipe the group (tombstones). G48 restore points and *Reset group* are the recovery path, and the doc should say so in the invite sheet's help.
 - **Battery / data** for live WebSockets is small (idle sockets) but needs a check in the device pass.
 
-**Open questions (each with a recommendation)**
-1. **App key (W5):** secret `--dart-define` key, or a public salt? → **Public salt** (§3.4: AGPL §1 risk, F-Droid split, trivially extracted).
-2. **Event kind:** `31847` OK? → Yes; registering it in the NIPs repo is optional, later.
-3. **Default relays:** damus, nos.lol, primal (all three, every event)? Relay hints `r=` in the link? → Yes to the three; **no** relay hints in v1 (shorter links, and a custom relay is an expert setting).
-4. **Group name hint `n=` in the link:** → Yes (better join screen; whoever sees the link has the key anyway).
-5. **Landing page + App Links:** create the `LeoStumpf.github.io` user-site repo for `assetlinks.json` and `join.html`? → Yes. The scheme link works without it, and the https link degrades to the landing page.
-6. **In-app QR scanner?** → No in v1. The system camera opens the link; `mobile_scanner` on Android pulls ML Kit (proprietary — bad for F-Droid).
-7. **Secret in backups** (via meta)? → Yes, with the preview warning; it is what makes "restore on a new phone" work.
-8. **`by` author hint** (unsigned, unhashed `link_author`)? → Yes; it costs little and answers "who changed this?" for friends.
-9. **Channel opens only on the first invite** (solo groups never touch a relay)? → Yes.
-10. **Reset invite link** (rotation) in G52, or later? → Late optional G52 step; removal otherwise only marks.
-11. **Web app:** link groups on web too (live only, no background)? → Yes, same code.
-12. **Ask relay operators** before release? → Yes, a short note to the three operators plus the "For relay operators" page; it settles the ToS grey zone cheaply.
-13. **Matrix users' new groups:** stay `matrix` groups, with "Invite by link" opening a mixed channel (G53)? → Yes. Pure `linkOnly` groups come from no-account users. That keeps a signed history for signed-in users.
-14. **Expiry 60 days, refreshed after 20 days of age:** OK? → Yes (usage profile ≤ 3 weeks; a dormant group revives when anyone opens it).
+**Open questions — decided by Leo on 2026-10-17**
+1. **App key (W5):** → **Public salt** `kLinkSaltV1` (no secret key; §3.4).
+2. **Event kind:** → **`31847`**; registering it in the NIPs repo is optional, later.
+3. **Default relays:** → damus, nos.lol, primal, every event to all three; **no** `r=` relay hints in v1; a custom relay is an expert setting.
+4. **Group name hint `n=`:** → **Yes.**
+5. **Landing page + App Links:** → **Yes**, as a `LeoStumpf.github.io` user-site repo **shared by all of Leo's apps** (per-app path `/moneyledger/…`, one `assetlinks.json` with a statement per package). Created in G52 once the link handler exists.
+6. **In-app QR scanner:** → **No**; the system camera opens the link.
+7. **Secret in backups:** → **Yes**, with the preview warning.
+8. **`by` author hint:** → **Yes.**
+9. **Channel opens only on the first invite:** → **Yes.**
+10. **Reset invite link:** → **In the first version (G52)**, new link shared directly with the remaining people (§7.3).
+11. **Web app:** → **Yes**, same code, live only while the tab is open.
+12. **Ask relay operators:** → **No.** Disclosure in the app + the "For relay operators" page; **condition: no grey zone** — G51 checks each relay's terms first (§9.3), a relay that excludes this use is replaced; self-hosted relay as the fallback.
+13. **Matrix users' new groups:** → stay `matrix` groups; *Invite by link* opens a mixed channel (G53).
+14. **Expiry:** → **30 days, refreshed after 10 days of age** (changed from the proposed 60 / 20).
 
 ## 15. Sources
 
