@@ -772,14 +772,14 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       **before G52 step 6/7** (join picker needs the people)
 - [x] Left out: duplicate hint on *rename*; mode-dependent delete wording
       (local mode "will be deleted")
-- [ ] Device check (Pixel, DE, 360 dp): Enter keeps the keyboard + focus on
+- [x] Device check (Pixel, DE, 360 dp): Enter keeps the keyboard + focus on
       the create page; *Add person* dialog's three buttons wrapping; payer
       dropdown tag "nicht mehr dabei"; read the reworded privacy texts
 
 ### G65. Group settings + settings page (U22, U28, U21) 🟠
 - [x] Group settings page instead of the 9-entry ⋮ menu; `/settings` as a
       page with sections (CSV / sign-out moved) — **before G52 steps 6 + 9**
-- [ ] Device check: smoke step 3.11 (Pixel, DE, 360 dp)
+- [x] Device check: smoke step 3.11 (Pixel, DE, 360 dp)
 
 ### G66. Currencies (U16) 🟠
 - [x] Full ISO-4217 list with search, minor units per currency (JPY 0),
@@ -863,7 +863,7 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       stored, like the split modes)
       → *Split by items…* action under the mode buttons (5 segments don't fit
       in DE at 360 dp), full-screen item editor, result opens as Amounts
-- [ ] Device check: smoke 5.19
+- [x] Device check: smoke 5.19
 
 ### G78. Receipt photo, this device only (Leo 2026-10-17) 🟢
 - [x] Attach a photo to an expense, stored only on this device (app dir, not
@@ -872,10 +872,30 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       → Android only, not in backups (Leo); photos **move** with a local-mode
       adoption (expense ids unchanged); deleted expenses' photos go at the next
       app start (undo keeps them within the session)
-- [ ] Device check: smoke 5.20 (camera intent without permission prompt,
+- [x] Device check: smoke 5.20 (camera intent without permission prompt,
       photo picker, file size, cleanup, nothing reaches the peer)
 - [ ] Later maybe: `retrieveLostData` (app killed while camera open); strip
       EXIF/GPS from stored photos
+
+
+### G79. DEV-I findings (device pass 2026-10-17) 🟡
+- [x] 200 % font at 360 dp: group cards, ledger rows, balance rows, split
+      cells / mode labels, item editor, people page, currency field —
+      fixed (`large_text.dart`, `test/devi_large_font_test.dart`)
+- [ ] **Calculator unreachable on Android:** Gboard's decimal keypad has
+      only `-` → decide: operator row above the keyboard / text keyboard /
+      drop the feature (Leo)
+- [ ] Normal font, 360 dp: ledger row "du schuldest 140,00 C…" (G33 70 %
+      cap), long titles, Amounts cell "411,5CHF" (3-digit + suffix)
+- [ ] Section header "WIEDERHERSTELLUNGSPUNKTE" breaks mid-word at 200 %
+- [ ] Offline demo on Android shows web-only texts (no background sync /
+      restore points "im Browser") — screenshots only
+- [ ] Fresh install builds the (empty) Matrix SDK store before a mode is
+      chosen (`money_ledger_matrix.sqlite`, no network) — build it lazily
+      only when Matrix is actually wanted
+- [ ] Leo-only: TalkBack 11.1–11.4, 11.7, two-device checks (undo, duplicate,
+      item split, photo never reaches peer), web notice 12.2, gallery pick,
+      pinch zoom
 
 ---
 
@@ -961,6 +981,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G75 — usability polish (review leftovers)
 - [ ] G74 — payment details + GiroCode (with G57 / G73)
 - [ ] G76 — multiple payers (wire, with G57 / G73 / G74)
+- [ ] G79 — DEV-I findings (calculator keyboard, truncations, lazy Matrix store)
 - [x] G77 — itemized split
 - [x] G78 — receipt photo, this device only
 

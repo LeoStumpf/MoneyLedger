@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/large_text.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/sync/record_validation.dart';
 import '../../models/expense_date.dart' show dayOf;
@@ -256,7 +257,8 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                 ),
                 const SizedBox(width: 12),
                 SizedBox(
-                  width: 96,
+                  // DEV-I: grows with the font size (code faded at 200 %).
+                  width: scaledCellWidth(context, 96, 140),
                   child: CurrencyField(
                     key: const Key('paymentCurrency'),
                     value: _currency,

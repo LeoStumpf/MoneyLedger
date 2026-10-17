@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/large_text.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../../core/sync/record_validation.dart';
@@ -626,7 +627,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   SizedBox(
-                                    width: 108,
+                                    // DEV-I: grows with the font size
+                                    // ("EU" faded at 200 %).
+                                    width: scaledCellWidth(context, 108, 150),
                                     // G66: any ISO-4217 currency (search);
                                     // the expense's own one stays offered.
                                     child: CurrencyField(

@@ -688,13 +688,23 @@ class GroupBadge extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: ink, width: 1.5),
       ),
-      child: Text(
-        initialsOf(name),
-        style: TextStyle(
-          color: ink,
-          fontWeight: FontWeight.w800,
-          fontSize: size * 0.38,
-          height: 1,
+      // DEV-I: scaled down instead of wrapping ("S" / "W" on two lines) at a
+      // large system font size — the ring has a fixed size.
+      child: Padding(
+        padding: EdgeInsets.all(size * 0.12),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            initialsOf(name),
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              color: ink,
+              fontWeight: FontWeight.w800,
+              fontSize: size * 0.38,
+              height: 1,
+            ),
+          ),
         ),
       ),
     );
@@ -744,7 +754,7 @@ class BalanceSummaryText extends StatelessWidget {
         neutralText,
         key: const Key('balanceSummary'),
         textAlign: textAlign,
-        maxLines: 1,
+        maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: neutral,
       );
@@ -760,7 +770,9 @@ class BalanceSummaryText extends StatelessWidget {
                 ? l.youAreOwedAmount(context.money(v, c))
                 : l.youOweAmount(context.money(-v, c)),
             textAlign: textAlign,
-            maxLines: 1,
+            // DEV-I: wraps instead of cutting the amount ("Du schuldest
+            // 3,0…") at a large font size on a phone.
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: base?.copyWith(
               color: v > 0 ? colors.positive : colors.negative,

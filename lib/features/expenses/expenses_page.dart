@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/widgets/large_text.dart';
 import '../../core/session/app_session.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/widgets/text_prompt_dialog.dart';
@@ -1086,10 +1087,10 @@ class _GroupSummaryCard extends StatelessWidget {
                       ),
                       onPressed: busy ? null : onSettleUp,
                       icon: const Icon(Icons.payments_outlined, size: 20),
-                      label: Text(
-                        l.settleUp,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      // DEV-I: shrinks instead of "Beglei…" at a large font.
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(l.settleUp, maxLines: 1, softWrap: false),
                       ),
                     ),
                   ),
@@ -1103,10 +1104,14 @@ class _GroupSummaryCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: Insets.m),
                     ),
                     icon: const Icon(Icons.balance, size: 20),
-                    label: Text(
-                      l.balancesButton,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    // DEV-I: shrinks instead of "Beglei…" at a large font.
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        l.balancesButton,
+                        maxLines: 1,
+                        softWrap: false,
+                      ),
                     ),
                   ),
                 ),
@@ -1195,6 +1200,30 @@ class _LedgerRow extends StatelessWidget {
     final l = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final large = isLargeText(context);
+    final amountCells = <Widget>[
+      const SizedBox(width: Insets.s),
+      if (pending)
+        Padding(
+          padding: const EdgeInsets.only(right: Insets.xs),
+          child: Icon(
+            Icons.cloud_queue,
+            size: 16,
+            color: scheme.outline,
+            // G71: the row is read as one sentence.
+            semanticLabel: l.recordNotSyncedYet,
+          ),
+        ),
+      Text(
+        amount,
+        key: const Key('ledgerRowAmount'),
+        maxLines: 1,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          fontFeatures: kTabularFigures,
+        ),
+      ),
+    ];
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -1225,7 +1254,7 @@ class _LedgerRow extends StatelessWidget {
                                 style: theme.textTheme.bodyLarge?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
-                                maxLines: 1,
+                                maxLines: large ? 2 : 1,
                                 overflow: TextOverflow.ellipsis,
                                 child: title,
                               ),
@@ -1276,62 +1305,78 @@ class _LedgerRow extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: Insets.s),
-                      if (pending)
-                        Padding(
-                          padding: const EdgeInsets.only(right: Insets.xs),
-                          child: Icon(
-                            Icons.cloud_queue,
-                            size: 16,
-                            color: scheme.outline,
-                            // G71: the row is read as one sentence.
-                            semanticLabel: l.recordNotSyncedYet,
-                          ),
-                        ),
-                      Text(
-                        amount,
-                        key: const Key('ledgerRowAmount'),
-                        maxLines: 1,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontFeatures: kTabularFigures,
-                        ),
-                      ),
+                      if (!large) ...amountCells,
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  LayoutBuilder(
-                    builder: (context, c) => Row(
+                  // DEV-I: at a large font size the amount gets its own
+                  // line too (the title had ~110 dp next to it).
+                  if (large)
+                    Row(
                       children: [
-                        Expanded(
-                          child: Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        if (amountNote != null) ...[
-                          const SizedBox(width: Insets.s),
-                          // The note keeps its natural width (it's what the
-                          // row is about for me), capped so the payer always
-                          // keeps some room.
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: c.maxWidth * 0.7,
-                            ),
-                            child: DefaultTextStyle.merge(
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              child: amountNote!,
-                            ),
-                          ),
-                        ],
+                        for (final w in amountCells.skip(1))
+                          w is Text
+                              ? Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: AlignmentDirectional.centerStart,
+                                    child: w,
+                                  ),
+                                )
+                              : w,
                       ],
                     ),
-                  ),
+                  const SizedBox(height: 2),
+                  // DEV-I: at a large font size payer and "you lent …" get
+                  // a line each — side by side both were cut ("Be… du
+                  // schulde…") at 360 dp.
+                  if (large) ...[
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (amountNote != null)
+                      DefaultTextStyle.merge(
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        child: amountNote!,
+                      ),
+                  ] else
+                    LayoutBuilder(
+                      builder: (context, c) => Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          if (amountNote != null) ...[
+                            const SizedBox(width: Insets.s),
+                            // The note keeps its natural width (it's what the
+                            // row is about for me), capped so the payer always
+                            // keeps some room.
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: c.maxWidth * 0.7,
+                              ),
+                              child: DefaultTextStyle.merge(
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                child: amountNote!,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -1425,11 +1470,11 @@ class _ExpenseTile extends StatelessWidget {
               colors.negative,
             )
           : (l.settledUp, scheme.onSurfaceVariant);
+      // Lines / ellipsis come from the row (one line, or two at a large
+      // font size — DEV-I).
       note = Text(
         text,
         key: const Key('expenseEffect'),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
         style: small?.copyWith(color: color),
       );
     }

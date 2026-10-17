@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/large_text.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/sync/record_validation.dart';
 import '../../core/theme/app_theme.dart';
@@ -262,6 +263,34 @@ class _ItemSplitPageState extends State<ItemSplitPage> {
       ).values;
       status = l.itemEach(_money(shares.reduce((a, b) => a > b ? a : b)));
     }
+    final nameField = TextField(
+      key: Key('itemName-$index'),
+      controller: _nameCtrl[item],
+      textCapitalization: TextCapitalization.sentences,
+      textInputAction: TextInputAction.next,
+      decoration: InputDecoration(labelText: l.itemLabel(index + 1)),
+    );
+    final amountField = TextField(
+      key: Key('itemAmount-$index'),
+      controller: _amountCtrl[item],
+      textAlign: TextAlign.right,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textInputAction: TextInputAction.done,
+      style: const TextStyle(fontFeatures: kTabularFigures),
+      decoration: InputDecoration(
+        labelText: l.amountLabel,
+        suffixText: widget.currency,
+        helperText: preview,
+        errorText: _invalid(item) ? l.invalidNumber : null,
+      ),
+      onChanged: (t) => setState(() => item.amountText = t),
+    );
+    final removeButton = IconButton(
+      key: Key('itemRemove-$index'),
+      tooltip: l.itemRemove,
+      icon: const Icon(Icons.delete_outline),
+      onPressed: () => _removeItem(item),
+    );
     return Card(
       key: ValueKey('item-$index'),
       margin: const EdgeInsets.only(bottom: Insets.s),
@@ -270,50 +299,31 @@ class _ItemSplitPageState extends State<ItemSplitPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: TextField(
-                    key: Key('itemName-$index'),
-                    controller: _nameCtrl[item],
-                    textCapitalization: TextCapitalization.sentences,
-                    textInputAction: TextInputAction.next,
-                    decoration: InputDecoration(
-                      labelText: l.itemLabel(index + 1),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: Insets.s),
-                Expanded(
-                  flex: 2,
-                  child: TextField(
-                    key: Key('itemAmount-$index'),
-                    controller: _amountCtrl[item],
-                    textAlign: TextAlign.right,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    textInputAction: TextInputAction.done,
-                    style: const TextStyle(fontFeatures: kTabularFigures),
-                    decoration: InputDecoration(
-                      labelText: l.amountLabel,
-                      suffixText: widget.currency,
-                      helperText: preview,
-                      errorText: _invalid(item) ? l.invalidNumber : null,
-                    ),
-                    onChanged: (t) => setState(() => item.amountText = t),
-                  ),
-                ),
-                IconButton(
-                  key: Key('itemRemove-$index'),
-                  tooltip: l.itemRemove,
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _removeItem(item),
-                ),
-              ],
-            ),
+            // DEV-I: at a large font size name and amount get a line
+            // each — side by side the amount cell showed "0EUR" for 1300.
+            if (isLargeText(context)) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: nameField),
+                  removeButton,
+                ],
+              ),
+              const SizedBox(height: Insets.s),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: Insets.m),
+                child: amountField,
+              ),
+            ] else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: nameField),
+                  const SizedBox(width: Insets.s),
+                  Expanded(flex: 2, child: amountField),
+                  removeButton,
+                ],
+              ),
             const SizedBox(height: Insets.s),
             Padding(
               padding: const EdgeInsetsDirectional.only(end: Insets.m),

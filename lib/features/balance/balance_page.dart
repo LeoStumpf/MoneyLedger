@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/large_text.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/platform/text_sharer.dart';
@@ -469,6 +470,16 @@ class _DebtRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final large = isLargeText(context);
+    final amount = Text(
+      context.money(debt.cents, debt.currency),
+      key: Key('debtAmount-${debt.from}-${debt.to}-${debt.currency}'),
+      style: theme.textTheme.bodyLarge?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w700,
+        fontFeatures: kTabularFigures,
+      ),
+    );
     return ListTile(
       contentPadding: const EdgeInsets.fromLTRB(
         Insets.l,
@@ -503,16 +514,13 @@ class _DebtRow extends StatelessWidget {
           fontWeight: isMine ? FontWeight.w700 : FontWeight.w500,
         ),
       ),
+      // DEV-I: at a large font size the amount moves under the names —
+      // side by side, both names were cut to one letter at 360 dp.
+      subtitle: large ? amount : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            context.money(debt.cents, debt.currency),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontFeatures: kTabularFigures,
-            ),
-          ),
+          if (!large) amount,
           if (onTap != null)
             Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
         ],
@@ -630,10 +638,20 @@ class _StatsSection extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                l.statsTotalSpent,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                              // DEV-I: one long German word
+                              // ("Gesamtausgaben") broke mid-word at a
+                              // large font size — shrink it instead.
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  l.statsTotalSpent,
+                                  key: const Key('statsTotalLabel'),
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                               Text(

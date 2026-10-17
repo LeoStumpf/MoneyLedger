@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/widgets/large_text.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/sync/record_validation.dart';
 import '../../core/theme/app_theme.dart';
@@ -563,9 +564,18 @@ class _SplitEditorState extends State<SplitEditor> {
         SegmentedButton<SplitMode>(
           showSelectedIcon: false,
           segments: [
-            ButtonSegment(value: SplitMode.equal, label: Text(l.splitEqual)),
-            ButtonSegment(value: SplitMode.exact, label: Text(l.splitExact)),
-            ButtonSegment(value: SplitMode.shares, label: Text(l.splitShares)),
+            ButtonSegment(
+              value: SplitMode.equal,
+              label: _segmentLabel(l.splitEqual),
+            ),
+            ButtonSegment(
+              value: SplitMode.exact,
+              label: _segmentLabel(l.splitExact),
+            ),
+            ButtonSegment(
+              value: SplitMode.shares,
+              label: _segmentLabel(l.splitShares),
+            ),
             // U14: "%" fits a phone; screen readers hear "Percent".
             ButtonSegment(
               value: SplitMode.percent,
@@ -620,6 +630,13 @@ class _SplitEditorState extends State<SplitEditor> {
       ],
     );
   }
+
+  /// DEV-I: a mode label stays on one line and shrinks at a large font size
+  /// (it broke mid-word — "Gleic/h", "Beträ/ge" — and was clipped).
+  Widget _segmentLabel(String text) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, softWrap: false),
+  );
 
   Widget _row(MemberModel m, int cents, int remaining) {
     final theme = Theme.of(context);
@@ -716,10 +733,13 @@ class _SplitEditorState extends State<SplitEditor> {
             children: [
               name(),
               SizedBox(
-                width: 96,
+                key: const Key('splitExactCell'),
+                width: scaledCellWidth(context, 96, 128),
                 child: _numField(
                   _exactCtrl[m.userId]!,
-                  suffix: widget.currency,
+                  // DEV-I: no currency suffix at a large font size — it
+                  // left no room for the amount (the form shows it above).
+                  suffix: isLargeText(context) ? null : widget.currency,
                   decimal: true,
                   onEdited: () => _autoExact.remove(m.userId),
                 ),
@@ -740,7 +760,7 @@ class _SplitEditorState extends State<SplitEditor> {
               name(amountBelow: true),
               _stepButton(m.userId, -1),
               SizedBox(
-                width: 48,
+                width: scaledCellWidth(context, 48, 80),
                 child: _numField(_shareCtrl[m.userId]!, decimal: false),
               ),
               _stepButton(m.userId, 1),
@@ -754,7 +774,7 @@ class _SplitEditorState extends State<SplitEditor> {
             children: [
               name(amountBelow: true),
               SizedBox(
-                width: 64,
+                width: scaledCellWidth(context, 64, 100),
                 child: _numField(
                   _percentCtrl[m.userId]!,
                   suffix: '%',

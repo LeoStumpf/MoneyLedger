@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/large_text.dart';
 import '../../core/widgets/action_error.dart';
 
 import '../../core/session/app_session.dart';
@@ -294,7 +295,19 @@ class _FormerMemberTile extends ConsumerWidget {
         ),
         trailing: isSelf
             ? Chip(label: Text(l.you))
+            // DEV-I: at a large font size the text button took the whole
+            // row and the name disappeared — an icon button then.
+            : isLargeText(context)
+            ? IconButton(
+                key: Key('readd-${member.userId}'),
+                tooltip: l.readd,
+                icon: const Icon(Icons.person_add_alt_1_outlined),
+                onPressed: canReadd
+                    ? () => _readd(context, ref, mxid, title)
+                    : null,
+              )
             : TextButton(
+                key: Key('readd-${member.userId}'),
                 onPressed: canReadd
                     ? () => _readd(context, ref, mxid, title)
                     : null,

@@ -220,6 +220,45 @@ level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
 
+**2026-10-17 (DEV-I, G63–G78 device pass)** · `d45b1ad` + DEV-I fixes ·
+debug builds under a temporary id `io.github.leostumpf.moneyledger.devi`
+(Leo's release install untouched; uninstalled afterwards): offline demo on
+emu-5554 (`test-atd`, DE, 360 dp), a normal build in local mode on the
+Pixel (DE). **3.11** ⋮ = *Person hinzufügen / Gruppe archivieren /
+Gruppeneinstellungen*; settings page sections Konto / Synchronisierung /
+Erweitert (Matrix) / Sichern & Wiederherstellen / Daten / Info (removed-group
+variant not run — no such group in the demo). **8.16** page with „Was
+brauchst du?“ (4 rows + the Matrix line) and the three blocks; **8.17**
+*Gruppe auswählen …* → „Welche Gruppe?“ sorted → reset page (local mode /
+read-only / web not run); **8.18** phone nudge *Jetzt sichern* → passphrase
+dialog. **G64** Enter / Gboard ✓ adds a chip and keeps keyboard + focus
+(Pixel), duplicate-name hint, *Person hinzufügen* buttons stack readable,
+payer dropdown "Jonas — nicht mehr dabei". **G67** undo snackbar ≈ 7–8 s,
+*Rückgängig* restores, archived banner + auto-unarchive (TalkBack, peer,
+details sheet not run). **G69** share sheet with "wer zahlt wem" + overview.
+**5.17** duplicate (single device; peer not run). **5.18** `12,50+8` →
+20,50 €, `10/3` → 3,33 €; **Gboard's decimal keypad offers only `-`** (no
+`+ * /`), `20-5` typed on it → 15,00 € — the calculator is unreachable for
+`+ * /` on Android. **5.19** 15,56 / 12,22 / 2,22 → *Gleichmäßig* 15 / 12 / 3
+→ Amounts "Ergibt den Gesamtbetrag"; items over the amount → "… zu viel" +
+*Gesamtbetrag auf die Summe setzen* sets the form amount; items kept on
+reopen (peer not run). **5.20** (Pixel) *Foto aufnehmen* → Google Camera, no
+permission prompt; thumbnail + "Nur auf diesem Gerät …"; row icon;
+`files/receipts/money_ledger_local/<id>.jpg` 1600×1200, 116 KB (dark shot),
+EXIF kept, nothing left in `cache/`; full screen viewer; *Aus der Galerie
+wählen* → system photo picker (cancelled — Leo's photos); *Ersetzen* →
+"Belegfoto gespeichert"; *Entfernen* → "Belegfoto entfernt", file gone;
+delete → *Rückgängig* keeps the file, delete again + force-stop + start →
+gone; deleting a group removes its photo at once; local-mode delete text
+„… wird von diesem Gerät gelöscht“ (12.3). **§11.5 (200 %)** found and fixed:
+amounts cut in group cards / "Dein Saldo" / ledger rows / suggested payments,
+split-mode labels broken mid-word, exact / item amount cells hiding the
+value, former member's name pushed out, "Gesamtausgaben" broken mid-word,
+monogram wrapping, *Begleichen* cut (`isLargeText` / `scaledCellWidth`,
+`test/devi_large_font_test.dart`); re-checked on the emulator. 11.6 / 11.8
+on the Pixel ✓ (description focused, Next → amount with the decimal keypad).
+Not run: TalkBack 11.1–11.4, 11.7, 12.2 web, everything `2dev`.
+
 **2026-10-17 (DEV-H, Phase H device pass)** · `2d496f5` (G59) · release APK
 `install -r` over the pre-G45 1.0.0 install on the phone (A, DE — data and
 session kept) and a fresh install on emu-5554 (`test-atd`, EN). **7.12:**
