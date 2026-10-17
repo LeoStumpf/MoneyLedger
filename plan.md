@@ -770,7 +770,7 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [x] Add people while creating a group (chips, *Add & next*), duplicate-name
       hint, one term ("Personen"), balance warning when removing someone —
       **before G52 step 6/7** (join picker needs the people)
-- [ ] Left out: duplicate hint on *rename*; mode-dependent delete wording
+- [x] Left out: duplicate hint on *rename*; mode-dependent delete wording
       (local mode "will be deleted")
 - [ ] Device check (Pixel, DE, 360 dp): Enter keeps the keyboard + focus on
       the create page; *Add person* dialog's three buttons wrapping; payer
@@ -794,7 +794,7 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [ ] Device check: undo snackbar (8 s, TalkBack), undone delete reaches the
       peer, details sheet + removed/archived banners at 360 dp / 200 % font,
       *Details* dialog from a snackbar
-- [ ] Not done: *Try again* button on error snackbars
+- [x] Not done: *Try again* button on error snackbars
 
 ### G68. Sync sheet per person (U24) 🟡
 - [ ] Tappable cloud, status per person, *Sync now*; same sheet for Matrix and
@@ -943,7 +943,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G55 — web glyph coverage without Google (found in G43) — accepted as is (Leo 2026-10-17); Flutter-upgrade reminder kept in G55
 - [x] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel) — done 2026-10-17: all pass; found G62
 - [ ] G58 — restore-point follow-ups (found in G48)
-- [ ] G60 — expense-date follow-ups (found in G49)
+- [x] G60 — expense-date follow-ups (found in G49)
 - [ ] G61 — split follow-ups (found in G59)
 - [ ] G57 — custom-category follow-ups (found in G47)
 - [x] G56 — UX follow-ups (found in G46)
