@@ -749,6 +749,60 @@ chained to it is never offered → "nothing to go back to".
       split batches when the editor changes); regression test with the
       DEV-H repro (update → edits within 10 min → reset offered)
 
+## Usability review 2026-10-17 (`docs/usability-review.md`, U1–U31)
+
+Proposed by the review; order + scope to confirm with Leo (§4 of the review).
+
+### G63. Correctness + texts before release (U11, U5, U3, U29, U14) 🔴
+- [ ] **U11:** editing an expense that involves a former member drops them
+      from the split (and empties the payer) → balances change silently;
+      keep former participants of *this* expense selectable (like
+      `settle_up.dart`) + regression test
+- [ ] Trim-validation of names / descriptions, stale homeserver hint,
+      German polish, clearer split-mode labels
+
+### G64. People when creating a group (U4, U9, U6, U10) 🟠
+- [ ] Add people while creating a group (chips, *Add & next*), duplicate-name
+      hint, one term ("Personen"), balance warning when removing someone —
+      **before G52 step 6/7** (join picker needs the people)
+
+### G65. Group settings + settings page (U22, U28, U21) 🟠
+- [ ] Group settings page instead of the 9-entry ⋮ menu; `/settings` as a
+      page with sections (CSV / sign-out moved) — **before G52 steps 6 + 9**
+
+### G66. Currencies (U16) 🟠
+- [ ] Full ISO-4217 list with search, minor units per currency (JPY 0),
+      default from the device region
+
+### G67. Undo + understandable errors (U13, U25, U15) 🟠
+- [ ] Undo snackbar for delete / record payment, *Delete* in the edit form,
+      `describeActionError` instead of raw "Failed: …" (29 places), detail
+      sheet in read-only groups
+
+### G68. Sync sheet per person (U24) 🟡
+- [ ] Tappable cloud, status per person, *Sync now*; same sheet for Matrix and
+      link groups — **with G52 step 9** (peers sheet)
+
+### G69. Share + overview (U17, U20, U19) 🟡
+- [ ] "Who pays whom" as share text, group list sorted by activity, simple
+      statistics on the balance page — after G52 step 6 (`share_plus`)
+
+### G70. Simplify backup / restore (U23) 🟡
+- [ ] One page, three blocks (file backup, restore points, reset group) with a
+      decision aid — after G65, before G52 step 10
+
+### G71. Accessibility + form flow (U30, U12) 🟡
+- [ ] Semantics labels, 48 dp targets, autofocus / *Next* through the form;
+      TalkBack / 200 % font check in the G52 step 13 device pass
+
+### G72. Local notifications (opt-in) (U26) 🟢
+- [ ] Notify from the background round about others' changes; setting +
+      privacy text — after G52 step 8
+
+### G73. Manual exchange rates (U18) 🟢
+- [ ] Fixed rates per group in the signed meta, "settle in {currency}" — wire
+      change → bundle with G57 after G52/G53
+
 ---
 
 ## Execution queue (conductor process)
@@ -819,6 +873,17 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G61 — split follow-ups (found in G59)
 - [ ] G57 — custom-category follow-ups (found in G47)
 - [x] G56 — UX follow-ups (found in G46)
+- [ ] G63 — correctness + texts before release (usability review U11 …)
+- [ ] G64 — people when creating a group (before G52 step 6/7)
+- [ ] G65 — group settings + settings page (before G52 step 6/9)
+- [ ] G66 — currencies
+- [ ] G67 — undo + understandable errors
+- [ ] G68 — sync sheet per person (with G52 step 9)
+- [ ] G69 — share + overview
+- [ ] G70 — simplify backup / restore
+- [ ] G71 — accessibility + form flow
+- [ ] G72 — local notifications (opt-in)
+- [ ] G73 — manual exchange rates (with G57)
 
 ---
 
