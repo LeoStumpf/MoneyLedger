@@ -26,6 +26,7 @@ import '../../models/expense_date.dart' show storedExpenseDate;
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart' show nextLwwClock;
 import '../history/snapshot_store.dart';
+import '../receipts/receipt_store.dart' show receiptStoreFactoryProvider;
 import 'record_undo.dart' show UndoableWrite;
 
 part 'expenses_provider.g.dart';
@@ -47,12 +48,16 @@ final localDatabaseOpenerProvider = Provider<AppDatabase Function()>(
 /// and after an adoption). Returns whether they were deleted. Injectable
 /// with the opener.
 ///
-/// G48: local mode's on-device snapshots are deleted with it.
+/// G48: local mode's on-device snapshots are deleted with it — G78: and
+/// its receipt photos (after an adoption they were moved into the account
+/// first, `moveReceipts`).
 final localDatabaseDeleterProvider = Provider<Future<bool> Function()>((ref) {
   final snapshots = ref.read(snapshotStoreFactoryProvider);
+  final receipts = ref.read(receiptStoreFactoryProvider);
   return () => deleteLedgerFilesAndSnapshots(
     deleteLocalDatabase,
     snapshots(localDatabaseName),
+    receipts: receipts?.call(localDatabaseName),
   );
 });
 

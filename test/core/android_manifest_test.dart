@@ -46,6 +46,27 @@ void main() {
     }
   });
 
+  test('G78: receipt photos need no camera / storage permission and pull '
+      'in no Google services', () {
+    for (final p in ['CAMERA', 'READ_EXTERNAL_STORAGE', 'READ_MEDIA_IMAGES']) {
+      expect(
+        manifest,
+        isNot(contains('android:name="android.permission.$p"')),
+        reason: 'image_picker would then ask for $p',
+      );
+    }
+    // image_picker's Play-services photo-picker backport hook is removed.
+    expect(
+      manifest,
+      contains(
+        RegExp(
+          r'<service\s+android:name="com\.google\.android\.gms\.metadata'
+          r'\.ModuleDependencies"\s+tools:node="remove"\s*/>',
+        ),
+      ),
+    );
+  });
+
   test('G44: no encrypted dependency-info blob in the APK / bundle', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
     final block = RegExp(

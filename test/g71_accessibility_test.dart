@@ -3,6 +3,8 @@
 /// contrast — at 360 dp in English.
 library;
 
+import 'dart:typed_data';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/database/account_database.dart';
 import 'package:money_ledger/core/database/app_database.dart';
+import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
@@ -31,6 +34,7 @@ import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/groups/group_settings_page.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
 import 'package:money_ledger/features/history/restore_points.dart';
+import 'package:money_ledger/features/receipts/receipt_store.dart';
 import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
@@ -415,6 +419,42 @@ void main() {
     }
   });
 
+  testWidgets('G78 receipt photo on the expense form', (tester) async {
+    _phone(tester, height: 1600);
+    final handle = tester.ensureSemantics();
+    final db = await _seed();
+    addTearDown(db.close);
+    await ExpensesDao(db).upsertExpenseLww(expenseCompanion(_expenses.first));
+    final net = FakeMatrixNetwork();
+    await tester.pumpWidget(
+      _routed(AddExpensePage(roomId: _g, initial: _expenses.first), [
+        ...signingUiOverrides(),
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith((ref) => net.clientFor(_me)),
+        receiptStoreProvider.overrideWithValue(
+          InMemoryReceiptStore()..files['e1'] = Uint8List(4),
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    final thumb = find.byKey(const Key('receiptThumbnail'));
+    await tester.ensureVisible(thumb);
+    await tester.pumpAndSettle();
+    // The thumbnail is a button named for what it does.
+    expect(
+      tester.getSemantics(thumb),
+      matchesSemantics(
+        tooltip: 'View receipt photo',
+        isButton: true,
+        hasTapAction: true,
+        hasFocusAction: true,
+        isFocusable: true,
+      ),
+    );
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
   testWidgets('G77 item editor (split by items)', (tester) async {
     _phone(tester, height: 1600);
     final handle = tester.ensureSemantics();
@@ -455,6 +495,12 @@ void main() {
               pendingPeers: {_bob},
               minPeerInSyncAt: 8000,
             ),
+            extra: [
+              // G78: e1 has a receipt photo on this device.
+              receiptStoreProvider.overrideWithValue(
+                InMemoryReceiptStore()..files['e1'] = Uint8List(1),
+              ),
+            ],
           ),
         ),
       );
@@ -468,6 +514,7 @@ void main() {
         'You paid',
         'you lent €21.00',
         'Has a note',
+        'Has a receipt photo',
         'Not synced yet',
       ]) {
         expect(spoken, contains(part));

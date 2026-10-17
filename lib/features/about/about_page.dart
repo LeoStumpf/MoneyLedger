@@ -133,7 +133,7 @@ class PrivacyPolicyPage extends StatelessWidget {
   const PrivacyPolicyPage({super.key});
 
   /// Date of the policy text (also in PRIVACY.md).
-  static final lastUpdated = DateTime(2026, 10, 16);
+  static final lastUpdated = DateTime(2026, 10, 17);
 
   @override
   Widget build(BuildContext context) {
@@ -148,6 +148,7 @@ class PrivacyPolicyPage extends StatelessWidget {
       (l.privacyCsvTitle, l.privacyCsvBody),
       (l.privacyBackupTitle, l.privacyBackupBody),
       (l.privacyRestorePointsTitle, l.privacyRestorePointsBody),
+      (l.privacyReceiptsTitle, l.privacyReceiptsBody),
       (l.privacyDeleteTitle, l.privacyDeleteBody),
       (l.privacyContactTitle, l.privacyContactBody),
     ];

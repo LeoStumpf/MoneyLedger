@@ -1,6 +1,6 @@
 # MoneyLedger — Privacy Policy
 
-_Last updated: 2026-10-16_
+_Last updated: 2026-10-17_
 
 <!-- Keep in sync with the in-app privacy policy (About → Privacy policy),
      whose text lives in lib/l10n/app_en.arb / app_de.arb (privacy* keys). -->
@@ -116,6 +116,19 @@ all app data. Leaving or deleting a group removes its earlier versions at
 once; the daily copies still contain it until they rotate out (after about
 five weeks), so that a group deleted by mistake can be restored. Deleting
 local data, or uninstalling the app, removes all of them.
+
+## Receipt photos (Android)
+
+On Android you can attach a photo of the receipt to an expense, taken with
+your camera app or picked from your photos. MoneyLedger stores a smaller copy
+only in the app's private storage on this device. It is never sent anywhere —
+not to the others in the group, not to any homeserver — is not part of any
+backup file, restore point or CSV, and is excluded from Android's backups like
+all app data. It is deleted with its expense (the next time the app starts),
+when you leave or delete the group, and when you delete local data or
+uninstall the app; signing out keeps it. The camera and photo picker are
+Android's own: MoneyLedger asks for no camera or storage permission and only
+receives the one photo you choose.
 
 ## Deleting your data
 

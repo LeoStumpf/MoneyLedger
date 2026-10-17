@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +25,7 @@ import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/core/session/app_session.dart';
 import 'package:money_ledger/core/session/device_prefs.dart';
 import 'package:money_ledger/core/session/local_adoption.dart';
+import 'package:money_ledger/features/receipts/receipt_store.dart';
 import 'package:money_ledger/core/session/local_transport.dart';
 import 'package:money_ledger/core/sync/ledger_sync_host.dart';
 import 'package:money_ledger/core/sync/sync_engine.dart';
@@ -100,6 +102,9 @@ void main() {
   /// (counts builds — local mode must never build one), the auth gateway,
   /// file-backed ledger DBs (they persist across close / reopen like the
   /// real ones) and a fake relay device for the account.
+  /// G78: receipt photo stores by ledger DB name.
+  final receiptStores = <String, InMemoryReceiptStore>{};
+
   ProviderContainer makeApp({
     Map<String, String> prefs = const {
       'welcome_seen': '1',
@@ -138,6 +143,9 @@ void main() {
           return true;
         }),
         backgroundSchedulerProvider.overrideWithValue(scheduler),
+        receiptStoreFactoryProvider.overrideWithValue(
+          (name) => receiptStores.putIfAbsent(name, InMemoryReceiptStore.new),
+        ),
         pokeDebounceProvider.overrideWithValue(const Duration(milliseconds: 1)),
         syncIntervalProvider.overrideWithValue(const Duration(hours: 1)),
         localAdoptionKeyWaitProvider.overrideWithValue(
@@ -327,6 +335,15 @@ void main() {
           await c.read(membersDaoProvider).getMembers(groupId),
           kLocalAccountId,
         )!;
+        // G78: a receipt photo of the local expense.
+        final expenseId =
+            (await c.read(expensesDaoProvider).getAllExpensesForGroup(groupId))
+                .single
+                .id;
+        await c
+            .read(receiptStoreProvider)!
+            .write(expenseId, Uint8List.fromList([1, 2, 3]));
+        expect(receiptStores.keys, [localDatabaseName]);
 
         // Settings → Connect a Matrix account → login page.
         await c.read(devicePrefsProvider.notifier).setConnecting(true);
@@ -393,6 +410,13 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 10));
         }
         expect(localDeletes, [true]);
+
+        // G78: the photo moved with its expense into the account's store.
+        expect(receiptStores[accountDatabaseName(_mxid)]!.files[expenseId], [
+          1,
+          2,
+          3,
+        ]);
 
         // The local ledger is empty now (local mode would start fresh).
         final local = fileDb(localDatabaseName);

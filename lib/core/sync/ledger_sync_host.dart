@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/ledger_syncer.dart';
 import '../../features/history/restore_points.dart';
+import '../../features/receipts/receipt_store.dart';
 import '../background/background_sync_provider.dart';
 import '../session/local_adoption.dart';
 import 'sync_engine.dart';
@@ -41,6 +42,8 @@ class LedgerSyncHost extends ConsumerWidget {
     ref.watch(localLedgerAdoptionProvider);
     // G48: prune the version history + the daily on-device snapshot.
     ref.watch(restorePointsMaintenanceProvider);
+    // G78: photos of deleted expenses / gone groups are removed.
+    ref.watch(receiptMaintenanceProvider);
     return child;
   }
 }

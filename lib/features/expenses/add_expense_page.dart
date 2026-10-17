@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +27,8 @@ import 'record_attribution.dart';
 import 'record_actions.dart';
 import 'record_undo.dart' show UndoableWrite;
 import '../../core/widgets/action_error.dart';
+import '../receipts/receipt_field.dart';
+import '../receipts/receipt_store.dart';
 
 /// Add (default) or edit an expense — pass [initial] to prefill the form and
 /// save the submit as an LWW edit of the same record.
@@ -115,7 +119,18 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   /// Set once the expense was saved, so the page's own pop never asks.
   bool _saved = false;
 
-  bool get _dirty {
+  /// G78: the receipt photo the form shows (this device only) — the edited
+  /// expense's stored one, or a new pick. Written / deleted on save.
+  Uint8List? _receipt;
+
+  /// G78: the photo was picked, replaced or removed in this form.
+  bool _receiptChanged = false;
+
+  bool get _dirty => _formDirty || (!_saved && _receiptChanged);
+
+  /// [_dirty] apart from the receipt photo (G78: a photo-only change of an
+  /// edited expense writes no new version — the photo isn't part of it).
+  bool get _formDirty {
     if (_saved || _members == null) return false;
     final initial = _source;
     return _descCtrl.text != (initial?.description ?? '') ||
@@ -294,6 +309,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final copySplit = copy == null
         ? null
         : duplicateSplit(copy, activeIds, step: currencyStep(currency));
+    // G78: the edited expense's photo (a duplicate starts without one).
+    final edited = widget.initial;
+    final receipt = edited != null && ref.read(receiptsSupportedProvider)
+        ? await ref.read(receiptIndexProvider.notifier).read(edited.id)
+        : null;
     if (mounted) {
       setState(() {
         _members = members;
@@ -306,6 +326,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         _paidBy = defaultPayer;
         _initialPayer = defaultPayer;
         _customCategories = group?.categories ?? const [];
+        if (!_receiptChanged) _receipt = receipt;
       });
     }
   }
@@ -381,7 +402,36 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final errors = ActionErrors.of(context);
     final l = context.l10n;
     final description = _descCtrl.text.trim();
+    // G78: captured before the first await (G19); applied after the write.
+    final receipts = ref.read(receiptIndexProvider.notifier);
+    final receipt = _receipt;
+    final receiptChanged = _receiptChanged;
     final initial = widget.initial;
+    if (initial != null && receiptChanged && !_formDirty) {
+      // G78: only the photo changed — nothing to sync, no new version.
+      try {
+        if (receipt != null) {
+          await receipts.save(initial.id, receipt);
+        } else {
+          await receipts.remove(initial.id);
+        }
+      } catch (e) {
+        errors.show(e);
+        return;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          key: const Key('receiptSavedSnack'),
+          content: Text(
+            receipt != null ? l.receiptSavedSnack : l.receiptRemovedSnack,
+          ),
+        ),
+      );
+      setState(() => _saved = true);
+      context.pop();
+      return;
+    }
     final UndoableWrite? write;
     if (initial != null) {
       // Edit: same record id and creation time, fresh clock; payer editable.
@@ -423,6 +473,19 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       final error = mounted ? ref.read(expenseAdderProvider).error : null;
       if (error != null) errors.show(error);
       return;
+    }
+    // G78: the photo follows the saved expense (by its id) — a new one
+    // only now that it has an id, an edit's change only on *Save*.
+    if (receiptChanged || (initial == null && receipt != null)) {
+      try {
+        if (receipt != null) {
+          await receipts.save(write.recordId, receipt);
+        } else {
+          await receipts.remove(write.recordId);
+        }
+      } catch (e) {
+        errors.show(e, what: l.receiptSaveFailed);
+      }
     }
     // G67 (U13): "Added …" / "Saved …" · Undo, on the group page.
     snack.show(
@@ -732,6 +795,18 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                   prefixIcon: const Icon(Icons.notes),
                                 ),
                               ),
+                              // G78: a receipt photo, this device only
+                              // (Android; hidden on the web / in the demo).
+                              if (ref.watch(receiptsSupportedProvider)) ...[
+                                const SizedBox(height: Insets.l),
+                                ReceiptField(
+                                  photo: _receipt,
+                                  onChanged: (bytes) => setState(() {
+                                    _receipt = bytes;
+                                    _receiptChanged = true;
+                                  }),
+                                ),
+                              ],
                               // G6: who added / last edited it (signed).
                               if (widget.initial case final e?) ...[
                                 const SizedBox(height: Insets.xl),

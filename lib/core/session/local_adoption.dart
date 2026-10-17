@@ -43,8 +43,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/expenses_provider.dart';
+import '../../features/receipts/receipt_store.dart'
+    show moveReceipts, receiptStoreFactoryProvider;
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
+import '../database/account_database.dart' show accountDatabaseName;
 import '../database/app_database.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
@@ -512,6 +515,8 @@ final localLedgerAdoptionProvider = Provider<void>((ref) {
   // Captured before the first await (G19).
   final openLocal = ref.read(localDatabaseOpenerProvider);
   final deleteLocal = ref.read(localDatabaseDeleterProvider);
+  // G78: the adopted expenses keep their ids — their photos move along.
+  final receiptStores = ref.read(receiptStoreFactoryProvider);
   final transport = ref.read(ledgerTransportProvider.future)..ignore();
   final keyWait = ref.read(localAdoptionKeyWaitProvider);
   final prefs = ref.read(devicePrefsProvider.notifier);
@@ -553,6 +558,11 @@ final localLedgerAdoptionProvider = Provider<void>((ref) {
         '[local] adopted ${r.groupIds.length} local group(s) into $mxid '
         '(${r.signed} rows signed${r.allSigned ? '' : ', rest pending'})',
       );
+      await moveReceipts(
+        receiptStores?.call(localDatabaseName),
+        receiptStores?.call(accountDatabaseName(mxid)),
+      );
+      if (!alive()) return;
       await prefs.finishLocalAdoption(mxid);
       adopted = true;
       results.report(r);

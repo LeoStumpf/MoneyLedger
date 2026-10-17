@@ -2915,4 +2915,55 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get itemsApply => 'Diese Aufteilung übernehmen';
+
+  @override
+  String get receiptPhotoLabel => 'Belegfoto';
+
+  @override
+  String get receiptAdd => 'Belegfoto hinzufügen';
+
+  @override
+  String get receiptTakePhoto => 'Foto aufnehmen';
+
+  @override
+  String get receiptChooseFromGallery => 'Aus der Galerie wählen';
+
+  @override
+  String get receiptLocalOnlyHint =>
+      'Nur auf diesem Gerät – wird nicht mit der Gruppe geteilt und ist in keiner Sicherung.';
+
+  @override
+  String get receiptView => 'Belegfoto ansehen';
+
+  @override
+  String get receiptReplace => 'Ersetzen';
+
+  @override
+  String get receiptRemove => 'Entfernen';
+
+  @override
+  String get receiptUnreadable => 'Dieses Foto kann nicht angezeigt werden.';
+
+  @override
+  String get receiptPickFailed => 'Foto konnte nicht übernommen werden';
+
+  @override
+  String get receiptSaveFailed =>
+      'Die Ausgabe wurde gespeichert, aber ihr Belegfoto konnte nicht abgelegt werden';
+
+  @override
+  String get expenseHasReceipt => 'Hat ein Belegfoto';
+
+  @override
+  String get privacyReceiptsTitle => 'Belegfotos (Android)';
+
+  @override
+  String get privacyReceiptsBody =>
+      'Unter Android kannst du einer Ausgabe ein Foto des Belegs anhängen, aufgenommen mit deiner Kamera-App oder aus deinen Fotos ausgewählt. MoneyLedger speichert eine verkleinerte Kopie nur im privaten Speicher der App auf diesem Gerät. Sie wird nie irgendwohin gesendet – nicht an die anderen in der Gruppe, an keinen Homeserver –, ist in keiner Sicherungsdatei, keinem Wiederherstellungspunkt und keiner CSV enthalten und wie alle App-Daten von den Android-Backups ausgenommen. Sie wird mit ihrer Ausgabe gelöscht (beim nächsten Start der App), wenn du die Gruppe verlässt oder löschst und wenn du die lokalen Daten löschst oder die App deinstallierst; beim Abmelden bleibt sie erhalten. Kamera und Fotoauswahl sind die von Android: MoneyLedger fragt nach keiner Kamera- oder Speicherberechtigung und bekommt nur das eine Foto, das du auswählst.';
+
+  @override
+  String get receiptSavedSnack => 'Belegfoto gespeichert';
+
+  @override
+  String get receiptRemovedSnack => 'Belegfoto entfernt';
 }

@@ -26,6 +26,7 @@ import '../groups/group_settings_page.dart' show groupSettingsLocation;
 import '../groups/group_archive_provider.dart';
 import '../groups/group_provider.dart';
 import 'add_expense_page.dart' show duplicateExpenseLocation;
+import '../receipts/receipt_store.dart' show receiptIndexProvider;
 import 'expense_category_ui.dart';
 import 'expense_filter.dart';
 import 'expenses_provider.dart';
@@ -445,6 +446,8 @@ class ExpensesPage extends ConsumerWidget {
         id == myId ? l.you : (names[id] ?? localpartOf(id));
     // G6: flag signature problems (key conflicts, someone posing as us).
     final keys = ref.watch(knownDeviceKeysProvider).value ?? const [];
+    // G78: expenses with a receipt photo on this device.
+    final receiptIds = ref.watch(receiptIndexProvider).value ?? const {};
     final myMxid = ref.watch(currentUserIdProvider);
     bool attention(RecordSignature? origin, RecordSignature? sig) =>
         keys.isNotEmpty &&
@@ -504,6 +507,7 @@ class ExpensesPage extends ConsumerWidget {
         effect: myId == null ? null : expenseEffectFor(expense, myId),
         pending: syncStatus.isRecordPending(expense.updatedAt),
         attention: attention(expense.origin, expense.sig),
+        hasReceipt: receiptIds.contains(expense.id),
         // G67 (U15): read-only → a details sheet to look at it.
         onTap: readOnly
             ? () => showExpenseDetails(
@@ -1166,8 +1170,12 @@ class _LedgerRow extends StatelessWidget {
 
   /// G16: the expense has a note — a small icon after the title.
   final bool hasNote;
+
+  /// G78: the expense has a receipt photo on this device — a small icon.
+  final bool hasReceipt;
   const _LedgerRow({
     this.hasNote = false,
+    this.hasReceipt = false,
     required this.leading,
     required this.title,
     required this.subtitle,
@@ -1232,6 +1240,23 @@ class _LedgerRow extends StatelessWidget {
                                     key: const Key('expenseNoteIcon'),
                                     size: 16,
                                     color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            if (hasReceipt)
+                              Padding(
+                                padding: const EdgeInsets.only(left: Insets.xs),
+                                // G71: read as part of the row's sentence
+                                // (merged rows keep only one tooltip).
+                                child: Tooltip(
+                                  message: l.expenseHasReceipt,
+                                  excludeFromSemantics: true,
+                                  child: Icon(
+                                    Icons.photo_outlined,
+                                    key: const Key('expenseReceiptIcon'),
+                                    size: 16,
+                                    color: scheme.onSurfaceVariant,
+                                    semanticLabel: l.expenseHasReceipt,
                                   ),
                                 ),
                               ),
@@ -1363,10 +1388,14 @@ class _ExpenseTile extends StatelessWidget {
     required this.effect,
     required this.pending,
     this.attention = false,
+    this.hasReceipt = false,
     this.onTap,
     this.onDelete,
     this.onDuplicate,
   });
+
+  /// G78: a receipt photo is stored on this device.
+  final bool hasReceipt;
 
   /// G75: ⋮ → *Duplicate* (null in a read-only group).
   final VoidCallback? onDuplicate;
@@ -1413,6 +1442,7 @@ class _ExpenseTile extends StatelessWidget {
       ),
       title: Text(expense.description, key: const Key('expenseTitle')),
       hasNote: expense.note != null,
+      hasReceipt: hasReceipt,
       subtitle: payerLine,
       amount: context.money(expense.amountCents, expense.currency),
       amountNote: note,

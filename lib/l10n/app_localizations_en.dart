@@ -2885,4 +2885,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get itemsApply => 'Use this split';
+
+  @override
+  String get receiptPhotoLabel => 'Receipt photo';
+
+  @override
+  String get receiptAdd => 'Add receipt photo';
+
+  @override
+  String get receiptTakePhoto => 'Take photo';
+
+  @override
+  String get receiptChooseFromGallery => 'Choose from gallery';
+
+  @override
+  String get receiptLocalOnlyHint =>
+      'Only on this device — not shared with the group, not in backups.';
+
+  @override
+  String get receiptView => 'View receipt photo';
+
+  @override
+  String get receiptReplace => 'Replace';
+
+  @override
+  String get receiptRemove => 'Remove';
+
+  @override
+  String get receiptUnreadable => 'This photo can\'t be shown.';
+
+  @override
+  String get receiptPickFailed => 'Couldn\'t get the photo';
+
+  @override
+  String get receiptSaveFailed =>
+      'The expense was saved, but its receipt photo couldn\'t be stored';
+
+  @override
+  String get expenseHasReceipt => 'Has a receipt photo';
+
+  @override
+  String get privacyReceiptsTitle => 'Receipt photos (Android)';
+
+  @override
+  String get privacyReceiptsBody =>
+      'On Android you can attach a photo of the receipt to an expense, taken with your camera app or picked from your photos. MoneyLedger stores a smaller copy only in the app\'s private storage on this device. It is never sent anywhere — not to the others in the group, not to any homeserver — is not part of any backup file, restore point or CSV, and is excluded from Android\'s backups like all app data. It is deleted with its expense (the next time the app starts), when you leave or delete the group, and when you delete local data or uninstall the app; signing out keeps it. The camera and photo picker are Android\'s own: MoneyLedger asks for no camera or storage permission and only receives the one photo you choose.';
+
+  @override
+  String get receiptSavedSnack => 'Receipt photo saved';
+
+  @override
+  String get receiptRemovedSnack => 'Receipt photo removed';
 }

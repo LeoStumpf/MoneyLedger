@@ -742,5 +742,21 @@
   "itemsRestProportionalHint": "Der Rest wird im Verhältnis zu dem aufgeteilt, was jede Person hatte.",
   "itemsRestEqualHint": "Der Rest wird gleichmäßig auf alle mit einem Posten aufgeteilt.",
   "itemsResult": "Pro Person",
-  "itemsApply": "Diese Aufteilung übernehmen"
+  "itemsApply": "Diese Aufteilung übernehmen",
+  "receiptPhotoLabel": "Belegfoto",
+  "receiptAdd": "Belegfoto hinzufügen",
+  "receiptTakePhoto": "Foto aufnehmen",
+  "receiptChooseFromGallery": "Aus der Galerie wählen",
+  "receiptLocalOnlyHint": "Nur auf diesem Gerät – wird nicht mit der Gruppe geteilt und ist in keiner Sicherung.",
+  "receiptView": "Belegfoto ansehen",
+  "receiptReplace": "Ersetzen",
+  "receiptRemove": "Entfernen",
+  "receiptUnreadable": "Dieses Foto kann nicht angezeigt werden.",
+  "receiptPickFailed": "Foto konnte nicht übernommen werden",
+  "receiptSaveFailed": "Die Ausgabe wurde gespeichert, aber ihr Belegfoto konnte nicht abgelegt werden",
+  "expenseHasReceipt": "Hat ein Belegfoto",
+  "privacyReceiptsTitle": "Belegfotos (Android)",
+  "privacyReceiptsBody": "Unter Android kannst du einer Ausgabe ein Foto des Belegs anhängen, aufgenommen mit deiner Kamera-App oder aus deinen Fotos ausgewählt. MoneyLedger speichert eine verkleinerte Kopie nur im privaten Speicher der App auf diesem Gerät. Sie wird nie irgendwohin gesendet – nicht an die anderen in der Gruppe, an keinen Homeserver –, ist in keiner Sicherungsdatei, keinem Wiederherstellungspunkt und keiner CSV enthalten und wie alle App-Daten von den Android-Backups ausgenommen. Sie wird mit ihrer Ausgabe gelöscht (beim nächsten Start der App), wenn du die Gruppe verlässt oder löschst und wenn du die lokalen Daten löschst oder die App deinstallierst; beim Abmelden bleibt sie erhalten. Kamera und Fotoauswahl sind die von Android: MoneyLedger fragt nach keiner Kamera- oder Speicherberechtigung und bekommt nur das eine Foto, das du auswählst.",
+  "receiptSavedSnack": "Belegfoto gespeichert",
+  "receiptRemovedSnack": "Belegfoto entfernt"
 }

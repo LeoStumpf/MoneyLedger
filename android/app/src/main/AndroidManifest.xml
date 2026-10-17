@@ -51,6 +51,17 @@
                 <data android:scheme="moneyledger" android:host="sso-callback"/>
             </intent-filter>
         </activity>
+        <!-- G78: image_picker (receipt photos) declares a disabled service
+             that only asks Google Play services to install the backported
+             photo picker. We don't use the backport (Android 13+ has the
+             system photo picker, older versions the file chooser) and keep
+             the merged manifest free of Google services (F-Droid, G44).
+             No CAMERA permission either: the photo is taken by the camera
+             app via an intent. test/core/android_manifest_test.dart pins
+             both. -->
+        <service
+            android:name="com.google.android.gms.metadata.ModuleDependencies"
+            tools:node="remove"/>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

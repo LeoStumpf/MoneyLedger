@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/demo/demo_mode.dart' show kOfflineDemo;
+import '../receipts/receipt_store.dart' show ReceiptStore;
 import 'snapshot_store_platform.dart';
 
 /// G48: where the rotating snapshots of one ledger DB live. Native: the
@@ -49,16 +50,23 @@ final snapshotStoreFactoryProvider =
 
 /// G48: local mode's ledger is gone (data deleted, or adopted into an
 /// account) — its snapshots go too ([snapshots], best-effort) after
-/// [deleteDb] (the DB files, G41). Returns [deleteDb]'s result.
+/// [deleteDb] (the DB files, G41) — G78: and its receipt photos
+/// ([receipts]). Returns [deleteDb]'s result.
 Future<bool> deleteLedgerFilesAndSnapshots(
   Future<bool> Function() deleteDb,
-  SnapshotStore? snapshots,
-) async {
+  SnapshotStore? snapshots, {
+  ReceiptStore? receipts,
+}) async {
   final ok = await deleteDb();
   try {
     await snapshots?.deleteAll();
   } catch (e) {
     debugPrint('[history] deleting local snapshots failed: $e');
+  }
+  try {
+    await receipts?.deleteAll();
+  } catch (e) {
+    debugPrint('[receipts] deleting local receipt photos failed: $e');
   }
   return ok;
 }

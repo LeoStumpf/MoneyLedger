@@ -866,9 +866,16 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [ ] Device check: smoke 5.19
 
 ### G78. Receipt photo, this device only (Leo 2026-10-17) 🟢
-- [ ] Attach a photo to an expense, stored only on this device (app dir, not
+- [x] Attach a photo to an expense, stored only on this device (app dir, not
       synced, not in backups unless decided), clearly labelled so; deleted
       with the expense / group / local data; privacy text
+      → Android only, not in backups (Leo); photos **move** with a local-mode
+      adoption (expense ids unchanged); deleted expenses' photos go at the next
+      app start (undo keeps them within the session)
+- [ ] Device check: smoke 5.20 (camera intent without permission prompt,
+      photo picker, file size, cleanup, nothing reaches the peer)
+- [ ] Later maybe: `retrieveLostData` (app killed while camera open); strip
+      EXIF/GPS from stored photos
 
 ---
 
@@ -955,7 +962,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G74 — payment details + GiroCode (with G57 / G73)
 - [ ] G76 — multiple payers (wire, with G57 / G73 / G74)
 - [x] G77 — itemized split
-- [ ] G78 — receipt photo, this device only
+- [x] G78 — receipt photo, this device only
 
 ---
 

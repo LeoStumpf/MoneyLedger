@@ -110,6 +110,9 @@ smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
 - [`go_router`](https://pub.dev/packages/go_router) — navigation
 - [`share_plus`](https://pub.dev/packages/share_plus) — system share sheet
   (BSD-3-Clause)
+- [`image_picker`](https://pub.dev/packages/image_picker) — receipt photo from
+  the camera app / photo picker (Android only, kept on this device only — G78;
+  BSD-3-Clause)
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE
   strings from ARB files (`lib/l10n/`), number/date/currency formatting
 

@@ -25,6 +25,7 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE UI strings (ARB) + locale formatting (G12)
 - [`package_info_plus`](https://pub.dev/packages/package_info_plus) 10.x — app version on the About page
 - [`share_plus`](https://pub.dev/packages/share_plus) 13.x (BSD-3) — system share sheet (G69 balance text; G52 invite sheet), via `core/platform/text_sharer.dart`
+- [`image_picker`](https://pub.dev/packages/image_picker) 1.2 (BSD-3) — G78 receipt photo (Android only): camera app via intent / system photo picker, scaled natively
 - [`file_picker`](https://pub.dev/packages/file_picker) 13.x — CSV/backup save + open (static `FilePicker.saveFile` / `pickFile`, web download included)
 - `vodozemac` (Ed25519 verify), [`canonical_json`](https://pub.dev/packages/canonical_json) + [`crypto`](https://pub.dev/packages/crypto) (SHA-256) — G6 signed records
 - [`cryptography`](https://pub.dev/packages/cryptography) 2.9 (Apache-2.0) — encrypted backups (G34): its **pure-Dart** `DartArgon2id` + `DartAesGcm` on every platform
@@ -277,6 +278,8 @@ lib/
                                #   group_reset.dart (GroupResetService), group_reset_page.dart,
                                #   restore_points.dart (daily maintenance, snapshots), snapshot_policy.dart (pure
                                #   rotation), snapshot_store*.dart (native files / none on web), restore_points_page.dart
+    receipts/                  # G78 receipt photo (Android, this device only): receipt_store*.dart (files /
+                               #   none), receipt_picker.dart (image_picker seam), receipt_field.dart (form + viewer)
     devices/                   # Device list + SAS verification UI (DevicesPage, member device sheet,
                                #   IncomingVerificationListener) — G11
     about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
@@ -1475,6 +1478,58 @@ like a pre-G49 one, so older builds accept it.
   edited (G60 follow-up, see "Settlements / recording payments"). Bootstrap / backup / G48 history + reset / CSV carry it. Tests:
   `schema_v14_migration_test.dart`,
   `test/integration/settlement_date_sync_test.dart`.
+
+### Receipt photo, this device only (G78)
+
+Leo 2026-10-17: a photo attached to an expense, **stored only on this
+device** — never synced, never in a backup file / snapshot / CSV, **Android
+only** (hidden on the web, desktop and in the offline demo). `lib/features/receipts/`.
+- **Storage:** `<app support>/receipts/<ledger DB name>/<expense id>.jpg`
+  (per account / local ledger like the G48 snapshots; temp file + rename,
+  a leftover `*.jpg.tmp` is deleted by the next `list`). **No schema
+  change** — file existence is the flag. `ReceiptStore` (`FileReceiptStore`
+  / `InMemoryReceiptStore` for tests), `receiptStoreFactoryProvider`
+  (`(dbName) → store`, null = unsupported: web via conditional export,
+  `!Platform.isAndroid` — so the test VM has none —, `kOfflineDemo`),
+  `receiptStoreProvider` (current ledger; tests override it),
+  `receiptsSupportedProvider`, `receiptIndexProvider` (AsyncNotifier: the
+  ids with a photo + `read` / `save` / `remove`).
+- **Picker seam:** `receiptPickerProvider` (`ReceiptSource` → bytes / null =
+  cancelled). Real: `image_picker` `pickImage(maxWidth/maxHeight: 1600,
+  imageQuality: 80, requestFullMetadata: false)` — scaled + recompressed
+  natively (no `image` package); its cache copy is deleted after reading.
+  Camera = the camera app via intent (**no CAMERA permission** — declaring
+  it would make image_picker request it), gallery = system photo picker /
+  file chooser (no storage permission). The manifest **removes**
+  image_picker's `com.google.android.gms.metadata.ModuleDependencies`
+  service (Play-services photo-picker backport hook; F-Droid). Both pinned
+  in `test/core/android_manifest_test.dart`.
+- **Form** (`ReceiptField`, after the note, only while supported): *Add
+  receipt photo* → sheet *Take photo* / *Choose from gallery*; thumbnail
+  (tap → `ReceiptViewerPage`, `InteractiveViewer` pinch zoom) + *Replace* /
+  *Remove*; hint "Only on this device — not shared with the group, not in
+  backups." Nothing is written before *Add* / *Save*: a new expense's photo
+  is stored under the id `addExpense` returned; an edit's change on *Save*;
+  a **photo-only change** of an edited expense writes **no new version**
+  (nothing to sync — snackbar *Receipt photo saved / removed*). A picked /
+  removed photo makes the form dirty (G56 discard prompt). A G75 duplicate
+  starts without a photo. Ledger rows: `Icons.photo_outlined` with
+  `semanticLabel` "Has a receipt photo" (a merged row keeps only one
+  tooltip — G71).
+- **Lifecycle:** expense deleted (here or by a peer) → photo kept while the
+  session lasts (G67 *Undo* / G48 reset bring it back), removed by
+  `receiptMaintenanceProvider` (watched in `LedgerSyncHost`, once per
+  ledger DB open: `sweepReceipts` deletes photos whose expense is
+  tombstoned or gone). Leave / delete group → `GroupExiter._purge` deletes
+  the group's photos at once (ids read before `purgeGroup`; a purge on
+  another device's leave is swept at the next start). *Delete local data* →
+  `localDatabaseDeleterProvider` → `deleteLedgerFilesAndSnapshots(receipts:)`.
+  **Local adoption moves** them into the account's store (`moveReceipts`,
+  same expense ids) before the local files go. Sign-out keeps them.
+- Privacy: PRIVACY.md + `privacyReceipts*` (pinned equal by
+  `test/features/receipts_test.dart`). Limits: `docs/open-points.md`.
+  Tests: `test/features/receipts_test.dart`, `test/g78_receipt_photo_test.dart`,
+  `test/features/local_mode_test.dart` (adoption moves), G71 a11y.
 
 ### Settlements / recording payments (G28)
 

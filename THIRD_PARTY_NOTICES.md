@@ -26,6 +26,7 @@ The version-exact list of all packages (direct and transitive) is in
 | `pointycastle` (secp256k1 curve for `bip340`, G52) | 4.0.0 | MIT |
 | `web_socket_channel` (Nostr relay WebSockets, G52; pulls in `web_socket`, BSD-3-Clause) | 3.0.3 | BSD-3-Clause |
 | `share_plus` (system share sheet — "who pays whom" as text, G69; G52 invite sheet; pulls in `share_plus_platform_interface`, `cross_file`, `mime`, all BSD-3-Clause, and the Android `androidx.core` / `kotlinx-coroutines-android`, Apache-2.0 — no Google Play services) | 13.3.1 | BSD-3-Clause |
+| `image_picker` (G78 receipt photos, Android only — the system camera app via an intent and the system photo picker / file chooser; no camera or storage permission, its Play-services photo-picker hook removed from the manifest; pulls in `image_picker_*` platform packages, `file_selector_*` (desktop), `flutter_plugin_android_lifecycle`, all BSD-3-Clause, and the Android `androidx.core` / `androidx.activity` / `androidx.exifinterface`, Apache-2.0 — no Google Play services) | 1.2.4 | BSD-3-Clause |
 | `flutter`, `flutter_localizations` (SDK) | 3.44 | BSD-3-Clause |
 | `go_router`, `http` (G36), `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
 | `sqflite` | 2.4.4+2 | BSD-2-Clause |

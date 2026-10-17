@@ -4555,6 +4555,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use this split'**
   String get itemsApply;
+
+  /// G78: section title on the expense form + title of the full-screen photo view
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photo'**
+  String get receiptPhotoLabel;
+
+  /// G78: button on the expense form (Android)
+  ///
+  /// In en, this message translates to:
+  /// **'Add receipt photo'**
+  String get receiptAdd;
+
+  /// G78: source sheet — open the camera
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get receiptTakePhoto;
+
+  /// G78: source sheet — pick an existing photo
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get receiptChooseFromGallery;
+
+  /// G78: hint under the receipt photo on the expense form
+  ///
+  /// In en, this message translates to:
+  /// **'Only on this device — not shared with the group, not in backups.'**
+  String get receiptLocalOnlyHint;
+
+  /// G78: tooltip / screen-reader label of the thumbnail
+  ///
+  /// In en, this message translates to:
+  /// **'View receipt photo'**
+  String get receiptView;
+
+  /// G78: take / pick another receipt photo
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get receiptReplace;
+
+  /// G78: remove the receipt photo from the expense (on save)
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get receiptRemove;
+
+  /// G78: full-screen view when the stored file can't be decoded
+  ///
+  /// In en, this message translates to:
+  /// **'This photo can\'t be shown.'**
+  String get receiptUnreadable;
+
+  /// G78: first line of the error snackbar when the camera / picker failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t get the photo'**
+  String get receiptPickFailed;
+
+  /// G78: first line of the error snackbar when writing the photo failed
+  ///
+  /// In en, this message translates to:
+  /// **'The expense was saved, but its receipt photo couldn\'t be stored'**
+  String get receiptSaveFailed;
+
+  /// G78 tooltip / screen-reader label of the receipt icon in the expense list
+  ///
+  /// In en, this message translates to:
+  /// **'Has a receipt photo'**
+  String get expenseHasReceipt;
+
+  /// G78 privacy policy section title
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photos (Android)'**
+  String get privacyReceiptsTitle;
+
+  /// G78 privacy policy section body — keep in sync with PRIVACY.md
+  ///
+  /// In en, this message translates to:
+  /// **'On Android you can attach a photo of the receipt to an expense, taken with your camera app or picked from your photos. MoneyLedger stores a smaller copy only in the app\'s private storage on this device. It is never sent anywhere — not to the others in the group, not to any homeserver — is not part of any backup file, restore point or CSV, and is excluded from Android\'s backups like all app data. It is deleted with its expense (the next time the app starts), when you leave or delete the group, and when you delete local data or uninstall the app; signing out keeps it. The camera and photo picker are Android\'s own: MoneyLedger asks for no camera or storage permission and only receives the one photo you choose.'**
+  String get privacyReceiptsBody;
+
+  /// G78: snackbar after saving only a new receipt photo of an expense
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photo saved'**
+  String get receiptSavedSnack;
+
+  /// G78: snackbar after removing only the receipt photo of an expense
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photo removed'**
+  String get receiptRemovedSnack;
 }
 
 class _AppLocalizationsDelegate

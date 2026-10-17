@@ -323,6 +323,28 @@ peers'), and SAS works with other members' devices (members page). Open:
   history doesn't store the message type / relaying sender. Rare (right
   after joining); accepted as a limit (Leo 2026-10-17).
 
+### Receipt photos (G78) — limits
+- **Android only, this device only**: no photo on the web / desktop / in the
+  offline demo; never synced, never in a backup file, restore point or CSV.
+  A new phone (or reinstall) has no photos — intended (Leo 2026-10-17).
+- **Deleted lazily**: a deleted expense's photo stays until the next app
+  start (so *Undo* / a G48 reset in the same session bring it back with it);
+  a reset or restore *after* that restart brings the expense back without
+  its photo. A left / deleted group's photos go at once; a group purged
+  because we left on another device is swept at the next start. Background
+  rounds (G31) don't sweep.
+- **Lost camera result**: if Android kills the app while the camera app is
+  open (low memory), the shot is lost (`image_picker`'s `retrieveLostData`
+  isn't wired up) — take it again.
+- **Picker temp files**: the camera shot / gallery copy `image_picker`
+  writes to the app cache is deleted after reading; an original it kept
+  beside a scaled copy (gallery picks) stays in the cache until Android
+  clears it. App-private either way.
+- The photo keeps the EXIF data `image_picker` copies (incl. GPS, if the
+  camera recorded it) — never leaves the device, so not stripped.
+- Format: JPEG (PNG stays PNG — `image_picker` doesn't recompress it), file
+  still named `.jpg`; `Image.memory` decodes either.
+
 ### Real-device smoke tests
 Flows that can only be verified on a real device + homeserver, not in
 `flutter test` or the web build (`docs/smoke-test.md`):

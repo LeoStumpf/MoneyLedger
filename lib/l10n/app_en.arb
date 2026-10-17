@@ -2830,5 +2830,69 @@
   "itemsApply": "Use this split",
   "@itemsApply": {
     "description": "G77: applies the item split (as amounts)"
+  },
+  "receiptPhotoLabel": "Receipt photo",
+  "@receiptPhotoLabel": {
+    "description": "G78: section title on the expense form + title of the full-screen photo view"
+  },
+  "receiptAdd": "Add receipt photo",
+  "@receiptAdd": {
+    "description": "G78: button on the expense form (Android)"
+  },
+  "receiptTakePhoto": "Take photo",
+  "@receiptTakePhoto": {
+    "description": "G78: source sheet — open the camera"
+  },
+  "receiptChooseFromGallery": "Choose from gallery",
+  "@receiptChooseFromGallery": {
+    "description": "G78: source sheet — pick an existing photo"
+  },
+  "receiptLocalOnlyHint": "Only on this device — not shared with the group, not in backups.",
+  "@receiptLocalOnlyHint": {
+    "description": "G78: hint under the receipt photo on the expense form"
+  },
+  "receiptView": "View receipt photo",
+  "@receiptView": {
+    "description": "G78: tooltip / screen-reader label of the thumbnail"
+  },
+  "receiptReplace": "Replace",
+  "@receiptReplace": {
+    "description": "G78: take / pick another receipt photo"
+  },
+  "receiptRemove": "Remove",
+  "@receiptRemove": {
+    "description": "G78: remove the receipt photo from the expense (on save)"
+  },
+  "receiptUnreadable": "This photo can't be shown.",
+  "@receiptUnreadable": {
+    "description": "G78: full-screen view when the stored file can't be decoded"
+  },
+  "receiptPickFailed": "Couldn't get the photo",
+  "@receiptPickFailed": {
+    "description": "G78: first line of the error snackbar when the camera / picker failed"
+  },
+  "receiptSaveFailed": "The expense was saved, but its receipt photo couldn't be stored",
+  "@receiptSaveFailed": {
+    "description": "G78: first line of the error snackbar when writing the photo failed"
+  },
+  "expenseHasReceipt": "Has a receipt photo",
+  "@expenseHasReceipt": {
+    "description": "G78 tooltip / screen-reader label of the receipt icon in the expense list"
+  },
+  "privacyReceiptsTitle": "Receipt photos (Android)",
+  "@privacyReceiptsTitle": {
+    "description": "G78 privacy policy section title"
+  },
+  "privacyReceiptsBody": "On Android you can attach a photo of the receipt to an expense, taken with your camera app or picked from your photos. MoneyLedger stores a smaller copy only in the app's private storage on this device. It is never sent anywhere — not to the others in the group, not to any homeserver — is not part of any backup file, restore point or CSV, and is excluded from Android's backups like all app data. It is deleted with its expense (the next time the app starts), when you leave or delete the group, and when you delete local data or uninstall the app; signing out keeps it. The camera and photo picker are Android's own: MoneyLedger asks for no camera or storage permission and only receives the one photo you choose.",
+  "@privacyReceiptsBody": {
+    "description": "G78 privacy policy section body — keep in sync with PRIVACY.md"
+  },
+  "receiptSavedSnack": "Receipt photo saved",
+  "@receiptSavedSnack": {
+    "description": "G78: snackbar after saving only a new receipt photo of an expense"
+  },
+  "receiptRemovedSnack": "Receipt photo removed",
+  "@receiptRemovedSnack": {
+    "description": "G78: snackbar after removing only the receipt photo of an expense"
   }
 }

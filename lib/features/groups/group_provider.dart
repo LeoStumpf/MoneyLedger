@@ -23,6 +23,8 @@ import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
 import '../onboarding/onboarding_provider.dart';
+import '../receipts/receipt_store.dart'
+    show ReceiptStore, deleteReceiptsOf, receiptStoreProvider;
 
 export '../../core/database/daos/members_dao.dart' show memberCompanion;
 
@@ -99,6 +101,7 @@ class _GroupWriteContext {
       expenses = ref.read(expensesDaoProvider),
       settings = ref.read(settingsDaoProvider),
       signing = ref.read(signingDaoProvider),
+      receipts = ref.read(receiptStoreProvider),
       budget = ref.read(payloadBudgetProvider),
       health = ref.read(syncHealthProvider.notifier),
       transport = withDeliveryPolicy(
@@ -129,6 +132,9 @@ class _GroupWriteContext {
   }
 
   final SigningDao signing;
+
+  /// G78: this ledger's receipt photos (null where there are none).
+  final ReceiptStore? receipts;
 
   /// G14: max JSON bytes per to-device message (bootstraps are chunked).
   final int budget;
@@ -750,7 +756,16 @@ class GroupExiter extends _$GroupExiter {
     LeftGroupTombstone t,
   ) async {
     if (w.db.isClosed) return; // account switched meanwhile — not ours to touch
+    // G78: the group's receipt photos go with it (ids read before the purge).
+    final expenseIds = w.receipts == null
+        ? const <String>[]
+        : [
+            for (final e in await w.expenses.getAllExpensesForGroup(groupId))
+              e.id,
+          ];
+    if (w.db.isClosed) return;
     await w.settings.purgeGroupAsLeft(groupId, t);
+    await deleteReceiptsOf(w.receipts, expenseIds);
   }
 }
 

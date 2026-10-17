@@ -78,7 +78,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Privacy policy'), findsOneWidget);
-    expect(find.textContaining('Last updated: Oct 16, 2026'), findsOneWidget);
+    expect(find.textContaining('Last updated: Oct 17, 2026'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('What your Matrix homeserver sees'),
       200,
@@ -89,6 +89,9 @@ void main() {
       200,
     );
     expect(find.textContaining('nothing leaves your device'), findsOneWidget);
+    // G78: receipt photos stay on this device.
+    await tester.scrollUntilVisible(find.text('Receipt photos (Android)'), 200);
+    expect(find.textContaining('It is never sent anywhere'), findsOneWidget);
   });
 
   testWidgets('"How MoneyLedger works" opens the welcome pages again (G39)', (
@@ -109,7 +112,7 @@ void main() {
     await _tapTile(tester, 'privacyPolicyTile');
     await tester.pumpAndSettle();
     expect(find.text('Datenschutzerklärung'), findsOneWidget);
-    expect(find.textContaining('Stand: 16. Okt. 2026'), findsOneWidget);
+    expect(find.textContaining('Stand: 17. Okt. 2026'), findsOneWidget);
   });
 
   test('ARB files: same keys and placeholders in EN and DE', () {
