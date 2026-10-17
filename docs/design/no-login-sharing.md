@@ -108,6 +108,8 @@ content = "1:" + base64(nonce ‖ ct)
 
 NIP-01 requires a BIP-340 Schnorr signature over `sha256([0,pubkey,created_at,kind,tags,content])`. We sign with the per-group key. On receive we verify the signature, which is cheap and catches broken relays, though relays (strfry) verify too. **G51 (§16):** verifying is cheap natively (12 ms) but not on the web (≈ 160–170 ms per event in dart2js), and it adds no security on top of the AEAD (§3.2: the AAD already binds the content to the pubkey; anyone with the link can make a valid key anyway). **Decided by Leo (2026-10-17):** verify on native only; on the web skip the check and rely on the AEAD + the relays' own verification (§16 open point 2).
 
+*G52 step 2 (`lib/core/link/nostr/`):* the policy is `kVerifyNostrSignatures` (= `!kIsWeb`), injected into `NostrRelayPool(verifySignatures:)`. The **event id** (one SHA-256) is checked on every platform: it is cheap and stops a relay from passing off other content under a known id (dedup is by id). Signing runs everywhere.
+
 ### 3.4 App key (W5) — AGPL analysis and recommendation
 
 **Leo's idea:** `salt` = a secret app key, injected into release builds via `--dart-define=LINK_APP_KEY=…` from a gitignored file. Self-builds would use a public default, so a link alone can't decrypt relay data without the official app.
@@ -160,7 +162,7 @@ Leo owns his own code, but the binary combines AGPL code he doesn't own: the `ma
 
 - **Filter.** `{"kinds":[31847], "#d":[<topics of all my link groups and their parts>]}`, one `REQ` per relay. Single-letter tags are indexed by relays (NIP-01). Relay limits: `max_subscriptions` 20 (nos.lol), 50 (nostr.mom); `max_limit` 500 per filter.
 - **Live, app in the foreground.** One WebSocket per relay and one subscription covering all groups. `since` is set to the newest `created_at` seen minus 60 s. The subscription is re-issued when the group set changes, closed 30 s after the app is paused and reopened on resume. Reconnects back off: 2 s → 4 → … → 5 min, plus jitter.
-- **Full fetch** (on join, on app start, on "pull to refresh"): `REQ` without `since`, wait for `EOSE` (timeout 10 s per relay), then `CLOSE`.
+- **Full fetch** (on join, on app start, on "pull to refresh"): `REQ` without `since`, wait for `EOSE` (timeout 10 s per relay), then `CLOSE`. (G52 step 2: the 10 s include connecting; a publish waits up to 10 s per relay for its `OK`, connecting included.)
 - **Dedup.** `link_peers` stores the last event id per (group, pubkey). An event already processed is skipped before decrypting.
 - **Own events.** Skip our own pubkey; re-reading it only confirms that a relay holds it, which `link_relay_state` records.
 

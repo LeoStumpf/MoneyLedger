@@ -22,6 +22,9 @@ The version-exact list of all packages (direct and transitive) is in
 | `crypto` (SHA-256 for signed records, G6) | 3.0.7 | BSD-3-Clause |
 | `cryptography` (Argon2id + AES-256-GCM for encrypted backups, G34; pure-Dart implementations only) | 2.9.0 | Apache-2.0 |
 | `archive` (gzip of link-group snapshots, G52; pulls in `posix`, MIT) | 4.0.9 | MIT |
+| `bip340` (BIP-340 Schnorr sign / verify of link-group Nostr events, G52) | 0.3.1 | MIT |
+| `pointycastle` (secp256k1 curve for `bip340`, G52) | 4.0.0 | MIT |
+| `web_socket_channel` (Nostr relay WebSockets, G52; pulls in `web_socket`, BSD-3-Clause) | 3.0.3 | BSD-3-Clause |
 | `flutter`, `flutter_localizations` (SDK) | 3.44 | BSD-3-Clause |
 | `go_router`, `http` (G36), `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
 | `sqflite` | 2.4.4+2 | BSD-2-Clause |

@@ -58,6 +58,12 @@ dependencies:
   # web (dart:io zlib natively). Already transitive (MIT; pulls in `posix`,
   # MIT).
   archive: ^4.0.9
+  # G52 step 2: mini Nostr client — BIP-340 Schnorr sign / verify (MIT,
+  # fiatjaf) on secp256k1 from pointycastle (MIT, Bouncy Castle); relay
+  # WebSockets on native + web (BSD-3, dart.dev; was transitive via matrix).
+  bip340: ^0.3.1
+  pointycastle: ^4.0.0
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

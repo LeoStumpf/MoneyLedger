@@ -635,10 +635,11 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 ### G52. Link groups (implementation, incl. app key) 🟠
 Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 1. Pure codec + crypto (`lib/core/link/`): link URI, HKDF (`kLinkSaltV1`), envelope (gzip + AES-GCM, AAD), sharding plan (`kLinkContentBudget` 60 000)
-- [ ] 2. Mini Nostr client (event id / BIP-340 — verify native only, Leo 2026-10-17; frames, `RelayConnection` + WebSocket adapter, `NostrRelayPool`, `replaced:` handling) + `test/helpers/fake_relay_network.dart`
+- [x] 2. Mini Nostr client (event id / BIP-340 — verify native only, Leo 2026-10-17; frames, `RelayConnection` + WebSocket adapter, `NostrRelayPool`, `replaced:` handling) + `test/helpers/fake_relay_network.dart`
 - [ ] 3. Schema v15 (`link_channels`, `link_peers`, `link_author`) + `LinkDao` + migration test
 - [ ] 4. Policy: `GroupPolicy`, `RecordGate` link path, engines skip link-only groups
 - [ ] 5. `LinkSyncEngine` (**gate: retention check 2026-10-20 must pass**)
+      — also: per-relay backoff/block policy after `rate-limited:` / `blocked:`, publish debounce, monotonic `created_at`, NIP-09 delete, NIP-11 (left out of step 2)
 - [ ] 6. Invite UI (sheet, QR, share, disclosure)
 - [ ] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`)
 - [ ] 8. Background round link phase
