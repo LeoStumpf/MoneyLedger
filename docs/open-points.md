@@ -188,7 +188,7 @@ peers'), and SAS works with other members' devices (members page). Open:
 - Duplicate names are prevented in the dialog (case-insensitive) but not by
   the content rules (two peers may create "Dog" concurrently).
 
-### Expense date (G49) — limits
+### Expense / payment date (G49 / G60) — limits
 - **Mixed versions:** a back-dated expense carries the optional signed
   `date` (ISO `YYYY-MM-DD`, only when it differs from the creation day). A
   pre-G49 build rebuilds the body without it → bad signature → it refuses
@@ -196,9 +196,11 @@ peers'), and SAS works with other members' devices (members page). Open:
   Same fix as G16: the v13 migration forgets refused *expense* versions, so
   peers re-send them after the update. An expense dated "today" carries no
   `date` and is accepted by every build. Unreleased app → accepted.
-- **Payments have no date** (scope): a settlement is always shown under the
-  day it was recorded. Back-dating payments would need the same optional
-  signed field on `com.moneyledger.settlement` (+ CSV / form).
+- **Payments (G60)** carry the same optional signed `date` with the same
+  caveat: a pre-G60 build refuses a back-dated payment version (also its
+  delete, which keeps the date) until it is updated; the v14 migration
+  forgets refused *settlement* versions. A payment dated today carries no
+  `date`. Payments still have no edit — a wrong day is delete + re-record.
 - **Undated expenses follow the device's time zone** (as before): their day
   is the local day of `created_at`, so two members in very different zones
   can see an evening expense on adjacent days. A dated expense shows the
@@ -214,7 +216,7 @@ peers'), and SAS works with other members' devices (members page). Open:
   column. An older parser reads `Date` as the creation time → a re-import
   of a new CSV into a pre-G49 build would change `created_at` (and break
   the origin of a record it re-signs as creator). Edited `Date` cells
-  back-date expenses on import; payments ignore them.
+  back-date expenses and (G60) payments on import.
 
 ### Backups (G5 / G34) — limits
 - **Encrypted backups** (optional passphrase): Argon2id (32 MiB, t = 3,

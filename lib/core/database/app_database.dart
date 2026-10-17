@@ -76,6 +76,9 @@ class Settlements extends Table {
   TextColumn get sig => text().nullable()();
   TextColumn get origin => text().nullable()();
   BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
+  // G60: the day the payment happened (ISO `YYYY-MM-DD`, wire `date`) —
+  // see Expenses.expenseDate.
+  TextColumn get settlementDate => text().nullable()();
   // G37 — see Expenses.versionHash.
   TextColumn get versionHash => text().nullable()();
 
@@ -312,7 +315,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -326,6 +329,15 @@ class AppDatabase extends _$AppDatabase {
         if (expenseDateAdded) return;
         expenseDateAdded = true;
         await m.addColumn(expenses, expenses.expenseDate);
+      }
+
+      // G60 (v14): `settlements.settlement_date` — same reason (the v8 / v12
+      // backfills read the settlements table with today's columns too).
+      var settlementDateAdded = false;
+      Future<void> addSettlementDate() async {
+        if (settlementDateAdded) return;
+        settlementDateAdded = true;
+        await m.addColumn(settlements, settlements.settlementDate);
       }
 
       // v2 (Phase B): add the local membership table. Existing
@@ -411,6 +423,7 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(expenses, expenses.versionHash);
         await m.addColumn(settlements, settlements.versionHash);
         await addExpenseDate();
+        await addSettlementDate();
         await backfillVersionHashes(this);
       }
       // v9 (G18 review): device-key attestations are scoped to the group
@@ -458,6 +471,7 @@ class AppDatabase extends _$AppDatabase {
         await m.createIndex(recordHistoryGroup);
         await m.createIndex(recordHistoryRecord);
         await addExpenseDate();
+        await addSettlementDate();
         await backfillRecordHistory(this);
       }
       // v13 (G49): the optional expense date (nullable — existing expenses
@@ -470,6 +484,17 @@ class AppDatabase extends _$AppDatabase {
         if (from >= 6) {
           await customStatement(
             "DELETE FROM rejected_versions WHERE kind = 'expense'",
+          );
+        }
+      }
+      // v14 (G60): the optional payment date — exactly like v13 for
+      // expenses: a pre-G60 build refused signed settlement versions
+      // carrying a `date`, so settlement refusals are forgotten.
+      if (from < 14) {
+        await addSettlementDate();
+        if (from >= 6) {
+          await customStatement(
+            "DELETE FROM rejected_versions WHERE kind = 'settlement'",
           );
         }
       }

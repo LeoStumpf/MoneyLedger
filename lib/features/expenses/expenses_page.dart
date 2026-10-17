@@ -414,13 +414,8 @@ class ExpensesPage extends ConsumerWidget {
         id == myId ? l.you : (names[id] ?? localpartOf(id));
     final f = filter ?? LedgerFilter.none;
     // G49: an expense sits under its display day (`date ?? created_at`), so
-    // a back-dated one lands on the day it happened; newest day first, and
-    // within a day newest-created first.
-    int dayOfMs(int ms) {
-      final d = DateTime.fromMillisecondsSinceEpoch(ms);
-      return DateTime(d.year, d.month, d.day).millisecondsSinceEpoch;
-    }
-
+    // a back-dated one lands on the day it happened (G60: payments too);
+    // newest day first, and within a day newest-created first.
     final entries =
         <({int day, int createdAt, Object record})>[
           for (final e in expensesAsync.value!)
@@ -446,7 +441,11 @@ class ExpensesPage extends ConsumerWidget {
                   myId: myId,
                   paymentLabel: l.paymentLabel,
                 ))
-              (day: dayOfMs(s.createdAt), createdAt: s.createdAt, record: s),
+              (
+                day: s.displayDay.millisecondsSinceEpoch,
+                createdAt: s.createdAt,
+                record: s,
+              ),
         ]..sort((a, b) {
           final byDay = b.day.compareTo(a.day);
           return byDay != 0 ? byDay : b.createdAt.compareTo(a.createdAt);

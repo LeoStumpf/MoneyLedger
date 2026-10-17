@@ -121,6 +121,9 @@ Map<String, Object?> settlementContent(SettlementModel s) => {
   'created_at': s.createdAt,
   'updated_at': s.updatedAt,
   'deleted': s.deleted,
+  // G60: only a back-dated payment carries its `date` (an undated one keeps
+  // the pre-G60 body, signature and G27 hash).
+  if (s.date != null) 'date': s.date,
 };
 
 Map<String, Object?> settlementBody(SettlementModel s, SignerId signer) => {

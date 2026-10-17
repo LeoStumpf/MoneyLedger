@@ -641,11 +641,11 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 ### G57. Custom-category follow-ups (found in G47) 🟢
 - [ ] Concurrent category edits lose one (whole meta is LWW) — per-category
       merge if it matters; duplicate names only blocked in the dialog
-- [ ] Offline demo seed: add a custom category (screenshots)
+- [x] Offline demo seed: add a custom category (screenshots)
 
 ### G58. Restore-point follow-ups (found in G48) 🟢
 - [ ] Snapshots also from Android background rounds (today: app start only)
-- [ ] Offline demo seed: back-fill history so the reset page isn't empty
+- [x] Offline demo seed: back-fill history so the reset page isn't empty
 - [ ] Decide: snapshot restore "exactly this state" (overwrite newer content)?
 - [ ] Decide: encrypt snapshot files (plaintext like the DB today)
 - [ ] Concurrent resets by two members converge per record (mix) — merge UI?
@@ -668,8 +668,9 @@ Switching split modes or editing amounts today starts from blanks; make the
 - [x] EN+DE, widget tests for each default / auto-fill path
 
 ### G60. Expense-date follow-ups (found in G49) 🟢
-- [ ] Payments (settlements) have no date yet
-- [ ] Offline demo seed: a back-dated example
+- [x] Payments (settlements) have no date yet
+- [x] Offline demo seed: a back-dated example
+- [ ] Payments can't be edited — a wrong day means delete + re-record
 
 ### G61. Split follow-ups (found in G59) 🟢
 - [ ] Try live auto-fill of open rows (Tricount-style) instead of the button

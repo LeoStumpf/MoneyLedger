@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/sync/record_validation.dart';
+import '../../models/expense_date.dart' show dayOf;
+import '../expenses/record_date_field.dart';
 import '../groups/create_group_page.dart' show kGroupCurrencies;
 
 /// What the user confirmed in [RecordPaymentDialog].
@@ -10,11 +12,17 @@ class PaymentDraft {
   final String to;
   final int cents;
   final String currency;
+
+  /// G60: the day the payment happened (local midnight) — today unless the
+  /// user picked another.
+  final DateTime day;
+
   const PaymentDraft({
     required this.from,
     required this.to,
     required this.cents,
     required this.currency,
+    required this.day,
   });
 }
 
@@ -52,6 +60,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
   late String? _from = widget.initialFrom;
   late String? _to = widget.initialTo;
   late String _currency = widget.currency;
+  DateTime _day = dayOf(DateTime.now()); // G60
   final TextEditingController _amount = TextEditingController();
   bool _amountPrefilled = false;
 
@@ -181,6 +190,12 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            RecordDateField(
+              keyPrefix: 'paymentDate',
+              day: _day,
+              onChanged: (d) => setState(() => _day = d),
+            ),
             if (exceeds) ...[
               const SizedBox(height: 12),
               Text(
@@ -206,6 +221,7 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                     to: _to!,
                     cents: cents!,
                     currency: _currency,
+                    day: _day,
                   ),
                 ),
           child: Text(l.record),

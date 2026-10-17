@@ -452,6 +452,7 @@ SettlementModel _settlement(
   createdAt: origin.createdAt,
   updatedAt: clock,
   deleted: deleted,
+  date: content.date,
   origin: origin.origin ?? content.origin,
 );
 

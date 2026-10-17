@@ -17,13 +17,13 @@
 /// "Other"). Older parsers ignore the extra column (before `Paid By`).
 ///
 /// G49: `Date` is the **display day** (`YYYY-MM-DD`): a back-dated
-/// expense's `date`, else the local day of its creation (payments: their
-/// creation day). The exact creation time moved to a trailing machine column
+/// expense's `date`, else the local day of its creation (G60: payments
+/// likewise). The exact creation time moved to a trailing machine column
 /// `Created At` (ms epoch) — it is part of the signed creation statement and
 /// must survive a round trip. Import: `Created At` when present, else the
 /// `Date` cell (a pre-G49 CSV wrote the full ISO creation time there); an
-/// expense whose `Date` is a plain day different from its creation's local
-/// day becomes back-dated (`date`).
+/// expense (G60: or payment) whose `Date` is a plain day different from its
+/// creation's local day becomes back-dated (`date`).
 ///
 /// The `Type` column says `Expense` or `Payment`. A payment (settlement) row
 /// reads like an expense the payer covered entirely for the recipient:
@@ -135,7 +135,7 @@ String buildGroupCsv(
     if (s.deleted) continue;
     final toName = nameById[s.toUser] ?? s.toUser;
     rows.add([
-      expenseDateOf(DateTime.fromMillisecondsSinceEpoch(s.createdAt)),
+      expenseDateOf(s.displayDay),
       csvTypePayment,
       csvTypePayment,
       '',

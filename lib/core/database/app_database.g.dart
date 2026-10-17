@@ -1640,6 +1640,17 @@ class $SettlementsTable extends Settlements
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _settlementDateMeta = const VerificationMeta(
+    'settlementDate',
+  );
+  @override
+  late final GeneratedColumn<String> settlementDate = GeneratedColumn<String>(
+    'settlement_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _versionHashMeta = const VerificationMeta(
     'versionHash',
   );
@@ -1666,6 +1677,7 @@ class $SettlementsTable extends Settlements
     sig,
     origin,
     pendingSign,
+    settlementDate,
     versionHash,
   ];
   @override
@@ -1778,6 +1790,15 @@ class $SettlementsTable extends Settlements
         ),
       );
     }
+    if (data.containsKey('settlement_date')) {
+      context.handle(
+        _settlementDateMeta,
+        settlementDate.isAcceptableOrUnknown(
+          data['settlement_date']!,
+          _settlementDateMeta,
+        ),
+      );
+    }
     if (data.containsKey('version_hash')) {
       context.handle(
         _versionHashMeta,
@@ -1848,6 +1869,10 @@ class $SettlementsTable extends Settlements
         DriftSqlType.bool,
         data['${effectivePrefix}pending_sign'],
       )!,
+      settlementDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}settlement_date'],
+      ),
       versionHash: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}version_hash'],
@@ -1875,6 +1900,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
   final String? sig;
   final String? origin;
   final bool pendingSign;
+  final String? settlementDate;
   final String? versionHash;
   const Settlement({
     required this.id,
@@ -1890,6 +1916,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     this.sig,
     this.origin,
     required this.pendingSign,
+    this.settlementDate,
     this.versionHash,
   });
   @override
@@ -1914,6 +1941,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       map['origin'] = Variable<String>(origin);
     }
     map['pending_sign'] = Variable<bool>(pendingSign);
+    if (!nullToAbsent || settlementDate != null) {
+      map['settlement_date'] = Variable<String>(settlementDate);
+    }
     if (!nullToAbsent || versionHash != null) {
       map['version_hash'] = Variable<String>(versionHash);
     }
@@ -1939,6 +1969,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           ? const Value.absent()
           : Value(origin),
       pendingSign: Value(pendingSign),
+      settlementDate: settlementDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(settlementDate),
       versionHash: versionHash == null && nullToAbsent
           ? const Value.absent()
           : Value(versionHash),
@@ -1964,6 +1997,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       sig: serializer.fromJson<String?>(json['sig']),
       origin: serializer.fromJson<String?>(json['origin']),
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
+      settlementDate: serializer.fromJson<String?>(json['settlementDate']),
       versionHash: serializer.fromJson<String?>(json['versionHash']),
     );
   }
@@ -1984,6 +2018,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       'sig': serializer.toJson<String?>(sig),
       'origin': serializer.toJson<String?>(origin),
       'pendingSign': serializer.toJson<bool>(pendingSign),
+      'settlementDate': serializer.toJson<String?>(settlementDate),
       'versionHash': serializer.toJson<String?>(versionHash),
     };
   }
@@ -2002,6 +2037,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     Value<String?> sig = const Value.absent(),
     Value<String?> origin = const Value.absent(),
     bool? pendingSign,
+    Value<String?> settlementDate = const Value.absent(),
     Value<String?> versionHash = const Value.absent(),
   }) => Settlement(
     id: id ?? this.id,
@@ -2019,6 +2055,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     sig: sig.present ? sig.value : this.sig,
     origin: origin.present ? origin.value : this.origin,
     pendingSign: pendingSign ?? this.pendingSign,
+    settlementDate: settlementDate.present
+        ? settlementDate.value
+        : this.settlementDate,
     versionHash: versionHash.present ? versionHash.value : this.versionHash,
   );
   Settlement copyWithCompanion(SettlementsCompanion data) {
@@ -2042,6 +2081,9 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       pendingSign: data.pendingSign.present
           ? data.pendingSign.value
           : this.pendingSign,
+      settlementDate: data.settlementDate.present
+          ? data.settlementDate.value
+          : this.settlementDate,
       versionHash: data.versionHash.present
           ? data.versionHash.value
           : this.versionHash,
@@ -2064,6 +2106,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           ..write('sig: $sig, ')
           ..write('origin: $origin, ')
           ..write('pendingSign: $pendingSign, ')
+          ..write('settlementDate: $settlementDate, ')
           ..write('versionHash: $versionHash')
           ..write(')'))
         .toString();
@@ -2084,6 +2127,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
     sig,
     origin,
     pendingSign,
+    settlementDate,
     versionHash,
   );
   @override
@@ -2103,6 +2147,7 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           other.sig == this.sig &&
           other.origin == this.origin &&
           other.pendingSign == this.pendingSign &&
+          other.settlementDate == this.settlementDate &&
           other.versionHash == this.versionHash);
 }
 
@@ -2120,6 +2165,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
   final Value<String?> sig;
   final Value<String?> origin;
   final Value<bool> pendingSign;
+  final Value<String?> settlementDate;
   final Value<String?> versionHash;
   final Value<int> rowid;
   const SettlementsCompanion({
@@ -2136,6 +2182,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     this.sig = const Value.absent(),
     this.origin = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.settlementDate = const Value.absent(),
     this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2153,6 +2200,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     this.sig = const Value.absent(),
     this.origin = const Value.absent(),
     this.pendingSign = const Value.absent(),
+    this.settlementDate = const Value.absent(),
     this.versionHash = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -2176,6 +2224,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     Expression<String>? sig,
     Expression<String>? origin,
     Expression<bool>? pendingSign,
+    Expression<String>? settlementDate,
     Expression<String>? versionHash,
     Expression<int>? rowid,
   }) {
@@ -2193,6 +2242,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       if (sig != null) 'sig': sig,
       if (origin != null) 'origin': origin,
       if (pendingSign != null) 'pending_sign': pendingSign,
+      if (settlementDate != null) 'settlement_date': settlementDate,
       if (versionHash != null) 'version_hash': versionHash,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2212,6 +2262,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     Value<String?>? sig,
     Value<String?>? origin,
     Value<bool>? pendingSign,
+    Value<String?>? settlementDate,
     Value<String?>? versionHash,
     Value<int>? rowid,
   }) {
@@ -2229,6 +2280,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       sig: sig ?? this.sig,
       origin: origin ?? this.origin,
       pendingSign: pendingSign ?? this.pendingSign,
+      settlementDate: settlementDate ?? this.settlementDate,
       versionHash: versionHash ?? this.versionHash,
       rowid: rowid ?? this.rowid,
     );
@@ -2276,6 +2328,9 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     if (pendingSign.present) {
       map['pending_sign'] = Variable<bool>(pendingSign.value);
     }
+    if (settlementDate.present) {
+      map['settlement_date'] = Variable<String>(settlementDate.value);
+    }
     if (versionHash.present) {
       map['version_hash'] = Variable<String>(versionHash.value);
     }
@@ -2301,6 +2356,7 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
           ..write('sig: $sig, ')
           ..write('origin: $origin, ')
           ..write('pendingSign: $pendingSign, ')
+          ..write('settlementDate: $settlementDate, ')
           ..write('versionHash: $versionHash, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5744,6 +5800,7 @@ typedef $$SettlementsTableCreateCompanionBuilder =
       Value<String?> sig,
       Value<String?> origin,
       Value<bool> pendingSign,
+      Value<String?> settlementDate,
       Value<String?> versionHash,
       Value<int> rowid,
     });
@@ -5762,6 +5819,7 @@ typedef $$SettlementsTableUpdateCompanionBuilder =
       Value<String?> sig,
       Value<String?> origin,
       Value<bool> pendingSign,
+      Value<String?> settlementDate,
       Value<String?> versionHash,
       Value<int> rowid,
     });
@@ -5837,6 +5895,11 @@ class $$SettlementsTableFilterComposer
 
   ColumnFilters<bool> get pendingSign => $composableBuilder(
     column: $table.pendingSign,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get settlementDate => $composableBuilder(
+    column: $table.settlementDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5920,6 +5983,11 @@ class $$SettlementsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get settlementDate => $composableBuilder(
+    column: $table.settlementDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get versionHash => $composableBuilder(
     column: $table.versionHash,
     builder: (column) => ColumnOrderings(column),
@@ -5980,6 +6048,11 @@ class $$SettlementsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get settlementDate => $composableBuilder(
+    column: $table.settlementDate,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get versionHash => $composableBuilder(
     column: $table.versionHash,
     builder: (column) => column,
@@ -6030,6 +6103,7 @@ class $$SettlementsTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<String?> origin = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> settlementDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettlementsCompanion(
@@ -6046,6 +6120,7 @@ class $$SettlementsTableTableManager
                 sig: sig,
                 origin: origin,
                 pendingSign: pendingSign,
+                settlementDate: settlementDate,
                 versionHash: versionHash,
                 rowid: rowid,
               ),
@@ -6064,6 +6139,7 @@ class $$SettlementsTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<String?> origin = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
+                Value<String?> settlementDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettlementsCompanion.insert(
@@ -6080,6 +6156,7 @@ class $$SettlementsTableTableManager
                 sig: sig,
                 origin: origin,
                 pendingSign: pendingSign,
+                settlementDate: settlementDate,
                 versionHash: versionHash,
                 rowid: rowid,
               ),

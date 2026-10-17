@@ -15,6 +15,7 @@ import '../groups/create_group_page.dart' show kGroupCurrencies;
 import '../groups/group_provider.dart';
 import 'expense_category_ui.dart';
 import 'expenses_provider.dart';
+import 'record_date_field.dart';
 import 'split_editor.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
 import 'record_attribution.dart';
@@ -244,74 +245,6 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       _category = id;
       _categoryChosen = true;
     });
-  }
-
-  /// G49: pick the day the expense happened (2000 … a year ahead).
-  Future<void> _pickDay() async {
-    final today = dayOf(DateTime.now());
-    final last = DateTime(
-      today.year,
-      today.month,
-      today.day + kMaxExpenseDateAheadDays,
-    );
-    final first = DateTime(kMinExpenseDateYear);
-    final initial = _day.isBefore(first)
-        ? first
-        : _day.isAfter(last)
-        ? last
-        : _day;
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: first,
-      lastDate: last,
-      helpText: context.l10n.expenseDatePickerHelp,
-    );
-    if (picked != null && mounted) setState(() => _day = dayOf(picked));
-  }
-
-  Widget _dateField(BuildContext context) {
-    final l = context.l10n;
-    final today = dayOf(DateTime.now());
-    final yesterday = DateTime(today.year, today.month, today.day - 1);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          key: const Key('expenseDate'),
-          borderRadius: BorderRadius.circular(Radii.m),
-          onTap: _pickDay,
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: l.expenseDateLabel,
-              prefixIcon: const Icon(Icons.event_outlined),
-            ),
-            child: Text(
-              context.dayHeader(_day.millisecondsSinceEpoch),
-              key: const Key('expenseDateValue'),
-            ),
-          ),
-        ),
-        const SizedBox(height: Insets.s),
-        Wrap(
-          spacing: Insets.s,
-          children: [
-            ChoiceChip(
-              key: const Key('expenseDateToday'),
-              label: Text(l.today),
-              selected: _day == today,
-              onSelected: (_) => setState(() => _day = today),
-            ),
-            ChoiceChip(
-              key: const Key('expenseDateYesterday'),
-              label: Text(l.yesterday),
-              selected: _day == yesterday,
-              onSelected: (_) => setState(() => _day = yesterday),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 
   @override
@@ -574,7 +507,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                 onChanged: (v) => setState(() => _paidBy = v),
                               ),
                               const SizedBox(height: Insets.l),
-                              _dateField(context),
+                              RecordDateField(
+                                day: _day,
+                                onChanged: (d) => setState(() => _day = d),
+                              ),
                               const SizedBox(height: Insets.xl),
                               Text(
                                 l.splitSection,

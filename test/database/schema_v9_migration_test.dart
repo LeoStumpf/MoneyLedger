@@ -4,8 +4,8 @@
 /// account-wide attestations are dropped; first-hand pins and refusals stay.
 library;
 
-// (The refusal fixture is a settlement: the v13 step forgets expense
-// refusals — G49.)
+// (The refusal fixture is a member: the v13 / v14 steps forget expense /
+// settlement refusals — G49 / G60.)
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -60,7 +60,7 @@ const _v8Schema = [
   "INSERT INTO known_device_keys VALUES "
       "('@a:x', 'FAKE', 'K2', 'attested', '@m:x', 2)",
   "INSERT INTO rejected_versions VALUES "
-      "('g1', 'settlement', 'e1', 70, 'unsigned', '@m:x', NULL, 3)",
+      "('g1', 'member', 'e1', 70, 'unsigned', '@m:x', NULL, 3)",
   'PRAGMA user_version = 8',
 ];
 
@@ -86,7 +86,7 @@ void main() {
     expect(keys.single.group, isNull);
 
     // An unknown hash ('') matches any version at that clock.
-    expect(await signing.rejectedVersion('g1', 'settlement', 'e1'), (
+    expect(await signing.rejectedVersion('g1', 'member', 'e1'), (
       at: 70,
       hash: '',
     ));
@@ -118,7 +118,7 @@ void main() {
     await signing.recordRejected(
       const RefusedVersion(
         groupId: 'g1',
-        kind: 'settlement',
+        kind: 'member',
         recordId: 'e1',
         updatedAt: 70,
         reason: 'bad_signature',
@@ -129,7 +129,7 @@ void main() {
     await signing.recordRejected(
       const RefusedVersion(
         groupId: 'g1',
-        kind: 'settlement',
+        kind: 'member',
         recordId: 'e1',
         updatedAt: 60,
         reason: 'bad_signature',
@@ -137,7 +137,7 @@ void main() {
         versionHash: 'aaaa',
       ),
     );
-    expect(await signing.rejectedVersion('g1', 'settlement', 'e1'), (
+    expect(await signing.rejectedVersion('g1', 'member', 'e1'), (
       at: 70,
       hash: 'ffff',
     ));

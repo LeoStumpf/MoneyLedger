@@ -64,6 +64,7 @@ Future<void> recordPaymentFlow(
         currency: draft.currency,
         fromUser: draft.from,
         toUser: draft.to,
+        day: draft.day,
       );
 
   if (!context.mounted) return;

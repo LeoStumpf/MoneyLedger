@@ -360,6 +360,7 @@ class CsvImporter extends _$CsvImporter {
           toUser: pidByName[recipient] ?? recipient,
           createdAt: createdAt,
           updatedAt: updatedAt,
+          date: row.date,
         );
         final problem = settlementProblem(draft);
         if (problem != null) throw CsvImportException(i + 2, problem);

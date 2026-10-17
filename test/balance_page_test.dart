@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/models/expense_date.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
@@ -411,6 +412,32 @@ void main() {
       await tester.enterText(find.byKey(const Key('paymentAmount')), '12');
       await tester.pump();
       expect(find.byKey(const Key('paymentExceedsWarning')), findsOneWidget);
+    });
+
+    testWidgets('G60: the Yesterday chip back-dates the payment', (
+      tester,
+    ) async {
+      final db = openTestDatabase();
+      addTearDown(db.close);
+      await pumpPage(tester, db, FakeMatrixNetwork());
+
+      await tester.tap(_debtTitle('Bob pays you'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('paymentDateValue'))).data,
+        'Today',
+      );
+      await tester.ensureVisible(find.byKey(const Key('paymentDateYesterday')));
+      await tester.tap(find.byKey(const Key('paymentDateYesterday')));
+      await tester.pump();
+      expect(
+        tester.widget<Text>(find.byKey(const Key('paymentDateValue'))).data,
+        'Yesterday',
+      );
+
+      final s = (await recordAndRead(tester, db)).single;
+      final now = DateTime.now();
+      expect(s.date, expenseDateOf(DateTime(now.year, now.month, now.day - 1)));
     });
 
     testWidgets('"Record payment" action: creditor records bob paid them', (

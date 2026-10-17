@@ -519,6 +519,7 @@ class LedgerSyncer {
           clampInboundClock(content['updated_at'] as int? ?? createdAt),
         ),
         deleted: Value(content['deleted'] as bool? ?? false),
+        settlementDate: Value(_optString(content['date'])),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
       ),

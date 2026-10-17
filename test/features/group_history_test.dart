@@ -599,5 +599,35 @@ void main() {
       expect(plan.reverted, 1);
       expect(plan.changes.single.expense!.date, '2026-01-05');
     });
+
+    test('G60: a restored payment keeps its date', () {
+      SettlementModel dated(int at, {bool deleted = false}) => SettlementModel(
+        id: 's1',
+        roomId: 'g1',
+        amountCents: 50,
+        currency: 'EUR',
+        fromUser: 'p1',
+        toUser: 'p2',
+        createdAt: 2,
+        updatedAt: at,
+        deleted: deleted,
+        origin: _origin,
+        date: '2026-01-05',
+      );
+      final first = _st(dated(1), 1);
+      final second = _st(dated(5, deleted: true), 2);
+      final plan = planGroupReset(
+        groupId: 'g1',
+        beforeId: second.id,
+        entries: [first, second],
+        expenses: const [],
+        settlements: [dated(5, deleted: true)],
+        meta: null,
+        now: 3,
+      );
+      expect(plan.restored, 1);
+      expect(plan.changes.single.settlement!.date, '2026-01-05');
+      expect(plan.changes.single.settlement!.deleted, isFalse);
+    });
   });
 }

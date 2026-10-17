@@ -343,4 +343,35 @@ void main() {
       );
     });
   });
+
+  group('payment date (G60)', () {
+    final created = DateTime(2026, 10, 17, 9, 30).millisecondsSinceEpoch;
+    SettlementModel dated(String id, String? date) => SettlementModel(
+      id: id,
+      roomId: 'g1',
+      amountCents: 2100,
+      currency: 'EUR',
+      fromUser: 'pb',
+      toUser: 'pa',
+      createdAt: created,
+      updatedAt: created + 1000,
+      date: date,
+    );
+
+    test('Date is the display day; back-dated payments round-trip', () {
+      final csv = buildGroupCsv(testGroup, members, const [], [
+        dated('s1', '2026-10-10'),
+        dated('s2', null),
+      ]);
+      final lines = csv.split('\r\n');
+      expect(lines[1], startsWith('2026-10-10,Payment,'));
+      expect(lines[1], endsWith(',$created'));
+      expect(lines[2], startsWith('2026-10-17,Payment,'));
+      final rows = parseGroupCsv(csv).rows;
+      expect(rows[0].paymentRecipient, 'Alex');
+      expect(rows[0].date, '2026-10-10');
+      expect(rows[0].createdAt, created);
+      expect(rows[1].date, isNull);
+    });
+  });
 }

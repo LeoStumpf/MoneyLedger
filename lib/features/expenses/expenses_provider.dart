@@ -223,6 +223,7 @@ class ExpenseAdder extends _$ExpenseAdder {
     required String currency,
     required String fromUser,
     required String toUser,
+    DateTime? day,
   }) => _run((w) async {
     final createdAt = DateTime.now().millisecondsSinceEpoch;
     final settlement = SettlementModel(
@@ -234,6 +235,8 @@ class ExpenseAdder extends _$ExpenseAdder {
       toUser: toUser,
       createdAt: createdAt,
       updatedAt: createdAt,
+      // G60: only a back-dated payment carries a `date` (today → none).
+      date: day == null ? null : storedExpenseDate(day, createdAt),
     );
     final signed = await w.signer.settlement(settlement, creating: true);
     if (w.db.isClosed) return;
@@ -326,6 +329,7 @@ class ExpenseAdder extends _$ExpenseAdder {
       createdAt: current.createdAt,
       updatedAt: nextLwwClock(current.updatedAt),
       deleted: true,
+      date: current.date,
       origin: current.origin,
     );
     final signed = await w.signer.settlement(tombstone);

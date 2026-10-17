@@ -53,6 +53,8 @@ Map<String, dynamic> settlementPayload(SettlementModel s) => {
   'created_at': s.createdAt,
   'updated_at': s.updatedAt,
   'deleted': s.deleted,
+  // G60: optional ISO day (`YYYY-MM-DD`) — absent unless back-dated.
+  if (s.date != null) 'date': s.date,
   if (s.origin != null) 'origin': s.origin!.toJson(),
   if (s.sig != null) 'sig': s.sig!.toJson(),
 };
@@ -292,6 +294,8 @@ SettlementModel? settlementFromPayload(Map<String, dynamic> c) {
     createdAt: createdAt,
     updatedAt: c['updated_at'] as int? ?? createdAt,
     deleted: c['deleted'] as bool? ?? false,
+    // G60: like the expense `date` (kept verbatim, checked by the rules).
+    date: _optString(c['date']),
     sig: RecordSignature.fromJson(c['sig']),
     origin: RecordSignature.fromJson(c['origin']),
   );

@@ -551,6 +551,37 @@ void main() {
       expect(await c.read(expensesDaoProvider).getExpenseById('e1'), isNull);
     });
   });
+
+  group('payment date (G60)', () {
+    SettlementModel dated(String? date) => SettlementModel(
+      id: 's1',
+      roomId: 'g1',
+      amountCents: 2100,
+      currency: 'EUR',
+      fromUser: 'pb',
+      toUser: 'pa',
+      createdAt: 1760000000000,
+      updatedAt: 1760000050000,
+      date: date,
+    );
+
+    test('a back-dated payment round-trips through the CSV', () async {
+      await import(
+        buildGroupCsv(grp, members, const [], [dated('2025-10-01')]),
+      );
+      final s = await c.read(expensesDaoProvider).getSettlementById('s1');
+      expect(s!.date, '2025-10-01');
+      expect(s.createdAt, 1760000000000);
+    });
+
+    test('an invalid Date cell aborts the import, nothing written', () async {
+      final csv = buildGroupCsv(grp, members, const [], [
+        dated('2025-10-01'),
+      ]).replaceFirst('2025-10-01,Payment', '1999-01-01,Payment');
+      await expectLater(import(csv), throwsA(isA<CsvImportException>()));
+      expect(await c.read(expensesDaoProvider).getSettlementById('s1'), isNull);
+    });
+  });
 }
 
 List<String> _row(String line) => line.split(',');

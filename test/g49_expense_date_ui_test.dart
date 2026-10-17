@@ -106,6 +106,63 @@ void main() {
     expect(y(fiveDaysHeader), lessThan(y(find.text('Old dinner'))));
   });
 
+  testWidgets('G60: a back-dated payment sits under its own day', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day, 9);
+    final threeDaysAgo = DateTime(now.year, now.month, now.day - 3);
+    await tester.pumpWidget(
+      testApp(
+        const ExpensesPage(roomId: _roomId),
+        overrides: [
+          ...testOverrides(
+            isLoggedIn: true,
+            expenses: [_e('lunch', 'Lunch', today)],
+            settlements: [
+              SettlementModel(
+                id: 'p1',
+                roomId: _roomId,
+                amountCents: 500,
+                currency: 'EUR',
+                fromUser: '@bob:x.org',
+                toUser: _me,
+                // Entered after lunch today, handed over three days ago.
+                createdAt: today
+                    .add(const Duration(hours: 3))
+                    .millisecondsSinceEpoch,
+                updatedAt: today
+                    .add(const Duration(hours: 3))
+                    .millisecondsSinceEpoch,
+                date: expenseDateOf(threeDaysAgo),
+              ),
+            ],
+            members: [_alice],
+            groups: [
+              const GroupModel(roomId: _roomId, name: 'Trip', currency: 'EUR'),
+            ],
+          ),
+          currentUserIdProvider.overrideWith((_) => _me),
+          currentParticipantProvider.overrideWith((_, _) async => _alice),
+          groupLedgerFingerprintProvider.overrideWith((_, _) => 'fp'),
+        ],
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    double y(Finder f) => tester.getTopLeft(f).dy;
+    final threeDaysHeader = find.text(
+      formatDayHeader(threeDaysAgo.millisecondsSinceEpoch, 'en'),
+    );
+    expect(threeDaysHeader, findsOneWidget);
+    expect(find.byKey(const Key('dayHeader')), findsNWidgets(2));
+    final payment = find.byKey(const Key('settlementTitle'));
+    expect(payment, findsOneWidget);
+    expect(y(find.text('Lunch')), lessThan(y(threeDaysHeader)));
+    expect(y(threeDaysHeader), lessThan(y(payment)));
+  });
+
   test('displayDay drives the order: date first, then creation time', () {
     final created = DateTime(2026, 10, 17, 9).millisecondsSinceEpoch;
     final a = _e('a', 'a', DateTime.fromMillisecondsSinceEpoch(created));

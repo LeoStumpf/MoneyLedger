@@ -226,6 +226,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
     deleted: s.deleted,
+    date: s.settlementDate,
     sig: RecordSignature.decode(s.sig),
     origin: RecordSignature.decode(s.origin),
     pendingSign: s.pendingSign,
@@ -265,6 +266,7 @@ SettlementsCompanion settlementCompanion(SettlementModel s) =>
       createdAt: Value(s.createdAt),
       updatedAt: Value(s.updatedAt),
       deleted: Value(s.deleted),
+      settlementDate: Value(s.date),
       sig: Value(s.sig?.encode()),
       origin: Value(s.origin?.encode()),
       pendingSign: Value(s.pendingSign),
@@ -304,6 +306,7 @@ SettlementModel _settlementFromCompanion(SettlementsCompanion c) =>
       createdAt: _v(c.createdAt, 0),
       updatedAt: c.updatedAt.value,
       deleted: _v(c.deleted, false),
+      date: _v(c.settlementDate, null),
       sig: RecordSignature.decode(_v(c.sig, null)),
       origin: RecordSignature.decode(_v(c.origin, null)),
       pendingSign: _v(c.pendingSign, false),
@@ -338,7 +341,8 @@ bool _completeSettlement(SettlementsCompanion c) =>
     c.fromUser.present &&
     c.toUser.present &&
     c.createdAt.present &&
-    c.deleted.present;
+    c.deleted.present &&
+    c.settlementDate.present;
 
 /// G37 (schema v8): stores the content hash of every expense / settlement
 /// that has none yet (rows from before v8, or written outside the DAO).

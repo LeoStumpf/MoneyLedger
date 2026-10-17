@@ -107,6 +107,7 @@ Expected results are in *italics*.
 | 5.13 | Category field → *New category…* → name "Dog" + an icon → *selected on the form*; the peer's selector offers "Dog" too (G47) | 2dev |
 | 5.14 | ⋮ → Categories → rename "Dog", hide it → *peer shows the new name; hidden: not offered for new expenses, old expenses keep the label* (G47) | 2dev |
 | 5.15 | Add expense → *Date shows "Today"*; tap *Yesterday* or the field → pick a day last week → Add → *listed under that day on both devices*; edit it → *the date is prefilled* (G49) | 2dev |
+| 5.16 | Record payment → *Date shows "Today"*; tap *Yesterday* → Record → *listed under yesterday on both devices* (G60) | 2dev |
 
 ## 6. Settlements & balances
 

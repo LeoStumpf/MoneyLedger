@@ -107,6 +107,11 @@ class SettlementModel {
   final int updatedAt; // ms epoch, LWW clock
   final bool deleted; // tombstone — kept forever, hidden from the UI
 
+  /// G60: the calendar day the payment happened, ISO `YYYY-MM-DD` — exactly
+  /// like [ExpenseModel.date] (null = the local day of [createdAt]; only set
+  /// when it differs from that day).
+  final String? date;
+
   /// G6 signing fields — see [ExpenseModel.sig].
   final RecordSignature? sig;
   final RecordSignature? origin;
@@ -126,11 +131,12 @@ class SettlementModel {
     required this.createdAt,
     this.updatedAt = 0,
     this.deleted = false,
+    String? date,
     this.sig,
     this.origin,
     this.pendingSign = false,
     this.versionHash,
-  });
+  }) : date = date == '' ? null : date;
 
   /// A copy with the G6 signing fields replaced (content unchanged).
   SettlementModel withSigning({
@@ -148,6 +154,7 @@ class SettlementModel {
     createdAt: createdAt,
     updatedAt: updatedAt,
     deleted: deleted,
+    date: date,
     sig: sig,
     origin: origin,
     pendingSign: pendingSign,

@@ -79,7 +79,7 @@ const _v12Schema = [
   "INSERT INTO rejected_versions VALUES "
       "('g1', 'expense', 'e9', 70, 'bad_signature', '@m:x', '@m:x', 3, 'abcd')",
   "INSERT INTO rejected_versions VALUES "
-      "('g1', 'settlement', 's9', 80, 'unsigned', '@m:x', NULL, 4, 'ef01')",
+      "('g1', 'member', 's9', 80, 'unsigned', '@m:x', NULL, 4, 'ef01')",
   'PRAGMA user_version = 12',
 ];
 
@@ -118,7 +118,7 @@ void main() {
 
     final signing = SigningDao(db);
     expect(await signing.rejectedClock('g1', 'expense', 'e9'), isNull);
-    expect(await signing.rejectedClock('g1', 'settlement', 's9'), 80);
+    expect(await signing.rejectedClock('g1', 'member', 's9'), 80);
 
     // v13 writes with a date work and round-trip.
     await dao.upsertExpenseLww(

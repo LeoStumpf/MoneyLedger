@@ -231,6 +231,7 @@ Future<void> backfillRecordHistory(AppDatabase db) async {
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
         deleted: r.deleted,
+        date: r.settlementDate,
         sig: RecordSignature.decode(r.sig),
         origin: RecordSignature.decode(r.origin),
       );

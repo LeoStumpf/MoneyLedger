@@ -98,8 +98,13 @@ toolchain. No Android build in CI (Rust + NDK).
 `@anna:example.org` (`DemoAuthGateway`), `DemoTransport` (sends succeed,
 nothing arrives), `DemoDeviceGateway`, no background sync, and the ledger in
 its own `money_ledger_offline_demo` DB, wiped + reseeded on every open by
-`seedDemoLedger` (3 groups, EUR/CHF, custom splits, payments, dates relative
-to now, all peers in sync), device prefs in memory (welcome seen — G39). No
+`seedDemoLedger` (4 groups — one archived —, EUR/CHF, custom splits, payments, dates relative
+to now, all peers in sync; screenshot extras: a G47 custom category
+"Souvenirs" used by an expense, a back-dated expense (G49) and payment (G60),
+and a back-filled G48 version history — `_seedHistory`: every record's
+versions with `recorded_at` = its clock, Anna's writes `local`, the rest
+`inbound`, incl. one edited and one deleted expense — so the reset page has
+restore points), device prefs in memory (welcome seen — G39). No
 Matrix client is ever built. (Separate from the real local mode, G40.) Normal builds
 tree-shake it (`const bool.fromEnvironment`). Never import `test/` from `lib/`.
 Smoke test: `test/core/demo_mode_test.dart`. Used for README/store screenshots.
@@ -217,7 +222,7 @@ lib/
     group_model.dart           # Plain Dart model (GroupModel)
     member_model.dart          # MemberModel; sync_state_model.dart (PeerSyncStateModel)
     expense_category.dart      # G16: ExpenseCategory (stable wire ids), suggestCategory heuristic, normalizeNote
-    expense_date.dart          # G49: ISO day helpers, storedExpenseDate, expenseDateProblem, displayDay
+    expense_date.dart          # G49/G60: ISO day helpers, storedExpenseDate, recordDateProblem, displayDay (expense + payment)
                                # G47: CustomCategory, resolveCategory, kCustomCategoryIcons, bounds
     group_archive.dart         # G16: GroupArchive (device-local) + ledgerFingerprint
   features/
@@ -234,6 +239,7 @@ lib/
                                # Static @visibleForTesting methods for unit-testable event processing
       split_calculator.dart    # Pure-Dart split math (largest-remainder) — see "Custom splits"
       split_editor.dart        # SplitEditor widget: Equal/Exact/Shares/% modes → SplitPlan
+      record_date_field.dart   # G49/G60 RecordDateField: Date field + Today/Yesterday chips (expense form + payment dialog)
       expense_category_ui.dart # G16: category icon / colours / label, CategoryIconTile, CategoryPicker
                                # (G47: dropdown-style selector + showCategoryDialog, custom icon keys)
       expense_filter.dart      # G16: pure LedgerFilter + expenseMatches / settlementMatches
@@ -1156,11 +1162,11 @@ recreates `c:` ids the group lacks from it. A CSV without them
 (pre-G16) imports with no category / note; older parsers ignore them (they sit
 before `Paid By`, outside the share columns). **G49:** `Date` is the
 **display day** (`YYYY-MM-DD`: the expense's `date`, else the local day of
-`created_at`; payments: their creation day); the exact creation time (part
+`created_at`; G60: payments likewise — `date ?? created_at`); the exact creation time (part
 of the signed `origin`, must survive a round trip) is the trailing
 `Created At` (ms). Import: `Created At`, else the `Date` cell (pre-G49 CSVs
 wrote the full ISO creation time there); a plain-day `Date` that differs from
-the creation's local day back-dates the expense (`date`); an invalid one
+the creation's local day back-dates the expense or (G60) payment (`date`); an invalid one
 aborts the import.
 
 A **payment row** reads like an expense the payer covered entirely for the
@@ -1321,7 +1327,7 @@ like a pre-G49 one, so older builds accept it.
   ahead) + *Today* / *Yesterday* chips. Edit prefills the display day and
   keeps the stored `date` unless the day was changed
   (`ExpenseAdder.updateExpense(date:)` takes the resolved ISO string).
-- **Content rule** (`expenseProblem` → `expenseDateProblem`): a real
+- **Content rule** (`expenseProblem` → `recordDateProblem`): a real
   calendar day, year ≥ 2000, ≤ today + 400 days (the picker allows 365).
 - **Storage:** schema **v13** `expenses.expense_date` (nullable). The v12 →
   v13 step forgets refused **expense** versions (a pre-G49 build refused
@@ -1332,7 +1338,21 @@ like a pre-G49 one, so older builds accept it.
   expenses table with today's columns).
 - Bootstrap, JSON backup, G48 history / reset (they store `expensePayload`)
   carry it automatically; CSV see above.
-- **Payments have no date** (scope; open point).
+- **Payments (G60)** work exactly the same: optional signed `date` on
+  `com.moneyledger.settlement` (payload, signed body, G27 hash **only when
+  set** — golden hash + pre-G60 body pinned in
+  `test/core/settlement_date_wire_test.dart`), `SettlementModel.date` /
+  `displayDay`, `settlementProblem` → `recordDateProblem`. Schema **v14**
+  `settlements.settlement_date` (nullable; added before the v8 / v12
+  backfills like v13's column); the v13 → v14 step forgets refused
+  **settlement** versions (same reason as v13). `RecordPaymentDialog` has
+  the same *Date* field + chips (`RecordDateField`, extracted from the
+  expense form; keys `paymentDate*`) → `PaymentDraft.day` →
+  `ExpenseAdder.addSettlement(day:)`; a delete (tombstone) keeps the date.
+  The ledger list sorts payments by `displayDay` too. Payments still have
+  no edit. Bootstrap / backup / G48 history + reset / CSV carry it. Tests:
+  `schema_v14_migration_test.dart`,
+  `test/integration/settlement_date_sync_test.dart`.
 
 ### Settlements / recording payments (G28)
 
@@ -1641,7 +1661,7 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 
 `paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs. `category` (a G16 wire id) and `note` are **optional** — omitted when unset, signed and hashed only when present (see "Categories, notes, search, archive (G16)"). So is `date` (G49): the ISO calendar day the expense happened, present only when it differs from `created_at`'s day (see "Expense date (G49)").
 
-**`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "origin", "sig" }` (`from`/`to` are participant ids).
+**`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "date"?, "origin", "sig" }` (`from`/`to` are participant ids; `date` — G60, optional ISO `YYYY-MM-DD`, only when the payment is back-dated, signed and hashed only when present, exactly like the expense `date`).
 
 **`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "categories"?, "sig" }` — `categories` (G47, optional, only when the group has custom categories): `[{ "id": "c:<uuidv7>", "name": "Dog", "icon": "pets", "hidden": true? }]`, part of the signed body and the G27 hash only when present.
 

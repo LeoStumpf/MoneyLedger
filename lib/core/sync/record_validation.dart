@@ -41,7 +41,7 @@ Map<String, int>? tryParseSplit(String splitsJson) {
 /// Why [e] is not a valid expense version, or null when it is: the amount is
 /// out of range, there is no payer, or the split isn't a non-empty
 /// `{participant: cents}` map summing exactly to the amount; G49: a `date`
-/// that isn't an acceptable calendar day ([expenseDateProblem]; [now] is
+/// that isn't an acceptable calendar day ([recordDateProblem]; [now] is
 /// for tests).
 String? expenseProblem(ExpenseModel e, {DateTime? now}) {
   if (!isValidAmountCents(e.amountCents)) return 'amount ${e.amountCents}';
@@ -52,17 +52,20 @@ String? expenseProblem(ExpenseModel e, {DateTime? now}) {
   final sum = split.values.fold<int>(0, (a, b) => a + b);
   if (sum != e.amountCents) return 'split sums to $sum, not ${e.amountCents}';
   final date = e.date;
-  if (date != null) return expenseDateProblem(date, now: now);
+  if (date != null) return recordDateProblem(date, now: now);
   return null;
 }
 
 /// Why [s] is not a valid payment version, or null when it is: the amount
-/// is out of range, a side is missing, or someone pays themselves.
-String? settlementProblem(SettlementModel s) {
+/// is out of range, a side is missing, or someone pays themselves; G60: a
+/// `date` that isn't an acceptable calendar day ([recordDateProblem]).
+String? settlementProblem(SettlementModel s, {DateTime? now}) {
   if (!isValidAmountCents(s.amountCents)) return 'amount ${s.amountCents}';
   if (s.currency.isEmpty) return 'no currency';
   if (s.fromUser.isEmpty || s.toUser.isEmpty) return 'missing participant';
   if (s.fromUser == s.toUser) return 'payment to oneself';
+  final date = s.date;
+  if (date != null) return recordDateProblem(date, now: now);
   return null;
 }
 

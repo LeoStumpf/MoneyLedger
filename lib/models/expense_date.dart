@@ -1,6 +1,7 @@
 import 'expense_model.dart';
 
-/// G49 — the day an expense happened (plain Dart, no Flutter / DB).
+/// G49 — the day an expense happened (plain Dart, no Flutter / DB); G60:
+/// payments (settlements) carry the same optional `date`.
 ///
 /// An expense's optional `date` is a **calendar day** as an ISO string
 /// `YYYY-MM-DD`: no time and no time zone, so a back-dated dinner shows on
@@ -42,10 +43,11 @@ String expenseDateOf(DateTime d) =>
 /// Local midnight of [d]'s day.
 DateTime dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
 
-/// Why [date] isn't an acceptable expense date, or null when it is: not a
+/// Why [date] isn't an acceptable expense / payment (G60) date, or null when
+/// it is: not a
 /// `YYYY-MM-DD` calendar day, before [kMinExpenseDateYear] or more than
 /// [kMaxExpenseDateAheadValidDays] after [now]'s day.
-String? expenseDateProblem(String date, {DateTime? now}) {
+String? recordDateProblem(String date, {DateTime? now}) {
   final day = parseExpenseDate(date);
   if (day == null) return 'date "$date"';
   if (day.year < kMinExpenseDateYear) return 'date $date too early';
@@ -72,6 +74,14 @@ String? storedExpenseDate(DateTime day, int createdAtMs) {
 extension ExpenseDisplayDate on ExpenseModel {
   /// Local midnight of the day the expense is shown under: its `date`, or
   /// the day of `created_at` (also for a malformed stored date).
+  DateTime get displayDay =>
+      parseExpenseDate(date) ??
+      dayOf(DateTime.fromMillisecondsSinceEpoch(createdAt));
+}
+
+extension SettlementDisplayDate on SettlementModel {
+  /// G60: local midnight of the day the payment is shown under — its `date`,
+  /// or the day of `created_at` (see [ExpenseDisplayDate.displayDay]).
   DateTime get displayDay =>
       parseExpenseDate(date) ??
       dayOf(DateTime.fromMillisecondsSinceEpoch(createdAt));

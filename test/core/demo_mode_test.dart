@@ -19,7 +19,10 @@ import 'package:money_ledger/core/demo/demo_seed.dart';
 import 'package:money_ledger/core/demo/demo_transport.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
+import 'package:money_ledger/core/database/daos/history_dao.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
+import 'package:money_ledger/features/history/group_history.dart';
+import 'package:money_ledger/models/expense_date.dart';
 
 import '../helpers/eventually.dart';
 import '../helpers/in_memory_database.dart';
@@ -112,6 +115,105 @@ void main() {
         ),
         isTrue,
       );
+    });
+
+    test('screenshot extras: custom category, back-dated expense and '
+        'payment (G47 / G49 / G60)', () async {
+      final db = openTestDatabase();
+      addTearDown(db.close);
+      final now = DateTime(2026, 10, 16, 12);
+      await seedDemoLedger(db, now: now);
+      final dao = ExpensesDao(db);
+
+      final lisbon = (await GroupsDao(db).getGroup('demo-group-lisbon'))!;
+      expect(lisbon.categories.map((c) => c.name), ['Souvenirs']);
+      final custom = lisbon.categories.single.id;
+      expect(
+        (await dao.getExpensesForRoom(
+          'demo-group-lisbon',
+        )).where((e) => e.category == custom),
+        hasLength(1),
+      );
+
+      DateTime createdDay(int ms) =>
+          dayOf(DateTime.fromMillisecondsSinceEpoch(ms));
+      final dated = [
+        for (final g in await GroupsDao(db).getAllGroups())
+          ...await dao.getExpensesForRoom(g.roomId),
+      ].where((e) => e.date != null).toList();
+      expect(dated, hasLength(1));
+      expect(
+        dated.single.displayDay,
+        isNot(createdDay(dated.single.createdAt)),
+      );
+      expect(dated.single.displayDay.isBefore(dayOf(now)), isTrue);
+
+      final datedPayments = [
+        for (final g in await GroupsDao(db).getAllGroups())
+          ...await dao.getSettlementsForRoom(g.roomId),
+      ].where((s) => s.date != null).toList();
+      expect(datedPayments, hasLength(1));
+      expect(
+        datedPayments.single.displayDay,
+        isNot(createdDay(datedPayments.single.createdAt)),
+      );
+    });
+
+    test('G48: every record has history; the reset page offers restore '
+        'points incl. an edit and a deletion', () async {
+      final db = openTestDatabase();
+      addTearDown(db.close);
+      await seedDemoLedger(db, now: DateTime(2026, 10, 16, 12));
+      final history = HistoryDao(db);
+      final dao = ExpensesDao(db);
+      for (final g in await GroupsDao(db).getAllGroups()) {
+        final entries = await history.entriesForGroup(g.roomId);
+        final keys = {for (final e in entries) '${e.kind.wire}|${e.recordId}'};
+        for (final e in await dao.getAllExpensesForGroup(g.roomId)) {
+          expect(keys, contains('expense|${e.id}'));
+        }
+        for (final s in await dao.getAllSettlementsForGroup(g.roomId)) {
+          expect(keys, contains('settlement|${s.id}'));
+        }
+        // Each record's newest history entry is its stored version.
+        final newestAt = <String, int>{
+          for (final e in entries) '${e.kind.wire}|${e.recordId}': e.updatedAt,
+        };
+        for (final e in await dao.getAllExpensesForGroup(g.roomId)) {
+          expect(newestAt['expense|${e.id}'], e.updatedAt);
+        }
+        final batches = changeBatches(entries, me: kDemoUserId);
+        expect(batches.last.base, isTrue, reason: g.name);
+        expect(
+          batches.where((b) => b.resettable),
+          isNotEmpty,
+          reason: '${g.name}: the reset page has restore points',
+        );
+        // Resetting to before the newest batch is a sensible plan.
+        final newest = batches.firstWhere((b) => b.resettable);
+        final plan = planGroupReset(
+          groupId: g.roomId,
+          beforeId: newest.firstId,
+          entries: entries,
+          expenses: await dao.getAllExpensesForGroup(g.roomId),
+          settlements: await dao.getAllSettlementsForGroup(g.roomId),
+          meta: g,
+        );
+        expect(plan.isEmpty, isFalse, reason: g.name);
+        expect(plan.skipped, 0);
+      }
+
+      final lisbon = changeBatches(
+        await history.entriesForGroup('demo-group-lisbon'),
+        me: kDemoUserId,
+      );
+      expect(lisbon.where((b) => b.deleted == 1), hasLength(1));
+      final flat = changeBatches(
+        await history.entriesForGroup('demo-group-flat'),
+        me: kDemoUserId,
+      );
+      expect(flat.where((b) => b.changed == 1), hasLength(1));
+      expect(flat.where((b) => b.byMe), isNotEmpty);
     });
 
     test('reseeding replaces the data instead of duplicating it', () async {
