@@ -235,6 +235,8 @@ lib/
     groups/                    # Group list + create (local-only groups, people chips — G64; add/remove people)
                                #   GroupExiter (leave/delete, G9) + group_exit_dialog.dart
                                #   group_archive_provider.dart: G16 archive (groupArchived, GroupArchiver)
+                               #   group_settings_page.dart: G65 group settings (/groups/:id/settings)
+                               #   group_actions.dart: G65 shared flows (edit, archive, backup, CSV, leave/delete)
                                #   group_categories_page.dart: G47 custom categories (add / rename / hide)
     expenses/                  # Expense list, add/edit/delete, ledger sync
       ledger_syncer.dart       # LedgerSyncer: subscribes to to-device onMessage → writes to Drift
@@ -270,6 +272,7 @@ lib/
     devices/                   # Device list + SAS verification UI (DevicesPage, member device sheet,
                                #   IncomingVerificationListener) — G11
     about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
+    settings/                  # G65 SettingsPage (/settings): account, sync & devices, backup, data, about, debug
 test/
   flutter_test_config.dart     # Per-test-file setup (Drift multi-DB warning off; sqlite3 via hooks)
   helpers/
@@ -328,9 +331,9 @@ buttons). Until then the optimistic form (generic SSO + password) is shown.
 `RegisterPage` sends nothing before *Create account*. Pinned by
 `test/features/login_no_requests_test.dart` (`FakeAuthGateway.loginFlowsRequests`).
 
-**Device verification (Phase F + G11).** `DeviceGateway` (`core/matrix/device_gateway.dart`, matrix-free port; real adapter `matrix_device_gateway.dart`) lists the user's own devices **and (G11) another member's** (`userDevices`), runs an SAS (emoji) verification **over to-device messages** — with our own other devices and with another member's device alike (no rooms needed) — and streams **incoming** requests (`incomingVerifications`, answered app-wide by `IncomingVerificationListener` in `App`'s builder: "Accept / Decline" → the same emoji dialog). The client must advertise `verificationMethods: {emoji, numbers}` (`buildMatrixClient`) — without it the SDK ignores every request (it was missing before G11, so SAS never worked). `askSSSS` (account has cross-signing from another client, keys not cached) is skipped automatically: the app does no cross-signing. `DevicesPage` (`/devices`) shows own devices (G56: opened from the settings sheet's *Devices & security* tile — no groups app-bar icon any more); the **members page** shows — **only while verified-only sync is on** (G46: otherwise it's technical noise) — a subtle "N unverified devices" line under a member (red "Not reachable — no verified device" when none is verified) and ⋮ → *Devices* opens their device list with *Verify*. The real adapter imports `package:matrix/matrix.dart` **`hide DeviceInfo`** plus `package:matrix/encryption.dart`. **SAS emoji names (G36)** are localized: `SasEmoji.number` (the SDK's `KeyVerificationEmoji.number`, 0–63) → `sasEmojiName(number, languageCode)` from `features/devices/sas_emoji_names.dart`, an EN+DE table generated once from the Matrix spec's `data-definitions/sas-emoji.json` (Apache-2.0 — THIRD_PARTY_NOTICES + an in-app license entry in `main.dart`); unknown number → the SDK's English name.
+**Device verification (Phase F + G11).** `DeviceGateway` (`core/matrix/device_gateway.dart`, matrix-free port; real adapter `matrix_device_gateway.dart`) lists the user's own devices **and (G11) another member's** (`userDevices`), runs an SAS (emoji) verification **over to-device messages** — with our own other devices and with another member's device alike (no rooms needed) — and streams **incoming** requests (`incomingVerifications`, answered app-wide by `IncomingVerificationListener` in `App`'s builder: "Accept / Decline" → the same emoji dialog). The client must advertise `verificationMethods: {emoji, numbers}` (`buildMatrixClient`) — without it the SDK ignores every request (it was missing before G11, so SAS never worked). `askSSSS` (account has cross-signing from another client, keys not cached) is skipped automatically: the app does no cross-signing. `DevicesPage` (`/devices`) shows own devices (G56: opened from the settings page's *Devices & security* tile — no groups app-bar icon any more); the **members page** shows — **only while verified-only sync is on** (G46: otherwise it's technical noise) — a subtle "N unverified devices" line under a member (red "Not reachable — no verified device" when none is verified) and ⋮ → *Devices* opens their device list with *Verify*. The real adapter imports `package:matrix/matrix.dart` **`hide DeviceInfo`** plus `package:matrix/encryption.dart`. **SAS emoji names (G36)** are localized: `SasEmoji.number` (the SDK's `KeyVerificationEmoji.number`, 0–63) → `sasEmojiName(number, languageCode)` from `features/devices/sas_emoji_names.dart`, an EN+DE table generated once from the Matrix spec's `data-definitions/sas-emoji.json` (Apache-2.0 — THIRD_PARTY_NOTICES + an in-app license entry in `main.dart`); unknown number → the SDK's English name.
 - **The app keeps its own verified-device record** (`AppSettings` `verified_device:<mxid>|<device>` → Ed25519 key, per account, device-local; `SettingsDao.markDeviceVerified`, written by `recordingTrust` on SAS success whether or not the dialog is still open). Reason: in a roomless app the SDK evicts other users' device lists from memory on every `updateUserDeviceKeys` that doesn't name them and re-stores them with `verified: false` — a peer's SAS result would not survive. "Verified" = SDK flag **or** our record for the exact (user, device, **current key**) (`isDeviceTrusted`; a changed key voids it). Own devices: the SDK flag persists too.
-- **Opt-in enforcement (G11): "Only sync with verified devices"** (settings sheet, per account, device-local `verified_only_sync`, default **off**; turning it on asks first and explains). Every app sender — `LedgerWriteContext` / `_GroupWriteContext` / `SyncEngine` (replication, member bootstraps, digests, resync answers) — wraps the transport in `PolicyTransport` (`core/sync/delivery_policy.dart`) built from the **same** account DB it writes to; each send reads `SettingsDao.deliveryPolicy()` (fails closed if unreadable) and passes it to `sendToUsers(…, policy:)` → pure `planDeviceSend` withholds unverified devices (own and peers'). `SendResult.unverifiedUsers` (⊆ `unreachableUsers`: has devices, none verified) feeds `SyncHealthState.unverifiedPeers`; the cloud tooltip (`pendingPeerHint`) says "X has no verified device" instead of "Waiting for X". Withholding is not a failure. **Inbound is not refused** when the setting is on: refusals in G6 are permanent (`rejected_versions`) and would not heal after verifying later, and a member's legitimate new device would silently lose edits; the setting is about where *our* data goes. The record details dialog shows "You (haven't) verified this device" for the signing device of others (`signerVerifiedByMe`). Limits: only what *this* device sends is restricted — a peer's own devices still sync among themselves unless the peer turns it on too; a new own device can't self-restore from a device with the setting on until verified. **G36:** the settings subtitle and the confirm dialog say exactly that ("only limits what this device sends", "a new login of yours can't restore … until you verify it").
+- **Opt-in enforcement (G11): "Only sync with verified devices"** (settings page, per account, device-local `verified_only_sync`, default **off**; turning it on asks first and explains). Every app sender — `LedgerWriteContext` / `_GroupWriteContext` / `SyncEngine` (replication, member bootstraps, digests, resync answers) — wraps the transport in `PolicyTransport` (`core/sync/delivery_policy.dart`) built from the **same** account DB it writes to; each send reads `SettingsDao.deliveryPolicy()` (fails closed if unreadable) and passes it to `sendToUsers(…, policy:)` → pure `planDeviceSend` withholds unverified devices (own and peers'). `SendResult.unverifiedUsers` (⊆ `unreachableUsers`: has devices, none verified) feeds `SyncHealthState.unverifiedPeers`; the cloud tooltip (`pendingPeerHint`) says "X has no verified device" instead of "Waiting for X". Withholding is not a failure. **Inbound is not refused** when the setting is on: refusals in G6 are permanent (`rejected_versions`) and would not heal after verifying later, and a member's legitimate new device would silently lose edits; the setting is about where *our* data goes. The record details dialog shows "You (haven't) verified this device" for the signing device of others (`signerVerifiedByMe`). Limits: only what *this* device sends is restricted — a peer's own devices still sync among themselves unless the peer turns it on too; a new own device can't self-restore from a device with the setting on until verified. **G36:** the settings subtitle and the confirm dialog say exactly that ("only limits what this device sends", "a new login of yours can't restore … until you verify it").
 - Tests: pure planner/policy (`test/core/device_plan_test.dart`), `SettingsDao`, `SyncHealth`/`pendingPeerHint`, `withTrust`/`peerDeviceTrust`/`recordingTrust`, an end-to-end fake-relay test (`test/integration/verified_only_sync_test.dart`) and widget tests (`test/verified_only_ui_test.dart`). The SDK SAS round-trip itself is manual-smoke (`docs/smoke-test.md` §9).
 
 ### Participant identity (virtual users)
@@ -450,10 +453,11 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
   `pendingSign` immediately (`LocalRecordSigner` sees no identity); the
   attribution footer is hidden in local mode.
 - **UI:** groups app bar shows the **"Local only" chip** (`LocalModeChip` →
-  sheet: nothing leaves the device, back up, connect an account) instead of
-  Sign out (and no *Devices & security* tile in the settings sheet); the settings sheet replaces sync settings with
+  sheet: nothing leaves the device, back up, connect an account) next to the
+  settings gear; the settings page's *Account* section is
   `LocalModeSettingsSection` (name, *Connect a Matrix account*, *Delete local
-  data*); no sync cloud on the group page; members page: no invite, name-only
+  data*) instead of the Matrix account + *Sign out*, and it has no *Sync &
+  devices* section (G65); no sync cloud on the group page; members page: no invite, name-only
   *Add person*, no devices / link / detach, self = "You (on this device)" +
   hint card; router sends `/devices` to `/groups`. Backup / CSV / restore work
   as usual (the backup's `account` is `local:self`).
@@ -694,8 +698,8 @@ Matrix **Ed25519 fingerprint key** (vodozemac olm account,
   cross-signing**, future; homeserver-added devices; divergence by
   disagreement, not auto-resolved): `docs/open-points.md` + design doc §5.4.
 
-**Leaving / deleting a group (G9).** The expenses app bar's overflow menu (⋮,
-next to *Export CSV*) offers **Leave group** when this account is an active
+**Leaving / deleting a group (G9).** The group settings page (G65, last
+section *Leave or delete*) offers **Leave group** when this account is an active
 participant and another claimed account is active (`groupExitKind`), else
 **Delete group** (solo / local-only group, or we're no longer active). The
 confirmation warns (non-blocking) if our balance isn't settled and offers the
@@ -753,7 +757,7 @@ back" / "owes", per currency) + *Settle up first* (→ `recordPaymentFlow`
 prefilled with a suggested debt involving them; removes nobody); removing
 stays possible. Tests: `test/g64_people_test.dart`.
 
-**Editing a group (G10).** ⋮ → *Edit group* (any active member):
+**Editing a group (G10).** Group settings → *Name & currency* (any active member):
 name + default currency (`group_edit_dialog.dart`, currencies from
 `kGroupCurrencies`). `GroupEditor.edit` LWW-upserts the meta with
 `nextLwwClock` and relays a `com.moneyledger.group` payload to the active
@@ -828,7 +832,7 @@ connected + battery not low; `lib/core/background/`) fixes that:
   process dies). Gate logic is tested on a fake `PortRegistry`
   (`test/core/background_gate_test.dart`).
 - Setting: per account, device-local `AppSettings` `background_sync_enabled`
-  (default on), *Settings* sheet (gear) on the groups page;
+  (default on), settings page (gear on the groups page, G65) → *Sync & devices*;
   `backgroundSyncSchedulingProvider` (watched by `LedgerSyncHost`) registers /
   cancels the OS task (cancel on sign-out and in local mode, G40). The round
   re-checks the flag (and overrides `localModeActiveProvider` /
@@ -850,7 +854,7 @@ connected + battery not low; `lib/core/background/`) fixes that:
   group), `restore_points_test.dart`.
 - The app manifest removes the plugin's `POST_NOTIFICATIONS` permission (no
   expedited / foreground workers). Web/iOS: no background sync.
-- **Debug builds only (G36):** the settings sheet has *Run background sync now
+- **Debug builds only (G36):** the settings page's *Debug* section has *Run background sync now
   (debug)* (`kDebugMode`) → `BackgroundScheduler.runOnce(delay: 15 s)` = a
   WorkManager one-off task (`moneyledger-background-sync-once`, same
   dispatcher) — swipe the app away within the delay so the round runs
@@ -977,7 +981,7 @@ at **~52 records**, a flat digest at **~720**. Hence:
 
 Ledger data exists only on members' devices, so a group nobody else has a copy
 of (solo, or only local people) is lost with the device. The **full backup** is
-the lossless answer: settings sheet (gear on the groups page) → *Back up all
+the lossless answer: settings page (gear on the groups page) → *Back up all
 groups* writes **one JSON file for the whole account**, *Restore from backup*
 merges one back. `lib/features/backup/`: `ledger_backup.dart` is the pure codec
 (+ the nudge logic), `backup_service.dart` (`BackupService`,
@@ -1037,11 +1041,11 @@ normal anti-entropy repair with peers; best-effort). Backups of **another
 account** are allowed (warning): their groups land in this account's DB, where
 we may not be a participant ("not participating").
 
-**Nudges:** onboarding has a 4th card "Keep a copy". The settings sheet shows
-*Last backup: <date> / never* (`AppSettings` `last_backup_at`, device-local,
-per account, written after a successful save). The sheet's backup / restore
-tiles **close the sheet first** and run the flow on the navigator's context,
-so dialogs and snackbars aren't hidden under it. The groups page shows a
+**Nudges:** onboarding has a 4th card "Keep a copy". The settings page's
+*Backup & restore* section shows *Last backup: <date> / never* (`AppSettings`
+`last_backup_at`, device-local, per account, written after a successful
+save); its flows run on the page's own context (G65 — the sheet used to have
+to close first). The groups page shows a
 dismissible `BackupNudgeCard` (`backupNudgeProvider`) when some group has **no
 other active claimed member** (`unprotectedGroups`) and there was no backup in
 `kBackupNudgeInterval` (30 days); *Later* snoozes it 30 days
@@ -1067,7 +1071,7 @@ extension; the Downloads provider returns `msf:<id>` → neutral "Backup
 saved" / "CSV exported" without a possibly wrong name; web: the proposed
 name). Same for the CSV export.
 
-**Per-group backup (G34):** group ⋮ → *Back up this group* →
+**Per-group backup (G34):** group settings → *Back up this group* →
 `exportGroupBackup` → `exportJson(onlyGroup:)`: the same format with one
 entry in `groups`, file `moneyledger-backup-<slug>-YYYY-MM-DD.json`
 (`fileNameSlug`: lower case, letters incl. umlauts + digits, ≤ 40 chars).
@@ -1131,7 +1135,7 @@ a backup file / digest:
   record before the cutoff (its **base** — so the state at any point ≥ the
   cutoff stays exact); over `kHistoryMaxRows` (20 000) the cutoff moves
   forward; the cutoff is stored as `history_floor` (`AppSettings`).
-- **Reset group to an earlier state** (group ⋮ → *Reset to an earlier
+- **Reset group to an earlier state** (group settings → *Reset to an earlier
   state…*, `/groups/:id/reset`, `GroupResetPage`; disabled for read-only
   groups): the history is clustered into **change batches** (pure
   `changeBatches`: entries < 10 min apart **by the same author** — this
@@ -1221,7 +1225,7 @@ is the JSON above). `lib/features/backup/`: the codec `ledger_csv.dart` is pure
 Dart (models + strings, no DB/Flutter, fully unit-testable); `csv_export.dart`
 is the Drift-read seam; `csv_import.dart` (`CsvImporter`) is the preview +
 merge; `backup_files.dart` wraps `file_picker` (manual-smoke only, like the SSO
-deep link). **Export** is on the expenses screen, **import** on the groups
+deep link). **Export** is in the group settings (G65), **import** on the settings page (*Data*) and the empty groups
 screen.
 
 **Format** — one row per **non-deleted** expense, then one per **non-deleted
@@ -1328,7 +1332,7 @@ Use the full JSON backup for a lossless copy.
   active claimed members like a G10 edit (`GroupEditor.edit` keeps the
   categories); any active member may. UI: *New category…* in the selector
   (`showCategoryDialog`: name + icon grid, duplicate names refused
-  case-insensitively) and group ⋮ → *Categories*
+  case-insensitively) and group settings → *Categories*
   (`GroupCategoriesPage`, `/groups/:id/categories`; add / rename / hide,
   read-only for non-members). Drift **schema v11**: nullable
   `groups.categories_json` (`encodeCategories` / `decodeCategories`); the
@@ -1368,7 +1372,7 @@ Use the full JSON backup for a lossless copy.
   fewest payments, nets unchanged, never converted) and, with several
   currencies, a "settled separately per currency" note.
 - **Archive** (device-local, per account — a personal view preference, not
-  synced): ⋮ → *Archive group* (always allowed; an unsettled group gets
+  synced): ⋮ (or group settings → *On this device*) → *Archive group* (always allowed; an unsettled group gets
   "your open balance still counts in the totals" in the snackbar, which has
   *Undo*) → back to the groups list, where archived groups sit in a collapsed
   **Archived (N)** section at the bottom. Inside an archived group a banner +
@@ -1680,7 +1684,7 @@ serves the engine's Roboto itself + two fallback subsets (G43, see Building).
   MXID only when two participants share a name (case-insensitive) or a
   localpart; the full one is behind long-press / ⋮ → *Matrix ID*
   (`showMatrixIdDialog`, selectable + *Copy*). Groups page — *Devices &
-  security* lives in the settings sheet (`devicesTile`), not the app bar.
+  security* lives on the settings page (`devicesTile`), not the app bar.
   Group page — when I'm the only active member and the ledger has entries
   (the G46 empty-state CTA no longer shows), an `_AddPeopleCard` above the
   ledger offers *Add people*; dismissible per app session
@@ -1690,6 +1694,31 @@ serves the engine's Roboto itself + two fallback subsets (G43, see Building).
   form differs from how it opened (text fields, category, currency, payer,
   date, or any split-editor interaction — the editor's first plan push is
   the baseline); saving pops without asking. Tests: `test/g56_ux_test.dart`.
+- **G65 settings pages (U22, U28, U21):** the settings **sheet** became a
+  page, `SettingsPage` (`/settings`, `kSettingsLocation`, gear on the groups
+  page — the app bar keeps only the gear and local mode's chip; *Import CSV*
+  and *Sign out* moved in, the empty state keeps its own *Import CSV*).
+  Sections (`SettingsSectionHeader`, `core/widgets/settings_section.dart`):
+  *Account* (MXID `accountTile` + `signOutTile` → `confirmSignOut`; local
+  mode: `LocalModeSettingsSection`), *Sync & devices* (Matrix only: sync
+  text, `backgroundSyncSwitch`, `VerifiedOnlySyncTile`, `devicesTile` — G52
+  step 9 adds the relays here), *Backup & restore* (`BackupSettingsSection`),
+  *Data* (`importCsvTile`), *About* (`aboutTile`), *Debug* (debug builds +
+  Android only). The group ⋮ menu keeps only *Add person*
+  (`addPersonMenuItem`; G52's *Invite* goes here), *Archive / Unarchive*
+  (`archiveMenuItem`) and *Group settings* (`groupSettingsMenuItem`); a tap
+  on the group page's title opens the settings too. `GroupSettingsPage`
+  (`/groups/:id/settings`, `groupSettingsLocation`): *Group* (`editGroupTile`
+  name & currency, `categoriesTile`), *People* (`peopleTile` → members page;
+  invite link later), *Data* (`backupGroupTile`, `exportCsvTile`,
+  `resetGroupTile`), *On this device* (`archiveTile`), *Leave or delete*
+  (`exitGroupTile`, error colour, last). Read-only (removed) group: edit and
+  reset disabled, exit = *Delete*. The flows are shared top-level functions
+  in `groups/group_actions.dart` (callers watch the auto-dispose notifiers).
+  Both routes are ordinary "in" pages (signed out → login; connecting →
+  login). Tests: `test/settings_page_test.dart`,
+  `test/group_settings_page_test.dart`, router cases in
+  `router_redirect_test.dart`.
 - **Brand assets:** `tool/brand/render_icons.py` (cairosvg) renders the logo
   (G42: a split equals sign — paper bars on an ink squircle, one orange piece)
   from one geometry into `assets/brand/*.svg`, the in-app

@@ -22,7 +22,9 @@ import '../features/expenses/expenses_page.dart';
 import '../features/groups/create_group_page.dart';
 import '../features/groups/group_categories_page.dart';
 import '../features/groups/group_members_page.dart';
+import '../features/groups/group_settings_page.dart';
 import '../features/groups/groups_page.dart';
+import '../features/settings/settings_page.dart';
 
 part 'router.g.dart';
 
@@ -62,6 +64,8 @@ const _signedOutEntryPages = {kWelcomeLocation, kLocalSetupLocation};
 ///   splash (never guess either page); not seen → forced onboarding; seen →
 ///   bounce off the auth / entry pages, bare root, splash and a stale
 ///   onboarding screen to the groups list. Local mode has no devices page.
+///   The settings pages (`/settings`, `/groups/:id/settings`, G65) are
+///   "in" pages: signed out they redirect like any other.
 String? routerRedirect({
   required AppSessionKind session,
   required WelcomeStatus welcome,
@@ -174,6 +178,8 @@ GoRouter router(Ref ref) {
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingPage()),
       GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
       GoRoute(path: '/devices', builder: (_, _) => const DevicesPage()),
+      // G65: the app settings page (was a sheet) — signed in or local mode.
+      GoRoute(path: kSettingsLocation, builder: (_, _) => const SettingsPage()),
       GoRoute(path: '/about', builder: (_, _) => const AboutPage()),
       GoRoute(
         path: '/about/privacy',
@@ -206,6 +212,12 @@ GoRouter router(Ref ref) {
         path: '/groups/:roomId/categories',
         builder: (_, s) =>
             GroupCategoriesPage(roomId: s.pathParameters['roomId']!),
+      ),
+      // G65: the group settings page (was the long group ⋮ menu).
+      GoRoute(
+        path: '/groups/:roomId/settings',
+        builder: (_, s) =>
+            GroupSettingsPage(roomId: s.pathParameters['roomId']!),
       ),
       GoRoute(
         path: '/groups/:roomId/reset',

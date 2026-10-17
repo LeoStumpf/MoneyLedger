@@ -14,6 +14,7 @@ import 'package:money_ledger/core/widgets/names_line.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
+import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
@@ -218,7 +219,7 @@ void main() {
       ) async {
         await tester.pumpWidget(
           testApp(
-            const GroupsPage(),
+            const SettingsPage(),
             locale: locale,
             overrides: [
               ...testOverrides(isLoggedIn: true),
@@ -232,8 +233,6 @@ void main() {
             ],
           ),
         );
-        await tester.pump();
-        await tester.tap(find.byIcon(Icons.settings));
         await tester.pumpAndSettle();
         expect(find.byKey(const Key('backgroundSyncError')), findsOneWidget);
         expect(find.textContaining(text), findsOneWidget);
@@ -244,7 +243,7 @@ void main() {
     testWidgets('no error line while scheduling works', (tester) async {
       await tester.pumpWidget(
         testApp(
-          const GroupsPage(),
+          const SettingsPage(),
           overrides: [
             ...testOverrides(isLoggedIn: true),
             backgroundSyncSupportedProvider.overrideWithValue(true),
@@ -254,8 +253,6 @@ void main() {
           ],
         ),
       );
-      await tester.pump();
-      await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('backgroundSyncError')), findsNothing);
     });

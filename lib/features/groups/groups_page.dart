@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,18 +7,15 @@ import '../../core/session/local_adoption.dart';
 import '../local/local_mode_ui.dart';
 import '../../core/l10n/l10n.dart';
 import '../auth/auth_provider.dart';
-import '../onboarding/onboarding_provider.dart';
 import '../backup/backup_providers.dart';
 import '../backup/backup_ui.dart';
-import '../devices/device_provider.dart';
 import '../expenses/ledger_syncer.dart';
-import '../../core/background/background_scheduler.dart';
-import '../../core/background/background_sync_provider.dart';
 import '../../core/sync/self_recovery.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/sync/sync_health.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
+import '../settings/settings_page.dart' show kSettingsLocation;
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/person_avatar.dart';
@@ -39,8 +35,8 @@ class GroupsPage extends ConsumerWidget {
     ref.watch(profileNameRefreshProvider);
     final groupsAsync = ref.watch(ledgerGroupsProvider);
     final l = context.l10n;
-    // G40: no account — no devices, no sign-out (Settings → delete local
-    // data instead), a "Local only" indicator.
+    // G40: no account — a "Local only" indicator (G65: account, devices and
+    // sign-out / delete local data live on the settings page).
     final local = ref.watch(localModeActiveProvider);
 
     return Scaffold(
@@ -55,29 +51,16 @@ class GroupsPage extends ConsumerWidget {
             ),
           ],
         ),
+        // G65 (U21): only the settings and, in local mode, the mode chip
+        // stay up here — CSV import and sign-out moved to the settings page.
         actions: [
-          IconButton(
-            icon: const Icon(Icons.upload_file),
-            tooltip: l.importCsvTooltip,
-            onPressed: () => _importCsv(context, ref),
-          ),
-          // G56: Devices & security moved into the settings sheet.
           if (local) const LocalModeChip(),
           IconButton(
+            key: const Key('settingsButton'),
             icon: const Icon(Icons.settings),
             tooltip: l.settingsTooltip,
-            onPressed: () => showModalBottomSheet<void>(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => const SyncSettingsSheet(),
-            ),
+            onPressed: () => context.push(kSettingsLocation),
           ),
-          if (!local)
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () => _confirmSignOut(context, ref),
-              tooltip: l.signOut,
-            ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -104,40 +87,6 @@ class GroupsPage extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  /// Sign-out confirmation (G29). Signing out is non-destructive: this
-  /// account's ledger DB stays on the device (per-account DB, G4) and is
-  /// reopened on the next sign-in with the same account.
-  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
-    final l = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.signOutConfirmTitle),
-        content: Text(l.signOutConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l.signOut),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    await ref.read(authProvider.notifier).logout();
-    if (!context.mounted) return;
-    final error = ref.read(authProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
-    }
   }
 
   Future<void> _importCsv(BuildContext context, WidgetRef ref) =>
@@ -796,175 +745,6 @@ class BalanceSummaryText extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-/// G11: the opt-in "Only sync with verified devices" switch (per account,
-/// device-local). Turning it on asks first and spells out the consequence.
-class VerifiedOnlySyncTile extends ConsumerWidget {
-  const VerifiedOnlySyncTile({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = context.l10n;
-    final on = ref.watch(verifiedOnlySyncProvider).value ?? false;
-    return SwitchListTile(
-      key: const Key('verifiedOnlySwitch'),
-      secondary: const Icon(Icons.verified_user_outlined),
-      title: Text(l.verifiedOnlyTitle),
-      subtitle: Text(on ? l.verifiedOnlyOnBody : l.verifiedOnlyOffBody),
-      value: on,
-      onChanged: (v) async {
-        final settings = ref.read(settingsDaoProvider);
-        if (v) {
-          final ok = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(l.verifiedOnlyConfirmTitle),
-              content: Text(l.verifiedOnlyConfirmBody),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(l.cancel),
-                ),
-                FilledButton(
-                  key: const Key('verifiedOnlyConfirm'),
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(l.verifiedOnlyTurnOn),
-                ),
-              ],
-            ),
-          );
-          if (ok != true) return;
-        }
-        await settings.setVerifiedOnlySync(v);
-      },
-    );
-  }
-}
-
-/// Settings sheet (G31 sync settings, G11 verified-only, G56 devices, G5
-/// backup, G12 about): explains when
-/// this device syncs and, on Android, toggles the periodic background sync for
-/// the signed-in account; backs up / restores all groups; links to the About
-/// page.
-class SyncSettingsSheet extends ConsumerWidget {
-  const SyncSettingsSheet({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = context.l10n;
-    final supported = ref.watch(backgroundSyncSupportedProvider);
-    final enabled = ref.watch(backgroundSyncEnabledProvider).value ?? true;
-    final schedulingError = ref.watch(backgroundSyncSchedulingErrorProvider);
-    // G40: local mode has nothing to sync — its own section instead.
-    final local = ref.watch(localModeActiveProvider);
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (local) ...[
-              const LocalModeSettingsSection(),
-            ] else ...[
-              ListTile(
-                title: Text(l.syncSettingsTitle),
-                subtitle: Text(l.syncSettingsBody),
-              ),
-              if (supported)
-                SwitchListTile(
-                  key: const Key('backgroundSyncSwitch'),
-                  secondary: const Icon(Icons.sync),
-                  title: Text(l.backgroundSyncTitle),
-                  subtitle: Text(l.backgroundSyncBody),
-                  value: enabled,
-                  onChanged: (v) =>
-                      ref.read(settingsDaoProvider).setBackgroundSyncEnabled(v),
-                ),
-              // G36: debug builds only — queue one background round for a
-              // manual test (never shown in release builds).
-              if (kDebugMode && supported)
-                ListTile(
-                  key: const Key('debugRunBackgroundSync'),
-                  leading: const Icon(Icons.bug_report_outlined),
-                  title: Text(l.debugRunBackgroundSync),
-                  subtitle: Text(
-                    l.debugRunBackgroundSyncBody(
-                      kDebugBackgroundRunDelay.inSeconds,
-                    ),
-                  ),
-                  onTap: () async {
-                    final messenger = ScaffoldMessenger.maybeOf(context);
-                    try {
-                      await ref
-                          .read(backgroundSchedulerProvider)
-                          .runOnce(delay: kDebugBackgroundRunDelay);
-                      messenger?.showSnackBar(
-                        SnackBar(content: Text(l.debugRunBackgroundSyncQueued)),
-                      );
-                    } catch (e) {
-                      messenger?.showSnackBar(
-                        SnackBar(
-                          content: Text(l.failedWithError(e.toString())),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              // G33: the OS refused to (un)register the task — say so.
-              if (supported && schedulingError != null)
-                ListTile(
-                  key: const Key('backgroundSyncError'),
-                  leading: Icon(
-                    Icons.error_outline,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  title: Text(
-                    l.backgroundSyncScheduleFailed(schedulingError.toString()),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              if (!supported)
-                ListTile(
-                  leading: const Icon(Icons.sync_disabled),
-                  title: Text(l.noBackgroundSyncTitle),
-                  subtitle: Text(l.noBackgroundSyncBody),
-                ),
-              const VerifiedOnlySyncTile(),
-              // G56: was an app-bar icon on the groups page.
-              ListTile(
-                key: const Key('devicesTile'),
-                leading: const Icon(Icons.devices),
-                title: Text(l.devicesTooltip),
-                subtitle: Text(l.devicesSettingsBody),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  context.push('/devices');
-                },
-              ),
-            ],
-            const Divider(),
-            const BackupSettingsSection(),
-            const Divider(),
-            ListTile(
-              key: const Key('aboutTile'),
-              leading: const Icon(Icons.info_outline),
-              title: Text(l.aboutTitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.of(context).pop();
-                context.push('/about');
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

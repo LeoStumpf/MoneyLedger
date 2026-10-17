@@ -282,4 +282,39 @@ void main() {
       expect(redirect(true, '/login', connecting: true), '/groups');
     });
   });
+
+  // G65: the settings pages (were a sheet / the group ⋮ menu) are ordinary
+  // "in" pages.
+  group('routerRedirect — settings pages (G65)', () {
+    const local = AppSessionKind.local;
+    const pages = ['/settings', '/groups/g1/settings'];
+    test('signed out → login (or the welcome)', () {
+      for (final loc in pages) {
+        expect(redirect(false, loc), '/login', reason: loc);
+        expect(
+          redirect(false, loc, welcome: WelcomeStatus.notSeen),
+          '/welcome',
+          reason: loc,
+        );
+      }
+    });
+    test('reachable with a Matrix account and in local mode', () {
+      for (final loc in pages) {
+        expect(redirect(true, loc), isNull, reason: loc);
+        expect(redirect(false, loc, session: local), isNull, reason: loc);
+      }
+    });
+    test('onboarding first', () {
+      expect(redirect(true, '/settings', onboardingSeen: false), '/onboarding');
+    });
+    test('connecting an account: back to the login page', () {
+      for (final loc in pages) {
+        expect(
+          redirect(false, loc, session: local, connecting: true),
+          '/login',
+          reason: loc,
+        );
+      }
+    });
+  });
 }

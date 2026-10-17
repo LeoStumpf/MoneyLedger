@@ -13,7 +13,7 @@ import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/create_group_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
-import 'package:money_ledger/features/groups/groups_page.dart';
+import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/eventually.dart';
@@ -232,19 +232,16 @@ void main() {
   ) async {
     await tester.pumpWidget(
       testApp(
-        const GroupsPage(),
+        const SettingsPage(),
         overrides: testOverrides(localProfile: 'Lea'),
       ),
     );
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
     final c = ProviderScope.containerOf(
-      tester.element(find.byType(GroupsPage)),
+      tester.element(find.byType(SettingsPage)),
     );
     expect(c.read(signedOutLandingProvider), SignedOutLanding.login);
 
-    await tester.tap(find.byTooltip('Settings'));
-    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('deleteLocalDataTile')));
     await tester.pumpAndSettle();
     await tester.runAsync(() async {

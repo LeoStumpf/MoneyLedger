@@ -777,8 +777,9 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       dropdown tag "nicht mehr dabei"; read the reworded privacy texts
 
 ### G65. Group settings + settings page (U22, U28, U21) 🟠
-- [ ] Group settings page instead of the 9-entry ⋮ menu; `/settings` as a
+- [x] Group settings page instead of the 9-entry ⋮ menu; `/settings` as a
       page with sections (CSV / sign-out moved) — **before G52 steps 6 + 9**
+- [ ] Device check: smoke step 3.11 (Pixel, DE, 360 dp)
 
 ### G66. Currencies (U16) 🟠
 - [ ] Full ISO-4217 list with search, minor units per currency (JPY 0),
@@ -896,7 +897,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G56 — UX follow-ups (found in G46)
 - [x] G63 — correctness + texts before release (usability review U11 …)
 - [x] G64 — people when creating a group (before G52 step 6/7)
-- [ ] G65 — group settings + settings page (before G52 step 6/9)
+- [x] G65 — group settings + settings page (before G52 step 6/9)
 - [ ] G66 — currencies
 - [ ] G67 — undo + understandable errors
 - [ ] G68 — sync sheet per person (with G52 step 9)

@@ -143,7 +143,8 @@ Future<void> cancelConnectAccount(WidgetRef ref) async {
   }
 }
 
-/// G40: the local-mode part of the settings sheet: the profile name,
+/// G40: the local-mode part of the settings page (G65: its *Account*
+/// section): the profile name,
 /// "Connect a Matrix account" and "Delete local data".
 class LocalModeSettingsSection extends ConsumerWidget {
   const LocalModeSettingsSection({super.key});
@@ -186,21 +187,14 @@ class LocalModeSettingsSection extends ConsumerWidget {
           leading: const Icon(Icons.login),
           title: Text(l.connectMatrixAccount),
           subtitle: Text(l.connectMatrixAccountBody),
-          onTap: () {
-            Navigator.of(context).pop();
-            startConnectAccount(context, ref);
-          },
+          onTap: () => startConnectAccount(context, ref),
         ),
         ListTile(
           key: const Key('deleteLocalDataTile'),
           leading: Icon(Icons.delete_forever_outlined, color: error),
           title: Text(l.deleteLocalData, style: TextStyle(color: error)),
           subtitle: Text(l.deleteLocalDataBody),
-          onTap: () {
-            final nav = Navigator.of(context);
-            nav.pop();
-            confirmDeleteLocalData(nav.context, ref);
-          },
+          onTap: () => confirmDeleteLocalData(context, ref),
         ),
       ],
     );

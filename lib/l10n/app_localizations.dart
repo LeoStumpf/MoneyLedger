@@ -164,12 +164,6 @@ abstract class AppLocalizations {
   /// **'Groups'**
   String get groupsTitle;
 
-  /// No description provided for @importCsvTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Import CSV'**
-  String get importCsvTooltip;
-
   /// No description provided for @devicesTooltip.
   ///
   /// In en, this message translates to:
@@ -236,12 +230,6 @@ abstract class AppLocalizations {
   /// **'Open MoneyLedger on another device signed in to this account — it sends your groups while the app is running there.'**
   String get restoringGroupsBody;
 
-  /// No description provided for @syncSettingsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Sync'**
-  String get syncSettingsTitle;
-
   /// No description provided for @syncSettingsBody.
   ///
   /// In en, this message translates to:
@@ -272,7 +260,7 @@ abstract class AppLocalizations {
   /// **'In the browser, MoneyLedger syncs only while this tab is open. The Android app also syncs periodically in the background.'**
   String get noBackgroundSyncBody;
 
-  /// Settings sheet, under the background-sync switch, when Android refused to register/cancel the periodic task; error is technical text
+  /// Settings page, under the background-sync switch, when Android refused to register/cancel the periodic task; error is technical text
   ///
   /// In en, this message translates to:
   /// **'Background sync couldn\'t be set up on this device: {error}'**
@@ -1649,7 +1637,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyDeleteBody.
   ///
   /// In en, this message translates to:
-  /// **'• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people\'s devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
+  /// **'• Leave or delete a group (group settings): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people\'s devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.'**
   String get privacyDeleteBody;
 
   /// No description provided for @privacyContactTitle.
@@ -1957,12 +1945,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{from} pays you'**
   String debtPaysYou(String from);
-
-  /// No description provided for @backupSectionTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Backup'**
-  String get backupSectionTitle;
 
   /// No description provided for @backupExportTitle.
   ///
@@ -3371,7 +3353,7 @@ abstract class AppLocalizations {
   /// Restore points page: what a restore does vs. a group reset (G48)
   ///
   /// In en, this message translates to:
-  /// **'Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → ⋮ → Reset to an earlier state.'**
+  /// **'Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → Group settings → Reset to an earlier state.'**
   String get restorePointsHowItWorks;
 
   /// Restore points page: none yet (G48)
@@ -3383,7 +3365,7 @@ abstract class AppLocalizations {
   /// Restore points page on web (G48)
   ///
   /// In en, this message translates to:
-  /// **'The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → ⋮) and back up to a file.'**
+  /// **'The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → Group settings) and back up to a file.'**
   String get restorePointsWebUnsupported;
 
   /// Restore point subtitle part (G48)
@@ -3410,7 +3392,7 @@ abstract class AppLocalizations {
   /// **'Couldn\'t read the restore points: {error}'**
   String restorePointsLoadFailed(String error);
 
-  /// Group ⋮ menu item (G48)
+  /// Group settings tile (G48; was a ⋮ menu item before G65)
   ///
   /// In en, this message translates to:
   /// **'Reset to an earlier state…'**
@@ -3620,7 +3602,7 @@ abstract class AppLocalizations {
   /// **'Copied'**
   String get copiedToClipboard;
 
-  /// G56: settings sheet 'Devices & security' tile subtitle
+  /// G56: settings page 'Devices & security' tile subtitle
   ///
   /// In en, this message translates to:
   /// **'Your logins and emoji verification'**
@@ -3757,6 +3739,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settle up first'**
   String get settleUpFirst;
+
+  /// G65 (U28): title of the app settings page
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// G65: settings page section — the Matrix account or local mode
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get settingsSectionAccount;
+
+  /// G65: settings page section
+  ///
+  /// In en, this message translates to:
+  /// **'Sync & devices'**
+  String get settingsSectionSync;
+
+  /// G65: settings page section
+  ///
+  /// In en, this message translates to:
+  /// **'Backup & restore'**
+  String get settingsSectionBackup;
+
+  /// G65: settings page / group settings section (CSV, group backup)
+  ///
+  /// In en, this message translates to:
+  /// **'Data'**
+  String get settingsSectionData;
+
+  /// G65: settings page section
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get settingsSectionAbout;
+
+  /// G65: settings page section, debug builds only
+  ///
+  /// In en, this message translates to:
+  /// **'Debug'**
+  String get settingsSectionDebug;
+
+  /// G65: settings page — title of the tile showing the signed-in MXID
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix account'**
+  String get settingsMatrixAccount;
+
+  /// G65 (U21): subtitle of the Sign out tile on the settings page
+  ///
+  /// In en, this message translates to:
+  /// **'Your groups stay on this device for your next sign-in.'**
+  String get signOutTileBody;
+
+  /// G65 (U21): subtitle of the Import CSV tile on the settings page
+  ///
+  /// In en, this message translates to:
+  /// **'Bring in a group from a CSV file, e.g. an export.'**
+  String get importCsvTileBody;
+
+  /// G65 (U22): title of the group settings page and its ⋮ menu entry
+  ///
+  /// In en, this message translates to:
+  /// **'Group settings'**
+  String get groupSettingsTitle;
+
+  /// G65: group settings section — name, currency, categories
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get groupSectionGroup;
+
+  /// G65: group settings section — the device-local archive
+  ///
+  /// In en, this message translates to:
+  /// **'On this device'**
+  String get groupSectionDevice;
+
+  /// G65: group settings section header of the leave / delete tile (last)
+  ///
+  /// In en, this message translates to:
+  /// **'Leave or delete'**
+  String get groupSectionExit;
+
+  /// G65: group settings tile — opens the edit-group dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Name & currency'**
+  String get groupNameAndCurrency;
+
+  /// G65: subtitle of the Name & currency tile
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · {currency}'**
+  String groupNameCurrencyValue(String name, String currency);
+
+  /// G65: subtitle of the Categories tile in group settings
+  ///
+  /// In en, this message translates to:
+  /// **'This group\'s own categories'**
+  String get categoriesTileBody;
+
+  /// G65: subtitle of the Export CSV tile in group settings
+  ///
+  /// In en, this message translates to:
+  /// **'A spreadsheet of the expenses and payments'**
+  String get exportCsvTileBody;
+
+  /// G65: subtitle of the Back up this group tile
+  ///
+  /// In en, this message translates to:
+  /// **'A backup file with just this group'**
+  String get backupGroupTileBody;
+
+  /// G65: subtitle of the Reset tile in group settings
+  ///
+  /// In en, this message translates to:
+  /// **'Undo the changes made after a point in time'**
+  String get groupResetTileBody;
+
+  /// G65: subtitle of the Archive tile in group settings
+  ///
+  /// In en, this message translates to:
+  /// **'Moves it to “Archived” in your list. Only here — the others don\'t see it.'**
+  String get archiveTileBody;
+
+  /// G65: subtitle of the Unarchive tile in group settings
+  ///
+  /// In en, this message translates to:
+  /// **'Back into your group list'**
+  String get unarchiveTileBody;
+
+  /// G65: subtitle of the Leave group tile
+  ///
+  /// In en, this message translates to:
+  /// **'Removes the group from this device. The others see that you left.'**
+  String get leaveGroupTileBody;
+
+  /// G65: subtitle of the Delete group tile
+  ///
+  /// In en, this message translates to:
+  /// **'Removes the group and all its entries from this device.'**
+  String get deleteGroupTileBody;
 }
 
 class _AppLocalizationsDelegate

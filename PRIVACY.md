@@ -119,7 +119,7 @@ local data, or uninstalling the app, removes all of them.
 
 ## Deleting your data
 
-- Leave or delete a group (group menu ⋮): it and all its records are removed
+- Leave or delete a group (group settings): it and all its records are removed
   from this device (the daily restore points keep it for about five weeks —
   see "Restore points on this device"). When you leave, the others in the group
   are told that you left.

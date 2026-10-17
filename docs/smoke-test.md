@@ -33,7 +33,7 @@ Expected results are in *italics*.
 | 1.5 | Airplane mode, relaunch → *Groups and all local data shown offline* | emu |
 
 | 1.6 | About → *How MoneyLedger works* and login → *What is Matrix?* → *the welcome pages again, no choices, Done goes back* (G39); device in German → *German texts* | emu |
-| 1.7 | Welcome → *Use without an account* → name → *local onboarding (Everything stays on this device / Keep a copy / Share later) → Groups with a "Local only" chip; no Devices / Sign out icons* (G40) | emu |
+| 1.7 | Welcome → *Use without an account* → name → *local onboarding (Everything stays on this device / Keep a copy / Share later) → Groups with a "Local only" chip and the settings gear only; Settings has no Sync & devices / Sign out* (G40, G65) | emu |
 | 1.8 | Local mode: create a group, *Add person* (name only — no Matrix ID field, no invite icon), expenses + a payment, balance, Back up all groups → *all works offline; no sync cloud; members page "You (on this device)"; logcat: no Matrix client / `[sync]` lines* | emu |
 | 1.9 | "Local only" chip → *sheet: nothing leaves this device, back up, connect an account* | emu |
 | 1.10 | Settings → *Connect a Matrix account* → login (close = cancel back to local) → sign in → *groups page banner "Your N local groups now belong to @…"; group members: you are the claimed member (MXID shown); logcat `[local] adopted N local group(s) … rows signed`* | emu |
@@ -57,7 +57,7 @@ Expected results are in *italics*.
 | 2.7 | Login → "New here? Create an account" → fill dummy username/password (no account is created on matrix.org: it disabled client registration / needs captcha etc.) → Create account → *"Register on the web" card ("signing up on its own website" for matrix.org, or the required UIA stages) + "Open homeserver website"* | emu |
 | 2.8 | "Open homeserver website" → *browser opens the homeserver* | emu |
 | 2.9 | Registration on a homeserver with an open `m.login.dummy` flow → *account created, signed in* | Leo |
-| 2.10 | Sign out (Groups app bar; no confirmation) → *back on login; the device disappears from the account's device list; local data stays on disk (per-account DB)* | emu |
+| 2.10 | Settings → Account → Sign out (confirm) → *back on login; the device disappears from the account's device list; local data stays on disk (per-account DB)* | emu |
 | 2.11 | Sign in as a different account on the same device → *onboarding again (per-account flag), then only that account's groups (recovered from its other device), "You" = that account*; sign back in as the first → *its groups are back* | 2dev |
 
 ## 3. Groups
@@ -65,15 +65,16 @@ Expected results are in *italics*.
 | # | Step → expected | How |
 |---|-----------------|-----|
 | 3.1 | "New group" → name + currency → Create → *back on Groups, new group listed* | emu |
-| 3.2 | ⋮ → Edit group: rename + change default currency → *title/list updated; peer shows new name* | 2dev |
+| 3.2 | ⋮ → Group settings (or tap the title) → Name & currency: rename + change default currency → *title/list updated; peer shows new name* | 2dev |
 | 3.3 | New expense after currency change → *uses the new currency (the form has no per-expense currency picker — the group default is used)* | emu |
-| 3.4 | ⋮ → Leave group (shared group, you are a member) → *warning "You are still owed …" + "Back up all groups first"; group disappears; peer sees you under "No longer in the group"* | 2dev |
+| 3.4 | Group settings → Leave or delete → Leave group (shared group, you are a member) → *warning "You are still owed …" + "Back up all groups first"; group disappears; peer sees you under "No longer in the group"* | 2dev |
 | 3.5 | Re-add the leaver from the peer → *group comes back on the leaver's device with full history* | 2dev |
-| 3.6 | ⋮ → Delete group (solo/local-only group, or every other claimed member left) → *balance warning; "Deleted …" snackbar; group gone from this device* | emu |
+| 3.6 | Group settings → Leave or delete → Delete group (solo/local-only group, or every other claimed member left) → *balance warning; "Deleted …" snackbar; group gone from this device* | emu |
 | 3.7 | Removed by a peer → *banner "You were removed from this group", history read-only, "Delete from this device"* | 2dev |
 | 3.8 | ⋮ → Archive group → *back on Groups; group in the collapsed "Archived (N)" section; snackbar Undo works; totals unchanged* (G16) | emu |
 | 3.9 | Peer adds an expense to the archived group → *group is back among the active groups by itself* (G16) | 2dev |
-| 3.10 | Open an archived group → *"archived on this device" banner*; ⋮ / banner → Unarchive → *back in the list* (G16) | emu |
+| 3.10 | Open an archived group → *"archived on this device" banner*; ⋮ / banner / group settings → Unarchive → *back in the list* (G16) | emu |
+| 3.11 | (G65, DE, 360 dp) Group ⋮ → *only Person hinzufügen / Archivieren / Gruppeneinstellungen*; title tap → *Gruppeneinstellungen with Gruppe / Personen / Daten / Auf diesem Gerät / Verlassen oder löschen (red, last)*; removed group → *Name & Währung + Zurücksetzen greyed, "Gruppe löschen"*; Groups app bar → *only the gear (+ "Nur lokal" chip)*; Settings page → *Konto / Synchronisierung & Geräte / Sichern & Wiederherstellen / Daten / Info*, back-up / restore dialogs + snackbars visible on the page | phone |
 
 ## 4. Members
 
@@ -105,7 +106,7 @@ Expected results are in *italics*.
 | 5.11 | Amount field: German device, type `1.234` → *preview "= 1.234,00 €" (thousands)*; English device `1.234` → *"= €1.23"*; `0` / `-5` → *Add disabled, no preview* (G18) | 2dev |
 | 5.12 | Start the app while a background round runs (trigger the job, open the app at once) → *"Finishing background sync…" briefly, then the app; logcat `[bg-gate] background round finished`* (G18) | phone |
 | 5.13 | Category field → *New category…* → name "Dog" + an icon → *selected on the form*; the peer's selector offers "Dog" too (G47) | 2dev |
-| 5.14 | ⋮ → Categories → rename "Dog", hide it → *peer shows the new name; hidden: not offered for new expenses, old expenses keep the label* (G47) | 2dev |
+| 5.14 | Group settings → Categories → rename "Dog", hide it → *peer shows the new name; hidden: not offered for new expenses, old expenses keep the label* (G47) | 2dev |
 | 5.15 | Add expense → *Date shows "Today"*; tap *Yesterday* or the field → pick a day last week → Add → *listed under that day on both devices*; edit it → *the date is prefilled* (G49) | 2dev |
 | 5.16 | Record payment → *Date shows "Today"*; tap *Yesterday* → Record → *listed under yesterday on both devices* (G60) | 2dev |
 
@@ -141,19 +142,19 @@ Expected results are in *italics*.
 
 | # | Step → expected | How |
 |---|-----------------|-----|
-| 8.1 | Expenses ⋮ → Export CSV → *system save dialog ("<group>.csv"); saved to Downloads; "Exported …" snackbar* | phone |
+| 8.1 | Group settings → Data → Export CSV → *system save dialog ("<group>.csv"); saved to Downloads; "Exported …" snackbar* | phone |
 | 8.2 | Open the CSV in a sheet app → *one row per expense, then one per payment (Type "Payment"), decimal amounts, a share column per participant* | phone |
-| 8.3 | Groups → Import CSV → pick the same file → *preview "Merges into your group …"; no duplicate expenses/payments/group (idempotent merge)* | phone |
+| 8.3 | Settings → Data → Import CSV (or the empty groups list's button) → pick the same file → *preview "Merges into your group …"; no duplicate expenses/payments/group (idempotent merge)* | phone |
 | 8.4 | Import into a device that lacks the group → *group created with its participants (local by name)* | phone |
 | 8.5 | Settings (gear) → Back up all groups → *save dialog `moneyledger-backup-YYYY-MM-DD.json`; "Backup saved"; settings shows "Last backup: <today>"* | phone |
 | 8.6 | Settings → Restore from backup → pick that file → *preview "No new groups … already on this device"; Restore → "Restored N groups", nothing duplicated* | phone |
 | 8.7 | Solo group (no other Matrix member), no backup for 30 days → *"Back up your groups" card on the groups page; Later hides it for 30 days* | phone |
 | 8.8 | Settings → Back up all groups → passphrase dialog: type one → *confirm field + strength hint; mismatch disables Save*; matching → *"Encrypting…" (≈ 1 s), "Encrypted backup saved[: name]"; the file is a `moneyledger-backup-encrypted` wrapper (no readable names)* | emu |
 | 8.9 | Restore that file → *"Encrypted backup" prompt*; wrong passphrase → *"Wrong passphrase — or the file was changed. Try again."*; right one → *preview incl. "Encrypted backup — unlocked…", "Everything … already on this device"; Restore = no-op* | emu |
-| 8.10 | Group ⋮ → Back up this group → *file `moneyledger-backup-<group>-YYYY-MM-DD.json` with only that group; "Last backup" unchanged* | emu |
+| 8.10 | Group settings → Data → Back up this group → *file `moneyledger-backup-<group>-YYYY-MM-DD.json` with only that group; "Last backup" unchanged* | emu |
 | 8.11 | Leave/Delete group dialog → "Back up all groups first" → *passphrase dialog over it; the result ("Backup saved …") shows inside the leave dialog* | emu |
 | 8.12 | A second own device that is verified (or synced with this one in the last 30 days) → *no backup nudge for solo groups* | phone |
-| 8.13 | (G48) Device B deletes two expenses and edits one in a shared group → on A: group ⋮ → *Reset to an earlier state…* → newest entry "N deleted · by B" → *Undo from here* → *preview "2 entries come back · 1 change is undone"*; Reset → *"Group reset (3 changes)"*; on B the entries are back within seconds, "Last edited by A" | phone + emu |
+| 8.13 | (G48) Device B deletes two expenses and edits one in a shared group → on A: group settings → *Reset to an earlier state…* → newest entry "N deleted · by B" → *Undo from here* → *preview "2 entries come back · 1 change is undone"*; Reset → *"Group reset (3 changes)"*; on B the entries are back within seconds, "Last edited by A" | phone + emu |
 | 8.14 | (G48, Android) App start on a day with changes → `files/snapshots/money_ledger_<hash>/YYYY-MM-DD.json` appears (`adb -s <serial> shell run-as io.github.leostumpf.moneyledger ls -R files/snapshots`); Settings → *Restore points* lists it ("1 group · N entries"); Restore → *the normal restore preview* (no change = "already on this device") | phone |
 | 8.15 | (G48) Delete a solo group, then Settings → Restore points → yesterday's point → Restore → *the group is back* | emu |
 
@@ -161,7 +162,7 @@ Expected results are in *italics*.
 
 | # | Step → expected | How |
 |---|-----------------|-----|
-| 9.1 | Groups → Devices & security → *all of the account's devices listed (this one first) with verified status* | emu |
+| 9.1 | Settings → Sync & devices → Devices & security → *all of the account's devices listed (this one first) with verified status* | emu |
 | 9.2 | "Verify" another own device → *emoji dialog on both; "They match" on both → "Device verified."* | Leo |
 | 9.3 | Cancel mid-verification → *dialog closes, no crash, device stays unverified* | Leo |
 | 9.4 | The other device shows "Verification request … Accept / Decline" on any screen → Accept → *same emoji dialog* | emu |

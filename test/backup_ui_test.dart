@@ -1,4 +1,4 @@
-/// Backup UI (G5) + CSV import preview (G13): settings sheet entries, the
+/// Backup UI (G5) + CSV import preview (G13): settings page entries (G65), the
 /// restore / CSV preview dialogs and the groups-page nudge card.
 library;
 
@@ -19,23 +19,33 @@ import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_exit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
+import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/l10n.dart';
 import 'helpers/test_providers.dart';
 
+/// A surface tall enough for the whole settings page (its list is lazy).
+void _tall(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(800, 2400);
+  addTearDown(tester.view.reset);
+}
+
 void main() {
-  group('settings sheet', () {
+  group('settings page (G65)', () {
     testWidgets('shows the backup section: never backed up', (tester) async {
+      _tall(tester);
       await tester.pumpWidget(
-        testApp(const GroupsPage(), overrides: testOverrides(isLoggedIn: true)),
+        testApp(
+          const SettingsPage(),
+          overrides: testOverrides(isLoggedIn: true),
+        ),
       );
-      await tester.pump();
-      await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Backup'), findsOneWidget);
+      expect(find.text('BACKUP & RESTORE'), findsOneWidget);
       expect(find.text('Last backup: never'), findsOneWidget);
       expect(find.byKey(const Key('backupExportTile')), findsOneWidget);
       expect(find.text('Back up all groups'), findsOneWidget);
@@ -45,25 +55,23 @@ void main() {
       expect(find.text('Restore from backup'), findsOneWidget);
     });
 
-    testWidgets('backing up closes the sheet so its snackbar is visible', (
-      tester,
-    ) async {
+    testWidgets('backing up shows its result on the page', (tester) async {
+      _tall(tester);
       await tester.pumpWidget(
-        testApp(const GroupsPage(), overrides: testOverrides(isLoggedIn: true)),
+        testApp(
+          const SettingsPage(),
+          overrides: testOverrides(isLoggedIn: true),
+        ),
       );
-      await tester.pump();
-      await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
       // No file dialog in tests → the export fails; what matters is that the
-      // result shows on the page, not under the (closed) sheet.
-      // (G56: the sheet grew a Devices tile — scroll the backup tile in.)
+      // result shows as a snackbar on the settings page.
       await tester.ensureVisible(find.byKey(const Key('backupExportTile')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('backupExportTile')));
       await tester.pumpAndSettle();
 
       // G34: first the optional passphrase; empty = plaintext, with a warning.
-      expect(find.byKey(const Key('backupExportTile')), findsNothing);
       expect(find.byKey(const Key('backupPassphraseDialog')), findsOneWidget);
       expect(find.byKey(const Key('backupPlaintextWarning')), findsOneWidget);
       await tester.tap(find.byKey(const Key('backupPassphraseSave')));
@@ -74,16 +82,15 @@ void main() {
     });
 
     testWidgets('shows the last backup date (German)', (tester) async {
+      _tall(tester);
       final at = DateTime(2026, 10, 1, 12).millisecondsSinceEpoch;
       await tester.pumpWidget(
         testApp(
-          const GroupsPage(),
+          const SettingsPage(),
           locale: const Locale('de'),
           overrides: testOverrides(isLoggedIn: true, lastBackupAt: at),
         ),
       );
-      await tester.pump();
-      await tester.tap(find.byTooltip('Einstellungen'));
       await tester.pumpAndSettle();
 
       expect(

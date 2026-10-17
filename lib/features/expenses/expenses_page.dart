@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/session/app_session.dart';
@@ -12,10 +11,6 @@ import '../../models/expense_category.dart';
 import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
 import '../../models/member_model.dart';
-import '../backup/csv_export.dart';
-import '../backup/ledger_backup.dart' show savedFileDisplayName;
-import '../backup/backup_files.dart';
-import '../backup/backup_ui.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/empty_state.dart';
@@ -26,11 +21,10 @@ import '../balance/settle_up.dart';
 import '../groups/add_person_dialog.dart';
 import '../groups/group_overview_provider.dart';
 import '../groups/groups_page.dart' show BalanceSummaryText;
-import '../groups/group_edit_dialog.dart';
-import '../groups/group_exit_dialog.dart';
+import '../groups/group_actions.dart';
+import '../groups/group_settings_page.dart' show groupSettingsLocation;
 import '../groups/group_archive_provider.dart';
 import '../groups/group_provider.dart';
-import '../onboarding/onboarding_provider.dart' show settingsDaoProvider;
 import 'expense_category_ui.dart';
 import 'expense_filter.dart';
 import 'expenses_provider.dart';
@@ -40,16 +34,9 @@ import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../models/record_signature.dart';
 import 'record_attribution.dart';
 
-enum _GroupMenuAction {
-  addMember,
-  edit,
-  categories,
-  archive,
-  export,
-  backup,
-  reset,
-  exit,
-}
+/// G65 (U22): the group ⋮ menu — the frequent actions only (G52 adds
+/// *Invite* here); the rest is on the group settings page.
+enum _GroupMenuAction { addMember, archive, settings }
 
 /// G56: groups whose "just you so far" card was dismissed — for this app
 /// session only (it comes back on the next start while still true).
@@ -98,15 +85,13 @@ class ExpensesPage extends ConsumerWidget {
     // trigger deletes / settle-ups — a bare `read` in the dialog callback
     // would let it be disposed mid-write.
     final expenseState = ref.watch(expenseAdderProvider);
-    // Same for the leave/delete (G9) and edit-group (G10) notifiers.
+    // Same for the leave/delete (G9, removed banner) and archive notifiers.
     ref.watch(groupExiterProvider);
-    ref.watch(groupEditorProvider);
     ref.watch(groupArchiverProvider);
     // G16: search / filter (null = search bar closed) and the device-local
     // archive.
     final search = ref.watch(ledgerSearchProvider(roomId));
     final archived = ref.watch(groupArchivedProvider(roomId));
-    final exitKind = groupExitKind(members, ref.watch(currentUserIdProvider));
     final l = context.l10n;
     final theme = Theme.of(context);
     final activeCount = members.where((m) => m.isActive).length;
@@ -117,25 +102,36 @@ class ExpensesPage extends ConsumerWidget {
         // G16: the search field while searching.
         title: search != null
             ? _SearchField(roomId: roomId)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    group?.name ?? l.expensesTitle,
-                    key: const Key('groupTitle'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (members.isNotEmpty)
-                    Text(
-                      l.membersCount(activeCount),
-                      maxLines: 1,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+            // G65: tapping the title opens the group settings (as in
+            // messengers); the ⋮ menu has the same entry.
+            : Semantics(
+                button: true,
+                hint: l.groupSettingsTitle,
+                child: InkWell(
+                  key: const Key('groupTitleButton'),
+                  borderRadius: BorderRadius.circular(Radii.s),
+                  onTap: () => context.push(groupSettingsLocation(roomId)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        group?.name ?? l.expensesTitle,
+                        key: const Key('groupTitle'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                ],
+                      if (members.isNotEmpty)
+                        Text(
+                          l.membersCount(activeCount),
+                          maxLines: 1,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
         actions: search != null
             ? [
@@ -163,10 +159,11 @@ class ExpensesPage extends ConsumerWidget {
                   tooltip: l.membersTitle,
                   onPressed: () => context.push('/groups/$roomId/members'),
                 ),
-                // Less frequent group actions live in an overflow menu so the app
-                // bar stays uncluttered on phones (and the title isn't truncated —
-                // G12, "Ausgaben").
+                // G65 (U22): only the frequent group actions stay in the
+                // overflow menu; everything else lives on the group settings
+                // page (also reached by tapping the title).
                 PopupMenuButton<_GroupMenuAction>(
+                  key: const Key('groupMenu'),
                   tooltip: l.moreTooltip,
                   onSelected: (action) => switch (action) {
                     _GroupMenuAction.addMember => showAddPersonDialog(
@@ -174,48 +171,25 @@ class ExpensesPage extends ConsumerWidget {
                       ref,
                       roomId,
                     ),
-                    _GroupMenuAction.edit => _editGroup(context, ref),
-                    _GroupMenuAction.categories => context.push(
-                      '/groups/$roomId/categories',
-                    ),
-                    _GroupMenuAction.archive => _toggleArchive(
+                    _GroupMenuAction.archive => toggleGroupArchive(
                       context,
                       ref,
+                      roomId,
                       archived: archived,
                       unsettled: overview.myBalance.isNotEmpty,
                     ),
-                    _GroupMenuAction.export => _exportCsv(context, ref),
-                    _GroupMenuAction.backup => _backupGroup(context, ref),
-                    _GroupMenuAction.reset => context.push(
-                      '/groups/$roomId/reset',
+                    _GroupMenuAction.settings => context.push(
+                      groupSettingsLocation(roomId),
                     ),
-                    _GroupMenuAction.exit => _exitGroup(context, ref, exitKind),
                   },
                   itemBuilder: (_) => [
                     PopupMenuItem(
                       value: _GroupMenuAction.addMember,
                       enabled: !adderState.isLoading && !removed,
                       child: ListTile(
+                        key: const Key('addPersonMenuItem'),
                         leading: const Icon(Icons.person_add_outlined),
                         title: Text(l.addMember),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: _GroupMenuAction.edit,
-                      enabled: canEdit,
-                      child: ListTile(
-                        leading: const Icon(Icons.edit_outlined),
-                        title: Text(l.editGroup),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: _GroupMenuAction.categories,
-                      child: ListTile(
-                        key: const Key('categoriesMenuItem'),
-                        leading: const Icon(Icons.label_outline),
-                        title: Text(l.manageCategories),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
@@ -235,47 +209,11 @@ class ExpensesPage extends ConsumerWidget {
                       ),
                     ),
                     PopupMenuItem(
-                      value: _GroupMenuAction.export,
+                      value: _GroupMenuAction.settings,
                       child: ListTile(
-                        leading: const Icon(Icons.save_alt),
-                        title: Text(l.exportCsv),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: _GroupMenuAction.backup,
-                      child: ListTile(
-                        key: const Key('backupGroupMenuItem'),
-                        leading: const Icon(Icons.backup_outlined),
-                        title: Text(l.backupThisGroup),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    // G48: back to an earlier state (not for a read-only
-                    // group — peers would refuse our versions).
-                    PopupMenuItem(
-                      value: _GroupMenuAction.reset,
-                      enabled: canEdit,
-                      child: ListTile(
-                        key: const Key('resetGroupMenuItem'),
-                        leading: const Icon(Icons.history),
-                        title: Text(l.groupResetMenu),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: _GroupMenuAction.exit,
-                      child: ListTile(
-                        leading: Icon(
-                          exitKind == GroupExitKind.leave
-                              ? Icons.logout
-                              : Icons.delete_outline,
-                        ),
-                        title: Text(
-                          exitKind == GroupExitKind.leave
-                              ? l.leaveGroup
-                              : l.deleteGroup,
-                        ),
+                        key: const Key('groupSettingsMenuItem'),
+                        leading: const Icon(Icons.tune),
+                        title: Text(l.groupSettingsTitle),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
@@ -299,7 +237,7 @@ class ExpensesPage extends ConsumerWidget {
               actions: [
                 TextButton(
                   onPressed: () =>
-                      _exitGroup(context, ref, GroupExitKind.delete),
+                      exitGroupFlow(context, ref, roomId, GroupExitKind.delete),
                   child: Text(l.deleteFromThisDevice),
                 ),
               ],
@@ -311,9 +249,10 @@ class ExpensesPage extends ConsumerWidget {
               leading: const Icon(Icons.archive_outlined),
               actions: [
                 TextButton(
-                  onPressed: () => _toggleArchive(
+                  onPressed: () => toggleGroupArchive(
                     context,
                     ref,
+                    roomId,
                     archived: true,
                     unsettled: false,
                   ),
@@ -640,180 +579,6 @@ class ExpensesPage extends ConsumerWidget {
           ),
       ],
     );
-  }
-
-  /// Leave / delete this group (G9) after a confirmation that warns about an
-  /// unsettled balance; then back to the groups list.
-  Future<void> _exitGroup(
-    BuildContext context,
-    WidgetRef ref,
-    GroupExitKind kind,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-    final group = await ref.read(groupsDaoProvider).getGroup(roomId);
-    if (!context.mounted) return;
-    final me = ref.read(currentParticipantProvider(roomId)).value;
-    final warning = unsettledWarning(
-      ref.read(balanceForRoomProvider(roomId)),
-      me?.userId,
-      l,
-    );
-    final confirmed = await confirmGroupExit(
-      context,
-      kind: kind,
-      groupName: group?.name ?? l.thisGroup,
-      warning: warning,
-      onBackup: () async => (await runBackupExport(context, ref)).message,
-    );
-    if (!confirmed) return;
-    final exiter = ref.read(groupExiterProvider.notifier);
-    await (kind == GroupExitKind.leave
-        ? exiter.leave(roomId)
-        : exiter.delete(roomId));
-    final error = ref.read(groupExiterProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
-      return;
-    }
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          kind == GroupExitKind.leave
-              ? l.youLeftGroup(group?.name ?? '')
-              : l.deletedGroup(group?.name ?? ''),
-        ),
-      ),
-    );
-    if (context.mounted) context.go('/groups');
-  }
-
-  /// Archives this group on this device (G16) and goes back to the groups
-  /// list, where it sits in the collapsed "Archived" section — or brings an
-  /// archived one back. Archiving an unsettled group is allowed; the
-  /// snackbar says that the open balance still counts in the totals.
-  Future<void> _toggleArchive(
-    BuildContext context,
-    WidgetRef ref, {
-    required bool archived,
-    required bool unsettled,
-  }) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-    // Captured for the snackbar's undo, which may run after this page is gone.
-    final settings = ref.read(settingsDaoProvider);
-    final archiver = ref.read(groupArchiverProvider.notifier);
-    final name = (await ref.read(groupsDaoProvider).getGroup(roomId))?.name;
-    if (archived) {
-      await archiver.unarchive(roomId);
-    } else {
-      await archiver.archive(roomId);
-    }
-    final error = ref.read(groupArchiverProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
-      return;
-    }
-    if (archived) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.groupUnarchived(name ?? ''))),
-      );
-      return;
-    }
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          unsettled
-              ? l.groupArchivedUnsettled(name ?? '')
-              : l.groupArchived(name ?? ''),
-        ),
-        // An action makes snackbars persist by default — this one is a
-        // short undo window, not something to dismiss by hand.
-        persist: false,
-        action: SnackBarAction(
-          label: l.undo,
-          onPressed: () => settings.unarchiveGroup(roomId),
-        ),
-      ),
-    );
-    if (context.mounted) context.go('/groups');
-  }
-
-  /// Rename the group / change its default currency (G10).
-  Future<void> _editGroup(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-    final group = await ref.read(groupsDaoProvider).getGroup(roomId);
-    if (group == null || !context.mounted) return;
-    final result = await showEditGroupDialog(
-      context,
-      name: group.name,
-      currency: group.currency,
-    );
-    if (result == null) return;
-    await ref
-        .read(groupEditorProvider.notifier)
-        .edit(roomId, name: result.name, currency: result.currency);
-    final error = ref.read(groupEditorProvider).error;
-    if (error != null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.failedWithError(error.toString()))),
-      );
-    }
-  }
-
-  /// G34: a JSON backup of just this group (same format as the full one).
-  Future<void> _backupGroup(BuildContext context, WidgetRef ref) async {
-    final group = await ref.read(groupsDaoProvider).getGroup(roomId);
-    if (group == null || !context.mounted) return;
-    await exportGroupBackup(
-      context,
-      ref,
-      groupId: roomId,
-      groupName: group.name,
-    );
-  }
-
-  Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l = context.l10n;
-    final groups = ref.read(groupsDaoProvider);
-    final members = ref.read(membersDaoProvider);
-    final expenses = ref.read(expensesDaoProvider);
-    try {
-      final group = await groups.getGroup(roomId);
-      if (group == null) return;
-      final csv = await buildGroupCsvForExport(
-        groups,
-        members,
-        expenses,
-        roomId,
-      );
-      final saved = await saveTextFile(
-        csvFileName(group.name),
-        csv,
-        LedgerFileKind.csv,
-      );
-      if (saved == null) return; // dialog cancelled
-      // G34: the name Android actually used, if the platform tells us.
-      final name = kIsWeb
-          ? csvFileName(group.name)
-          : savedFileDisplayName(saved.path, LedgerFileKind.csv.extension);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(name == null ? l.exportedNoName : l.exportedFile(name)),
-        ),
-      );
-    } catch (e) {
-      // e.g. the file couldn't be written — tell the user (G15).
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.exportFailed(e.toString()))),
-      );
-    }
   }
 
   /// Lets a just-invited user say which participant they are: pick an existing

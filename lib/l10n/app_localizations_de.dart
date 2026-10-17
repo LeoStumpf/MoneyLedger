@@ -46,9 +46,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get groupsTitle => 'Gruppen';
 
   @override
-  String get importCsvTooltip => 'CSV importieren';
-
-  @override
   String get devicesTooltip => 'Geräte & Sicherheit';
 
   @override
@@ -94,9 +91,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get restoringGroupsBody =>
       'Öffne MoneyLedger auf einem anderen Gerät, das mit diesem Konto angemeldet ist – es sendet deine Gruppen, solange die App dort läuft.';
-
-  @override
-  String get syncSettingsTitle => 'Synchronisierung';
 
   @override
   String get syncSettingsBody =>
@@ -958,7 +952,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyDeleteBody =>
-      '• Gruppe verlassen oder löschen (Gruppenmenü ⋮): Sie wird samt allen Einträgen von diesem Gerät entfernt (die täglichen Wiederherstellungspunkte behalten sie etwa fünf Wochen – siehe oben). Wenn du sie verlässt, erfahren die anderen in der Gruppe davon.\n• Beim Abmelden bleibt das Kassenbuch dieses Kontos auf dem Gerät, damit es bei der nächsten Anmeldung wieder da ist.\n• Im lokalen Modus entfernt Einstellungen → Lokale Daten löschen alle lokalen Gruppen von diesem Gerät und beendet den lokalen Modus.\n• Wenn du die App deinstallierst (oder ihren Speicher löschst), wird alles entfernt, was sie auf dem Gerät gespeichert hat.\n• Kopien auf den Geräten anderer Personen gehören ihnen: Sie behalten den Verlauf der Gruppe, einschließlich deiner Ausgaben darin.\n• Dein Matrix-Konto kannst du über deinen Homeserver deaktivieren.';
+      '• Gruppe verlassen oder löschen (Gruppeneinstellungen): Sie wird samt allen Einträgen von diesem Gerät entfernt (die täglichen Wiederherstellungspunkte behalten sie etwa fünf Wochen – siehe oben). Wenn du sie verlässt, erfahren die anderen in der Gruppe davon.\n• Beim Abmelden bleibt das Kassenbuch dieses Kontos auf dem Gerät, damit es bei der nächsten Anmeldung wieder da ist.\n• Im lokalen Modus entfernt Einstellungen → Lokale Daten löschen alle lokalen Gruppen von diesem Gerät und beendet den lokalen Modus.\n• Wenn du die App deinstallierst (oder ihren Speicher löschst), wird alles entfernt, was sie auf dem Gerät gespeichert hat.\n• Kopien auf den Geräten anderer Personen gehören ihnen: Sie behalten den Verlauf der Gruppe, einschließlich deiner Ausgaben darin.\n• Dein Matrix-Konto kannst du über deinen Homeserver deaktivieren.';
 
   @override
   String get privacyContactTitle => 'Kontakt';
@@ -1148,9 +1142,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String debtPaysYou(String from) {
     return '$from zahlt an dich';
   }
-
-  @override
-  String get backupSectionTitle => 'Sicherung';
 
   @override
   String get backupExportTitle => 'Alle Gruppen sichern';
@@ -2123,7 +2114,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restorePointsHowItWorks =>
-      'Wiederherstellen holt Gruppen und Einträge zurück, die hier fehlen (z. B. eine gelöschte Gruppe). Mit „Genau diesen Stand“ werden auch spätere Änderungen in diesen Gruppen rückgängig gemacht. Um Änderungen in einer einzelnen Gruppe rückgängig zu machen: Gruppe öffnen → ⋮ → Auf früheren Stand zurücksetzen.';
+      'Wiederherstellen holt Gruppen und Einträge zurück, die hier fehlen (z. B. eine gelöschte Gruppe). Mit „Genau diesen Stand“ werden auch spätere Änderungen in diesen Gruppen rückgängig gemacht. Um Änderungen in einer einzelnen Gruppe rückgängig zu machen: Gruppe öffnen → Gruppeneinstellungen → Auf früheren Stand zurücksetzen.';
 
   @override
   String get restorePointsEmpty =>
@@ -2131,7 +2122,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restorePointsWebUnsupported =>
-      'Die Browser-Version legt keine automatischen Kopien an. Du kannst eine Gruppe trotzdem auf einen früheren Stand zurücksetzen (Gruppe → ⋮) und eine Sicherungsdatei speichern.';
+      'Die Browser-Version legt keine automatischen Kopien an. Du kannst eine Gruppe trotzdem auf einen früheren Stand zurücksetzen (Gruppe → Gruppeneinstellungen) und eine Sicherungsdatei speichern.';
 
   @override
   String restorePointGroups(int count) {
@@ -2436,4 +2427,85 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settleUpFirst => 'Erst ausgleichen';
+
+  @override
+  String get settingsTitle => 'Einstellungen';
+
+  @override
+  String get settingsSectionAccount => 'Konto';
+
+  @override
+  String get settingsSectionSync => 'Synchronisierung & Geräte';
+
+  @override
+  String get settingsSectionBackup => 'Sichern & Wiederherstellen';
+
+  @override
+  String get settingsSectionData => 'Daten';
+
+  @override
+  String get settingsSectionAbout => 'Info';
+
+  @override
+  String get settingsSectionDebug => 'Debug';
+
+  @override
+  String get settingsMatrixAccount => 'Matrix-Konto';
+
+  @override
+  String get signOutTileBody =>
+      'Deine Gruppen bleiben für die nächste Anmeldung auf diesem Gerät.';
+
+  @override
+  String get importCsvTileBody =>
+      'Eine Gruppe aus einer CSV-Datei übernehmen, z. B. aus einem Export.';
+
+  @override
+  String get groupSettingsTitle => 'Gruppeneinstellungen';
+
+  @override
+  String get groupSectionGroup => 'Gruppe';
+
+  @override
+  String get groupSectionDevice => 'Auf diesem Gerät';
+
+  @override
+  String get groupSectionExit => 'Verlassen oder löschen';
+
+  @override
+  String get groupNameAndCurrency => 'Name & Währung';
+
+  @override
+  String groupNameCurrencyValue(String name, String currency) {
+    return '$name · $currency';
+  }
+
+  @override
+  String get categoriesTileBody => 'Eigene Kategorien dieser Gruppe';
+
+  @override
+  String get exportCsvTileBody => 'Eine Tabelle mit den Ausgaben und Zahlungen';
+
+  @override
+  String get backupGroupTileBody =>
+      'Eine Sicherungsdatei nur mit dieser Gruppe';
+
+  @override
+  String get groupResetTileBody =>
+      'Änderungen ab einem Zeitpunkt rückgängig machen';
+
+  @override
+  String get archiveTileBody =>
+      'Verschiebt sie in deiner Liste nach „Archiviert“. Nur hier – die anderen merken nichts.';
+
+  @override
+  String get unarchiveTileBody => 'Zurück in deine Gruppenliste';
+
+  @override
+  String get leaveGroupTileBody =>
+      'Entfernt die Gruppe von diesem Gerät. Die anderen sehen, dass du gegangen bist.';
+
+  @override
+  String get deleteGroupTileBody =>
+      'Entfernt die Gruppe mit allen Einträgen von diesem Gerät.';
 }

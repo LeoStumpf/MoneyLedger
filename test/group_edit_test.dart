@@ -16,6 +16,7 @@ import 'package:money_ledger/core/matrix/transport_provider.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
+import 'package:money_ledger/features/groups/group_settings_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_edit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
@@ -183,6 +184,11 @@ void main() {
             path: '/groups/:id/expenses',
             builder: (_, _) => const ExpensesPage(roomId: 'g1'),
           ),
+          // G65: the group settings page (was the ⋮ menu).
+          GoRoute(
+            path: '/groups/:id/settings',
+            builder: (_, _) => const GroupSettingsPage(roomId: 'g1'),
+          ),
         ],
       );
       return ProviderScope(
@@ -231,8 +237,11 @@ void main() {
 
       await tester.tap(find.byTooltip('More'));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('groupSettingsMenuItem')));
+      await tester.pumpAndSettle();
+      expect(find.byType(GroupSettingsPage), findsOneWidget);
       await tester.runAsync(() async {
-        await tester.tap(find.text('Edit group'));
+        await tester.tap(find.byKey(const Key('editGroupTile')));
         await eventually(
           () =>
               find.widgetWithText(TextFormField, 'Trip').evaluate().isNotEmpty,
@@ -314,14 +323,21 @@ void main() {
         ),
       );
       expect(addMember.enabled, isFalse);
-      final edit = tester.widget<PopupMenuItem<Object?>>(
-        find.ancestor(
-          of: find.text('Edit group'),
-          matching: find.byWidgetPredicate((w) => w is PopupMenuItem),
-        ),
+      // G65: the group settings keep the restrictions.
+      await tester.tap(find.byKey(const Key('groupSettingsMenuItem')));
+      await tester.pumpAndSettle();
+      ListTile tile(String key) =>
+          tester.widget<ListTile>(find.byKey(Key(key)));
+      expect(tile('editGroupTile').enabled, isFalse);
+      expect(tile('resetGroupTile').enabled, isFalse);
+      expect(tile('backupGroupTile').enabled, isTrue);
+      expect(tile('exportCsvTile').enabled, isTrue);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('exitGroupTile')),
+        100,
       );
-      expect(edit.enabled, isFalse);
       expect(find.text('Delete group'), findsOneWidget);
+      expect(find.text('Leave group'), findsNothing);
     });
   });
 }

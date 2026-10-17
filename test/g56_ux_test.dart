@@ -17,6 +17,7 @@ import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
+import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
@@ -86,12 +87,16 @@ void main() {
     });
   });
 
-  group('settings sheet: Devices & security', () {
+  group('settings page: Devices & security', () {
     Widget app({Locale? locale}) {
       final router = GoRouter(
         initialLocation: '/groups',
         routes: [
           GoRoute(path: '/groups', builder: (_, _) => const GroupsPage()),
+          GoRoute(
+            path: kSettingsLocation,
+            builder: (_, _) => const SettingsPage(),
+          ),
           GoRoute(
             path: '/devices',
             builder: (_, _) => const Scaffold(body: Text('devices page')),
@@ -109,7 +114,7 @@ void main() {
       );
     }
 
-    testWidgets('no app-bar icon; the sheet tile opens /devices', (
+    testWidgets('no app-bar icon; the settings tile opens /devices', (
       tester,
     ) async {
       await tester.pumpWidget(app());

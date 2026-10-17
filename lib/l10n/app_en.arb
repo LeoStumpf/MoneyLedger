@@ -25,7 +25,6 @@
     }
   },
   "groupsTitle": "Groups",
-  "importCsvTooltip": "Import CSV",
   "devicesTooltip": "Devices & security",
   "settingsTooltip": "Settings",
   "signOut": "Sign out",
@@ -49,7 +48,6 @@
   "noGroupsYet": "No groups yet.\nCreate one to get started.",
   "restoringGroupsTitle": "Restoring your groups from your other devices…",
   "restoringGroupsBody": "Open MoneyLedger on another device signed in to this account — it sends your groups while the app is running there.",
-  "syncSettingsTitle": "Sync",
   "syncSettingsBody": "Devices exchange changes while MoneyLedger is open. Changes from others wait on your homeserver (encrypted) until this device picks them up.",
   "backgroundSyncTitle": "Background sync",
   "backgroundSyncBody": "Also sync about every 15 minutes while the app is closed (with network, not on low battery).",
@@ -57,7 +55,7 @@
   "noBackgroundSyncBody": "In the browser, MoneyLedger syncs only while this tab is open. The Android app also syncs periodically in the background.",
   "backgroundSyncScheduleFailed": "Background sync couldn't be set up on this device: {error}",
   "@backgroundSyncScheduleFailed": {
-    "description": "Settings sheet, under the background-sync switch, when Android refused to register/cancel the periodic task; error is technical text",
+    "description": "Settings page, under the background-sync switch, when Android refused to register/cancel the periodic task; error is technical text",
     "placeholders": {
       "error": {
         "type": "String"
@@ -578,7 +576,7 @@
   "privacyBackupTitle": "Device backups",
   "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other people in your groups; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.",
   "privacyDeleteTitle": "Deleting your data",
-  "privacyDeleteBody": "• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people's devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
+  "privacyDeleteBody": "• Leave or delete a group (group settings): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people's devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
   "privacyContactTitle": "Contact",
   "privacyContactBody": "Questions, or anything that looks wrong here: open an issue at https://github.com/LeoStumpf/MoneyLedger or email leo.m.stumpf@gmail.com.",
   "youAreOwedAmount": "You are owed {amount}",
@@ -716,7 +714,6 @@
       }
     }
   },
-  "backupSectionTitle": "Backup",
   "backupExportTitle": "Back up all groups",
   "backupExportBody": "Saves every group — with payments and deleted entries — to one file, optionally encrypted with a passphrase. Without one the file is plain text: keep it somewhere safe.",
   "backupRestoreTitle": "Restore from backup",
@@ -1827,7 +1824,7 @@
   "@restorePointsIntro": {
     "description": "Restore points page intro (G48)"
   },
-  "restorePointsHowItWorks": "Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → ⋮ → Reset to an earlier state.",
+  "restorePointsHowItWorks": "Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → Group settings → Reset to an earlier state.",
   "@restorePointsHowItWorks": {
     "description": "Restore points page: what a restore does vs. a group reset (G48)"
   },
@@ -1835,7 +1832,7 @@
   "@restorePointsEmpty": {
     "description": "Restore points page: none yet (G48)"
   },
-  "restorePointsWebUnsupported": "The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → ⋮) and back up to a file.",
+  "restorePointsWebUnsupported": "The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → Group settings) and back up to a file.",
   "@restorePointsWebUnsupported": {
     "description": "Restore points page on web (G48)"
   },
@@ -1872,7 +1869,7 @@
   },
   "groupResetMenu": "Reset to an earlier state…",
   "@groupResetMenu": {
-    "description": "Group ⋮ menu item (G48)"
+    "description": "Group settings tile (G48; was a ⋮ menu item before G65)"
   },
   "groupResetTitle": "Reset group",
   "@groupResetTitle": {
@@ -2072,7 +2069,7 @@
   },
   "devicesSettingsBody": "Your logins and emoji verification",
   "@devicesSettingsBody": {
-    "description": "G56: settings sheet 'Devices & security' tile subtitle"
+    "description": "G56: settings page 'Devices & security' tile subtitle"
   },
   "addPeopleHint": "It's just you in this group so far.",
   "@addPeopleHint": {
@@ -2195,5 +2192,109 @@
   "settleUpFirst": "Settle up first",
   "@settleUpFirst": {
     "description": "G64 (U10): remove dialog action — opens the payment dialog prefilled instead of removing"
+  },
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "G65 (U28): title of the app settings page"
+  },
+  "settingsSectionAccount": "Account",
+  "@settingsSectionAccount": {
+    "description": "G65: settings page section — the Matrix account or local mode"
+  },
+  "settingsSectionSync": "Sync & devices",
+  "@settingsSectionSync": {
+    "description": "G65: settings page section"
+  },
+  "settingsSectionBackup": "Backup & restore",
+  "@settingsSectionBackup": {
+    "description": "G65: settings page section"
+  },
+  "settingsSectionData": "Data",
+  "@settingsSectionData": {
+    "description": "G65: settings page / group settings section (CSV, group backup)"
+  },
+  "settingsSectionAbout": "About",
+  "@settingsSectionAbout": {
+    "description": "G65: settings page section"
+  },
+  "settingsSectionDebug": "Debug",
+  "@settingsSectionDebug": {
+    "description": "G65: settings page section, debug builds only"
+  },
+  "settingsMatrixAccount": "Matrix account",
+  "@settingsMatrixAccount": {
+    "description": "G65: settings page — title of the tile showing the signed-in MXID"
+  },
+  "signOutTileBody": "Your groups stay on this device for your next sign-in.",
+  "@signOutTileBody": {
+    "description": "G65 (U21): subtitle of the Sign out tile on the settings page"
+  },
+  "importCsvTileBody": "Bring in a group from a CSV file, e.g. an export.",
+  "@importCsvTileBody": {
+    "description": "G65 (U21): subtitle of the Import CSV tile on the settings page"
+  },
+  "groupSettingsTitle": "Group settings",
+  "@groupSettingsTitle": {
+    "description": "G65 (U22): title of the group settings page and its ⋮ menu entry"
+  },
+  "groupSectionGroup": "Group",
+  "@groupSectionGroup": {
+    "description": "G65: group settings section — name, currency, categories"
+  },
+  "groupSectionDevice": "On this device",
+  "@groupSectionDevice": {
+    "description": "G65: group settings section — the device-local archive"
+  },
+  "groupSectionExit": "Leave or delete",
+  "@groupSectionExit": {
+    "description": "G65: group settings section header of the leave / delete tile (last)"
+  },
+  "groupNameAndCurrency": "Name & currency",
+  "@groupNameAndCurrency": {
+    "description": "G65: group settings tile — opens the edit-group dialog"
+  },
+  "groupNameCurrencyValue": "{name} · {currency}",
+  "@groupNameCurrencyValue": {
+    "description": "G65: subtitle of the Name & currency tile",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "categoriesTileBody": "This group's own categories",
+  "@categoriesTileBody": {
+    "description": "G65: subtitle of the Categories tile in group settings"
+  },
+  "exportCsvTileBody": "A spreadsheet of the expenses and payments",
+  "@exportCsvTileBody": {
+    "description": "G65: subtitle of the Export CSV tile in group settings"
+  },
+  "backupGroupTileBody": "A backup file with just this group",
+  "@backupGroupTileBody": {
+    "description": "G65: subtitle of the Back up this group tile"
+  },
+  "groupResetTileBody": "Undo the changes made after a point in time",
+  "@groupResetTileBody": {
+    "description": "G65: subtitle of the Reset tile in group settings"
+  },
+  "archiveTileBody": "Moves it to “Archived” in your list. Only here — the others don't see it.",
+  "@archiveTileBody": {
+    "description": "G65: subtitle of the Archive tile in group settings"
+  },
+  "unarchiveTileBody": "Back into your group list",
+  "@unarchiveTileBody": {
+    "description": "G65: subtitle of the Unarchive tile in group settings"
+  },
+  "leaveGroupTileBody": "Removes the group from this device. The others see that you left.",
+  "@leaveGroupTileBody": {
+    "description": "G65: subtitle of the Leave group tile"
+  },
+  "deleteGroupTileBody": "Removes the group and all its entries from this device.",
+  "@deleteGroupTileBody": {
+    "description": "G65: subtitle of the Delete group tile"
   }
 }

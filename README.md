@@ -46,7 +46,7 @@ and sees only ciphertext.
   group's list (text, category chips, "involving me").
 - Multi-currency **balances** with greedy debt simplification (explained in
   the app; each currency is settled separately), plus settlements.
-- **Archive** settled groups on this device (⋮ → *Archive group*): they move
+- **Archive** settled groups on this device (⋮ → *Archive group*, or the group settings): they move
   into a collapsed *Archived* section and come back by themselves when
   something new is added.
 - **Full backup / restore**: *Settings* (gear) → *Back up all groups* writes one
@@ -56,7 +56,7 @@ and sees only ciphertext.
   a group exists nowhere else (not even on another device of yours) and you
   haven't backed up for 30 days. Optionally **encrypted with a passphrase**
   (Argon2id + AES-256-GCM); without one the file is plain text. A single
-  group can be backed up from its ⋮ menu (*Back up this group*).
+  group can be backed up from its group settings (*Back up this group*).
 - **CSV export/import** per group (expenses + payments) for spreadsheets and
   sharing, with an import preview that warns about unknown / duplicate names.
 - **In-app registration** (open / dummy-UIA homeservers) and **SSO** login.

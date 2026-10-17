@@ -16,6 +16,7 @@ import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
+import 'package:money_ledger/features/groups/group_settings_page.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_exit_dialog.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
@@ -124,6 +125,14 @@ void main() {
     return db;
   }
 
+  // G65: group ⋮ → Group settings.
+  Future<void> openGroupSettings(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('groupSettingsMenuItem')));
+    await tester.pumpAndSettle();
+  }
+
   Widget app(AppDatabase db, List<MemberModel> members, List<DebtEntry> debts) {
     final net = FakeMatrixNetwork();
     final router = GoRouter(
@@ -137,6 +146,11 @@ void main() {
         GoRoute(
           path: '/groups/:id/expenses',
           builder: (_, _) => const ExpensesPage(roomId: 'g1'),
+        ),
+        // G65: leave / delete moved to the group settings page.
+        GoRoute(
+          path: '/groups/:id/settings',
+          builder: (_, _) => const GroupSettingsPage(roomId: 'g1'),
         ),
       ],
     );
@@ -191,11 +205,14 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    await tester.tap(find.byTooltip('More'));
-    await tester.pumpAndSettle();
+    await openGroupSettings(tester);
     expect(find.text('Export CSV'), findsOneWidget);
     expect(find.text('Back up this group'), findsOneWidget); // G34
     expect(find.text('Reset to an earlier state…'), findsOneWidget); // G48
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('exitGroupTile')),
+      100,
+    );
     expect(find.text('Delete group'), findsNothing);
     await tester.runAsync(() async {
       await tester.tap(find.text('Leave group'));
@@ -227,8 +244,11 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    await tester.tap(find.byTooltip('More'));
-    await tester.pumpAndSettle();
+    await openGroupSettings(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('exitGroupTile')),
+      100,
+    );
     expect(find.text('Leave group'), findsNothing);
     await tester.runAsync(() async {
       await tester.tap(find.text('Delete group'));

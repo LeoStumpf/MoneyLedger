@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/session/device_prefs.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
+import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/features/groups/group_members_page.dart';
 import 'package:money_ledger/features/local/local_setup_page.dart';
 import 'package:money_ledger/features/welcome/welcome_page.dart';
@@ -240,16 +241,16 @@ void main() {
     ) async {
       await tester.pumpWidget(
         testApp(
-          const GroupsPage(),
+          const SettingsPage(),
           overrides: testOverrides(localProfile: 'Lea'),
         ),
       );
-      await tester.pump();
-      await tester.pump();
-      await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
 
       expect(find.text('Your name: Lea'), findsOneWidget);
+      // G65: no Matrix account tile / sign-out in local mode.
+      expect(find.byKey(const Key('signOutTile')), findsNothing);
+      expect(find.byKey(const Key('devicesTile')), findsNothing);
       expect(find.byKey(const Key('connectAccountTile')), findsOneWidget);
       expect(find.byKey(const Key('deleteLocalDataTile')), findsOneWidget);
       expect(find.byKey(const Key('backgroundSyncSwitch')), findsNothing);
@@ -277,7 +278,8 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(find.byKey(const Key('localModeChip')), findsNothing);
-      expect(find.byTooltip('Sign out'), findsOneWidget);
+      // G65: sign-out lives on the settings page now.
+      expect(find.byKey(const Key('settingsButton')), findsOneWidget);
     });
 
     testWidgets('members page: names only, no invite', (tester) async {

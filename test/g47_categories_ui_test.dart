@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/expenses/expenses_page.dart';
 import 'package:money_ledger/features/groups/group_categories_page.dart';
+import 'package:money_ledger/features/groups/group_settings_page.dart';
 import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/expense_category.dart';
@@ -143,15 +144,14 @@ void main() {
       expect(find.text('Vet'), findsNothing);
     });
 
-    testWidgets('the group menu offers Categories', (tester) async {
+    // G65: Categories moved from the ⋮ menu to the group settings page.
+    testWidgets('the group settings offer Categories', (tester) async {
       await _pump(
         tester,
-        const ExpensesPage(roomId: _roomId),
+        const GroupSettingsPage(roomId: _roomId),
         _overrides(expenses: expenses),
       );
-      await tester.tap(find.byTooltip('More'));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('categoriesMenuItem')), findsOneWidget);
+      expect(find.byKey(const Key('categoriesTile')), findsOneWidget);
     });
   });
 

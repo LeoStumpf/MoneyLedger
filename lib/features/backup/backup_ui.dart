@@ -29,9 +29,10 @@ import 'backup_service.dart';
 import 'csv_import.dart';
 import 'ledger_backup.dart';
 
-// ── settings sheet section ───────────────────────────────────────────────────
+// ── settings page section ────────────────────────────────────────────────────
 
-/// "Backup" section of the settings sheet: last backup date, back up, restore.
+/// "Backup & restore" section of the settings page (G65): last backup date,
+/// back up, restore, restore points. The flows run on the page's context.
 class BackupSettingsSection extends ConsumerWidget {
   const BackupSettingsSection({super.key});
 
@@ -43,9 +44,10 @@ class BackupSettingsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // G65: the page's section header names it — here only the date.
         ListTile(
-          title: Text(l.backupSectionTitle),
-          subtitle: Text(
+          leading: const Icon(Icons.event_available_outlined),
+          title: Text(
             last == null
                 ? l.lastBackupNever
                 : l.lastBackupAt(context.date(last)),
@@ -57,14 +59,14 @@ class BackupSettingsSection extends ConsumerWidget {
           leading: const Icon(Icons.save_alt),
           title: Text(l.backupExportTitle),
           subtitle: Text(l.backupExportBody),
-          onTap: () => _closeSheetThen(context, ref, exportFullBackup),
+          onTap: () => exportFullBackup(context, ref),
         ),
         ListTile(
           key: const Key('backupRestoreTile'),
           leading: const Icon(Icons.settings_backup_restore),
           title: Text(l.backupRestoreTitle),
           subtitle: Text(l.backupRestoreBody),
-          onTap: () => _closeSheetThen(context, ref, restoreFullBackup),
+          onTap: () => restoreFullBackup(context, ref),
         ),
         // G48: on-device snapshots + "reset a group" explained.
         ListTile(
@@ -72,29 +74,11 @@ class BackupSettingsSection extends ConsumerWidget {
           leading: const Icon(Icons.history),
           title: Text(l.restorePointsTitle),
           subtitle: Text(l.restorePointsTileBody),
-          onTap: () => _closeSheetThen(
-            context,
-            ref,
-            (ctx, _) async => GoRouter.of(ctx).push(kRestorePointsLocation),
-          ),
+          onTap: () => context.push(kRestorePointsLocation),
         ),
       ],
     );
   }
-}
-
-/// Closes the settings sheet, then runs [flow] on the navigator's context, so
-/// its dialogs and snackbars appear on the page — not hidden under the sheet.
-/// The flows read `ref` synchronously before their first await, i.e. while
-/// the sheet is still mounted.
-void _closeSheetThen(
-  BuildContext context,
-  WidgetRef ref,
-  Future<void> Function(BuildContext, WidgetRef) flow,
-) {
-  final nav = Navigator.of(context);
-  nav.pop();
-  flow(nav.context, ref);
 }
 
 // ── export ───────────────────────────────────────────────────────────────────

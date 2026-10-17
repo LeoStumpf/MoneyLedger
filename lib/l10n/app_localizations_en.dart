@@ -46,9 +46,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupsTitle => 'Groups';
 
   @override
-  String get importCsvTooltip => 'Import CSV';
-
-  @override
   String get devicesTooltip => 'Devices & security';
 
   @override
@@ -93,9 +90,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get restoringGroupsBody =>
       'Open MoneyLedger on another device signed in to this account — it sends your groups while the app is running there.';
-
-  @override
-  String get syncSettingsTitle => 'Sync';
 
   @override
   String get syncSettingsBody =>
@@ -948,7 +942,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyDeleteBody =>
-      '• Leave or delete a group (group menu ⋮): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people\'s devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
+      '• Leave or delete a group (group settings): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account\'s ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people\'s devices are theirs: they keep the group\'s history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.';
 
   @override
   String get privacyContactTitle => 'Contact';
@@ -1136,9 +1130,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String debtPaysYou(String from) {
     return '$from pays you';
   }
-
-  @override
-  String get backupSectionTitle => 'Backup';
 
   @override
   String get backupExportTitle => 'Back up all groups';
@@ -2100,7 +2091,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restorePointsHowItWorks =>
-      'Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → ⋮ → Reset to an earlier state.';
+      'Restoring brings back groups and entries that are missing here (e.g. a deleted group). With “Exactly this state” it also undoes later changes in those groups. To undo changes inside one group, open the group → Group settings → Reset to an earlier state.';
 
   @override
   String get restorePointsEmpty =>
@@ -2108,7 +2099,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restorePointsWebUnsupported =>
-      'The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → ⋮) and back up to a file.';
+      'The browser version keeps no automatic copies. You can still reset a group to an earlier state (group → Group settings) and back up to a file.';
 
   @override
   String restorePointGroups(int count) {
@@ -2410,4 +2401,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settleUpFirst => 'Settle up first';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsSectionAccount => 'Account';
+
+  @override
+  String get settingsSectionSync => 'Sync & devices';
+
+  @override
+  String get settingsSectionBackup => 'Backup & restore';
+
+  @override
+  String get settingsSectionData => 'Data';
+
+  @override
+  String get settingsSectionAbout => 'About';
+
+  @override
+  String get settingsSectionDebug => 'Debug';
+
+  @override
+  String get settingsMatrixAccount => 'Matrix account';
+
+  @override
+  String get signOutTileBody =>
+      'Your groups stay on this device for your next sign-in.';
+
+  @override
+  String get importCsvTileBody =>
+      'Bring in a group from a CSV file, e.g. an export.';
+
+  @override
+  String get groupSettingsTitle => 'Group settings';
+
+  @override
+  String get groupSectionGroup => 'Group';
+
+  @override
+  String get groupSectionDevice => 'On this device';
+
+  @override
+  String get groupSectionExit => 'Leave or delete';
+
+  @override
+  String get groupNameAndCurrency => 'Name & currency';
+
+  @override
+  String groupNameCurrencyValue(String name, String currency) {
+    return '$name · $currency';
+  }
+
+  @override
+  String get categoriesTileBody => 'This group\'s own categories';
+
+  @override
+  String get exportCsvTileBody => 'A spreadsheet of the expenses and payments';
+
+  @override
+  String get backupGroupTileBody => 'A backup file with just this group';
+
+  @override
+  String get groupResetTileBody =>
+      'Undo the changes made after a point in time';
+
+  @override
+  String get archiveTileBody =>
+      'Moves it to “Archived” in your list. Only here — the others don\'t see it.';
+
+  @override
+  String get unarchiveTileBody => 'Back into your group list';
+
+  @override
+  String get leaveGroupTileBody =>
+      'Removes the group from this device. The others see that you left.';
+
+  @override
+  String get deleteGroupTileBody =>
+      'Removes the group and all its entries from this device.';
 }

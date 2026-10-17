@@ -18,7 +18,7 @@ import 'package:money_ledger/features/devices/devices_page.dart';
 import 'package:money_ledger/features/expenses/record_attribution.dart';
 import 'package:money_ledger/features/groups/group_members_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
-import 'package:money_ledger/features/groups/groups_page.dart';
+import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
 import 'package:money_ledger/models/member_model.dart';
 import 'package:money_ledger/models/record_signature.dart';
