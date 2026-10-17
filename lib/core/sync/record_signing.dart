@@ -8,6 +8,7 @@ import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../../models/record_signature.dart';
+import '../link/group_policy.dart';
 import '../matrix/ledger_transport.dart';
 
 /// G6 signed records — what is signed, and how (plain Dart, no Flutter/DB).
@@ -261,9 +262,33 @@ const kSignerWaitTimeout = Duration(seconds: 5);
 /// marked `pendingSign` — saved locally, signed later by the sync engine
 /// before it is ever sent.
 class LocalRecordSigner {
-  LocalRecordSigner(this._transport);
+  /// [policy] (G52 step 4): looks up the written record's group policy — in
+  /// a **link-only** group a version is stored unsigned and **not**
+  /// `pendingSign` (nothing signs it later), without `origin`, with this
+  /// device's link participant as the `by` hint (§6.3). Without it (or when
+  /// the lookup fails) every version is signed as before.
+  LocalRecordSigner(this._transport, {this.policy}) {
+    // The policy lookup is awaited first: a failing transport must not
+    // surface as an unhandled error meanwhile (it is handled in [_crypto]).
+    _transport.ignore();
+  }
 
   final Future<LedgerTransport> _transport;
+  final GroupPolicyLookup? policy;
+
+  /// The link-only author hint for a write into [groupId], or null when the
+  /// group isn't link-only (`linkOnly` false → sign as usual).
+  Future<({bool linkOnly, String? author})> _link(String groupId) async {
+    final lookup = policy;
+    if (lookup == null) return (linkOnly: false, author: null);
+    try {
+      final info = await lookup(groupId);
+      return (linkOnly: info.isLinkOnly, author: info.myParticipantId);
+    } catch (_) {
+      // Fail towards the stricter path: a signed version is valid anywhere.
+      return (linkOnly: false, author: null);
+    }
+  }
 
   Future<RecordCrypto?> _crypto() async {
     try {
@@ -275,9 +300,13 @@ class LocalRecordSigner {
   }
 
   Future<T> _run<T>(
+    String groupId,
     Future<T> Function(RecordCrypto c) sign,
     T Function() pending,
+    T Function(String? author) linkVersion,
   ) async {
+    final link = await _link(groupId);
+    if (link.linkOnly) return linkVersion(link.author);
     final c = await _crypto();
     if (c == null) return pending();
     try {
@@ -288,21 +317,33 @@ class LocalRecordSigner {
   }
 
   Future<ExpenseModel> expense(ExpenseModel e, {bool creating = false}) => _run(
+    e.roomId,
     (c) => signExpense(c, e, creating: creating),
     () => e.withSigning(origin: e.origin, pendingSign: true),
+    e.asLinkVersion,
   );
 
   Future<SettlementModel> settlement(
     SettlementModel s, {
     bool creating = false,
   }) => _run(
+    s.roomId,
     (c) => signSettlement(c, s, creating: creating),
     () => s.withSigning(origin: s.origin, pendingSign: true),
+    s.asLinkVersion,
   );
 
-  Future<MemberModel> member(MemberModel m) =>
-      _run((c) => signMember(c, m), () => m.withSigning(pendingSign: true));
+  Future<MemberModel> member(MemberModel m) => _run(
+    m.groupId,
+    (c) => signMember(c, m),
+    () => m.withSigning(pendingSign: true),
+    m.asLinkVersion,
+  );
 
-  Future<GroupModel> group(GroupModel g) =>
-      _run((c) => signGroupMeta(c, g), () => g.withSigning(pendingSign: true));
+  Future<GroupModel> group(GroupModel g) => _run(
+    g.roomId,
+    (c) => signGroupMeta(c, g),
+    () => g.withSigning(pendingSign: true),
+    g.asLinkVersion,
+  );
 }

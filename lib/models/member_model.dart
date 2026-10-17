@@ -22,6 +22,11 @@ class MemberModel {
   /// G6: written while the signer wasn't ready; signed before it is sent.
   final bool pendingSign;
 
+  /// G52: display-only, unsigned, unhashed "changed by" hint (a participant
+  /// id) of a version written in a link group — see
+  /// `ExpenseModel.linkAuthor`.
+  final String? linkAuthor;
+
   const MemberModel({
     required this.groupId,
     required this.userId,
@@ -31,6 +36,7 @@ class MemberModel {
     required this.updatedAt,
     this.sig,
     this.pendingSign = false,
+    this.linkAuthor,
   });
 
   /// A copy with the G6 signing fields replaced (content unchanged).
@@ -44,7 +50,21 @@ class MemberModel {
         updatedAt: updatedAt,
         sig: sig,
         pendingSign: pendingSign,
+        linkAuthor: linkAuthor,
       );
+
+  /// G52: this version as written in a link-only group — unsigned, not
+  /// `pendingSign`, [author] as the `by` hint (see
+  /// `ExpenseModel.asLinkVersion`).
+  MemberModel asLinkVersion(String? author) => MemberModel(
+    groupId: groupId,
+    userId: userId,
+    displayName: displayName,
+    matrixId: matrixId,
+    status: status,
+    updatedAt: updatedAt,
+    linkAuthor: author,
+  );
 
   bool get isActive => status == 'active';
 

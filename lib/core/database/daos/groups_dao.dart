@@ -84,6 +84,7 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
     categories: decodeCategories(g.categoriesJson),
     sig: RecordSignature.decode(g.sig),
     pendingSign: g.pendingSign,
+    linkAuthor: g.linkAuthor,
   );
 }
 
@@ -111,4 +112,7 @@ GroupsCompanion groupCompanion(GroupModel g) => GroupsCompanion(
   categoriesJson: Value(encodeCategories(g.categories)),
   sig: Value(g.sig?.encode()),
   pendingSign: Value(g.pendingSign),
+  // G52: always set (also to null) — an absent value would keep the
+  // previous version's hint on update.
+  linkAuthor: Value(g.linkAuthor),
 );

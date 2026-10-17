@@ -7,6 +7,7 @@ import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/history_dao.dart' show HistorySource;
+import '../../core/database/daos/link_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/record_signing.dart';
@@ -243,7 +244,11 @@ class CsvImporter extends _$CsvImporter {
     final groupsDao = ref.read(groupsDaoProvider);
     final membersDao = ref.read(membersDaoProvider);
     final expensesDao = ref.read(expensesDaoProvider);
-    final signer = LocalRecordSigner(ref.read(ledgerTransportProvider.future));
+    // G52: a link-only group's rows are stored unsigned (not pendingSign).
+    final signer = LocalRecordSigner(
+      ref.read(ledgerTransportProvider.future),
+      policy: LinkDao(db).policyOf,
+    );
     final now = DateTime.now().millisecondsSinceEpoch;
     return db.transaction(
       () => _write(

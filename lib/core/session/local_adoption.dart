@@ -17,6 +17,18 @@
 ///    mode didn't write (a legacy row restored from a backup file — which
 ///    anyone can craft) stays unsigned legacy and is never signed here.
 ///
+/// G52: a **link group** (this device has its link channel) keeps being one:
+/// its `link_channels` / `link_peers` rows are copied too (an existing
+/// channel of the account DB for the same group wins), and a **link-only**
+/// group is neither re-claimed nor signed — its rows stay unsigned for good
+/// (§6.3; rows local mode left `pendingSign` become plain unsigned link
+/// versions), "me" stays the channel's `my_participant_id`. Should its own
+/// participant still carry the `local:self` claim, it is rewritten without
+/// it (§6.1, a new LWW version) and becomes `my_participant_id` — so the
+/// account DB never holds a `local:self` claim for a link group. (G53 adds
+/// the signed self-claim of the account; until then the group stays
+/// link-only, unclaimed.)
+///
 /// Afterwards the local DB is wiped and (G41) its files deleted — local mode
 /// would start empty again — and the device preferences say where the data
 /// went. A backup made in local mode gets the same treatment when it is
@@ -31,14 +43,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/expenses_provider.dart';
+import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../database/app_database.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
+import '../database/daos/link_dao.dart';
 import '../database/daos/members_dao.dart';
 import '../database/daos/settings_dao.dart';
 import '../matrix/auth_gateway.dart';
 import '../matrix/record_crypto.dart';
+import '../link/group_policy.dart';
 import '../matrix/transport_provider.dart';
 import '../sync/pending_signer.dart';
 import '../sync/sync_engine.dart';
@@ -99,25 +114,60 @@ Future<LocalAdoptionResult> adoptLocalLedger({
   final groups = await from.groups.getAllGroups();
   final archives = await from.settings.watchArchivedGroups().first;
   final keys = await local.select(local.knownDeviceKeys).get();
+  // G52: this device's link channels (and their peers) move along.
+  final channels = {
+    for (final c in await LinkDao(local).getAllChannels()) c.groupId: c,
+  };
+  final peers = await local.select(local.linkPeers).get();
   if (!alive()) return LocalAdoptionResult.nothing;
+  final toLink = LinkDao(target);
 
   await target.transaction(() async {
     for (final g in groups) {
-      await to.groups.upsertGroupLww(groupCompanion(g));
+      var channel = channels[g.roomId];
+      final linkOnly =
+          deriveGroupPolicy(channel: channel, meta: g) == GroupPolicy.linkOnly;
+      await to.groups.upsertGroupLww(
+        groupCompanion(linkOnly ? linkAdopted(g) : g),
+      );
       for (final m in await from.members.getMembers(g.roomId)) {
-        await to.members.upsertMemberLww(
-          memberCompanion(adoptedMember(m, mxid)),
-        );
+        final adopted = linkOnly
+            ? linkAdoptedMember(m)
+            : adoptedMember(m, mxid);
+        if (linkOnly && isLocalAccountId(m.matrixId)) {
+          channel = channel!.myParticipantId == null
+              ? channel.withMyParticipant(m.userId)
+              : channel;
+        }
+        await to.members.upsertMemberLww(memberCompanion(adopted));
       }
       for (final e in await from.expenses.getAllExpensesForGroup(g.roomId)) {
-        await to.expenses.upsertExpenseLww(expenseCompanion(e));
+        await to.expenses.upsertExpenseLww(
+          expenseCompanion(
+            linkOnly && e.pendingSign ? e.asLinkVersion(e.linkAuthor) : e,
+          ),
+        );
       }
       for (final s in await from.expenses.getAllSettlementsForGroup(g.roomId)) {
-        await to.expenses.upsertSettlementLww(settlementCompanion(s));
+        await to.expenses.upsertSettlementLww(
+          settlementCompanion(
+            linkOnly && s.pendingSign ? s.asLinkVersion(s.linkAuthor) : s,
+          ),
+        );
+      }
+      if (channel != null && await toLink.getChannel(g.roomId) == null) {
+        await toLink.putChannel(channel);
       }
       final archive = archives[g.roomId];
       if (archive != null) await to.settings.archiveGroup(g.roomId, archive);
     }
+    // G52: the peers seen on the copied channels (device-local bookkeeping).
+    await target.batch(
+      (b) => b.insertAll(target.linkPeers, [
+        for (final p in peers)
+          if (channels.containsKey(p.groupId)) p,
+      ], mode: InsertMode.insertOrIgnore),
+    );
     // Device keys vouched for by backups restored in local mode.
     await target.batch(
       (b) => b.insertAll(
@@ -211,6 +261,10 @@ Future<bool> reclaimGroupInPlace({
   bool onlySignedClaims = false,
 }) async {
   var reclaimed = false;
+  // G52: a link-only group is never re-claimed nor marked for signing.
+  if (await LinkDao(groups.attachedDatabase).isLinkOnly(groupId)) {
+    return reclaimed;
+  }
   final all = await members.getMembers(groupId);
   final mine = claimedBy(all, to);
   final mayReclaim = mine == null || !mine.isActive;
@@ -246,6 +300,8 @@ Future<void> markUnsignedPending({
   required ExpensesDao expenses,
   required String groupId,
 }) async {
+  // G52: link-only versions are never signed (§6.3).
+  if (await LinkDao(groups.attachedDatabase).isLinkOnly(groupId)) return;
   for (final m in await members.getMembers(groupId)) {
     if (m.sig == null && !m.pendingSign) {
       await members.upsertMemberLww(
@@ -275,6 +331,33 @@ Future<void> markUnsignedPending({
       );
     }
   }
+}
+
+/// G52: a link-only group's meta as adopted — unchanged, except that a
+/// version local mode left `pendingSign` becomes a plain unsigned link
+/// version (never signed, §6.3).
+@visibleForTesting
+GroupModel linkAdopted(GroupModel g) =>
+    g.pendingSign ? g.asLinkVersion(g.linkAuthor) : g;
+
+/// G52: [m] of a link-only group as adopted — never re-claimed by the
+/// account (§6.1: member records of a link group carry no `matrix_id`). A
+/// leftover `local:self` claim is dropped (new LWW version, unsigned, the
+/// participant itself as `by`); a `pendingSign` version becomes a plain
+/// unsigned link version.
+@visibleForTesting
+MemberModel linkAdoptedMember(MemberModel m) {
+  if (isLocalAccountId(m.matrixId)) {
+    return MemberModel(
+      groupId: m.groupId,
+      userId: m.userId,
+      displayName: m.displayName,
+      status: m.status,
+      updatedAt: nextLwwClock(m.updatedAt),
+      linkAuthor: m.userId,
+    );
+  }
+  return m.pendingSign ? m.asLinkVersion(m.linkAuthor) : m;
 }
 
 /// [m] as adopted into [mxid]'s account: the participant claimed by local

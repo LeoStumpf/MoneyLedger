@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
+import '../../core/database/daos/link_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
@@ -49,12 +50,28 @@ String currentUserId(Ref ref) =>
 ///
 /// Re-evaluated whenever the group's members change (G26), so e.g. being
 /// removed by another member is reflected live (read-only group, banner).
+///
+/// G52 (§6.1): with no participant claimed by this account (MXID or
+/// `local:self`), a **link group**'s "me" is this device's
+/// `link_channels.my_participant_id` — when that participant is active.
+/// (Read once per members change; the join flow sets it together with the
+/// participant.)
 @riverpod
-Future<MemberModel?> currentParticipant(Ref ref, String groupId) {
+Future<MemberModel?> currentParticipant(Ref ref, String groupId) async {
   final myId = ref.watch(currentUserIdProvider);
-  if (myId.isEmpty) return Future.value(null);
   ref.watch(groupMembersProvider(groupId));
-  return ref.watch(membersDaoProvider).memberByMatrixId(groupId, myId);
+  final members = ref.watch(membersDaoProvider);
+  final link = ref.watch(linkDaoProvider);
+  if (myId.isNotEmpty) {
+    final claimed = await members.memberByMatrixId(groupId, myId);
+    if (claimed != null) return claimed;
+  }
+  final mine = (await link.getChannel(groupId))?.myParticipantId;
+  if (mine == null) return null;
+  for (final m in await members.getMembers(groupId)) {
+    if (m.userId == mine && m.isActive) return m;
+  }
+  return null;
 }
 
 /// participant id → display label for [groupId]. Falls back to the Matrix
@@ -91,11 +108,26 @@ class _GroupWriteContext {
     // Not every mutation awaits the transport (e.g. a solo-group delete);
     // don't let an unused transport failure surface as an unhandled error.
     transport.ignore();
-    signer = LocalRecordSigner(transport);
+    link = LinkDao(db);
+    signer = LocalRecordSigner(transport, policy: link.policyOf);
   }
 
-  /// G6: signs every version a mutation writes with this device's key.
+  /// G6: signs every version a mutation writes with this device's key —
+  /// G52: in a link-only group it is stored unsigned instead (not
+  /// `pendingSign`, `by` = this device's link participant); the relays
+  /// below skip unsigned versions, so nothing reaches Matrix.
   late final LocalRecordSigner signer;
+
+  /// G52: this ledger DB's link channels (group policy).
+  late final LinkDao link;
+
+  /// G52: Matrix-ID claims / Matrix bootstraps don't exist in a link-only
+  /// group (§6.1: its member records carry no `matrix_id`; peers refuse
+  /// claims there) — every Matrix membership mutation calls this first.
+  Future<void> requireMatrixGroup(String groupId) async {
+    if (await link.isLinkOnly(groupId)) throw const LinkOnlyGroupException();
+  }
+
   final SigningDao signing;
 
   /// G14: max JSON bytes per to-device message (bootstraps are chunked).
@@ -104,6 +136,7 @@ class _GroupWriteContext {
   /// Sends the whole group to [to] as one or more self-contained bootstrap
   /// parts (G14, [buildBootstrapParts]).
   Future<void> sendBootstrap(String to, String groupId) async {
+    if (await link.isLinkOnly(groupId)) return; // G52: never over Matrix
     final parts = await buildBootstrap(groupId);
     final t = await transport;
     for (final part in parts) {
@@ -193,6 +226,15 @@ class _GroupWriteContext {
   }
 }
 
+/// G52: a Matrix membership change (add / invite / claim a Matrix ID) was
+/// attempted in a link-only group — nothing was written.
+class LinkOnlyGroupException implements Exception {
+  const LinkOnlyGroupException();
+
+  @override
+  String toString() => 'LinkOnlyGroupException';
+}
+
 /// Runs [body] with a freshly captured [_GroupWriteContext]: loading → result,
 /// where the final state is only set while the notifier is still mounted.
 Future<void> _runGroupWrite(
@@ -275,6 +317,7 @@ class MemberAdder extends _$MemberAdder {
     String userId, {
     String? displayName,
   }) async {
+    await w.requireMatrixGroup(groupId);
     // G26: if this account already claims a participant here (e.g. it left
     // after claiming a placeholder, or was removed), **reactivate** that
     // participant — same id + name, so history stays attributed — instead of
@@ -393,6 +436,7 @@ class MemberAdder extends _$MemberAdder {
     String participantId,
     String matrixId,
   ) async {
+    await w.requireMatrixGroup(groupId);
     final current = _find(await w.members.getMembers(groupId), participantId);
     if (current == null) return;
     final updated = await w.saveMember(_copyWith(current, matrixId: matrixId));

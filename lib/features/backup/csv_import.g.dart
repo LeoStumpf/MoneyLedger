@@ -108,7 +108,7 @@ final class CsvImporterProvider
   CsvImporter create() => CsvImporter();
 }
 
-String _$csvImporterHash() => r'440c0ccadba860dfa32c9a17c50a6c7568cf3c9b';
+String _$csvImporterHash() => r'e6bbb04b5aa564c93ba310ae3f2a9153203cfc6c';
 
 /// Imports a per-group CSV produced by [buildGroupCsv] back into the local DB.
 ///

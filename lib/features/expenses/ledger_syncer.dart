@@ -10,6 +10,7 @@ import '../../core/session/app_session.dart' show isLocalAccountId;
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/history_dao.dart' show HistorySource;
+import '../../core/database/daos/link_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
@@ -70,6 +71,9 @@ class LedgerSyncer {
   final SyncStatesDao _syncStates;
   final SigningDao _signing;
 
+  /// G52: link-only groups are never touched from the Matrix path.
+  final LinkDao _link;
+
   /// G6: verifies every inbound version before it is stored (built in
   /// [start] from the transport's crypto + device directory).
   RecordGate? _gate;
@@ -92,6 +96,7 @@ class LedgerSyncer {
       _settings = SettingsDao(ref.read(appDatabaseProvider)),
       _syncStates = ref.read(syncStatesDaoProvider),
       _signing = ref.read(signingDaoProvider),
+      _link = LinkDao(ref.read(appDatabaseProvider)),
       _health = ref.read(syncHealthProvider.notifier);
 
   /// G35: where refused unsigned (pre-G6) records are surfaced.
@@ -185,6 +190,13 @@ class LedgerSyncer {
     if (group == null) return;
 
     try {
+      // G52 (§6.4): a link-only group has no Matrix side — whatever arrives
+      // for it over to-device is dropped (Matrix sends never target it).
+      if (await _link.isLinkOnly(group)) {
+        debugPrint('[ledger] dropped ${msg.type} for link-only group $group');
+        return;
+      }
+      if (!_alive) return;
       // Inbound to-device messages are E2EE, so `msg.senderId` is authenticated;
       // the only missing trust check is that the sender belongs to the group
       // they are writing to. Fetch the group's current members + existence and

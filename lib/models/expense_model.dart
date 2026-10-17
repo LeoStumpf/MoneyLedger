@@ -45,6 +45,12 @@ class ExpenseModel {
   /// (`expenseVersionHash`). Never on the wire.
   final String? versionHash;
 
+  /// G52: display-only "changed by" hint of a version written in a link
+  /// group (`by` on the wire: the writer's participant id) — **unsigned and
+  /// unhashed**, never part of the signed body or the G27 hash
+  /// (`docs/design/no-login-sharing.md` §6.3). Null = none.
+  final String? linkAuthor;
+
   const ExpenseModel({
     required this.id,
     required this.roomId,
@@ -64,6 +70,7 @@ class ExpenseModel {
     this.origin,
     this.pendingSign = false,
     this.versionHash,
+    this.linkAuthor,
   }) : category = category == '' ? null : category,
        note = note == '' ? null : note,
        date = date == '' ? null : date;
@@ -92,6 +99,29 @@ class ExpenseModel {
     origin: origin,
     pendingSign: pendingSign,
     versionHash: versionHash,
+    linkAuthor: linkAuthor,
+  );
+
+  /// G52: this version as written in a link-only group — unsigned, **not**
+  /// `pendingSign` (never signed later), no `origin` (attribution never
+  /// lies), [author] as the display-only `by` hint. Content unchanged.
+  ExpenseModel asLinkVersion(String? author) => ExpenseModel(
+    id: id,
+    roomId: roomId,
+    matrixEventId: matrixEventId,
+    description: description,
+    amountCents: amountCents,
+    currency: currency,
+    paidBy: paidBy,
+    splitsJson: splitsJson,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    deleted: deleted,
+    category: category,
+    note: note,
+    date: date,
+    versionHash: versionHash,
+    linkAuthor: author,
   );
 }
 
@@ -120,6 +150,9 @@ class SettlementModel {
   /// G37 — see [ExpenseModel.versionHash].
   final String? versionHash;
 
+  /// G52 — see [ExpenseModel.linkAuthor].
+  final String? linkAuthor;
+
   const SettlementModel({
     required this.id,
     required this.roomId,
@@ -136,6 +169,7 @@ class SettlementModel {
     this.origin,
     this.pendingSign = false,
     this.versionHash,
+    this.linkAuthor,
   }) : date = date == '' ? null : date;
 
   /// A copy with the G6 signing fields replaced (content unchanged).
@@ -159,5 +193,23 @@ class SettlementModel {
     origin: origin,
     pendingSign: pendingSign,
     versionHash: versionHash,
+    linkAuthor: linkAuthor,
+  );
+
+  /// G52 — see [ExpenseModel.asLinkVersion].
+  SettlementModel asLinkVersion(String? author) => SettlementModel(
+    id: id,
+    roomId: roomId,
+    matrixEventId: matrixEventId,
+    amountCents: amountCents,
+    currency: currency,
+    fromUser: fromUser,
+    toUser: toUser,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    deleted: deleted,
+    date: date,
+    versionHash: versionHash,
+    linkAuthor: author,
   );
 }

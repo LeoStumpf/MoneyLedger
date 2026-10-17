@@ -213,6 +213,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     origin: RecordSignature.decode(e.origin),
     pendingSign: e.pendingSign,
     versionHash: e.versionHash,
+    linkAuthor: e.linkAuthor,
   );
 
   static SettlementModel _toSettlementModel(Settlement s) => SettlementModel(
@@ -231,6 +232,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     origin: RecordSignature.decode(s.origin),
     pendingSign: s.pendingSign,
     versionHash: s.versionHash,
+    linkAuthor: s.linkAuthor,
   );
 }
 
@@ -252,6 +254,9 @@ ExpensesCompanion expenseCompanion(ExpenseModel e) => ExpensesCompanion(
   sig: Value(e.sig?.encode()),
   origin: Value(e.origin?.encode()),
   pendingSign: Value(e.pendingSign),
+  // G52: always set (also to null) — an absent value would keep the
+  // previous version's hint on update.
+  linkAuthor: Value(e.linkAuthor),
 );
 
 /// A fully-populated companion for an LWW upsert of [s] (G6 fields included).
@@ -270,6 +275,7 @@ SettlementsCompanion settlementCompanion(SettlementModel s) =>
       sig: Value(s.sig?.encode()),
       origin: Value(s.origin?.encode()),
       pendingSign: Value(s.pendingSign),
+      linkAuthor: Value(s.linkAuthor), // G52: always set (see above)
     );
 
 T _v<T>(Value<T> v, T fallback) => v.present ? v.value : fallback;

@@ -1,5 +1,6 @@
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
+import '../database/daos/link_dao.dart';
 import '../database/daos/members_dao.dart';
 import '../matrix/record_crypto.dart';
 import 'record_signing.dart';
@@ -14,6 +15,11 @@ import 'record_signing.dart';
 /// whenever it has none: local-mode records were never signed at all, so
 /// their adopting account's device signs their creation too.
 ///
+/// G52: a **link-only** group is skipped — its versions stay unsigned for
+/// good (§6.3: link-written versions are never re-signed; a row local mode
+/// left `pendingSign` before the group got its link channel included). The
+/// policy comes from the DB behind [groups] (`LinkDao.policyOf`).
+///
 /// Stops quietly once [isAlive] turns false (account switch, G19). Returns
 /// the number of rows signed.
 Future<int> signPendingRows({
@@ -26,6 +32,10 @@ Future<int> signPendingRows({
   bool originIfMissing = false,
 }) async {
   var signed = 0;
+  if (await LinkDao(groups.attachedDatabase).isLinkOnly(groupId)) {
+    return signed;
+  }
+  if (!isAlive()) return signed;
   final group = await groups.getGroup(groupId);
   if (!isAlive()) return signed;
   if (group != null && group.pendingSign) {

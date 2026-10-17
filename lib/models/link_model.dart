@@ -48,6 +48,20 @@ class LinkChannelModel {
     this.parts = 1,
   });
 
+  /// A copy with [myParticipantId] replaced.
+  LinkChannelModel withMyParticipant(String? participantId) => LinkChannelModel(
+    groupId: groupId,
+    epoch: epoch,
+    secret: secret,
+    nostrPriv: nostrPriv,
+    openedAt: openedAt,
+    myParticipantId: participantId,
+    lastPublishedHash: lastPublishedHash,
+    lastPublishedAt: lastPublishedAt,
+    lastCreatedAt: lastCreatedAt,
+    parts: parts,
+  );
+
   @override
   String toString() =>
       'LinkChannelModel(group: $groupId, epoch: $epoch, '

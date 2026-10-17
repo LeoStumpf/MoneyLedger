@@ -289,6 +289,7 @@ Keeping "me" device-local avoids all of that. The `me` field in each event heade
 
 - **Local mode in a link group:** versions are stored **unsigned and not `pending_sign`** (new flag `link_unsigned`, or simply `sig = null` + group policy). G40 adoption and `signPendingRows` skip link groups, so link-written versions are never re-signed (Leo).
 - **A Matrix device** (signed in) **signs every version it writes, in every group.** In a link group that gives correct "added by" for mixed groups later. Link peers can't verify it, which is fine: they show "via link".
+  - *G52 step 4:* until G53 this holds for `matrix` and `mixed` groups only. In a **`linkOnly`** group a signed-in device writes unsigned like local mode (`LocalRecordSigner` with the group policy): a signed meta would turn the group `mixed` (§6.4), and a signed version's signer claims no participant there, so link peers would drop it (rule 5). G53's signed self-claim lifts this.
 - **Author hint.** Every version written in a link group carries an optional, **unsigned, unhashed** `by: <participant id>` = the writer's `my_participant_id`. It is stored in a new nullable `link_author` column and is display-only: "Changed by Ben (via link, not verified)". It is excluded from the G27 content hash, so it never splits versions (§14 Q8).
 
 ### 6.4 Gate rules per group
@@ -321,6 +322,14 @@ The group policy is derived from the stored **meta**:
 - signed versions → as today.
 
 **`SyncEngine` / `LedgerSyncer`:** skip `linkOnly` groups entirely (no digests, no bootstraps, no resync answers). `activeClaimedMatrixIds` is empty there anyway.
+
+**As built (G52 step 4, `lib/core/link/group_policy.dart`, `LinkDao.policyOf`, `RecordGate(linkPolicy:)`):**
+- The policy needs **this device's `link_channels` row** — no channel → `matrix`, whatever the meta says (legacy unsigned Matrix groups and local-mode groups stay `matrix`). Channel + unsigned / not-yet-stored meta → `linkOnly`; channel + signed meta → `mixed` (until G53 adds the meta `link` field). The channel is device-local and only created by the user's own open / join, so **inbound data can never downgrade a Matrix group**. The join flow (step 7) therefore stores the channel before the first merge, and must refuse a link whose group id this device already holds as a non-link group.
+- Unsigned versions are accepted only by a gate built for the link path; the Matrix path keeps G6 (also for `mixed` until G53).
+- A link-path **unsigned meta** is accepted only in `linkOnly` — never over the signed meta of a `mixed` group (that would turn it `linkOnly`). An **unsigned** Matrix-ID claim is refused in `mixed` too.
+- `by` is kept only for link-path (and restored) versions; the Matrix path drops it.
+- Local writes in `linkOnly` groups are stored unsigned, not `pending_sign`, without `origin`, `by` = `my_participant_id`; Matrix claims / invites there throw `LinkOnlyGroupException`.
+- G40 adoption copies `link_channels` / `link_peers` with the group (an existing channel of the account DB wins); a `linkOnly` group is neither re-claimed nor signed, and a leftover `local:self` claim is rewritten without it and becomes `my_participant_id`.
 
 ## 7. Data model, backups, deletion
 

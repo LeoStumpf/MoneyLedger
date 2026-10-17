@@ -637,12 +637,12 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 1. Pure codec + crypto (`lib/core/link/`): link URI, HKDF (`kLinkSaltV1`), envelope (gzip + AES-GCM, AAD), sharding plan (`kLinkContentBudget` 60 000)
 - [x] 2. Mini Nostr client (event id / BIP-340 — verify native only, Leo 2026-10-17; frames, `RelayConnection` + WebSocket adapter, `NostrRelayPool`, `replaced:` handling) + `test/helpers/fake_relay_network.dart`
 - [x] 3. Schema v15 (`link_channels`, `link_peers`, `link_author`) + `LinkDao` + migration test
-- [ ] 4. Policy: `GroupPolicy`, `RecordGate` link path, engines skip link-only groups; local adoption (`adoptLocalLedger`) must keep / skip link groups (it doesn't copy `link_channels` / `link_peers` yet)
+- [x] 4. Policy: `GroupPolicy`, `RecordGate` link path, engines skip link-only groups; local adoption (`adoptLocalLedger`) must keep / skip link groups (it doesn't copy `link_channels` / `link_peers` yet)
 - [ ] 5. `LinkSyncEngine` (**gate: retention check 2026-10-20 must pass**)
       — wire `link_author` into models / companions / payloads (a companion without it keeps the old value — set it explicitly, also null)
       — also: per-relay backoff/block policy after `rate-limited:` / `blocked:`, publish debounce, monotonic `created_at`, NIP-09 delete, NIP-11 (left out of step 2)
 - [ ] 6. Invite UI (sheet, QR, share, disclosure)
-- [ ] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`)
+- [ ] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`) — store the channel **before** the first merge; refuse a link whose group id this device holds as a non-link group; invalidate `currentParticipant` after setting "me"
 - [ ] 8. Background round link phase
 - [ ] 9. Settings: relay list + status, peers sheet
 - [ ] 10. Leave / delete unpublish; backup carries the secret (+ warning)
@@ -651,6 +651,9 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] 13. Device pass (Pixel + emulator + web)
 
 ### G53. Mixed groups + "lock group" 🟡
+- [ ] Review (from G52 step 4): any link holder with a Matrix device can push a
+      *signed* meta → group turns `mixed` → unsigned metas (renames by link-only
+      members) are refused from then on; decide in G53 (meta `link` field)
 - [ ] A Matrix group can open a link channel ("Invite by link"); Matrix
       devices bridge (publish + read the relay snapshot); link versions are
       unsigned and shown "via link, not verified" (per-group `RecordGate`

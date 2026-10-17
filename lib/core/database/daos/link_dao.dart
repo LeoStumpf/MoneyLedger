@@ -4,7 +4,9 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart';
 
 import '../../../models/link_model.dart';
+import '../../link/group_policy.dart';
 import '../app_database.dart';
+import 'groups_dao.dart';
 
 part 'link_dao.g.dart';
 
@@ -15,6 +17,25 @@ part 'link_dao.g.dart';
 @DriftAccessor(tables: [LinkChannels, LinkPeers])
 class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
   LinkDao(super.db);
+
+  // --- policy ---------------------------------------------------------------
+
+  /// G52 step 4: [groupId]'s [GroupPolicy] (+ who this device is in it),
+  /// derived from this device's channel and the **stored** meta only
+  /// ([deriveGroupPolicy] — never from inbound data, see `group_policy.dart`).
+  Future<GroupPolicyInfo> policyOf(String groupId) async {
+    final channel = await getChannel(groupId);
+    if (channel == null) return GroupPolicyInfo.matrix;
+    final meta = await GroupsDao(attachedDatabase).getGroup(groupId);
+    return GroupPolicyInfo(
+      deriveGroupPolicy(channel: channel, meta: meta),
+      myParticipantId: channel.myParticipantId,
+    );
+  }
+
+  /// Whether [groupId] is link-only here (the Matrix engines skip it).
+  Future<bool> isLinkOnly(String groupId) async =>
+      (await policyOf(groupId)).isLinkOnly;
 
   // --- channels -------------------------------------------------------------
 

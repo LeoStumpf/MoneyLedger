@@ -40,6 +40,8 @@ Map<String, dynamic> expensePayload(ExpenseModel e) => {
   if (e.date != null) 'date': e.date,
   if (e.origin != null) 'origin': e.origin!.toJson(),
   if (e.sig != null) 'sig': e.sig!.toJson(),
+  // G52: the unsigned, unhashed author hint of a link-group version.
+  if (e.linkAuthor != null) 'by': e.linkAuthor,
 };
 
 Map<String, dynamic> settlementPayload(SettlementModel s) => {
@@ -57,6 +59,8 @@ Map<String, dynamic> settlementPayload(SettlementModel s) => {
   if (s.date != null) 'date': s.date,
   if (s.origin != null) 'origin': s.origin!.toJson(),
   if (s.sig != null) 'sig': s.sig!.toJson(),
+  // G52: the unsigned, unhashed author hint of a link-group version.
+  if (s.linkAuthor != null) 'by': s.linkAuthor,
 };
 
 Map<String, dynamic> groupMetaPayload(GroupModel g) => {
@@ -69,6 +73,8 @@ Map<String, dynamic> groupMetaPayload(GroupModel g) => {
   if (g.categories.isNotEmpty)
     'categories': [for (final c in g.categories) c.toJson()],
   if (g.sig != null) 'sig': g.sig!.toJson(),
+  // G52: the unsigned, unhashed author hint of a link-group version.
+  if (g.linkAuthor != null) 'by': g.linkAuthor,
 };
 
 /// Member/participant wire format. `participant_id` is the stable per-group id
@@ -84,6 +90,8 @@ Map<String, dynamic> memberPayload(MemberModel m) => {
   'status': m.status,
   'updated_at': m.updatedAt,
   if (m.sig != null) 'sig': m.sig!.toJson(),
+  // G52: the unsigned, unhashed author hint of a link-group version.
+  if (m.linkAuthor != null) 'by': m.linkAuthor,
 };
 
 /// Full group snapshot ("send my friend the database"): group meta, all
@@ -273,10 +281,25 @@ ExpenseModel? expenseFromPayload(Map<String, dynamic> c) {
     date: _optString(c['date']),
     sig: RecordSignature.fromJson(c['sig']),
     origin: RecordSignature.fromJson(c['origin']),
+    linkAuthor: linkAuthorFromPayload(c),
   );
 }
 
 String? _optString(Object? v) => v is String && v.isNotEmpty ? v : null;
+
+/// G52: the longest `by` hint kept (a participant id is a UUID or an MXID).
+const kMaxLinkAuthorLength = 255;
+
+/// G52: the optional `by` author hint of [c] (§6.3) — display-only, never
+/// signed or hashed; anything but a non-empty string up to
+/// [kMaxLinkAuthorLength] chars reads as none. The `RecordGate` keeps it
+/// only for versions it accepts via the link path (or a restore).
+String? linkAuthorFromPayload(Map<String, dynamic> c) {
+  final by = c['by'];
+  return by is String && by.isNotEmpty && by.length <= kMaxLinkAuthorLength
+      ? by
+      : null;
+}
 
 /// The settlement in [c], or null without `id` / `group`.
 SettlementModel? settlementFromPayload(Map<String, dynamic> c) {
@@ -298,6 +321,7 @@ SettlementModel? settlementFromPayload(Map<String, dynamic> c) {
     date: _optString(c['date']),
     sig: RecordSignature.fromJson(c['sig']),
     origin: RecordSignature.fromJson(c['origin']),
+    linkAuthor: linkAuthorFromPayload(c),
   );
 }
 
@@ -315,6 +339,7 @@ MemberModel? memberFromPayload(Map<String, dynamic> c) {
     status: c['status'] as String? ?? 'active',
     updatedAt: c['updated_at'] as int? ?? 0,
     sig: RecordSignature.fromJson(c['sig']),
+    linkAuthor: linkAuthorFromPayload(c),
   );
 }
 
@@ -330,5 +355,6 @@ GroupModel? groupMetaFromPayload(Map<String, dynamic> c) {
     // G47 (optional; malformed → an invalid entry, refused by the gate).
     categories: parseCustomCategories(c['categories']),
     sig: RecordSignature.fromJson(c['sig']),
+    linkAuthor: linkAuthorFromPayload(c),
   );
 }

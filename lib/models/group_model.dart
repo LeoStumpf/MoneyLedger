@@ -17,6 +17,10 @@ class GroupModel {
   /// G6: written while the signer wasn't ready; signed before it is sent.
   final bool pendingSign;
 
+  /// G52: display-only, unsigned, unhashed "changed by" hint of a meta
+  /// version written in a link group (see `ExpenseModel.linkAuthor`).
+  final String? linkAuthor;
+
   const GroupModel({
     required this.roomId,
     required this.name,
@@ -25,6 +29,7 @@ class GroupModel {
     this.categories = const [],
     this.sig,
     this.pendingSign = false,
+    this.linkAuthor,
   });
 
   /// A copy with the G6 signing fields replaced (content unchanged).
@@ -37,7 +42,19 @@ class GroupModel {
         categories: categories,
         sig: sig,
         pendingSign: pendingSign,
+        linkAuthor: linkAuthor,
       );
+
+  /// G52: this version as written in a link-only group — unsigned, not
+  /// `pendingSign`, [author] as the `by` hint.
+  GroupModel asLinkVersion(String? author) => GroupModel(
+    roomId: roomId,
+    name: name,
+    currency: currency,
+    updatedAt: updatedAt,
+    categories: categories,
+    linkAuthor: author,
+  );
 
   /// The custom categories offered for new expenses (not hidden).
   List<CustomCategory> get visibleCategories => [

@@ -9,6 +9,7 @@ import '../../core/database/account_database.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
+import '../../core/database/daos/link_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
@@ -90,6 +91,12 @@ MembersDao membersDao(Ref ref) => MembersDao(ref.watch(appDatabaseProvider));
 @Riverpod(keepAlive: true)
 SigningDao signingDao(Ref ref) => SigningDao(ref.watch(appDatabaseProvider));
 
+/// G52: device-local link channels / peers of the current ledger DB (and
+/// the group policy derived from them, `LinkDao.policyOf`).
+final linkDaoProvider = Provider<LinkDao>(
+  (ref) => LinkDao(ref.watch(appDatabaseProvider)),
+);
+
 @Riverpod(keepAlive: true)
 SyncStatesDao syncStatesDao(Ref ref) =>
     SyncStatesDao(ref.watch(appDatabaseProvider));
@@ -123,10 +130,13 @@ class LedgerWriteContext {
     // Only awaited when there are replication targets; don't let an unused
     // transport failure surface as an unhandled async error.
     transport.ignore();
-    signer = LocalRecordSigner(transport);
+    signer = LocalRecordSigner(transport, policy: LinkDao(db).policyOf);
   }
 
-  /// G6: signs every version this write produces with this device's key.
+  /// G6: signs every version this write produces with this device's key —
+  /// G52: except in a link-only group, where it is stored unsigned (not
+  /// `pendingSign`) with the `by` hint; [replicate] then sends nothing
+  /// (no `sig`), so no Matrix relay ever carries a link-only group.
   late final LocalRecordSigner signer;
 
   final AppDatabase db;

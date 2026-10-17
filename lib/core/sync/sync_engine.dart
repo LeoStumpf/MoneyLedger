@@ -14,6 +14,7 @@ import '../session/device_prefs.dart' show devicePrefsProvider;
 import 'pending_signer.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
+import '../database/daos/link_dao.dart';
 import '../database/daos/members_dao.dart';
 import '../database/daos/settings_dao.dart';
 import '../database/daos/signing_dao.dart';
@@ -139,6 +140,12 @@ final syncEngineProvider = Provider.autoDispose<SyncEngine>((ref) {
 ///    same buckets, so the replier learns what it lacks too; `final` is never
 ///    answered. A reply to a bucketed digest is always bucketed; a reply to a
 ///    flat one is flat when it fits. Rule 4 needs no unresolved bucket.
+/// 10. (G52) A **link-only** group (`group_policy.dart`: this device's link
+///    channel + an unsigned meta) has no Matrix side: no digests, bootstraps
+///    or resync answers for it, no pending-row signing; inbound digests /
+///    resync requests naming it are ignored (also while joining it — a
+///    channel without meta yet). A Matrix group can't become link-only by
+///    inbound data — the channel is device-local, created by the user.
 ///
 /// G27: records compare by `(updated_at, content hash)` — digest entries are
 /// `"<updated_at>:<hash8>"` (plus `meta_hash`; members are hashed from their
@@ -158,6 +165,10 @@ class SyncEngine {
   final SyncStatesDao _syncStates;
   final SettingsDao _settings;
   final SigningDao _signing;
+
+  /// G52 (§6.4): link-only groups are skipped entirely — no digests,
+  /// bootstraps, resync answers, signing of pending rows.
+  final LinkDao _link;
 
   /// G14: max JSON bytes per to-device message (captured, like the DAOs).
   final int _budget;
@@ -184,6 +195,7 @@ class SyncEngine {
       _syncStates = ref.read(syncStatesDaoProvider),
       _settings = SettingsDao(ref.read(appDatabaseProvider)),
       _signing = ref.read(signingDaoProvider),
+      _link = LinkDao(ref.read(appDatabaseProvider)),
       _budget = ref.read(payloadBudgetProvider);
 
   /// Whether async work may continue. Checked after **every** await: the
@@ -263,7 +275,7 @@ class SyncEngine {
       // New or reinstalled device (empty local DB): ask our own other devices
       // for everything. Groups shared by peers are additionally recovered
       // organically — their digests name groups we don't know (rule 5).
-      final groups = await _groups.getAllGroups();
+      final groups = await _matrixGroups();
       if (!_alive) return;
       if (groups.isEmpty) {
         _startSelfRecovery();
@@ -299,7 +311,7 @@ class SyncEngine {
     if (transport == null || !_alive || !_selfRecoveryActive) return;
     try {
       if (attempt > 0) {
-        final groups = await _groups.getAllGroups();
+        final groups = await _matrixGroups();
         if (!_alive || !_selfRecoveryActive) return;
         if (groups.isNotEmpty) {
           _endSelfRecovery();
@@ -369,11 +381,22 @@ class SyncEngine {
     _pokes.clear();
   }
 
-  /// Sends a digest for every local group to its active members.
+  /// G52: the groups Matrix syncs — every group but the link-only ones.
+  Future<List<GroupModel>> _matrixGroups() async {
+    final out = <GroupModel>[];
+    for (final g in await _groups.getAllGroups()) {
+      if (!_alive) break;
+      if (!await _link.isLinkOnly(g.roomId)) out.add(g);
+    }
+    return out;
+  }
+
+  /// Sends a digest for every local group to its active members (G52: not
+  /// for link-only groups).
   Future<void> broadcastDigests() async {
     if (!_alive) return;
     try {
-      final groups = await _groups.getAllGroups();
+      final groups = await _matrixGroups();
       for (final g in groups) {
         if (!_alive) return;
         await _sendDigest(g.roomId);
@@ -562,6 +585,8 @@ class SyncEngine {
     final transport = _transport;
     if (transport == null || !_alive) return;
     try {
+      // G52: a link-only group has no Matrix side.
+      if (await _link.isLinkOnly(groupId) || !_alive) return;
       await _signPending(groupId);
       if (!_alive) return;
       final group = await _groups.getGroup(groupId);
@@ -634,6 +659,9 @@ class SyncEngine {
     final transport = _transport;
     if (transport == null) return;
     try {
+      // G52: never answer / repair / resync a link-only group over Matrix
+      // (also one this device is joining: channel, no meta yet).
+      if (await _link.isLinkOnly(groupId) || !_alive) return;
       final group = await _groups.getGroup(groupId);
       if (!_alive) return;
       if (group == null) {
@@ -853,7 +881,7 @@ class SyncEngine {
       } else if (scope == 'all') {
         // Full resync is for the user's own (new/reinstalled) devices only.
         if (msg.senderId != transport.userId) return;
-        final groups = await _groups.getAllGroups();
+        final groups = await _matrixGroups();
         for (final g in groups) {
           if (!_alive) return;
           await _sendBootstrap(transport, g.roomId, msg.senderId);
@@ -899,6 +927,8 @@ class SyncEngine {
     String groupId,
     String to,
   ) async {
+    // G52: a link-only group is never bootstrapped over Matrix.
+    if (await _link.isLinkOnly(groupId) || !_alive) return;
     await _signPending(groupId);
     if (!_alive) return;
     final group = await _groups.getGroup(groupId);

@@ -178,6 +178,12 @@ String _$currentUserIdHash() => r'76f65c8883f46092cc228dc1ff6c8a26b9366446';
 ///
 /// Re-evaluated whenever the group's members change (G26), so e.g. being
 /// removed by another member is reflected live (read-only group, banner).
+///
+/// G52 (§6.1): with no participant claimed by this account (MXID or
+/// `local:self`), a **link group**'s "me" is this device's
+/// `link_channels.my_participant_id` — when that participant is active.
+/// (Read once per members change; the join flow sets it together with the
+/// participant.)
 
 @ProviderFor(currentParticipant)
 final currentParticipantProvider = CurrentParticipantFamily._();
@@ -189,6 +195,12 @@ final currentParticipantProvider = CurrentParticipantFamily._();
 ///
 /// Re-evaluated whenever the group's members change (G26), so e.g. being
 /// removed by another member is reflected live (read-only group, banner).
+///
+/// G52 (§6.1): with no participant claimed by this account (MXID or
+/// `local:self`), a **link group**'s "me" is this device's
+/// `link_channels.my_participant_id` — when that participant is active.
+/// (Read once per members change; the join flow sets it together with the
+/// participant.)
 
 final class CurrentParticipantProvider
     extends
@@ -205,6 +217,12 @@ final class CurrentParticipantProvider
   ///
   /// Re-evaluated whenever the group's members change (G26), so e.g. being
   /// removed by another member is reflected live (read-only group, banner).
+  ///
+  /// G52 (§6.1): with no participant claimed by this account (MXID or
+  /// `local:self`), a **link group**'s "me" is this device's
+  /// `link_channels.my_participant_id` — when that participant is active.
+  /// (Read once per members change; the join flow sets it together with the
+  /// participant.)
   CurrentParticipantProvider._({
     required CurrentParticipantFamily super.from,
     required String super.argument,
@@ -250,7 +268,7 @@ final class CurrentParticipantProvider
 }
 
 String _$currentParticipantHash() =>
-    r'7f59b752741659707f6de3164ffefb781028c542';
+    r'844ec065e8f58506634f28d7bc7d0aa6efdaa0f2';
 
 /// The participant in [groupId] that this device's account has claimed, if any
 /// — i.e. "who am I in this group". Its `userId` is the participant id to use
@@ -259,6 +277,12 @@ String _$currentParticipantHash() =>
 ///
 /// Re-evaluated whenever the group's members change (G26), so e.g. being
 /// removed by another member is reflected live (read-only group, banner).
+///
+/// G52 (§6.1): with no participant claimed by this account (MXID or
+/// `local:self`), a **link group**'s "me" is this device's
+/// `link_channels.my_participant_id` — when that participant is active.
+/// (Read once per members change; the join flow sets it together with the
+/// participant.)
 
 final class CurrentParticipantFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<MemberModel?>, String> {
@@ -278,6 +302,12 @@ final class CurrentParticipantFamily extends $Family
   ///
   /// Re-evaluated whenever the group's members change (G26), so e.g. being
   /// removed by another member is reflected live (read-only group, banner).
+  ///
+  /// G52 (§6.1): with no participant claimed by this account (MXID or
+  /// `local:self`), a **link group**'s "me" is this device's
+  /// `link_channels.my_participant_id` — when that participant is active.
+  /// (Read once per members change; the join flow sets it together with the
+  /// participant.)
 
   CurrentParticipantProvider call(String groupId) =>
       CurrentParticipantProvider._(argument: groupId, from: this);
@@ -477,7 +507,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'84f96f18bb15a94b8c3b2ed130ff7ad9d40e15b4';
+String _$memberAdderHash() => r'76be8fea705ebbc2abb8c50c1cd383f19dab7c5f';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

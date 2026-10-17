@@ -125,6 +125,7 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
     updatedAt: m.updatedAt,
     sig: RecordSignature.decode(m.sig),
     pendingSign: m.pendingSign,
+    linkAuthor: m.linkAuthor,
   );
 }
 
@@ -139,4 +140,7 @@ MembersCompanion memberCompanion(MemberModel m) => MembersCompanion(
   updatedAt: Value(m.updatedAt),
   sig: Value(m.sig?.encode()),
   pendingSign: Value(m.pendingSign),
+  // G52: always set (also to null) — an absent value would keep the
+  // previous version's hint on update.
+  linkAuthor: Value(m.linkAuthor),
 );

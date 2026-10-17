@@ -553,6 +553,28 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
   Tests: `test/features/local_backup_restore_test.dart`,
   `test/integration/security_review2_test.dart` (crafted backups, Major 1).
 
+### Link-group policy (G52 step 4)
+
+`GroupPolicy` (`lib/core/link/group_policy.dart`, `LinkDao.policyOf`) =
+`matrix` without a device-local `link_channels` row (always, whatever the
+meta), else `linkOnly` (unsigned / no stored meta) or `mixed` (signed meta).
+Derived from local state only — inbound data can't downgrade a Matrix group.
+`linkOnly`: `SyncEngine` (digests, bootstraps, resync answers, rule 10),
+`LedgerSyncer` (drops to-device records), `signPendingRows`,
+`reclaimGroupInPlace` / `markUnsignedPending` skip it; `LocalRecordSigner(
+policy:)` stores local writes unsigned + not `pendingSign` + no `origin`,
+`linkAuthor` (`by`, unsigned / unhashed display hint, `link_author` column)
+= `my_participant_id`, so nothing is relayed; Matrix claims / invites throw
+`LinkOnlyGroupException`; `currentParticipant` falls back to the channel's
+`my_participant_id` (active). `RecordGate(linkPolicy:)` = the link path:
+unsigned accepted in `linkOnly` / `mixed` (stored without `origin`), signed
+verified, content / wrong-group / future-clock / refused-version rules kept,
+Matrix-ID claims refused in `linkOnly` (unsigned ones in `mixed`), unsigned
+meta only in `linkOnly`; the Matrix path drops `by`. G40 adoption copies
+`link_channels` / `link_peers` and keeps a link-only group unclaimed and
+unsigned. Design doc §6.4 "As built"; tests `test/core/link_policy_test.dart`,
+`test/integration/link_group_matrix_skip_test.dart`.
+
 ### Data Flow
 
 Inbound to-device message → `LedgerSyncer._onMessage` → **membership gate** →
