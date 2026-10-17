@@ -210,6 +210,56 @@ void main() {
       expect(find.text('host'), findsOneWidget);
     });
 
+    testWidgets('G62: a new group\'s first expense, a minute after '
+        'creating it, can be undone', (tester) async {
+      final entries = [
+        _entries[0], // meta, created here at _t0
+        _entry(
+          2,
+          RecordKind.member,
+          alice,
+          memberPayload(_alice),
+          _t0 + 5,
+          source: HistorySource.local,
+        ),
+        _entry(
+          3,
+          RecordKind.expense,
+          'e1',
+          expensePayload(_e('e1', 'Dinner')),
+          _t0 + 60 * 1000,
+          source: HistorySource.local,
+        ),
+      ];
+      await tester.pumpWidget(
+        testRouterApp(
+          const GroupResetPage(roomId: 'g1'),
+          overrides: [
+            ...testOverrides(members: const [_alice, _bob]),
+            groupHistoryProvider.overrideWith(
+              (ref, g) => Stream.value(entries),
+            ),
+            historyFloorProvider.overrideWith((ref) => Stream.value(0)),
+            currentUserIdProvider.overrideWith((ref) => alice),
+            localModeActiveProvider.overrideWithValue(false),
+            currentParticipantProvider.overrideWith(
+              (ref, g) => Future<MemberModel?>.value(_alice),
+            ),
+            groupResetServiceProvider.overrideWith((ref) => _FakeReset()),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('groupResetEmpty')), findsNothing);
+      expect(find.byKey(const Key('undoFrom-3')), findsOneWidget);
+      expect(find.byKey(const Key('undoFrom-1')), findsNothing);
+      expect(find.textContaining('1 added'), findsOneWidget);
+      expect(
+        find.textContaining('Earliest state on this device'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('a read-only (removed) group offers no reset', (tester) async {
       final fake = _FakeReset();
       await tester.pumpWidget(page(fake, removed: true));

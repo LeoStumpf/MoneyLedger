@@ -11,6 +11,8 @@ import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/history_dao.dart';
 import 'package:money_ledger/core/sync/record_signing.dart' show RecordKind;
 import 'package:money_ledger/core/sync/record_version.dart';
+import 'package:money_ledger/features/history/group_history.dart';
+import 'package:money_ledger/models/expense_model.dart';
 
 const _bool = 'INTEGER NOT NULL DEFAULT 0 CHECK';
 const _v11Schema = [
@@ -119,4 +121,81 @@ void main() {
       );
     },
   );
+
+  test('G62 (DEV-H repro): edits minutes after the update are an undo '
+      'point — the backfill is a base of its own', () async {
+    var clock = 4242;
+    historyClock = () => clock;
+    addTearDown(
+      () => historyClock = () => DateTime.now().millisecondsSinceEpoch,
+    );
+    final db = AppDatabase.forTesting(
+      NativeDatabase.memory(
+        setup: (raw) {
+          for (final stmt in _v11Schema) {
+            raw.execute(stmt);
+          }
+        },
+      ),
+    );
+    addTearDown(db.close);
+    final expenses = ExpensesDao(db);
+    final stored = (await expenses.getExpenseById('e1'))!;
+    // A minute after the update: e1 edited, e2 added (< 10 min apart).
+    clock += 60 * 1000;
+    await expenses.upsertExpenseLww(
+      expenseCompanion(
+        ExpenseModel(
+          id: 'e1',
+          roomId: 'g1',
+          description: 'Dinner!',
+          amountCents: 400,
+          currency: 'EUR',
+          paidBy: '@a:x',
+          splitsJson: '{"@a:x":400}',
+          createdAt: 1,
+          updatedAt: 700,
+        ),
+      ),
+    );
+    clock += 60 * 1000;
+    final e2 = ExpenseModel(
+      id: 'e2',
+      roomId: 'g1',
+      description: 'Taxi',
+      amountCents: 200,
+      currency: 'EUR',
+      paidBy: '@a:x',
+      splitsJson: '{"@a:x":200}',
+      createdAt: clock,
+      updatedAt: clock,
+    );
+    await expenses.upsertExpenseLww(expenseCompanion(e2));
+
+    final h = await HistoryDao(db).entriesForGroup('g1');
+    final batches = changeBatches(h, me: '@a:x');
+    expect(batches, hasLength(2));
+    expect(batches.last.base, isTrue);
+    expect(batches.last.resettable, isFalse);
+    final mine = batches.first;
+    expect(mine.resettable, isTrue);
+    expect((mine.added, mine.changed), (1, 1));
+
+    // Undo from here = the state right after the update.
+    final plan = planGroupReset(
+      groupId: 'g1',
+      beforeId: mine.firstId,
+      entries: h,
+      expenses: await expenses.getAllExpensesForGroup('g1'),
+      settlements: await expenses.getAllSettlementsForGroup('g1'),
+      meta: null,
+      now: clock + 1,
+    );
+    expect(plan.reverted, 1);
+    expect(plan.removed, 1);
+    final back = plan.changes
+        .firstWhere((c) => c.effect == ResetEffect.reverted)
+        .expense!;
+    expect(back.description, stored.description);
+  });
 }

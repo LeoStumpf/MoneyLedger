@@ -25,8 +25,19 @@ import '../../models/member_model.dart' show nextLwwClock;
 /// Entries further apart than this start a new change batch.
 const kChangeBatchGap = Duration(minutes: 10);
 
+/// G62: how far apart the entries of the group's **arrival** on this device
+/// (a bootstrap — possibly in chunked parts, each verified first —, a
+/// restore, a CSV import) may be to still count as that arrival.
+const kBaseArrivalGap = Duration(seconds: 30);
+
+/// G62: the same for a group that arrived by a **local** write — created
+/// here (meta + creator) or adopted from local mode (one transaction): those
+/// are stored within milliseconds, and the user's first expense in a new
+/// group must not count as part of its creation.
+const kLocalArrivalGap = Duration(seconds: 2);
+
 /// One burst of changes (consecutive history entries less than
-/// [kChangeBatchGap] apart), summarised per record.
+/// [kChangeBatchGap] apart, by the same author), summarised per record.
 class ChangeBatch {
   const ChangeBatch({
     required this.firstId,
@@ -40,6 +51,7 @@ class ChangeBatch {
     required this.editors,
     required this.byMe,
     required this.resettable,
+    this.base = false,
   });
 
   /// First / last history id in the batch (append order).
@@ -70,6 +82,10 @@ class ChangeBatch {
   /// pruning floor (older history keeps only each record's base version).
   final bool resettable;
 
+  /// G62: the group's arrival on this device (see [changeBatches]) — the
+  /// earliest state, never a reset target itself.
+  final bool base;
+
   int get total => added + changed + deleted + otherChanges;
 }
 
@@ -77,6 +93,21 @@ class ChangeBatch {
 /// first**. [floor]: `HistoryDao.floor` — batches starting before it are
 /// marked not resettable. [me]: this device's account (its signed versions
 /// count as [ChangeBatch.byMe]).
+///
+/// G62 — batch boundaries:
+/// - **The base batch** is the group's arrival on this device: every entry
+///   up to the group meta's first one, plus the entries that came with it —
+///   the same source, each at most [kBaseArrivalGap] ([kLocalArrivalGap]
+///   for a local write) after the previous, no record twice (a second
+///   version is an edit). The schema-v12 `initial` backfill is always base.
+///   It is never
+///   resettable (nothing came before it) but makes every later batch so —
+///   before G62 the arrival chained with every change < 10 min later, and
+///   the page had nothing to offer after an update or for a new group.
+/// - **After it**, a new batch starts after a pause longer than [gap] or
+///   when the **author** changes (this device / our own account, a peer's
+///   account, a restore, a CSV import): "undo Bob's changes" never also
+///   undoes ours from a few minutes earlier.
 List<ChangeBatch> changeBatches(
   List<HistoryEntry> entries, {
   int floor = 0,
@@ -88,15 +119,24 @@ List<ChangeBatch> changeBatches(
   // The latest entry per record seen so far (before the current batch).
   final latest = <String, HistoryEntry>{};
   var metaSeen = false;
+  final baseEnd = _baseEnd(sorted);
   var i = 0;
   while (i < sorted.length) {
+    final isBase = i < baseEnd;
     var j = i + 1;
-    while (j < sorted.length &&
-        sorted[j].recordedAt - sorted[j - 1].recordedAt <= gap.inMilliseconds) {
-      j++;
+    if (isBase) {
+      j = baseEnd;
+    } else {
+      final author = _author(sorted[i], me);
+      while (j < sorted.length &&
+          sorted[j].recordedAt - sorted[j - 1].recordedAt <=
+              gap.inMilliseconds &&
+          _author(sorted[j], me) == author) {
+        j++;
+      }
     }
     final batch = sorted.sublist(i, j);
-    final resettable = metaSeen && batch.first.recordedAt >= floor;
+    final resettable = !isBase && metaSeen && batch.first.recordedAt >= floor;
     // Per record: before (latest so far) vs. after (last in the batch).
     final after = <String, HistoryEntry>{};
     var other = 0;
@@ -142,6 +182,7 @@ List<ChangeBatch> changeBatches(
         editors: editors,
         byMe: byMe,
         resettable: resettable,
+        base: isBase,
       ),
     );
     for (final e in batch) {
@@ -152,6 +193,45 @@ List<ChangeBatch> changeBatches(
   }
   return out.reversed.toList();
 }
+
+/// G62: the end (exclusive index into [sorted]) of the base batch — the
+/// group's arrival on this device; 0 when the meta never appears (then no
+/// batch is resettable, as before).
+int _baseEnd(List<HistoryEntry> sorted) {
+  final m = sorted.indexWhere((e) => e.kind == RecordKind.meta);
+  if (m < 0) return 0;
+  final source = sorted[m].source;
+  final maxGap =
+      (source == HistorySource.local ? kLocalArrivalGap : kBaseArrivalGap)
+          .inMilliseconds;
+  final seen = {for (final e in sorted.sublist(0, m + 1)) _key(e)};
+  var end = m + 1;
+  while (end < sorted.length) {
+    final e = sorted[end];
+    final initial = e.source == HistorySource.initial;
+    if (!initial) {
+      if (e.source != source) break;
+      if (e.recordedAt - sorted[end - 1].recordedAt > maxGap) break;
+      if (seen.contains(_key(e))) break;
+    }
+    seen.add(_key(e));
+    end++;
+  }
+  return end;
+}
+
+/// G62: who a history entry's change came from, for batch boundaries — this
+/// device or our own account (`me`), a peer's account, or the source of an
+/// unsigned / bulk write (restore, CSV import, initial backfill).
+String _author(HistoryEntry e, String? me) => switch (e.source) {
+  HistorySource.local || HistorySource.revert => 'me',
+  HistorySource.inbound => switch (e.signer) {
+    null => 'inbound',
+    final s when s == me => 'me',
+    final s => 'user:$s',
+  },
+  _ => 'source:${e.source.wire}',
+};
 
 String _key(HistoryEntry e) => '${e.kind.wire}|${e.recordId}';
 

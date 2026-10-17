@@ -1070,10 +1070,19 @@ a backup file / digest:
 - **Reset group to an earlier state** (group ⋮ → *Reset to an earlier
   state…*, `/groups/:id/reset`, `GroupResetPage`; disabled for read-only
   groups): the history is clustered into **change batches** (pure
-  `changeBatches`: entries < 10 min apart; per record added / edited /
-  deleted, group-or-member changes, who signed them / "by you"); *Undo from
-  here* = reset to the state **before** that batch (`beforeId` = its first
-  entry id) — "how it looked on this device then". A batch is resettable only
+  `changeBatches`: entries < 10 min apart **by the same author** — this
+  device / our own account, a peer's account, a restore, a CSV import
+  (G62); per record added / edited / deleted, group-or-member changes, who
+  signed them / "by you"); *Undo from here* = reset to the state **before**
+  that batch (`beforeId` = its first entry id) — "how it looked on this
+  device then". **G62 base batch:** the group's arrival on this device —
+  every entry up to the meta's first one plus what came with it (same
+  source, ≤ `kBaseArrivalGap` 30 s apart, `kLocalArrivalGap` 2 s for a
+  local write — creation / local-mode adoption —, no record twice; the v12
+  `initial` backfill always) — is a batch of its own (`ChangeBatch.base`),
+  never resettable, never chained with later changes (before G62 it
+  swallowed every change < 10 min later: empty page after an update or for
+  a new group). Otherwise a batch is resettable only
   if the group's meta has an earlier entry and it starts at/after the floor.
   Pure `planGroupReset` per expense / payment: the newest entry before the
   point; none or deleted then + live now → tombstone (*removed*); live then +
