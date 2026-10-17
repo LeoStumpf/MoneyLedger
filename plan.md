@@ -625,7 +625,7 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       `tool/spike/nostr/`, read-only): +1 d 2026-10-18, **+3 d 2026-10-20 =
       gate before G52 step 5 (sync engine)**, +7 d 2026-10-24 (§12
       criterion), +14 d 2026-10-31, +31 d 2026-11-17 (probe gone)
-- [ ] **Leo:** web signature verify misses the target (dart2js `bip340`
+- [x] **Leo (2026-10-17): verify on native only, skip on the web.** Web signature verify misses the target (dart2js `bip340`
       4.9 s for 20 events) — proposal: verify on native only, web relies on
       the AES-GCM tag (§3.3 / §16); alternatives: verify only new events,
       faster secp256k1 lib
@@ -633,9 +633,20 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       timing, E9 headless Android
 
 ### G52. Link groups (implementation, incl. app key) 🟠
-- [ ] Sub-steps defined after G51 (design doc §13, incl. Reset invite link,
-      the multi-app `LeoStumpf.github.io` repo — Play App Signing
-      fingerprint from Leo later)
+Sub-steps = design doc §13 (each a commit with tests; fakes first):
+- [x] 1. Pure codec + crypto (`lib/core/link/`): link URI, HKDF (`kLinkSaltV1`), envelope (gzip + AES-GCM, AAD), sharding plan (`kLinkContentBudget` 60 000)
+- [ ] 2. Mini Nostr client (event id / BIP-340 — verify native only, Leo 2026-10-17; frames, `RelayConnection` + WebSocket adapter, `NostrRelayPool`, `replaced:` handling) + `test/helpers/fake_relay_network.dart`
+- [ ] 3. Schema v15 (`link_channels`, `link_peers`, `link_author`) + `LinkDao` + migration test
+- [ ] 4. Policy: `GroupPolicy`, `RecordGate` link path, engines skip link-only groups
+- [ ] 5. `LinkSyncEngine` (**gate: retention check 2026-10-20 must pass**)
+- [ ] 6. Invite UI (sheet, QR, share, disclosure)
+- [ ] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`)
+- [ ] 8. Background round link phase
+- [ ] 9. Settings: relay list + status, peers sheet
+- [ ] 10. Leave / delete unpublish; backup carries the secret (+ warning)
+- [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; Play App Signing fingerprint from Leo later), demo seed
+- [ ] 12. Reset invite link
+- [ ] 13. Device pass (Pixel + emulator + web)
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] A Matrix group can open a link channel ("Invite by link"); Matrix

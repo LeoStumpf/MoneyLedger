@@ -23,7 +23,7 @@ results and the G52 go / no-go in §16.
 | 9 | Gate | Per-group policy in `RecordGate`. In a **link group** (unsigned meta), unsigned versions are accepted. Content validation, wrong-group checks, the future-clock drop and LWW still apply. The Matrix membership gate doesn't apply. Matrix replication never targets link groups. |
 | 10 | Mixed + lock (G53) | The **signed meta** carries `link: {epoch, secret}` while a link is open. Unsigned versions are accepted only while it is open and are shown "via link, not verified". **Lock** = a signed meta without `link`: the channel is closed and any later unsigned version is refused. |
 | 11 | Backups | The secret travels in the group meta, so backups contain it and a restore can rejoin. The device's Nostr key and "who am I" stay device-local. CSV unchanged. |
-| 12 | Deps | `bip340` (MIT) + `pointycastle` (MIT) for Schnorr. `web_socket_channel` (BSD-3) and `archive` (MIT, gzip on web) are already transitive. `qr` (BSD-3) renders the QR code and `share_plus` (BSD-3) opens the share sheet. **Our own ~400-line Nostr client**, no Nostr SDK (§11). |
+| 12 | Deps | `bip340` (MIT) + `pointycastle` (MIT) for Schnorr. `web_socket_channel` (BSD-3) is already transitive; `archive` (MIT, gzip on web) is a direct dependency since G52 step 1. `qr` (BSD-3) renders the QR code and `share_plus` (BSD-3) opens the share sheet. **Our own ~400-line Nostr client**, no Nostr SDK (§11). |
 
 ## 1. Goals, non-goals, positioning
 
@@ -99,13 +99,14 @@ ct      = AES-256-GCM(encKey, nonce, packed, aad)   // ct ‖ 16-byte tag
 content = "1:" + base64(nonce ‖ ct)
 ```
 
+- `base64` is the standard alphabet with padding. The gzip header's MTIME is zeroed (the web encoder would stamp the current time), so packing is deterministic per platform; native and web deflate still differ, so change detection compares plaintext (G52 step 1: `lib/core/link/link_envelope.dart`).
 - **Random 96-bit nonce per event.** A group sees at most a few thousand encryptions under one key, far below the ~2³² random-nonce bound.
 - **The AAD** binds the ciphertext to its kind, topic and publishing pubkey. Another key holder can't re-publish a device's snapshot under their own pubkey to make it look like it came from that device. This is cheap integrity among key holders, not authentication of people.
 - **Decrypt failure** (wrong app salt, tampering, a foreign event on our `d`) → the event is ignored and logged, never shown.
 
 ### 3.3 Event signature
 
-NIP-01 requires a BIP-340 Schnorr signature over `sha256([0,pubkey,created_at,kind,tags,content])`. We sign with the per-group key. On receive we verify the signature, which is cheap and catches broken relays, though relays (strfry) verify too. **G51 (§16):** verifying is cheap natively (12 ms) but not on the web (≈ 160–170 ms per event in dart2js), and it adds no security on top of the AEAD (§3.2: the AAD already binds the content to the pubkey; anyone with the link can make a valid key anyway). Proposal for G52: verify on native only; on the web rely on the AEAD + the relays' own verification (§16 open point 2).
+NIP-01 requires a BIP-340 Schnorr signature over `sha256([0,pubkey,created_at,kind,tags,content])`. We sign with the per-group key. On receive we verify the signature, which is cheap and catches broken relays, though relays (strfry) verify too. **G51 (§16):** verifying is cheap natively (12 ms) but not on the web (≈ 160–170 ms per event in dart2js), and it adds no security on top of the AEAD (§3.2: the AAD already binds the content to the pubkey; anyone with the link can make a valid key anyway). **Decided by Leo (2026-10-17):** verify on native only; on the web skip the check and rely on the AEAD + the relays' own verification (§16 open point 2).
 
 ### 3.4 App key (W5) — AGPL analysis and recommendation
 
@@ -206,6 +207,7 @@ Measured on 2026-10-17 (defaults decided by Leo the same day, §9.4):
 }
 ```
 
+- The header keys **replace** the bootstrap's own: `v` here is the link snapshot version (1), not the bootstrap's protocol version (2) — every record inside keeps its own `"v": 2` (as the G51 spike; G52 step 1: `buildLinkSnapshotPart`, `lib/core/link/link_snapshot.dart`). `part` is 0-based (unlike G14's informational 1-based bootstrap parts).
 - This is the **same bootstrap content** the Matrix path and the backup file use. Categories (G47 meta), expense dates (G49), notes and tombstones are all included.
 - `pending_sign` rows are included in link groups. They are never `pending_sign` there anyway (§6.3).
 - In **mixed** groups the signatures travel along. Attestations (`device_keys`) are included but never trusted from the link path.
@@ -245,7 +247,7 @@ A per-peer detail sheet lists each known publisher (participant from `me`, "last
 - **Budget.** `kLinkContentBudget` = **60 000 chars** of `content` per event. Both default relays advertise a 131 072-byte frame (`max_message_length`), but refuse every **event** whose JSON exceeds **65 536 bytes** (`OK false "invalid: event too large: <n>"`, G51 E1: 65 519 B accepted, 65 551 B refused on both). Our envelope (id, pubkey, sig, `created_at`, `kind`, the `d` / `expiration` / `alt` tags) is ≈ 490 bytes, so 60 000 chars of content give an event of ≈ 60 500 bytes and an `EVENT` frame of ≈ 60 510 bytes: ~5 KB headroom for a part suffix on `d`, a later tag, or a relay that counts slightly differently. (The frame limit itself is then never close: 60 510 of 131 072.)
 - **Sharding.** Over budget → `parts` = 2, 4 or 8. Records are assigned by `fnv1a(id) % parts`. Part `i` is published under `d = topic` (i = 0) or `d = topic + "." + i`. Every part carries meta + all members + its slice, like G14's self-contained bootstrap parts.
 - **Readers** always subscribe to the topic and `.1`–`.7`, which is cheap.
-- **Shrinking.** When `parts` drops, the publisher replaces the now-unused parts with a header-only part with `expiration` = now + 1 day. LWW makes mixed generations harmless: an old part only offers older versions.
+- **Shrinking.** When `parts` drops, the publisher replaces the now-unused parts with a header-only part (meta + members, no records; its `part` = the old index ≥ the new `parts`, which marks it retired) with `expiration` = now + 1 day. LWW makes mixed generations harmless: an old part only offers older versions.
 - **Ceiling** ≈ 8 × 60 000 chars ≈ **5 000 unsigned records** (≈ 690 per part minus the per-part header), but only ≈ **1 200 signed records** in a mixed group. Beyond that: "This group is too big for link sharing — use Matrix" (§10).
 
 ## 6. Identity and participants
@@ -594,7 +596,7 @@ No other nudges.
 | BIP-340 Schnorr sign / verify | **`bip340` 0.3.1** (fiatjaf) | MIT | yes | Tiny, depends on `pointycastle` + `crypto`. BigInt arithmetic, not constant-time — acceptable for per-group throwaway keys. G51: sign 18 ms / verify 12 ms native, **232 / 172 ms in dart2js** (Dart BigInt in JS) — see §16 for the consequence. |
 | secp256k1 curve, key generation | **`pointycastle` 4.0.0** (Bouncy Castle) | MIT | yes | Widely used. Pubkey = x-only of `G·d`. |
 | WebSocket | **`web_socket_channel` 3.0.3** (dart.dev) | BSD-3 | yes | Already transitive (matrix SDK). Becomes a direct dependency. |
-| gzip on web | **`archive` 4.x** | MIT | yes | Already transitive. `dart:io` `gzip` on native would also work, but one code path is simpler. |
+| gzip on web | **`archive` 4.x** | MIT | yes | Direct dependency since G52 step 1 (was transitive). `dart:io` `gzip` on native would also work, but one code path is simpler. |
 | HKDF, AES-GCM | `cryptography` 2.9 | Apache-2.0 | yes | Already direct (G34). |
 | QR code | **`qr` 4.0.0** (+ our own painter) or `qr_flutter` 4.1.0 | BSD-3 | yes | `qr_flutter` is from 2023 → prefer `qr` plus a 30-line `CustomPainter`. |
 | Share sheet | `share_plus` | BSD-3 | yes | Optional: *Copy* + QR work without it. |
@@ -775,7 +777,7 @@ cd tool/spike/nostr && dart run bin/check_retention.dart
 ### Open points
 
 1. **Two networks / Pixel / browser.** E4 ran with both processes on this laptop (one IP, one network); E8 web ran in node, not Chrome; E9 (headless Android) was skipped. All three move to the **G52 device pass** (§13 step 13): Pixel ↔ emulator/laptop over different networks, the web build in Chrome (browser WebSockets, real dart2js timing), and a WorkManager round with one fetch + publish.
-2. **Signature verify on the web** (E8 ✗): 160–170 ms per event. Proposal: G52 verifies BIP-340 **on native only**; on the web it skips the check and relies on the AES-GCM AAD (binds content to kind / topic / pubkey — a forger needs the link secret, and then could just sign with its own key) plus the relays' own verification. Alternatives if Leo wants verify everywhere: verify only new events (dedup via `link_peers` first — a normal fetch then has 0–3 new events), or a faster secp256k1 on web (JS-`BigInt` implementation / WebCrypto doesn't do secp256k1). Signing (≈ 230 ms per publish, debounced) is acceptable as is.
+2. **Signature verify on the web** (E8 ✗): 160–170 ms per event. **Decided by Leo (2026-10-17):** G52 verifies BIP-340 **on native only**; on the web it skips the check and relies on the AES-GCM AAD (binds content to kind / topic / pubkey — a forger needs the link secret, and then could just sign with its own key) plus the relays' own verification. Alternatives if Leo wants verify everywhere: verify only new events (dedup via `link_peers` first — a normal fetch then has 0–3 new events), or a faster secp256k1 on web (JS-`BigInt` implementation / WebCrypto doesn't do secp256k1). Signing (≈ 230 ms per publish, debounced) is acceptable as is.
 3. **`replaced: have newer event`** is an `OK false` that isn't a failure (E2) — added to §4.4; G52's `FakeRelayNetwork` must emit it for the same-second-higher-id and older-`created_at` cases.
 4. **NIP-11 doesn't advertise the 65 536-byte event cap.** For custom relays G52 can't learn it either; it uses the same 60 000 budget and drops to the custom relay's advertised `max_message_length` / `max_content_length` when smaller.
 5. **Single host.** nos.lol and nostr.mom are one machine (separate databases). The custom-relay setting is the only mitigation in v1; re-check the defaults before release (§9.4).

@@ -54,6 +54,10 @@ dependencies:
   # via matrix (BSD-3-Clause).
   http: ^1.6.0
   cryptography: ^2.9.0
+  # G52 link groups: gzip of the snapshot before AES-GCM — pure Dart on the
+  # web (dart:io zlib natively). Already transitive (MIT; pulls in `posix`,
+  # MIT).
+  archive: ^4.0.9
 
 dev_dependencies:
   flutter_test:
