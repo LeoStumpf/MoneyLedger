@@ -199,7 +199,14 @@ Future<void> exportGroupCsvFlow(
       ),
     );
   } catch (e) {
-    // e.g. the file couldn't be written — tell the user (G15).
-    errors.show(e, what: l.exportFailedTitle);
+    // e.g. the file couldn't be written — tell the user (G15); G75: the
+    // export can simply run again.
+    errors.show(
+      e,
+      what: l.exportFailedTitle,
+      retry: () {
+        if (context.mounted) exportGroupCsvFlow(context, ref, roomId);
+      },
+    );
   }
 }

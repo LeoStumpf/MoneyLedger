@@ -87,6 +87,11 @@ void main() {
     });
   });
 
+  final settingsList = find.descendant(
+    of: find.byKey(const Key('settingsList')),
+    matching: find.byType(Scrollable),
+  );
+
   group('settings page: Devices & security', () {
     Widget app({Locale? locale}) {
       final router = GoRouter(
@@ -125,7 +130,8 @@ void main() {
       await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
       final tile = find.byKey(const Key('devicesTile'));
-      await tester.ensureVisible(tile);
+      // G75: in the *Advanced (Matrix)* section, further down the list.
+      await tester.scrollUntilVisible(tile, 200, scrollable: settingsList);
       await tester.pumpAndSettle();
       expect(
         find.descendant(of: tile, matching: find.text('Devices & security')),
@@ -142,6 +148,11 @@ void main() {
       await tester.pump();
       await tester.tap(find.byTooltip('Einstellungen'));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('devicesTile')),
+        200,
+        scrollable: settingsList,
+      );
       expect(find.text(de.devicesTooltip), findsOneWidget);
       expect(find.text(de.devicesSettingsBody), findsOneWidget);
     });

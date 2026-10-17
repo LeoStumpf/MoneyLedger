@@ -38,6 +38,7 @@ void main() {
       expect(p.localProfile, isNull);
       expect(p.connecting, isFalse);
       expect(p.adoptInto, isNull);
+      expect(p.webNoticeSeen, isFalse);
     });
 
     test('round-trips through the stored map', () {
@@ -46,8 +47,11 @@ void main() {
         localProfile: LocalProfile(name: 'Lea', createdAt: 5),
         connecting: true,
         lastAdoptedInto: '@a:x.org',
+        webNoticeSeen: true, // G75
       );
+      expect(p.toMap()['web_notice_seen'], '1');
       expect(DevicePrefs.fromMap(p.toMap()), p);
+      expect(p.copyWith(connecting: false).webNoticeSeen, isTrue);
     });
 
     test('connecting is only kept with a local profile', () {

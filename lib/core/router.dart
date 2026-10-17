@@ -204,6 +204,14 @@ GoRouter router(Ref ref) {
         path: '/groups/:roomId/expenses/add',
         builder: (_, s) => AddExpensePage(roomId: s.pathParameters['roomId']!),
       ),
+      // G75: *Duplicate* — the add form prefilled with a copy.
+      GoRoute(
+        path: '/groups/:roomId/expenses/duplicate',
+        builder: (_, s) => AddExpensePage(
+          roomId: s.pathParameters['roomId']!,
+          copyFrom: s.extra as ExpenseModel?,
+        ),
+      ),
       GoRoute(
         path: '/groups/:roomId/expenses/edit',
         builder: (_, s) => AddExpensePage(

@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/l10n/l10n.dart';
+import '../web/web_limits.dart';
 
 part 'about_page.g.dart';
 
@@ -79,6 +80,8 @@ class AboutPage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/how-it-works'),
           ),
+          // G75 (U31): the web's limits again (web only).
+          const WebLimitsAboutTile(),
           ListTile(
             leading: const Icon(Icons.code),
             title: Text(l.aboutSourceCode),

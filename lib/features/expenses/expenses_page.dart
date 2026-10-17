@@ -25,6 +25,7 @@ import '../groups/group_actions.dart';
 import '../groups/group_settings_page.dart' show groupSettingsLocation;
 import '../groups/group_archive_provider.dart';
 import '../groups/group_provider.dart';
+import 'add_expense_page.dart' show duplicateExpenseLocation;
 import 'expense_category_ui.dart';
 import 'expense_filter.dart';
 import 'expenses_provider.dart';
@@ -516,6 +517,13 @@ class ExpensesPage extends ConsumerWidget {
         onDelete: readOnly
             ? null
             : () => deleteExpenseFlow(context, ref, expense),
+        // G75: a new expense prefilled with this one (nothing saved yet).
+        onDuplicate: readOnly
+            ? null
+            : () => context.push(
+                duplicateExpenseLocation(roomId),
+                extra: expense,
+              ),
       );
     }
 
@@ -1153,6 +1161,9 @@ class _LedgerRow extends StatelessWidget {
   /// G60: an *Edit* entry in the options menu (payments).
   final VoidCallback? onEdit;
 
+  /// G75: a *Duplicate* entry in the options menu (expenses).
+  final VoidCallback? onDuplicate;
+
   /// G16: the expense has a note — a small icon after the title.
   final bool hasNote;
   const _LedgerRow({
@@ -1168,6 +1179,7 @@ class _LedgerRow extends StatelessWidget {
     this.onTap,
     this.onDelete,
     this.onEdit,
+    this.onDuplicate,
   });
 
   @override
@@ -1309,11 +1321,18 @@ class _LedgerRow extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 onSelected: (action) {
                   if (action == 'edit') onEdit?.call();
+                  if (action == 'duplicate') onDuplicate?.call();
                   if (action == 'delete') onDelete!();
                 },
                 itemBuilder: (_) => [
                   if (onEdit != null)
                     PopupMenuItem(value: 'edit', child: Text(l.edit)),
+                  if (onDuplicate != null)
+                    PopupMenuItem(
+                      key: const Key('duplicateExpenseMenuItem'),
+                      value: 'duplicate',
+                      child: Text(l.duplicateExpense),
+                    ),
                   PopupMenuItem(value: 'delete', child: Text(l.delete)),
                 ],
               ),
@@ -1346,7 +1365,11 @@ class _ExpenseTile extends StatelessWidget {
     this.attention = false,
     this.onTap,
     this.onDelete,
+    this.onDuplicate,
   });
+
+  /// G75: ⋮ → *Duplicate* (null in a read-only group).
+  final VoidCallback? onDuplicate;
 
   @override
   Widget build(BuildContext context) {
@@ -1398,6 +1421,7 @@ class _ExpenseTile extends StatelessWidget {
       menuTooltip: l.expenseOptions,
       onTap: onTap,
       onDelete: onDelete,
+      onDuplicate: onDuplicate,
     );
   }
 }

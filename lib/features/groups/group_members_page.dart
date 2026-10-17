@@ -492,11 +492,21 @@ class _MemberTile extends ConsumerWidget {
           name: member.label,
         );
       case 'rename':
+        // G75 (G64 leftover): the same duplicate-name hint as *Add
+        // person* — another person (also a former one) already has it.
+        final others = [
+          for (final m in all)
+            if (m.userId != member.userId) m.label,
+        ];
         final name = await _prompt(
           context,
           l.rename,
           label: l.nameLabel,
           initial: member.displayName,
+          helperFor: (v) {
+            final dup = duplicateNameOf(v, others);
+            return dup == null ? null : l.duplicatePersonRenameHint(dup);
+          },
         );
         if (name != null && name.isNotEmpty) {
           await adder.rename(roomId, member.userId, name);
@@ -653,6 +663,7 @@ class _MemberTile extends ConsumerWidget {
     required String label,
     String? hint,
     String initial = '',
+    String? Function(String value)? helperFor,
   }) {
     final l = context.l10n;
     return showTextPrompt(
@@ -661,6 +672,7 @@ class _MemberTile extends ConsumerWidget {
       label: label,
       hint: hint,
       initial: initial,
+      helperFor: helperFor,
       cancelLabel: l.cancel,
       confirmLabel: l.ok,
     );

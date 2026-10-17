@@ -51,6 +51,15 @@ class _FakeAdder extends MemberAdder {
 
   @override
   Future<void> addLocal(String groupId, String name) async => added.add(name);
+
+  final renamed = <String>[];
+
+  @override
+  Future<void> rename(
+    String groupId,
+    String participantId,
+    String name,
+  ) async => renamed.add('$participantId=$name');
 }
 
 class _FakeRemover extends MemberRemover {
@@ -322,6 +331,45 @@ void main() {
         await tester.pumpAndSettle();
         expect(adder.added, ['Chris', 'chris']);
         expect(find.byKey(name), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    // G75 (G64 leftover): renaming warns about a name another person has.
+    for (final locale in [const Locale('en'), const Locale('de')]) {
+      testWidgets('${locale.languageCode}: rename shows the duplicate-name '
+          'hint, still allows it', (tester) async {
+        _phone(tester);
+        final adder = _FakeAdder();
+        final l = locale.languageCode == 'de' ? de : en;
+        final three = [...people, _member('p-chris', 'Chris')];
+        await tester.pumpWidget(
+          testApp(
+            const GroupMembersPage(roomId: 'g1'),
+            overrides: overrides(three, adder: adder),
+            locale: locale,
+          ),
+        );
+        await tester.pumpAndSettle();
+        // Chris's ⋮ (the last one; Alice is "You").
+        await tester.tap(find.byTooltip(l.options).last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(l.rename));
+        await tester.pumpAndSettle();
+        const field = Key('textPromptField');
+        // Its own name is no duplicate.
+        expect(find.text(l.duplicatePersonRenameHint('Chris')), findsNothing);
+        await tester.enterText(find.byKey(field), 'ben ');
+        await tester.pump();
+        expect(find.text(l.duplicatePersonRenameHint('Ben')), findsOneWidget);
+        await tester.enterText(find.byKey(field), 'Christoph');
+        await tester.pump();
+        expect(find.text(l.duplicatePersonRenameHint('Ben')), findsNothing);
+        await tester.enterText(find.byKey(field), 'Ben');
+        await tester.pump();
+        await tester.tap(find.text(l.ok));
+        await tester.pumpAndSettle();
+        expect(adder.renamed, ['p-chris=Ben']);
         expect(tester.takeException(), isNull);
       });
     }

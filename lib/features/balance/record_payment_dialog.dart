@@ -135,7 +135,8 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
     if (_prefillText != null && _amount.text == _prefillText) {
       return widget.initialCents;
     }
-    return parseAmountCents(
+    // G75: a small expression ("12,50+8") is worked out.
+    return parseAmountInput(
       _amount.text,
       locale: context.localeName,
       currency: _currency,

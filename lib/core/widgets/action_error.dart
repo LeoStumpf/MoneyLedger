@@ -28,16 +28,52 @@ class ActionErrors {
 
   /// Shows [error]; [what] (e.g. `l.exportFailedTitle`) becomes the first
   /// line. A no-op when the messenger is gone.
-  void show(Object error, {String? what}) {
+  ///
+  /// G75 (G67 leftover): [retry] adds *Try again* (the snackbar's action;
+  /// *Details* then moves into the content) — only for actions that can
+  /// simply run again (export, picking a file). The callback must check
+  /// that its page is still mounted itself.
+  void show(Object error, {String? what, VoidCallback? retry}) {
     if (!_messenger.mounted) return;
     final m = describeActionError(error, _l);
     final detail = m.detail;
+    final lines = ActionErrorLines(message: m, what: what);
     _messenger.showSnackBar(
       SnackBar(
         key: const Key('actionErrorSnack'),
         duration: const Duration(seconds: 8),
-        content: ActionErrorLines(message: m, what: what),
-        action: detail == null
+        content: retry == null || detail == null
+            ? lines
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  lines,
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Builder(
+                      builder: (context) => TextButton(
+                        key: const Key('actionErrorDetails'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.inversePrimary,
+                          padding: EdgeInsets.zero,
+                        ),
+                        onPressed: () => _showDetails(detail),
+                        child: Text(_l.errorDetails),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+        action: retry != null
+            ? SnackBarAction(
+                key: const Key('actionErrorRetry'),
+                label: _l.errorTryAgain,
+                onPressed: retry,
+              )
+            : detail == null
             ? null
             : SnackBarAction(
                 key: const Key('actionErrorDetails'),
@@ -67,8 +103,12 @@ class ActionErrors {
 }
 
 /// Shortcut for a still-mounted [context]: `ActionErrors.of(context).show`.
-void showActionError(BuildContext context, Object error, {String? what}) =>
-    ActionErrors.of(context).show(error, what: what);
+void showActionError(
+  BuildContext context,
+  Object error, {
+  String? what,
+  VoidCallback? retry,
+}) => ActionErrors.of(context).show(error, what: what, retry: retry);
 
 /// The text of an action error: [what] (bold, optional), the title, the hint.
 class ActionErrorLines extends StatelessWidget {

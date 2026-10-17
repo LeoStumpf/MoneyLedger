@@ -13,6 +13,7 @@ import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/matrix/transport_provider.dart';
+import 'package:money_ledger/core/platform/is_web.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/core/theme/app_theme.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
@@ -210,6 +211,26 @@ void main() {
     await tester.pumpWidget(_routed(const GroupsPage(), _overrides()));
     await tester.pumpAndSettle();
     expect(find.text('Rome 2026'), findsOneWidget);
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  // G75 (U31): the one-time web limits notice on the groups page.
+  testWidgets('groups page on the web: limits notice', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(
+        const GroupsPage(),
+        _overrides(extra: [isWebProvider.overrideWithValue(true)]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('webLimitsBanner')), findsOneWidget);
+    expect(
+      tester.getSemantics(find.text(en.webLimitsTitle)),
+      isSemantics(isHeader: true),
+    );
     await _expectGuidelines(tester);
     handle.dispose();
   });
@@ -552,6 +573,19 @@ void main() {
         y(const Key('categoryPickerField')),
         greaterThan(y(const Key('expenseDate'))),
       );
+    });
+
+    // G75: the edit form's app bar (Duplicate + Delete) meets the
+    // guidelines too.
+    testWidgets('edit expense page: Duplicate + Delete actions', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await pumpForm(tester, initial: _expenses.first);
+      expect(find.byTooltip(en.duplicateExpense), findsOneWidget);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+      handle.dispose();
     });
 
     testWidgets('editing an expense opens without a keyboard', (tester) async {

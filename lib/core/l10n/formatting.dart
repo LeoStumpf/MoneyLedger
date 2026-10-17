@@ -184,3 +184,108 @@ int? parseAmountCents(String input, {String? locale, String? currency}) {
   final step = currency == null ? 1 : currencyStep(currency);
   return step == 1 ? cents.round() : (cents / step).round() * step;
 }
+
+/// G75: the amount fields' calculator — [input] may be a small expression
+/// (`12,50+8`, `3*4,20`, `100/3`, `(12+8)/2`) with `+ - * /` (also `×`,
+/// `÷`, `·`), the usual precedence and optional parentheses. Each number is
+/// read like [parseAmountCents] reads a whole field ([parseLocalizedDecimal]
+/// with [locale] — `,` and `.`, `1.234` = 1234 in German), the **result**
+/// is rounded to the [currency]'s step once (`10/3` EUR → `333`, JPY → whole
+/// yen). Without an operator it is exactly [parseAmountCents]. Null for
+/// anything malformed (`12+`, `+*3`, `(1+2`, letters), a division by zero or
+/// a non-finite result. The range (1 cent … `kMaxAmountCents`) is the
+/// caller's check, as for [parseAmountCents].
+int? parseAmountInput(String input, {String? locale, String? currency}) {
+  final s = input.replaceAll(RegExp("[\\s  ]"), '');
+  // A leading minus alone is the plain number's sign (refused as < 1 cent).
+  if (!s.contains(RegExp(r'[+*/×÷·()]')) && s.lastIndexOf('-') <= 0) {
+    return parseAmountCents(input, locale: locale, currency: currency);
+  }
+  final v = _AmountExpression(s, locale).parse();
+  if (v == null || !v.isFinite) return null;
+  final cents = v * 100;
+  if (cents.abs() > 9007199254740991) return null;
+  final step = currency == null ? 1 : currencyStep(currency);
+  return step == 1 ? cents.round() : (cents / step).round() * step;
+}
+
+/// Recursive descent over `expr := term (('+'|'-') term)*`,
+/// `term := factor (('*'|'/') factor)*`,
+/// `factor := '(' expr ')' | number`, plus one sign (`+`/`-`) only at the
+/// very start or right after `(` — `1++2` / `5*-2` are typos, not amounts.
+class _AmountExpression {
+  _AmountExpression(this._s, this._locale);
+
+  final String _s;
+  final String? _locale;
+  int _i = 0;
+
+  static final _numberChar = RegExp(r"[0-9.,']");
+
+  /// Nesting / length guard — a pasted novel isn't an amount.
+  static const _maxLength = 200;
+
+  double? parse() {
+    if (_s.isEmpty || _s.length > _maxLength) return null;
+    final v = _expr(0);
+    return (v == null || _i != _s.length) ? null : v;
+  }
+
+  String? get _peek => _i < _s.length ? _s[_i] : null;
+
+  double? _expr(int depth) {
+    var v = _term(depth, first: true);
+    while (v != null && (_peek == '+' || _peek == '-')) {
+      final op = _s[_i++];
+      final r = _term(depth);
+      if (r == null) return null;
+      v = op == '+' ? v + r : v - r;
+    }
+    return v;
+  }
+
+  double? _term(int depth, {bool first = false}) {
+    var v = first ? _signed(depth) : _factor(depth);
+    while (v != null && const {'*', '/', '×', '÷', '·'}.contains(_peek)) {
+      final op = _s[_i++];
+      final r = _factor(depth);
+      if (r == null) return null;
+      if (op == '/' || op == '÷') {
+        if (r == 0) return null;
+        v = v / r;
+      } else {
+        v = v * r;
+      }
+    }
+    return v;
+  }
+
+  /// A signed operand: allowed where an expression starts.
+  double? _signed(int depth) {
+    final c = _peek;
+    if (c == '+' || c == '-') {
+      _i++;
+      final v = _factor(depth);
+      return v == null ? null : (c == '-' ? -v : v);
+    }
+    return _factor(depth);
+  }
+
+  double? _factor(int depth) {
+    if (depth > 20) return null;
+    final c = _peek;
+    if (c == '(') {
+      _i++;
+      final v = _expr(depth + 1);
+      if (v == null || _peek != ')') return null;
+      _i++;
+      return v;
+    }
+    final start = _i;
+    while (_i < _s.length && _numberChar.hasMatch(_s[_i])) {
+      _i++;
+    }
+    if (_i == start) return null;
+    return parseLocalizedDecimal(_s.substring(start, _i), locale: _locale);
+  }
+}

@@ -202,7 +202,14 @@ Future<void> exportFullBackup(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   final outcome = await runBackupExport(context, ref);
   if (outcome.error case final e?) {
-    errors.show(e, what: l.exportFailedTitle);
+    errors.show(
+      e,
+      what: l.exportFailedTitle,
+      // G75: export again (asks for the passphrase and the place again).
+      retry: () {
+        if (context.mounted) exportFullBackup(context, ref);
+      },
+    );
   } else if (outcome.message != null) {
     messenger.showSnackBar(SnackBar(content: Text(outcome.message!)));
   }
@@ -225,7 +232,20 @@ Future<void> exportGroupBackup(
     groupName: groupName,
   );
   if (outcome.error case final e?) {
-    errors.show(e, what: l.exportFailedTitle);
+    errors.show(
+      e,
+      what: l.exportFailedTitle,
+      retry: () {
+        if (context.mounted) {
+          exportGroupBackup(
+            context,
+            ref,
+            groupId: groupId,
+            groupName: groupName,
+          );
+        }
+      },
+    );
   } else if (outcome.message != null) {
     messenger.showSnackBar(SnackBar(content: Text(outcome.message!)));
   }
@@ -408,7 +428,14 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
   try {
     text = await ref.read(backupFilePickerProvider)();
   } catch (e) {
-    errors.show(e, what: l.restoreFailedTitle);
+    // G75: the file couldn't be read — pick (another) one again.
+    errors.show(
+      e,
+      what: l.restoreFailedTitle,
+      retry: () {
+        if (context.mounted) restoreFullBackup(context, ref);
+      },
+    );
     return;
   }
   if (text == null) return; // cancelled
@@ -908,8 +935,15 @@ Future<void> importCsvWithPreview(BuildContext context, WidgetRef ref) async {
   try {
     text = await pickTextFile(LedgerFileKind.csv);
   } catch (e) {
-    // The picked file couldn't be read (G15: never fail silently).
-    errors.show(e, what: l.importFailedTitle);
+    // The picked file couldn't be read (G15: never fail silently); G75:
+    // *Try again* picks again.
+    errors.show(
+      e,
+      what: l.importFailedTitle,
+      retry: () {
+        if (context.mounted) importCsvWithPreview(context, ref);
+      },
+    );
     return;
   }
   if (text == null) return; // cancelled

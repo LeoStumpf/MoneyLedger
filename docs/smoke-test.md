@@ -33,7 +33,7 @@ Expected results are in *italics*.
 | 1.5 | Airplane mode, relaunch → *Groups and all local data shown offline* | emu |
 
 | 1.6 | About → *How MoneyLedger works* and login → *What is Matrix?* → *the welcome pages again, no choices, Done goes back* (G39); device in German → *German texts* | emu |
-| 1.7 | Welcome → *Use without an account* → name → *local onboarding (Everything stays on this device / Keep a copy / Share later) → Groups with a "Local only" chip and the settings gear only; Settings has no Sync & devices / Sign out* (G40, G65) | emu |
+| 1.7 | Welcome → *Use without an account* → name → *local onboarding (Everything stays on this device / Keep a copy / Share later) → Groups with a "Local only" chip and the settings gear only; Settings has no Sync / Advanced (Matrix) / Sign out* (G40, G65, G75) | emu |
 | 1.8 | Local mode: create a group, *Add person* (name only — no Matrix ID field, no invite icon), expenses + a payment, balance, Back up all groups → *all works offline; no sync cloud; members page "You (on this device)"; logcat: no Matrix client / `[sync]` lines* | emu |
 | 1.9 | "Local only" chip → *sheet: nothing leaves this device, back up, connect an account* | emu |
 | 1.10 | Settings → *Connect a Matrix account* → login (close = cancel back to local) → sign in → *groups page banner "Your N local groups now belong to @…"; group members: you are the claimed member (MXID shown); logcat `[local] adopted N local group(s) … rows signed`* | emu |
@@ -109,6 +109,8 @@ Expected results are in *italics*.
 | 5.14 | Group settings → Categories → rename "Dog", hide it → *peer shows the new name; hidden: not offered for new expenses, old expenses keep the label* (G47) | 2dev |
 | 5.15 | Add expense → *Date shows "Today"*; tap *Yesterday* or the field → pick a day last week → Add → *listed under that day on both devices*; edit it → *the date is prefilled* (G49) | 2dev |
 | 5.16 | Record payment → *Date shows "Today"*; tap *Yesterday* → Record → *listed under yesterday on both devices* (G60) | 2dev |
+| 5.17 | (G75) Row ⋮ → *Duplicate* → *add form with the same description / amount / currency / payer / split / category / note, Date "Today"; back without Add → nothing new*; Add → *a second expense under today, on the peer too*; edit form → copy icon → *same, the edit page is replaced* | 2dev |
+| 5.18 | (G75) Amount `12,50+8` (German) → *preview "= 20,50 €", Add saves 20,50*; `10/3` → *3,33*; `12+` → *Add disabled*; same in the payment dialog. **Check the keyboard:** does the decimal keypad offer `+ - * /` (Gboard)? If not, note it — the calculator then only helps with a hardware / web keyboard | phone |
 
 ## 6. Settlements & balances
 
@@ -165,13 +167,13 @@ Expected results are in *italics*.
 
 | # | Step → expected | How |
 |---|-----------------|-----|
-| 9.1 | Settings → Sync & devices → Devices & security → *all of the account's devices listed (this one first) with verified status* | emu |
+| 9.1 | Settings → Advanced (Matrix) → Devices & security → *all of the account's devices listed (this one first) with verified status* | emu |
 | 9.2 | "Verify" another own device → *emoji dialog on both; "They match" on both → "Device verified."* | Leo |
 | 9.3 | Cancel mid-verification → *dialog closes, no crash, device stays unverified* | Leo |
 | 9.4 | The other device shows "Verification request … Accept / Decline" on any screen → Accept → *same emoji dialog* | emu |
 | 9.5 | Members → tap "N unverified devices" under a member (or ⋮ → Devices) → Verify their device; they accept → *emoji dialog on both; both "Device verified."; the member's device and ours show Verified on both sides* | emu |
-| 9.6 | Settings → "Only sync with verified devices" → *confirmation explains the consequence*; on → add an expense → *verified devices (own + peers) get it; a member with no verified device: members page red "Not reachable — no verified device", sync tooltip "X has no verified device …", they don't receive it* | emu |
-| 9.7 | Signature details of a record from a device you haven't verified → *"You haven't verified this device (emoji comparison)."* | emu |
+| 9.6 | Settings → Advanced (Matrix) → "Only sync with verified devices" → *confirmation: three short sentences + "Learn more" (the details)* (G75); on → add an expense → *verified devices (own + peers) get it; a member with no verified device: members page red "Not reachable — no verified device", sync tooltip "X has no verified device …", they don't receive it* | emu |
+| 9.7 | Signature details of a record from a device you haven't verified → *"You haven't verified this device."* | emu |
 | 9.8 | German UI: the SAS emoji dialog → *names in German (Hund, Katze, …), English UI in English* (G36) | 2dev |
 
 ## 10. Release build
@@ -197,6 +199,15 @@ Run on the Pixel during the G52 step 13 device pass.
 | 11.6 | Add expense (new), keyboard: *description focused on open → Next → amount (decimal keyboard with `,`/`.`) → Done closes the keyboard; the category picker sits after the date; editing an expense opens without a keyboard* | phone |
 | 11.7 | Payment dialog from the app-bar action (amount blank) → *amount focused, decimal keyboard; Done with a valid amount records the payment*; from a tapped debt (prefilled) → *no keyboard on open* | phone |
 | 11.8 | New group → *name focused; Next → the people field; Enter adds a chip and keeps the keyboard (G64)* | phone |
+
+## 12. Review leftovers (G75)
+
+| # | Step → expected | How |
+|---|-----------------|-----|
+| 12.1 | (G75) People → ⋮ → Rename a person to a name another person has → *hint "There is already … in this group", saving still allowed* | emu |
+| 12.2 | (G75) Web build, first start → *groups page shows "MoneyLedger in the browser" (sync only while the tab is open, no restore points, data only in this browser); Got it → gone, also after a reload; About → "MoneyLedger in the browser" shows it again*; local mode → *the text without the sync part* | web |
+| 12.3 | (G75) Local mode → delete an expense / a payment → *"… will be deleted from this device"* (not "for everyone") | emu |
+| 12.4 | (G75) Export fails (e.g. cancel permissions / full storage) → *error snackbar with "Try again" + Details* | phone |
 
 ## iOS
 

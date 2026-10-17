@@ -1372,11 +1372,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get recordSigUnverified =>
-      'Signatur nicht überprüfbar – das signierende Gerät wurde evtl. abgemeldet';
+      'Nicht überprüfbar – das Gerät, das ihn geschrieben hat, ist evtl. abgemeldet';
 
   @override
   String get recordSigVerified =>
-      'Beim Empfang mit dem Geräteschlüssel überprüft';
+      'Beim Empfang geprüft: stammt von diesem Gerät';
 
   @override
   String recordSigVouched(String name) {
@@ -1410,7 +1410,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String peerHasNoVerifiedDevice(Object peer) {
-    return '$peer hat kein verifiziertes Gerät – verifiziere eines, um zu synchronisieren (nur verifizierte Geräte werden synchronisiert)';
+    return '$peer hat kein verifiziertes Gerät – verifiziere eines, um mit der Person zu synchronisieren';
   }
 
   @override
@@ -1419,11 +1419,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get verifiedOnlyOffBody =>
-      'Aus: Jedes Gerät der Personen in deinen Gruppen (und deine eigenen) erhält deine Daten.';
+      'Aus: Alle Geräte der Personen in deinen Gruppen (und deine eigenen) bekommen deine Daten.';
 
   @override
   String get verifiedOnlyOnBody =>
-      'An: Dieses Gerät sendet nichts an Geräte, die du nicht per Emoji-Vergleich verifiziert hast – deine oder die anderer Personen. Das betrifft nur, was dieses Gerät sendet: Andere Geräte synchronisieren weiter untereinander, und eine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie verifizierst.';
+      'An: Dieses Gerät sendet nur an Geräte, die du verifiziert hast – das gilt auch für eine neue Anmeldung von dir. Andere Geräte synchronisieren weiter untereinander.';
 
   @override
   String get verifiedOnlyConfirmTitle =>
@@ -1431,7 +1431,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get verifiedOnlyConfirmBody =>
-      'Das betrifft nur, was dieses Gerät sendet: Deine Ausgaben, Zahlungen und Gruppenänderungen gehen nur noch an Geräte, die du per Emoji-Vergleich verifiziert hast (eigene auf der Geräteseite, andere auf der Seite „Personen“). Was andere Geräte senden, ändert sich nicht – die Geräte der anderen Personen und deine anderen Geräte synchronisieren weiter untereinander, solange sie das nicht auch einschalten.\n\nNicht verifizierte Geräte – auch das neue Handy einer anderen Person – erhalten von diesem Gerät nichts, bis du sie verifizierst, und bleiben zurück.\n\nEine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie auf der Geräteseite verifizierst.\n\nEmpfangene Einträge werden weiter angenommen; die Details zeigen, ob das signierende Gerät verifiziert ist. Gilt nur für dieses Gerät und Konto.';
+      'Dieses Gerät schickt deine Änderungen dann nur noch an Geräte, die du per Emoji-Vergleich verifiziert hast. Nicht verifizierte Geräte – auch das neue Handy einer Person oder eine neue Anmeldung von dir – bekommen von hier nichts, bis du sie verifizierst. Das betrifft nur, was dieses Gerät sendet: Andere Geräte synchronisieren weiter untereinander.';
 
   @override
   String get verifiedOnlyTurnOn => 'Einschalten';
@@ -1483,12 +1483,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get decline => 'Ablehnen';
 
   @override
-  String get recordDeviceVerifiedByYou =>
-      'Du hast dieses Gerät verifiziert (Emoji-Vergleich).';
+  String get recordDeviceVerifiedByYou => 'Du hast dieses Gerät verifiziert.';
 
   @override
   String get recordDeviceNotVerifiedByYou =>
-      'Du hast dieses Gerät nicht verifiziert (Emoji-Vergleich).';
+      'Du hast dieses Gerät nicht verifiziert.';
 
   @override
   String get categoryLabel => 'Kategorie';
@@ -2305,7 +2304,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get copiedToClipboard => 'Kopiert';
 
   @override
-  String get devicesSettingsBody => 'Deine Anmeldungen und Emoji-Verifizierung';
+  String get devicesSettingsBody =>
+      'Wo du angemeldet bist; Geräte per Emoji-Vergleich prüfen';
 
   @override
   String get addPeopleHint => 'Bisher bist nur du in dieser Gruppe.';
@@ -2408,7 +2408,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsSectionAccount => 'Konto';
 
   @override
-  String get settingsSectionSync => 'Synchronisierung & Geräte';
+  String get settingsSectionSync => 'Synchronisierung';
 
   @override
   String get settingsSectionBackup => 'Sichern & Wiederherstellen';
@@ -2802,4 +2802,52 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get verifiedOnlyLearnMore => 'Mehr erfahren';
+
+  @override
+  String get verifiedOnlyMoreBody =>
+      'Deine eigenen Geräte verifizierst du auf der Geräteseite, die anderer Personen auf der Seite „Personen“ einer Gruppe.\n\nNicht verifizierte Geräte bleiben zurück: Eine neue Anmeldung von dir kann deine Gruppen erst von diesem Gerät wiederherstellen, wenn du sie dort verifizierst.\n\nDie Geräte anderer Personen und deine anderen Geräte synchronisieren weiter untereinander, solange sie das nicht auch einschalten.\n\nWas du empfängst, wird weiter angenommen; die Details eines Eintrags zeigen, ob du das Gerät verifiziert hast, das ihn geschrieben hat. Gilt nur für dieses Gerät und Konto.';
+
+  @override
+  String get settingsSectionAdvanced => 'Erweitert (Matrix)';
+
+  @override
+  String get webLimitsTitle => 'MoneyLedger im Browser';
+
+  @override
+  String get webLimitsBody =>
+      'Synchronisiert wird nur, solange dieser Tab offen ist – eine Hintergrund-Synchronisierung gibt es nicht. Automatische Wiederherstellungspunkte gibt es auch nicht, und deine Daten liegen nur in diesem Browser (Websitedaten löschen löscht sie). Sichere sie ab und zu.';
+
+  @override
+  String get webLimitsBodyLocal =>
+      'Im Browser gibt es keine automatischen Wiederherstellungspunkte, und deine Daten liegen nur in diesem Browser (Websitedaten löschen löscht sie). Sichere sie ab und zu.';
+
+  @override
+  String get webLimitsBackup => 'Sichern';
+
+  @override
+  String get webLimitsDismiss => 'Verstanden';
+
+  @override
+  String get duplicateExpense => 'Duplizieren';
+
+  @override
+  String duplicatePersonRenameHint(String name) {
+    return 'In dieser Gruppe gibt es schon $name. Ein eindeutiger Name (z. B. „$name B.“) hilft, die beiden auseinanderzuhalten.';
+  }
+
+  @override
+  String deleteExpenseBodyLocal(String description) {
+    return '„$description“ wird von diesem Gerät gelöscht.';
+  }
+
+  @override
+  String deleteSettlementBodyLocal(String from, String to, String amount) {
+    return '„$from hat $to $amount gezahlt“ wird von diesem Gerät gelöscht und der Saldo wiederhergestellt.';
+  }
+
+  @override
+  String get errorTryAgain => 'Erneut versuchen';
 }

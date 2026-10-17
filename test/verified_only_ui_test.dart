@@ -108,7 +108,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Only sync with verified devices?'), findsOneWidget);
       expect(
-        find.textContaining('get nothing from this device until you verify'),
+        find.textContaining('get nothing from here until you verify'),
         findsOneWidget,
       );
       // G36: it says plainly that only this device's sends are limited and
@@ -117,10 +117,15 @@ void main() {
         find.textContaining('This only limits what this device sends'),
         findsOneWidget,
       );
+      // G75 (U27): the details sit behind *Learn more*.
+      expect(find.byKey(const Key('verifiedOnlyMoreBody')), findsNothing);
+      await tester.tap(find.byKey(const Key('verifiedOnlyLearnMore')));
+      await tester.pumpAndSettle();
       expect(
         find.textContaining("can't restore your groups from this device"),
         findsOneWidget,
       );
+      expect(find.byKey(const Key('verifiedOnlyLearnMore')), findsNothing);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(await tester.runAsync(dao.verifiedOnlySync), isFalse);
@@ -135,11 +140,11 @@ void main() {
       flag.add(true);
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('On: this device sends nothing'),
+        find.textContaining('On: this device only sends to devices you have'),
         findsOneWidget,
       );
       expect(
-        find.textContaining('It only limits what this device sends'),
+        find.textContaining('Other devices keep syncing with each other'),
         findsOneWidget,
       );
 

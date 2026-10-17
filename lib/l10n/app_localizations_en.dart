@@ -1358,11 +1358,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recordSigUnverified =>
-      'Signature not verifiable — the signing device may have signed out';
+      'Can\'t be checked — the device that wrote it may have signed out';
 
   @override
   String get recordSigVerified =>
-      'Verified on receipt against the device\'s key';
+      'Checked on arrival: it comes from this device';
 
   @override
   String recordSigVouched(String name) {
@@ -1396,7 +1396,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String peerHasNoVerifiedDevice(Object peer) {
-    return '$peer has no verified device — verify one to sync (only verified devices are synced)';
+    return '$peer has no verified device — verify one to sync with them';
   }
 
   @override
@@ -1404,18 +1404,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get verifiedOnlyOffBody =>
-      'Off: every device of the people in your groups (and your own) receives your ledger data.';
+      'Off: every device of the people in your groups (and your own) gets your data.';
 
   @override
   String get verifiedOnlyOnBody =>
-      'On: this device sends nothing to devices you haven\'t verified by emoji comparison — yours or other people\'s. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can\'t restore your groups from this device until you verify it.';
+      'On: this device only sends to devices you have verified — a new login of yours too. Other devices keep syncing with each other.';
 
   @override
   String get verifiedOnlyConfirmTitle => 'Only sync with verified devices?';
 
   @override
   String get verifiedOnlyConfirmBody =>
-      'This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the People page for others). It doesn\'t change what other devices send — other people\'s devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including someone\'s new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can\'t restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.';
+      'This device will only send your changes to devices you have verified by comparing emojis. Unverified devices — also someone\'s new phone or a new login of yours — get nothing from here until you verify them. This only limits what this device sends: other devices keep syncing with each other.';
 
   @override
   String get verifiedOnlyTurnOn => 'Turn on';
@@ -1467,12 +1467,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get decline => 'Decline';
 
   @override
-  String get recordDeviceVerifiedByYou =>
-      'You verified this device (emoji comparison).';
+  String get recordDeviceVerifiedByYou => 'You verified this device.';
 
   @override
   String get recordDeviceNotVerifiedByYou =>
-      'You haven\'t verified this device (emoji comparison).';
+      'You haven\'t verified this device.';
 
   @override
   String get categoryLabel => 'Category';
@@ -2278,7 +2277,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copiedToClipboard => 'Copied';
 
   @override
-  String get devicesSettingsBody => 'Your logins and emoji verification';
+  String get devicesSettingsBody =>
+      'Where you\'re signed in; check devices by comparing emojis';
 
   @override
   String get addPeopleHint => 'It\'s just you in this group so far.';
@@ -2381,7 +2381,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionAccount => 'Account';
 
   @override
-  String get settingsSectionSync => 'Sync & devices';
+  String get settingsSectionSync => 'Sync';
 
   @override
   String get settingsSectionBackup => 'Backup & restore';
@@ -2772,4 +2772,52 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get verifiedOnlyLearnMore => 'Learn more';
+
+  @override
+  String get verifiedOnlyMoreBody =>
+      'Verify your own devices on the Devices page, other people\'s on the People page of a group.\n\nUnverified devices fall behind: a new login of your own can\'t restore your groups from this device until you verify it there.\n\nOther people\'s devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nWhat you receive is still accepted; an entry\'s details show whether you verified the device that wrote it. Applies to this device and account only.';
+
+  @override
+  String get settingsSectionAdvanced => 'Advanced (Matrix)';
+
+  @override
+  String get webLimitsTitle => 'MoneyLedger in the browser';
+
+  @override
+  String get webLimitsBody =>
+      'It only syncs while this tab is open — there\'s no background sync. There are no automatic restore points either, and your data is stored in this browser only (clearing its site data deletes it). Make a backup now and then.';
+
+  @override
+  String get webLimitsBodyLocal =>
+      'There are no automatic restore points in the browser, and your data is stored in this browser only (clearing its site data deletes it). Make a backup now and then.';
+
+  @override
+  String get webLimitsBackup => 'Back up';
+
+  @override
+  String get webLimitsDismiss => 'Got it';
+
+  @override
+  String get duplicateExpense => 'Duplicate';
+
+  @override
+  String duplicatePersonRenameHint(String name) {
+    return 'There is already a $name in this group. A distinct name (e.g. \"$name B.\") helps tell them apart.';
+  }
+
+  @override
+  String deleteExpenseBodyLocal(String description) {
+    return '\"$description\" will be deleted from this device.';
+  }
+
+  @override
+  String deleteSettlementBodyLocal(String from, String to, String amount) {
+    return '\"$from paid $to $amount\" will be deleted from this device and the balance restored.';
+  }
+
+  @override
+  String get errorTryAgain => 'Try again';
 }

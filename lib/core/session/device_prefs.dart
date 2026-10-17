@@ -92,12 +92,16 @@ class DevicePrefs {
   /// mode is started again ("your earlier local groups are in …").
   final String? lastAdoptedInto;
 
+  /// G75 (U31): the web limits notice (groups page, web only) was dismissed.
+  final bool webNoticeSeen;
+
   const DevicePrefs({
     this.welcomeSeen = false,
     this.localProfile,
     this.connecting = false,
     this.adoptInto,
     this.lastAdoptedInto,
+    this.webNoticeSeen = false,
   });
 
   /// Used when the store can't be read: never strand the user on the
@@ -109,6 +113,7 @@ class DevicePrefs {
   static const _connectingKey = 'local_connecting';
   static const _adoptKey = 'local_adopt_into';
   static const _lastAdoptKey = 'local_last_adopted_into';
+  static const _webNoticeKey = 'web_notice_seen';
 
   factory DevicePrefs.fromMap(Map<String, String> m) => DevicePrefs(
     welcomeSeen: m[_welcomeKey] == '1',
@@ -116,6 +121,7 @@ class DevicePrefs {
     connecting: m[_connectingKey] == '1',
     adoptInto: _nonEmpty(m[_adoptKey]),
     lastAdoptedInto: _nonEmpty(m[_lastAdoptKey]),
+    webNoticeSeen: m[_webNoticeKey] == '1',
   );
 
   Map<String, String> toMap() => {
@@ -124,6 +130,7 @@ class DevicePrefs {
     if (connecting && localProfile != null) _connectingKey: '1',
     _adoptKey: ?adoptInto,
     _lastAdoptKey: ?lastAdoptedInto,
+    if (webNoticeSeen) _webNoticeKey: '1',
   };
 
   DevicePrefs copyWith({
@@ -132,6 +139,7 @@ class DevicePrefs {
     bool? connecting,
     Object? adoptInto = _keep,
     Object? lastAdoptedInto = _keep,
+    bool? webNoticeSeen,
   }) => DevicePrefs(
     welcomeSeen: welcomeSeen ?? this.welcomeSeen,
     localProfile: identical(localProfile, _keep)
@@ -144,6 +152,7 @@ class DevicePrefs {
     lastAdoptedInto: identical(lastAdoptedInto, _keep)
         ? this.lastAdoptedInto
         : lastAdoptedInto as String?,
+    webNoticeSeen: webNoticeSeen ?? this.webNoticeSeen,
   );
 
   static String? _nonEmpty(String? s) => (s == null || s.isEmpty) ? null : s;
@@ -156,7 +165,8 @@ class DevicePrefs {
       other.localProfile?.createdAt == localProfile?.createdAt &&
       other.connecting == connecting &&
       other.adoptInto == adoptInto &&
-      other.lastAdoptedInto == lastAdoptedInto;
+      other.lastAdoptedInto == lastAdoptedInto &&
+      other.webNoticeSeen == webNoticeSeen;
 
   @override
   int get hashCode => Object.hash(
@@ -166,6 +176,7 @@ class DevicePrefs {
     connecting,
     adoptInto,
     lastAdoptedInto,
+    webNoticeSeen,
   );
 }
 
@@ -209,6 +220,10 @@ class DevicePrefsNotifier extends AsyncNotifier<DevicePrefs> {
     state = AsyncData(next);
     await ref.read(devicePrefsStoreProvider).save(next.toMap());
   }
+
+  /// G75 (U31): the web limits notice was dismissed (device-wide).
+  Future<void> markWebNoticeSeen() =>
+      _update((p) => p.copyWith(webNoticeSeen: true));
 
   /// G39: the welcome was completed (any of its three choices).
   Future<void> markWelcomeSeen() =>

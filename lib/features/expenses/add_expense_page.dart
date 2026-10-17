@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../../core/sync/record_validation.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
@@ -17,6 +18,7 @@ import '../groups/group_provider.dart';
 import 'expense_category_ui.dart';
 import 'expenses_provider.dart';
 import 'record_date_field.dart';
+import 'split_calculator.dart' show splitEqually;
 import 'split_editor.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
 import 'record_attribution.dart';
@@ -26,10 +28,29 @@ import '../../core/widgets/action_error.dart';
 
 /// Add (default) or edit an expense — pass [initial] to prefill the form and
 /// save the submit as an LWW edit of the same record.
+/// G75: the route of the add form prefilled with a copy (`extra`: the
+/// [ExpenseModel] to duplicate).
+String duplicateExpenseLocation(String groupId) =>
+    '/groups/$groupId/expenses/duplicate';
+
 class AddExpensePage extends ConsumerStatefulWidget {
   final String roomId;
+
+  /// The expense being edited (null = a new one).
   final ExpenseModel? initial;
-  const AddExpensePage({super.key, required this.roomId, this.initial});
+
+  /// G75: *Duplicate* — a **new** expense prefilled with this one's
+  /// description, amount, currency, payer, split, category and note (dated
+  /// today; a new id on *Add*). Nothing is written before *Add*. Ignored
+  /// when [initial] is set.
+  final ExpenseModel? copyFrom;
+
+  const AddExpensePage({
+    super.key,
+    required this.roomId,
+    this.initial,
+    this.copyFrom,
+  });
 
   @override
   ConsumerState<AddExpensePage> createState() => _AddExpensePageState();
@@ -57,6 +78,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   List<CustomCategory> _customCategories = const [];
 
   bool get _isEdit => widget.initial != null;
+
+  /// What the form is prefilled from: the edited expense, or (G75) the one
+  /// being duplicated.
+  ExpenseModel? get _source => widget.initial ?? widget.copyFrom;
+
+  /// G75: the duplicated expense's split, limited to people still in the
+  /// group (set in [_loadData]).
+  Map<String, int>? _copySplit;
 
   /// G49: the day the expense happened (local midnight) — today for a new
   /// expense, the edited one's display day otherwise.
@@ -88,7 +117,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
   bool get _dirty {
     if (_saved || _members == null) return false;
-    final initial = widget.initial;
+    final initial = _source;
     return _descCtrl.text != (initial?.description ?? '') ||
         _amountCtrl.text != _initialAmountText ||
         _noteCtrl.text != (initial?.note ?? '') ||
@@ -99,8 +128,30 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         _planUpdates > 1;
   }
 
-  /// G56: "Discard changes?" — true = leave without saving.
+  /// G75: replaces this edit form with the add form prefilled with a copy
+  /// of the stored expense; a changed form asks before its edits are lost.
+  Future<void> _duplicate() async {
+    final initial = widget.initial;
+    if (initial == null) return;
+    if (_dirty) {
+      if (!await _askDiscard() || !mounted) return;
+    }
+    setState(() => _saved = true); // leaving on purpose
+    context.pushReplacement(
+      duplicateExpenseLocation(widget.roomId),
+      extra: initial,
+    );
+  }
+
+  /// G56: "Discard changes?" — leaves without saving on *Discard*.
   Future<void> _confirmDiscard() async {
+    if (!await _askDiscard() || !mounted) return;
+    setState(() => _saved = true); // nothing to protect any more
+    Navigator.of(context).pop();
+  }
+
+  /// G56: asks "Discard changes?" — true = throw the edits away.
+  Future<bool> _askDiscard() async {
     final l = context.l10n;
     final discard = await showDialog<bool>(
       context: context,
@@ -121,9 +172,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         ],
       ),
     );
-    if (discard != true || !mounted) return;
-    setState(() => _saved = true); // nothing to protect any more
-    Navigator.of(context).pop();
+    return discard == true;
   }
 
   /// Accepts `,` and `.` as decimal separator (G12) — see
@@ -134,13 +183,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   /// prefill of an edited expense is its stored amount — a legacy non-whole
   /// JPY amount (stored in hundredths before G66) isn't rounded on save.
   int? get _parsedCents {
-    final initial = widget.initial;
+    final initial = _source;
     if (initial != null &&
         _amountPrefilled &&
         _amountCtrl.text == _initialAmountText) {
       return initial.amountCents;
     }
-    return parseAmountCents(
+    // G75: a small expression ("12,50+8") is worked out.
+    return parseAmountInput(
       _amountCtrl.text,
       locale: context.localeName,
       currency: _currency,
@@ -155,6 +205,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   }
 
   Map<String, int>? get _initialSplit {
+    if (!_isEdit && widget.copyFrom != null) return _copySplit;
     final json = widget.initial?.splitsJson;
     if (json == null) return null;
     return tryParseSplit(json) ?? const {};
@@ -163,9 +214,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   @override
   void initState() {
     super.initState();
-    final initial = widget.initial;
-    _initialDay = initial?.displayDay ?? dayOf(DateTime.now());
+    // G75: a duplicate is dated today, like any new expense.
+    _initialDay = widget.initial?.displayDay ?? dayOf(DateTime.now());
     _day = _initialDay;
+    final initial = _source;
     if (initial != null) {
       _descCtrl.text = initial.description;
       _noteCtrl.text = initial.note ?? '';
@@ -191,8 +243,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Prefill the edited amount once, with the locale's decimal separator.
-    final initial = widget.initial;
+    // Prefill the edited (or duplicated, G75) amount once, with the
+    // locale's decimal separator.
+    final initial = _source;
     if (initial != null && !_amountPrefilled) {
       _amountPrefilled = true;
       _amountCtrl.text = formatAmountInput(
@@ -212,7 +265,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       initial: widget.initial,
     );
     final group = await ref.read(groupsDaoProvider).getGroup(widget.roomId);
-    final currency = widget.initial?.currency ?? group?.currency ?? 'EUR';
+    final copy = _isEdit ? null : widget.copyFrom;
+    final currency =
+        widget.initial?.currency ?? copy?.currency ?? group?.currency ?? 'EUR';
     final suggested = await groupCurrencySuggestions(
       ref,
       widget.roomId,
@@ -223,13 +278,26 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final self = await ref.read(
       currentParticipantProvider(widget.roomId).future,
     );
+    final activeIds = {
+      for (final m in members)
+        if (m.isActive) m.userId,
+    };
+    // G75: a duplicate keeps its payer while they are still in the group.
+    final copiedPayer = copy != null && activeIds.contains(copy.paidBy)
+        ? copy.paidBy
+        : null;
     final defaultPayer =
         widget.initial?.paidBy ??
+        copiedPayer ??
         self?.userId ??
         (members.isNotEmpty ? members.first.userId : null);
+    final copySplit = copy == null
+        ? null
+        : duplicateSplit(copy, activeIds, step: currencyStep(currency));
     if (mounted) {
       setState(() {
         _members = members;
+        _copySplit = copySplit;
         // Edit keeps the expense's own currency; new ones default to the
         // group's (G29 — each expense may use any currency).
         _currency = currency;
@@ -374,7 +442,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   Future<void> _delete() async {
     final initial = widget.initial;
     if (initial == null) return;
-    if (!await confirmDeleteExpense(context, initial) || !mounted) return;
+    final local = ref.read(localModeActiveProvider);
+    if (!await confirmDeleteExpense(context, initial, localOnly: local) ||
+        !mounted) {
+      return;
+    }
     final deleted = await deleteExpenseFlow(
       context,
       ref,
@@ -411,6 +483,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         appBar: AppBar(
           title: Text(_isEdit ? l.editExpense : l.addExpense),
           actions: [
+            // G75: *Duplicate* — the add form with a copy of the stored
+            // expense (unsaved edits here are not copied; a changed form
+            // asks first).
+            if (_isEdit)
+              IconButton(
+                key: const Key('duplicateExpenseButton'),
+                tooltip: l.duplicateExpense,
+                icon: const Icon(Icons.copy_outlined),
+                onPressed: adderState.isLoading ? null : _duplicate,
+              ),
             if (_isEdit)
               IconButton(
                 key: const Key('deleteExpenseButton'),
@@ -710,6 +792,28 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       ),
     );
   }
+}
+
+/// G75: the split a duplicate of [source] opens with — its own split while
+/// everyone in it is still in the group ([activeIds]); if some left, the
+/// amount spread equally over the ones still here (rounded to [step]); null
+/// (the form's default: everyone, equally) when nobody of it is left or the
+/// stored split can't be read.
+@visibleForTesting
+Map<String, int>? duplicateSplit(
+  ExpenseModel source,
+  Set<String> activeIds, {
+  int step = 1,
+}) {
+  final split = tryParseSplit(source.splitsJson);
+  if (split == null || split.isEmpty) return null;
+  final kept = [
+    for (final id in split.keys)
+      if (activeIds.contains(id)) id,
+  ];
+  if (kept.isEmpty) return null;
+  if (kept.length == split.length) return split;
+  return splitEqually(source.amountCents, kept, step: step);
 }
 
 /// U11: the participants the expense form offers — the group's **active**

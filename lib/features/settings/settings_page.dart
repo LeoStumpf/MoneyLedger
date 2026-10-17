@@ -63,6 +63,19 @@ class SettingsPage extends ConsumerWidget {
             if (!local) ...[
               SettingsSectionHeader(l.settingsSectionSync),
               const _SyncSection(),
+              // G75 (U27): the Matrix-specific device controls get their own
+              // section, so they don't sit on a par with background sync.
+              SettingsSectionHeader(l.settingsSectionAdvanced),
+              const VerifiedOnlySyncTile(),
+              // G56: was an app-bar icon on the groups page.
+              ListTile(
+                key: const Key('devicesTile'),
+                leading: const Icon(Icons.devices),
+                title: Text(l.devicesTooltip),
+                subtitle: Text(l.devicesSettingsBody),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/devices'),
+              ),
             ],
             SettingsSectionHeader(l.settingsSectionBackup),
             const BackupSettingsSection(),
@@ -217,16 +230,6 @@ class _SyncSection extends ConsumerWidget {
             title: Text(l.noBackgroundSyncTitle),
             subtitle: Text(l.noBackgroundSyncBody),
           ),
-        const VerifiedOnlySyncTile(),
-        // G56: was an app-bar icon on the groups page.
-        ListTile(
-          key: const Key('devicesTile'),
-          leading: const Icon(Icons.devices),
-          title: Text(l.devicesTooltip),
-          subtitle: Text(l.devicesSettingsBody),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push('/devices'),
-        ),
       ],
     );
   }
@@ -286,7 +289,8 @@ class VerifiedOnlySyncTile extends ConsumerWidget {
             context: context,
             builder: (ctx) => AlertDialog(
               title: Text(l.verifiedOnlyConfirmTitle),
-              content: Text(l.verifiedOnlyConfirmBody),
+              content: const _VerifiedOnlyConfirmContent(),
+              scrollable: true,
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
@@ -304,6 +308,51 @@ class VerifiedOnlySyncTile extends ConsumerWidget {
         }
         await settings.setVerifiedOnlySync(v);
       },
+    );
+  }
+}
+
+/// G75 (U27): the verified-only confirmation — three short sentences; the
+/// details (where to verify, restoring a new login, what is still accepted)
+/// behind *Learn more*.
+class _VerifiedOnlyConfirmContent extends StatefulWidget {
+  const _VerifiedOnlyConfirmContent();
+
+  @override
+  State<_VerifiedOnlyConfirmContent> createState() =>
+      _VerifiedOnlyConfirmContentState();
+}
+
+class _VerifiedOnlyConfirmContentState
+    extends State<_VerifiedOnlyConfirmContent> {
+  bool _more = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l.verifiedOnlyConfirmBody),
+        if (_more)
+          Padding(
+            padding: const EdgeInsets.only(top: Insets.s),
+            child: Text(
+              l.verifiedOnlyMoreBody,
+              key: const Key('verifiedOnlyMoreBody'),
+            ),
+          )
+        else
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              key: const Key('verifiedOnlyLearnMore'),
+              onPressed: () => setState(() => _more = true),
+              child: Text(l.verifiedOnlyLearnMore),
+            ),
+          ),
+      ],
     );
   }
 }

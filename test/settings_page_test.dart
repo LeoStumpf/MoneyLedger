@@ -76,6 +76,7 @@ void main() {
         final headers = [
           l.settingsSectionAccount,
           l.settingsSectionSync,
+          l.settingsSectionAdvanced,
           l.settingsSectionBackup,
           l.settingsSectionData,
           l.settingsSectionAbout,
@@ -113,7 +114,8 @@ void main() {
       double y(String text) => tester.getTopLeft(find.text(text)).dy;
       final order = [
         'ACCOUNT',
-        'SYNC & DEVICES',
+        'SYNC',
+        'ADVANCED (MATRIX)',
         'BACKUP & RESTORE',
         'DATA',
         'ABOUT',
@@ -269,6 +271,10 @@ void main() {
         expect(find.byKey(const Key('signOutTile')), findsNothing);
         expect(find.byKey(const Key('accountTile')), findsNothing);
         expect(find.text(l.settingsSectionSync.toUpperCase()), findsNothing);
+        expect(
+          find.text(l.settingsSectionAdvanced.toUpperCase()),
+          findsNothing,
+        );
         expect(find.byKey(const Key('backgroundSyncSwitch')), findsNothing);
         expect(find.byKey(const Key('verifiedOnlySwitch')), findsNothing);
         expect(find.byKey(const Key('devicesTile')), findsNothing);

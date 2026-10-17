@@ -17,6 +17,7 @@ import '../../core/sync/sync_health.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../settings/settings_page.dart' show kSettingsLocation;
+import '../web/web_limits.dart';
 import '../../core/widgets/content_width.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/person_avatar.dart';
@@ -78,6 +79,8 @@ class GroupsPage extends ConsumerWidget {
           const _LocalAdoptedBanner(),
           // G35: a peer relayed unsigned (pre-G6) records we had to refuse.
           const _LegacyRefusalBanner(),
+          // G75 (U31): the web's limits, once (until *Got it*).
+          const WebLimitsBanner(),
           Expanded(
             child: _GroupsBody(
               groupsAsync: groupsAsync,

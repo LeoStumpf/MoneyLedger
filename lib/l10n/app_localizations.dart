@@ -2207,13 +2207,13 @@ abstract class AppLocalizations {
   /// G6
   ///
   /// In en, this message translates to:
-  /// **'Signature not verifiable — the signing device may have signed out'**
+  /// **'Can\'t be checked — the device that wrote it may have signed out'**
   String get recordSigUnverified;
 
   /// G6: details sheet
   ///
   /// In en, this message translates to:
-  /// **'Verified on receipt against the device\'s key'**
+  /// **'Checked on arrival: it comes from this device'**
   String get recordSigVerified;
 
   /// G6: key vouched for by a snapshot sender
@@ -2261,7 +2261,7 @@ abstract class AppLocalizations {
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'{peer} has no verified device — verify one to sync (only verified devices are synced)'**
+  /// **'{peer} has no verified device — verify one to sync with them'**
   String peerHasNoVerifiedDevice(Object peer);
 
   /// G11 device-verification enforcement
@@ -2273,13 +2273,13 @@ abstract class AppLocalizations {
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'Off: every device of the people in your groups (and your own) receives your ledger data.'**
+  /// **'Off: every device of the people in your groups (and your own) gets your data.'**
   String get verifiedOnlyOffBody;
 
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'On: this device sends nothing to devices you haven\'t verified by emoji comparison — yours or other people\'s. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can\'t restore your groups from this device until you verify it.'**
+  /// **'On: this device only sends to devices you have verified — a new login of yours too. Other devices keep syncing with each other.'**
   String get verifiedOnlyOnBody;
 
   /// G11 device-verification enforcement
@@ -2288,10 +2288,10 @@ abstract class AppLocalizations {
   /// **'Only sync with verified devices?'**
   String get verifiedOnlyConfirmTitle;
 
-  /// G11 device-verification enforcement
+  /// G11 / G75 (U27): confirm dialog when turning on verified-only sync — three short sentences, the details behind 'Learn more'
   ///
   /// In en, this message translates to:
-  /// **'This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the People page for others). It doesn\'t change what other devices send — other people\'s devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including someone\'s new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can\'t restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.'**
+  /// **'This device will only send your changes to devices you have verified by comparing emojis. Unverified devices — also someone\'s new phone or a new login of yours — get nothing from here until you verify them. This only limits what this device sends: other devices keep syncing with each other.'**
   String get verifiedOnlyConfirmBody;
 
   /// G11 device-verification enforcement
@@ -2363,13 +2363,13 @@ abstract class AppLocalizations {
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'You verified this device (emoji comparison).'**
+  /// **'You verified this device.'**
   String get recordDeviceVerifiedByYou;
 
   /// G11 device-verification enforcement
   ///
   /// In en, this message translates to:
-  /// **'You haven\'t verified this device (emoji comparison).'**
+  /// **'You haven\'t verified this device.'**
   String get recordDeviceNotVerifiedByYou;
 
   /// G16 expense categories
@@ -3575,7 +3575,7 @@ abstract class AppLocalizations {
   /// G56: settings page 'Devices & security' tile subtitle
   ///
   /// In en, this message translates to:
-  /// **'Your logins and emoji verification'**
+  /// **'Where you\'re signed in; check devices by comparing emojis'**
   String get devicesSettingsBody;
 
   /// G56: card above the ledger when I'm the only member but there are already expenses
@@ -3725,7 +3725,7 @@ abstract class AppLocalizations {
   /// G65: settings page section
   ///
   /// In en, this message translates to:
-  /// **'Sync & devices'**
+  /// **'Sync'**
   String get settingsSectionSync;
 
   /// G65: settings page section
@@ -4369,6 +4369,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 more category} other{{count} more categories}}'**
   String statsMoreCategories(int count);
+
+  /// G75 (U27): expands the details in the verified-only confirm dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Learn more'**
+  String get verifiedOnlyLearnMore;
+
+  /// G75 (U27): the details behind 'Learn more' in the verified-only confirm dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your own devices on the Devices page, other people\'s on the People page of a group.\n\nUnverified devices fall behind: a new login of your own can\'t restore your groups from this device until you verify it there.\n\nOther people\'s devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nWhat you receive is still accepted; an entry\'s details show whether you verified the device that wrote it. Applies to this device and account only.'**
+  String get verifiedOnlyMoreBody;
+
+  /// G75 (U27): settings section with the devices page and verified-only sync
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced (Matrix)'**
+  String get settingsSectionAdvanced;
+
+  /// G75 (U31): title of the one-time web limits notice (groups page) and its About entry
+  ///
+  /// In en, this message translates to:
+  /// **'MoneyLedger in the browser'**
+  String get webLimitsTitle;
+
+  /// G75 (U31): web limits notice, signed in with Matrix
+  ///
+  /// In en, this message translates to:
+  /// **'It only syncs while this tab is open — there\'s no background sync. There are no automatic restore points either, and your data is stored in this browser only (clearing its site data deletes it). Make a backup now and then.'**
+  String get webLimitsBody;
+
+  /// G75 (U31): web limits notice in local mode (nothing syncs anyway)
+  ///
+  /// In en, this message translates to:
+  /// **'There are no automatic restore points in the browser, and your data is stored in this browser only (clearing its site data deletes it). Make a backup now and then.'**
+  String get webLimitsBodyLocal;
+
+  /// G75 (U31): web limits notice → the backup page
+  ///
+  /// In en, this message translates to:
+  /// **'Back up'**
+  String get webLimitsBackup;
+
+  /// G75 (U31): dismisses the web limits notice for good (this browser)
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get webLimitsDismiss;
+
+  /// G75: ⋮ on an expense row / edit-expense app bar — opens the add form prefilled with a copy
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get duplicateExpense;
+
+  /// G75 (G64 leftover): live hint while renaming a person to a name another person already has
+  ///
+  /// In en, this message translates to:
+  /// **'There is already a {name} in this group. A distinct name (e.g. \"{name} B.\") helps tell them apart.'**
+  String duplicatePersonRenameHint(String name);
+
+  /// G75 (G64 leftover): delete-expense confirmation in local mode (nothing is shared)
+  ///
+  /// In en, this message translates to:
+  /// **'\"{description}\" will be deleted from this device.'**
+  String deleteExpenseBodyLocal(String description);
+
+  /// G75 (G64 leftover): delete-payment confirmation in local mode
+  ///
+  /// In en, this message translates to:
+  /// **'\"{from} paid {to} {amount}\" will be deleted from this device and the balance restored.'**
+  String deleteSettlementBodyLocal(String from, String to, String amount);
+
+  /// G75 (G67 leftover): error snackbar action that re-runs a repeatable action (export, picking a file)
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get errorTryAgain;
 }
 
 class _AppLocalizationsDelegate

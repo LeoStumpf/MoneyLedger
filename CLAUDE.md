@@ -279,7 +279,8 @@ lib/
     devices/                   # Device list + SAS verification UI (DevicesPage, member device sheet,
                                #   IncomingVerificationListener) — G11
     about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
-    settings/                  # G65 SettingsPage (/settings): account, sync & devices, backup, data, about, debug
+    settings/                  # G65 SettingsPage (/settings): account, sync, advanced (Matrix), backup, data, about, debug
+    web/                       # G75 (U31) web_limits.dart: one-time web limits notice + About entry
 test/
   flutter_test_config.dart     # Per-test-file setup (Drift multi-DB warning off; sqlite3 via hooks)
   helpers/
@@ -839,7 +840,7 @@ connected + battery not low; `lib/core/background/`) fixes that:
   process dies). Gate logic is tested on a fake `PortRegistry`
   (`test/core/background_gate_test.dart`).
 - Setting: per account, device-local `AppSettings` `background_sync_enabled`
-  (default on), settings page (gear on the groups page, G65) → *Sync & devices*;
+  (default on), settings page (gear on the groups page, G65) → *Sync*;
   `backgroundSyncSchedulingProvider` (watched by `LedgerSyncHost`) registers /
   cancels the OS task (cancel on sign-out and in local mode, G40). The round
   re-checks the flag (and overrides `localModeActiveProvider` /
@@ -1567,6 +1568,69 @@ menu. Tests: `test/g60_payment_edit_test.dart`,
   `test/features/record_undo_test.dart`, `test/core/action_errors_test.dart`,
   `test/g67_undo_errors_test.dart`.
 
+### Review leftovers (G75)
+
+- **Plain-language verification texts (U27):** *Only sync with verified
+  devices* and *Devices & security* sit in their own settings section
+  *Advanced (Matrix)* / *Erweitert (Matrix)*. The switch's subtitle is one
+  or two short sentences (on: "only sends to devices you have verified — a
+  new login of yours too. Other devices keep syncing with each other"); the
+  confirmation (`_VerifiedOnlyConfirmContent`) says three sentences — only
+  verified devices get this device's changes, unverified ones (someone's
+  new phone, a new login of yours) get nothing until verified, it only
+  limits what this device sends — and the rest (where to verify, a new
+  login can't restore from here, inbound still accepted) is behind *Learn
+  more* (`verifiedOnlyLearnMore` → `verifiedOnlyMoreBody`). Signature
+  details avoid "signing device" / "signature": "Can't be checked — the
+  device that wrote it may have signed out".
+- **Web limits (U31):** on the web the groups page shows
+  `WebLimitsBanner` (`features/web/web_limits.dart`) until *Got it* —
+  device-wide flag `DevicePrefs.webNoticeSeen` (`web_notice_seen`, stored
+  in this browser): syncs only while the tab is open (no background sync),
+  no restore points, data only in this browser — back up now and then
+  (*Back up* → `/backup`). Local mode: the text without the sync part
+  (`webLimitsBodyLocal`). About → *MoneyLedger in the browser* shows it
+  again (`WebLimitsAboutTile`, web only). Test seam: `isWebProvider`
+  (`core/platform/is_web.dart`).
+- **Duplicate expense:** row ⋮ → *Duplicate* (`duplicateExpenseMenuItem`)
+  and the edit form's app-bar copy icon (`duplicateExpenseButton`; a
+  changed form asks *Discard changes?* first, then the edit page is
+  **replaced**) open `AddExpensePage(copyFrom:)` at
+  `duplicateExpenseLocation(groupId)` (`/groups/:id/expenses/duplicate`,
+  `extra` = the stored expense): description, amount, currency, payer,
+  split, category, note prefilled, dated **today**, a new id on *Add* —
+  nothing is written before. People who left are dropped from the copy
+  (`duplicateSplit`: the amount spread equally over the rest; nobody left
+  → the default equal split; a payer who left → me). Not offered in
+  read-only groups (no row menu there).
+- **Calculator (amount fields):** the expense amount and the payment
+  amount accept `+ - * /` (also `× ÷ ·`), standard precedence, optional
+  parentheses, one sign only at the start or after `(` — pure
+  `parseAmountInput` (`core/l10n/formatting.dart`): every number read like
+  `parseAmountCents` (locale `,` / `.` rules, `1.234` = 1234 in German),
+  the **result** rounded once to the currency step (`10/3` → €3.33,
+  `1000/3` JPY → ¥333); without an operator it is `parseAmountCents`
+  itself. Malformed / division by zero → null (same invalid state as
+  before); the live preview shows the result ("= 20,50 €"); the range check
+  (1 cent … `kMaxAmountCents`) stays the caller's. The split editor's
+  exact rows don't calculate. Tests: `test/core/amount_expression_test.dart`.
+- **G64 leftovers:** renaming a person shows the duplicate-name hint live
+  (`showTextPrompt(helperFor:)`, `duplicatePersonRenameHint`; other people
+  incl. former ones, not the person itself). In local mode the delete
+  confirmations say "will be deleted from this device"
+  (`deleteExpenseBodyLocal` / `deleteSettlementBodyLocal`,
+  `confirmDeleteExpense(localOnly:)`).
+- **Try again (G67 leftover):** `ActionErrors.show(…, retry:)` makes
+  *Try again* (`actionErrorRetry`) the snackbar action and moves *Details*
+  into the content. Used where the action simply runs again: full / group
+  backup export, CSV export, reading the picked backup / CSV file
+  (restore, import). Not for writes that aren't idempotent or that need the
+  user's input again (edit dialogs, sign-out, restore itself).
+- Tests: `test/g75_polish_test.dart`, `test/verified_only_ui_test.dart`,
+  `test/settings_page_test.dart`, `test/g64_people_test.dart` (rename
+  hint), `test/core/device_prefs_test.dart`, `test/g71_accessibility_test.dart`
+  (web notice, edit-form actions).
+
 ### Custom splits (Phase E)
 
 An expense can be divided **unequally**. The split is already a
@@ -1854,9 +1918,10 @@ serves the engine's Roboto itself + two fallback subsets (G43, see Building).
   and *Sign out* moved in, the empty state keeps its own *Import CSV*).
   Sections (`SettingsSectionHeader`, `core/widgets/settings_section.dart`):
   *Account* (MXID `accountTile` + `signOutTile` → `confirmSignOut`; local
-  mode: `LocalModeSettingsSection`), *Sync & devices* (Matrix only: sync
-  text, `backgroundSyncSwitch`, `VerifiedOnlySyncTile`, `devicesTile` — G52
-  step 9 adds the relays here), *Backup & restore* (`BackupSettingsSection` —
+  mode: `LocalModeSettingsSection`), *Sync* (Matrix only: sync
+  text, `backgroundSyncSwitch` — G52 step 9 adds the relays here),
+  *Advanced (Matrix)* (G75 / U27, Matrix only: `VerifiedOnlySyncTile`,
+  `devicesTile`), *Backup & restore* (`BackupSettingsSection` —
   since G70 one tile → `/backup`),
   *Data* (`importCsvTile`), *About* (`aboutTile`), *Debug* (debug builds +
   Android only). The group ⋮ menu keeps only *Add person*

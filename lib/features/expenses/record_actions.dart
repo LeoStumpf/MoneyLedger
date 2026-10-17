@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/action_error.dart';
@@ -84,17 +85,23 @@ class UndoSnack {
   }
 }
 
-/// "Delete expense?" — true = confirmed.
+/// "Delete expense?" — true = confirmed. [localOnly] (G75: local mode):
+/// "deleted from this device" instead of "removed for everyone".
 Future<bool> confirmDeleteExpense(
   BuildContext context,
-  ExpenseModel expense,
-) async {
+  ExpenseModel expense, {
+  bool localOnly = false,
+}) async {
   final l = context.l10n;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(l.deleteExpenseTitle),
-      content: Text(l.deleteExpenseBody(expense.description)),
+      content: Text(
+        localOnly
+            ? l.deleteExpenseBodyLocal(expense.description)
+            : l.deleteExpenseBody(expense.description),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
@@ -118,6 +125,7 @@ Future<bool> confirmDeleteSettlement(
   SettlementModel settlement, {
   required String fromName,
   required String toName,
+  bool localOnly = false,
 }) async {
   final l = context.l10n;
   final amount = context.money(settlement.amountCents, settlement.currency);
@@ -129,7 +137,11 @@ Future<bool> confirmDeleteSettlement(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l.deleteSettlementBody(fromName, toName, amount)),
+          Text(
+            localOnly
+                ? l.deleteSettlementBodyLocal(fromName, toName, amount)
+                : l.deleteSettlementBody(fromName, toName, amount),
+          ),
           // G6: who recorded (and last changed) this payment.
           const SizedBox(height: Insets.m),
           RecordAttribution(
@@ -169,7 +181,12 @@ Future<bool> deleteExpenseFlow(
   ExpenseModel expense, {
   bool skipConfirm = false,
 }) async {
-  if (!skipConfirm && !await confirmDeleteExpense(context, expense)) {
+  if (!skipConfirm &&
+      !await confirmDeleteExpense(
+        context,
+        expense,
+        localOnly: ref.read(localModeActiveProvider),
+      )) {
     return false;
   }
   if (!context.mounted) return false;
@@ -203,6 +220,7 @@ Future<bool> deleteSettlementFlow(
         settlement,
         fromName: fromName,
         toName: toName,
+        localOnly: ref.read(localModeActiveProvider),
       )) {
     return false;
   }

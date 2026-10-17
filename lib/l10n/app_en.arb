@@ -913,11 +913,11 @@
   "@recordUnsigned": {
     "description": "G6: a pre-G6 record without signature"
   },
-  "recordSigUnverified": "Signature not verifiable — the signing device may have signed out",
+  "recordSigUnverified": "Can't be checked — the device that wrote it may have signed out",
   "@recordSigUnverified": {
     "description": "G6"
   },
-  "recordSigVerified": "Verified on receipt against the device's key",
+  "recordSigVerified": "Checked on arrival: it comes from this device",
   "@recordSigVerified": {
     "description": "G6: details sheet"
   },
@@ -975,7 +975,7 @@
   "@recordSignatureWarning": {
     "description": "G6: list icon tooltip"
   },
-  "peerHasNoVerifiedDevice": "{peer} has no verified device — verify one to sync (only verified devices are synced)",
+  "peerHasNoVerifiedDevice": "{peer} has no verified device — verify one to sync with them",
   "@peerHasNoVerifiedDevice": {
     "description": "G11 device-verification enforcement",
     "placeholders": {
@@ -986,11 +986,11 @@
   "@verifiedOnlyTitle": {
     "description": "G11 device-verification enforcement"
   },
-  "verifiedOnlyOffBody": "Off: every device of the people in your groups (and your own) receives your ledger data.",
+  "verifiedOnlyOffBody": "Off: every device of the people in your groups (and your own) gets your data.",
   "@verifiedOnlyOffBody": {
     "description": "G11 device-verification enforcement"
   },
-  "verifiedOnlyOnBody": "On: this device sends nothing to devices you haven't verified by emoji comparison — yours or other people's. It only limits what this device sends: other devices keep syncing with each other, and a new login of yours can't restore your groups from this device until you verify it.",
+  "verifiedOnlyOnBody": "On: this device only sends to devices you have verified — a new login of yours too. Other devices keep syncing with each other.",
   "@verifiedOnlyOnBody": {
     "description": "G11 device-verification enforcement"
   },
@@ -998,9 +998,9 @@
   "@verifiedOnlyConfirmTitle": {
     "description": "G11 device-verification enforcement"
   },
-  "verifiedOnlyConfirmBody": "This only limits what this device sends: your expenses, payments and group changes go only to devices you have verified by comparing emojis (Devices page for your own, the People page for others). It doesn't change what other devices send — other people's devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nUnverified devices — including someone's new phone — get nothing from this device until you verify them, so they fall behind.\n\nA new login of your own can't restore your groups from this device until you verify it on the Devices page.\n\nRecords you receive are still accepted; the details show whether the signing device is verified. Applies to this device and account only.",
+  "verifiedOnlyConfirmBody": "This device will only send your changes to devices you have verified by comparing emojis. Unverified devices — also someone's new phone or a new login of yours — get nothing from here until you verify them. This only limits what this device sends: other devices keep syncing with each other.",
   "@verifiedOnlyConfirmBody": {
-    "description": "G11 device-verification enforcement"
+    "description": "G11 / G75 (U27): confirm dialog when turning on verified-only sync — three short sentences, the details behind 'Learn more'"
   },
   "verifiedOnlyTurnOn": "Turn on",
   "@verifiedOnlyTurnOn": {
@@ -1061,11 +1061,11 @@
   "@decline": {
     "description": "G11 device-verification enforcement"
   },
-  "recordDeviceVerifiedByYou": "You verified this device (emoji comparison).",
+  "recordDeviceVerifiedByYou": "You verified this device.",
   "@recordDeviceVerifiedByYou": {
     "description": "G11 device-verification enforcement"
   },
-  "recordDeviceNotVerifiedByYou": "You haven't verified this device (emoji comparison).",
+  "recordDeviceNotVerifiedByYou": "You haven't verified this device.",
   "@recordDeviceNotVerifiedByYou": {
     "description": "G11 device-verification enforcement"
   },
@@ -2028,7 +2028,7 @@
   "@copiedToClipboard": {
     "description": "G56: snackbar after copying to the clipboard"
   },
-  "devicesSettingsBody": "Your logins and emoji verification",
+  "devicesSettingsBody": "Where you're signed in; check devices by comparing emojis",
   "@devicesSettingsBody": {
     "description": "G56: settings page 'Devices & security' tile subtitle"
   },
@@ -2162,7 +2162,7 @@
   "@settingsSectionAccount": {
     "description": "G65: settings page section — the Matrix account or local mode"
   },
-  "settingsSectionSync": "Sync & devices",
+  "settingsSectionSync": "Sync",
   "@settingsSectionSync": {
     "description": "G65: settings page section"
   },
@@ -2665,5 +2665,78 @@
         "type": "int"
       }
     }
+  },
+  "verifiedOnlyLearnMore": "Learn more",
+  "@verifiedOnlyLearnMore": {
+    "description": "G75 (U27): expands the details in the verified-only confirm dialog"
+  },
+  "verifiedOnlyMoreBody": "Verify your own devices on the Devices page, other people's on the People page of a group.\n\nUnverified devices fall behind: a new login of your own can't restore your groups from this device until you verify it there.\n\nOther people's devices, and your other devices, keep syncing with each other unless they turn this on too.\n\nWhat you receive is still accepted; an entry's details show whether you verified the device that wrote it. Applies to this device and account only.",
+  "@verifiedOnlyMoreBody": {
+    "description": "G75 (U27): the details behind 'Learn more' in the verified-only confirm dialog"
+  },
+  "settingsSectionAdvanced": "Advanced (Matrix)",
+  "@settingsSectionAdvanced": {
+    "description": "G75 (U27): settings section with the devices page and verified-only sync"
+  },
+  "webLimitsTitle": "MoneyLedger in the browser",
+  "@webLimitsTitle": {
+    "description": "G75 (U31): title of the one-time web limits notice (groups page) and its About entry"
+  },
+  "webLimitsBody": "It only syncs while this tab is open — there's no background sync. There are no automatic restore points either, and your data is stored in this browser only (clearing its site data deletes it). Make a backup now and then.",
+  "@webLimitsBody": {
+    "description": "G75 (U31): web limits notice, signed in with Matrix"
+  },
+  "webLimitsBodyLocal": "There are no automatic restore points in the browser, and your data is stored in this browser only (clearing its site data deletes it). Make a backup now and then.",
+  "@webLimitsBodyLocal": {
+    "description": "G75 (U31): web limits notice in local mode (nothing syncs anyway)"
+  },
+  "webLimitsBackup": "Back up",
+  "@webLimitsBackup": {
+    "description": "G75 (U31): web limits notice → the backup page"
+  },
+  "webLimitsDismiss": "Got it",
+  "@webLimitsDismiss": {
+    "description": "G75 (U31): dismisses the web limits notice for good (this browser)"
+  },
+  "duplicateExpense": "Duplicate",
+  "@duplicateExpense": {
+    "description": "G75: ⋮ on an expense row / edit-expense app bar — opens the add form prefilled with a copy"
+  },
+  "duplicatePersonRenameHint": "There is already a {name} in this group. A distinct name (e.g. \"{name} B.\") helps tell them apart.",
+  "@duplicatePersonRenameHint": {
+    "description": "G75 (G64 leftover): live hint while renaming a person to a name another person already has",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteExpenseBodyLocal": "\"{description}\" will be deleted from this device.",
+  "@deleteExpenseBodyLocal": {
+    "description": "G75 (G64 leftover): delete-expense confirmation in local mode (nothing is shared)",
+    "placeholders": {
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSettlementBodyLocal": "\"{from} paid {to} {amount}\" will be deleted from this device and the balance restored.",
+  "@deleteSettlementBodyLocal": {
+    "description": "G75 (G64 leftover): delete-payment confirmation in local mode",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "errorTryAgain": "Try again",
+  "@errorTryAgain": {
+    "description": "G75 (G67 leftover): error snackbar action that re-runs a repeatable action (export, picking a file)"
   }
 }
