@@ -4853,7 +4853,7 @@ abstract class AppLocalizations {
   /// G52 step 7: intro body
   ///
   /// In en, this message translates to:
-  /// **'MoneyLedger looks the group up on the relays the link points to and then asks who you are in it.'**
+  /// **'MoneyLedger looks the group up on the relays and then asks who you are in it.'**
   String get joinLinkIntroBody;
 
   /// G52 step 7: intro hint when nobody is signed in

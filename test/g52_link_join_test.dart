@@ -5,6 +5,8 @@
 /// points, and EN + DE at 360 dp / 200 % font.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -213,6 +215,25 @@ void main() {
     });
   });
 
+  testWidgets('JoinLinkListener: every opened link navigates — also the '
+      'same link opened again (review)', (tester) async {
+    final links = StreamController<JoinLinkEvent>();
+    addTearDown(links.close);
+    final went = <String>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [joinLinkStreamProvider.overrideWith((_) => links.stream)],
+        child: JoinLinkListener(go: went.add, child: const SizedBox()),
+      ),
+    );
+    final link = Uri.parse('moneyledger://join#$_frag');
+    links.add(JoinLinkEvent(link));
+    await tester.pump();
+    links.add(JoinLinkEvent(Uri.parse('moneyledger://join#$_frag')));
+    await tester.pump();
+    expect(went, ['/join?$_frag', '/join?$_frag']);
+  });
+
   group('join page', () {
     testWidgets('intro → look-up → pick a person → join → the group', (
       tester,
@@ -399,8 +420,11 @@ void main() {
         await tester.ensureVisible(find.byKey(const Key('joinLinkStart')));
         await tester.tap(find.byKey(const Key('joinLinkStart')));
         await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('joinLinkNewPerson')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('joinLinkNewPerson')));
         await tester.pumpAndSettle();
+        expect(find.byKey(const Key('joinLinkNameField')), findsOneWidget);
         expect(find.text(l.joinLinkUsedElsewhere), findsOneWidget);
         expect(tester.takeException(), isNull);
       });

@@ -700,7 +700,7 @@ redirected** (`routerRedirect`; the page shows a spinner while the session
 loads). Links arrive as: Android intent filter `moneyledger://join` + App
 Link `https://leostumpf.github.io/moneyledger/join` (`autoVerify`; pinned in
 `android_manifest_test.dart`) → `app_links` (`incomingAppLinks()`,
-`joinLinkStreamProvider`, `JoinLinkListener` in `App` → `/join?<fragment>`;
+`joinLinkStreamProvider` (`JoinLinkEvent`s — identity equality, so the same link opened again still navigates; `incomingAppLinks` skips only the one launch-link replay), `JoinLinkListener` in `App` → `/join?<fragment>`;
 `flutter_deeplinking_enabled=false`, app_links is the only reader; nothing
 logs a link); web: `#/join?v=1&k=…` (the route's query); or pasted (`/join`
 without a link — welcome, empty groups list, *Create group*). Flow

@@ -26,16 +26,22 @@ Future<void> launchExternalUrl(String url) async {
 /// Emits [AppLinks.getInitialLink] first: when SSO redirects back, a
 /// backgrounded app (commonly evicted on low-memory devices while the
 /// browser is foreground) is cold-started and the callback arrives as the
-/// launch intent, which [AppLinks.uriLinkStream] does NOT replay — same for
-/// an invite link that starts the app. The stream may replay the launch
-/// link; it is skipped (SSO login tokens are single-use). Nothing is logged
-/// here: the links carry secrets (login tokens, invite-link keys).
+/// launch intent, which [AppLinks.uriLinkStream] does not reliably replay
+/// — same for an invite link that starts the app. The stream replays the
+/// launch link once (to the first listener); that **one** replay is skipped
+/// (SSO login tokens are single-use), a later identical link — the same
+/// invite link tapped again — is not. Nothing is logged here: the links
+/// carry secrets (login tokens, invite-link keys).
 Stream<Uri> incomingAppLinks() async* {
   final appLinks = AppLinks();
   final initial = await appLinks.getInitialLink();
   if (initial != null) yield initial;
+  var replaySkipped = initial == null;
   await for (final uri in appLinks.uriLinkStream) {
-    if (uri == initial) continue;
+    if (!replaySkipped && uri == initial) {
+      replaySkipped = true;
+      continue;
+    }
     yield uri;
   }
 }

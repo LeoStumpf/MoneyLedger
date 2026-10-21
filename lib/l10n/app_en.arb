@@ -3040,7 +3040,7 @@
   "@joinLinkInvited": {
     "description": "G52 step 7: intro without a name hint"
   },
-  "joinLinkIntroBody": "MoneyLedger looks the group up on the relays the link points to and then asks who you are in it.",
+  "joinLinkIntroBody": "MoneyLedger looks the group up on the relays and then asks who you are in it.",
   "@joinLinkIntroBody": {
     "description": "G52 step 7: intro body"
   },

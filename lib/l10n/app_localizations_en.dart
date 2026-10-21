@@ -3057,7 +3057,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get joinLinkIntroBody =>
-      'MoneyLedger looks the group up on the relays the link points to and then asks who you are in it.';
+      'MoneyLedger looks the group up on the relays and then asks who you are in it.';
 
   @override
   String get joinLinkNoAccountHint =>

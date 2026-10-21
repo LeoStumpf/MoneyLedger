@@ -60,7 +60,9 @@ List<Override> demoOverrides({AppDatabase Function()? openDatabase}) {
     // the reseeded demo ledger) — not the web's "only in an installed app".
     snapshotStoreFactoryProvider.overrideWithValue(demoSnapshotStores()),
     ssoCallbackProvider.overrideWith((ref) => const Stream<Uri>.empty()),
-    joinLinkStreamProvider.overrideWith((_) => const Stream<Uri>.empty()),
+    joinLinkStreamProvider.overrideWith(
+      (_) => const Stream<JoinLinkEvent>.empty(),
+    ),
     // G39: the demo starts signed in — no welcome, no stored preferences.
     devicePrefsStoreProvider.overrideWithValue(
       InMemoryDevicePrefsStore({'welcome_seen': '1'}),

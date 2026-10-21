@@ -292,11 +292,20 @@ Future<String> joinLinkGroup(ProviderContainer c, LinkJoinRequest r) async {
 
 // ── native link intake ──────────────────────────────────────────────────────
 
+/// One opened invite link. Identity equality on purpose: Riverpod drops a
+/// provider update equal to the previous one, so opening the **same** link
+/// again (cancelled join, tapped once more in the chat) must still be a new
+/// event.
+class JoinLinkEvent {
+  JoinLinkEvent(this.uri);
+  final Uri uri;
+}
+
 /// Invite links opened on this device (Android intent / App Link; empty on
 /// the web, where the route carries them). Overridden with an empty stream
 /// in widget tests and the offline demo.
-final joinLinkStreamProvider = StreamProvider<Uri>(
-  (ref) => incomingAppLinks().where(isJoinLink),
+final joinLinkStreamProvider = StreamProvider<JoinLinkEvent>(
+  (ref) => incomingAppLinks().where(isJoinLink).map(JoinLinkEvent.new),
 );
 
 /// Opens `/join` for every invite link [joinLinkStreamProvider] delivers.
@@ -310,8 +319,8 @@ class JoinLinkListener extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(joinLinkStreamProvider, (_, next) {
-      final uri = next.value;
-      if (uri != null) go(joinLocationFor(uri));
+      final event = next.value;
+      if (event != null) go(joinLocationFor(event.uri));
     });
     return child;
   }
