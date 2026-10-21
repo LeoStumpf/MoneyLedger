@@ -18,6 +18,7 @@ import 'package:money_ledger/features/groups/create_group_page.dart';
 import 'package:money_ledger/features/groups/group_exit_dialog.dart';
 import 'package:money_ledger/features/groups/group_members_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/features/link/link_invite.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
@@ -121,6 +122,9 @@ void main() {
       await addPeople();
       expect(tester.takeException(), isNull);
       late List<MemberModel> members;
+      // G52: the create button may sit below the link switch.
+      await tester.ensureVisible(find.byType(FilledButton));
+      await tester.pumpAndSettle();
       await tester.runAsync(() async {
         await tester.tap(find.byType(FilledButton));
         await eventually(
@@ -263,6 +267,13 @@ void main() {
     }) => [
       currentUserIdProvider.overrideWithValue('@alice:x.org'),
       groupMembersProvider('g1').overrideWith((ref) => Stream.value(members)),
+      // G52 step 6: "me" + the link-invite state (no DB here).
+      currentParticipantProvider(
+        'g1',
+      ).overrideWith((ref) async => claimedBy(members, '@alice:x.org')),
+      linkInviteStateProvider(
+        'g1',
+      ).overrideWith((ref) async => LinkInviteState.unavailable),
       expensesForRoomProvider.overrideWith((ref, _) => Stream.value(expenses)),
       settlementsForRoomProvider.overrideWith(
         (ref, _) => Stream.value(const <SettlementModel>[]),

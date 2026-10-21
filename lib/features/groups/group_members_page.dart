@@ -22,6 +22,7 @@ import '../devices/devices_page.dart';
 import '../../core/matrix/device_gateway.dart';
 import '../../models/member_model.dart';
 import 'group_provider.dart';
+import '../link/link_invite.dart';
 
 /// Manages a group's participants (virtual users). A participant is a named
 /// person who may or may not be linked to a Matrix account:
@@ -55,14 +56,33 @@ class GroupMembersPage extends ConsumerWidget {
         all.any((m) => m.matrixId == myId) &&
         !all.any((m) => m.matrixId == myId && m.isActive);
     final l = context.l10n;
+    // G52 step 6: a link group (a channel on this device) or a local-mode
+    // group that can get one → *Invite with a link*.
+    final linkState =
+        ref.watch(linkInviteStateProvider(roomId)).value ??
+        LinkInviteState.unavailable;
+    final linkGroup = linkState == LinkInviteState.open;
     // G40: local mode — people are names only; no invites, devices or
-    // Matrix accounts.
-    final local = ref.watch(localModeActiveProvider);
+    // Matrix accounts. G52: the same in a link group (its participants
+    // carry no Matrix ID; "me" is this device's link participant).
+    final localMode = ref.watch(localModeActiveProvider);
+    final local = localMode || linkGroup;
+    final me = ref.watch(currentParticipantProvider(roomId)).value;
+    final selfId = me?.userId ?? claimedBy(all, myId)?.userId;
 
     return Scaffold(
       appBar: AppBar(
         title: AppBarTitle(l.membersTitle),
         actions: [
+          if (linkState != LinkInviteState.unavailable)
+            IconButton(
+              key: const Key('membersInviteLink'),
+              icon: const Icon(Icons.link),
+              tooltip: l.inviteByLink,
+              onPressed: busy || iAmRemoved
+                  ? null
+                  : () => inviteByLinkFlow(context, ref, roomId),
+            ),
           if (!local)
             IconButton(
               icon: const Icon(Icons.share_outlined),
@@ -120,7 +140,20 @@ class GroupMembersPage extends ConsumerWidget {
                   Insets.fabClearance(context),
                 ),
                 children: [
-                  if (local)
+                  if (linkGroup)
+                    ContentWidth(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: Insets.s),
+                        child: Card(
+                          key: const Key('linkMembersHint'),
+                          child: ListTile(
+                            leading: const Icon(Icons.link),
+                            title: Text(l.linkMembersHint),
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (local)
                     ContentWidth(
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: Insets.s),
@@ -141,6 +174,7 @@ class GroupMembersPage extends ConsumerWidget {
                             member: m,
                             all: all,
                             myId: myId,
+                            selfId: selfId,
                             roomId: roomId,
                             readOnly: iAmRemoved,
                             local: local,
@@ -400,12 +434,17 @@ class _MemberTile extends ConsumerWidget {
   /// the account line needs the full MXID (G56).
   final List<MemberModel> all;
   final String myId;
+
+  /// This device's participant ("me"; G52: in a link group it carries no
+  /// claim, so [myId] alone doesn't find it).
+  final String? selfId;
   final String roomId;
   final bool readOnly;
   const _MemberTile({
     required this.member,
     required this.all,
     required this.myId,
+    this.selfId,
     required this.roomId,
     this.readOnly = false,
     this.local = false,
@@ -414,7 +453,9 @@ class _MemberTile extends ConsumerWidget {
   /// G40 local mode: no Matrix accounts / devices.
   final bool local;
 
-  bool get _isSelf => member.matrixId != null && member.matrixId == myId;
+  bool get _isSelf =>
+      (selfId != null && member.userId == selfId) ||
+      (member.matrixId != null && member.matrixId == myId);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -552,7 +593,7 @@ class _MemberTile extends ConsumerWidget {
             ref,
             roomId,
             // Only the default payer — the debt prefills both sides.
-            myId: claimedBy(all, myId)?.userId ?? '',
+            myId: selfId ?? claimedBy(all, myId)?.userId ?? '',
             debt: balance.debt,
           );
         } else if (choice == _RemoveChoice.remove) {

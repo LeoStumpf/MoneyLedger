@@ -18,6 +18,7 @@ import 'package:money_ledger/features/devices/devices_page.dart';
 import 'package:money_ledger/features/expenses/record_attribution.dart';
 import 'package:money_ledger/features/groups/group_members_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/features/link/link_invite.dart';
 import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
 import 'package:money_ledger/models/member_model.dart';
@@ -162,6 +163,13 @@ void main() {
       groupMembersProvider('g1').overrideWith(
         (ref) => Stream.value([claimed(me, 'Alice'), claimed(bob, 'Bob')]),
       ),
+      // G52 step 6: "me" + the link-invite state (no DB here).
+      currentParticipantProvider(
+        'g1',
+      ).overrideWith((ref) async => claimed(me, 'Alice')),
+      linkInviteStateProvider(
+        'g1',
+      ).overrideWith((ref) async => LinkInviteState.unavailable),
       ...store.overrides(gateway),
     ];
 

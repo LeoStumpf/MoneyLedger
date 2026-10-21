@@ -8,6 +8,9 @@ import '../../core/widgets/content_width.dart';
 import '../../core/widgets/currency_field.dart';
 import '../../models/member_model.dart' show duplicateNameOf;
 import 'group_provider.dart';
+import '../../core/demo/demo_mode.dart' show kOfflineDemo;
+import '../../core/session/app_session.dart' show localModeActiveProvider;
+import '../link/link_invite.dart' show ensureLinkDisclosure;
 import '../../core/widgets/large_text.dart';
 
 class CreateGroupPage extends ConsumerStatefulWidget {
@@ -29,6 +32,10 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   final _people = <String>[];
   final _personCtrl = TextEditingController();
   final _personFocus = FocusNode();
+
+  /// G52 step 6: *Share with an invite link* (Matrix accounts only — see
+  /// [_offerLink]): the group is created as a link group.
+  bool _viaLink = false;
 
   @override
   void initState() {
@@ -62,9 +69,18 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     final pending = _personCtrl.text.trim();
     final people = [..._people, if (pending.isNotEmpty) pending];
     final errors = ActionErrors.of(context);
+    final viaLink = _viaLink && _offerLink;
+    // §9.2: the disclosure before the first link use on this device.
+    if (viaLink && !await ensureLinkDisclosure(context, ref)) return;
+    if (!mounted) return;
     final groupId = await ref
         .read(groupCreatorProvider.notifier)
-        .create(_nameCtrl.text.trim(), _currency, people: people);
+        .create(
+          _nameCtrl.text.trim(),
+          _currency,
+          people: people,
+          viaLink: viaLink,
+        );
     if (!mounted) return;
     final error = ref.read(groupCreatorProvider).error;
     if (error != null) {
@@ -78,9 +94,16 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     }
   }
 
+  /// G52 step 6: the link choice is offered on a Matrix account only. In
+  /// local mode a group stays on this device until its first *Invite with
+  /// a link* (§14 Q9) — no choice needed; the offline demo has no relays.
+  /// On a Matrix account the default stays a Matrix group (§14 Q13).
+  bool get _offerLink => !kOfflineDemo && !ref.read(localModeActiveProvider);
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(groupCreatorProvider);
+    final offerLink = !kOfflineDemo && !ref.watch(localModeActiveProvider);
     final l = context.l10n;
     return Scaffold(
       appBar: AppBar(title: AppBarTitle(l.newGroup)),
@@ -121,6 +144,18 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                 ),
                 const SizedBox(height: Insets.xl),
                 _peopleSection(context),
+                if (offerLink) ...[
+                  const SizedBox(height: Insets.l),
+                  SwitchListTile(
+                    key: const Key('createGroupViaLink'),
+                    contentPadding: EdgeInsets.zero,
+                    secondary: const Icon(Icons.link),
+                    title: Text(l.createGroupShareByLink),
+                    subtitle: Text(l.createGroupShareByLinkBody),
+                    value: _viaLink,
+                    onChanged: (v) => setState(() => _viaLink = v),
+                  ),
+                ],
                 const SizedBox(height: Insets.xl),
                 FilledButton(
                   onPressed: state.isLoading ? null : _submit,

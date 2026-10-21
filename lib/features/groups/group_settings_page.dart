@@ -11,6 +11,7 @@ import 'group_actions.dart';
 import 'group_archive_provider.dart';
 import 'group_overview_provider.dart';
 import 'group_provider.dart';
+import '../link/link_invite.dart';
 import '../../core/widgets/large_text.dart';
 
 /// G65: route of a group's settings page.
@@ -20,8 +21,8 @@ String groupSettingsLocation(String roomId) => '/groups/$roomId/settings';
 /// on the group page's title) — replaces the long ⋮ menu. Sections:
 ///
 /// * **Group** — name & currency (G10), categories (G47);
-/// * **People** — the people page (G52 step 6 adds *Invite* / the invite
-///   link here, G53 *Secure the group*);
+/// * **People** — the people page; G52 step 6: *Invite with a link* (link
+///   groups, local mode) — G53 adds *Secure the group*;
 /// * **Data** — back up this group (G34), export CSV (G13), reset to an
 ///   earlier state (G48);
 /// * **On this device** — archive / unarchive (G16, device-local);
@@ -54,6 +55,10 @@ class GroupSettingsPage extends ConsumerWidget {
     final exitKind = groupExitKind(members, ref.watch(currentUserIdProvider));
     final activeCount = members.where((m) => m.isActive).length;
     final leave = exitKind == GroupExitKind.leave;
+    // G52 step 6: link groups / local-mode groups only.
+    final linkState =
+        ref.watch(linkInviteStateProvider(roomId)).value ??
+        LinkInviteState.unavailable;
 
     return Scaffold(
       appBar: AppBar(title: AppBarTitle(l.groupSettingsTitle)),
@@ -96,6 +101,19 @@ class GroupSettingsPage extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/groups/$roomId/members'),
             ),
+            if (linkState != LinkInviteState.unavailable)
+              ListTile(
+                key: const Key('inviteLinkTile'),
+                leading: const Icon(Icons.link),
+                title: Text(l.inviteByLink),
+                subtitle: Text(
+                  linkState == LinkInviteState.open
+                      ? l.inviteByLinkTileBodyOpen
+                      : l.inviteByLinkTileBody,
+                ),
+                enabled: canEdit,
+                onTap: () => inviteByLinkFlow(context, ref, roomId),
+              ),
             SettingsSectionHeader(l.settingsSectionData),
             ListTile(
               key: const Key('backupGroupTile'),

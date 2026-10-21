@@ -642,7 +642,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 5. `LinkSyncEngine` (gate: retention check passed 2026-10-21) — `lib/core/link/link_sync_engine.dart` (+ `link_channel.dart` open, `link_relay_policy.dart`, `nostr/nip09.dart`, `nostr/nip11.dart`); design doc §13 "As built (step 5)"
       — wire `link_author` into models / companions / payloads (a companion without it keeps the old value — set it explicitly, also null)
       — also: per-relay backoff/block policy after `rate-limited:` / `blocked:`, publish debounce, monotonic `created_at`, NIP-09 delete, NIP-11 (left out of step 2)
-- [ ] 6. Invite UI (sheet, QR, share, disclosure)
+- [x] 6. Invite UI (sheet, QR, share, disclosure) — `lib/features/link/link_invite.dart`, `core/widgets/qr_code_view.dart` (`qr`, BSD-3); *Create group → Share with an invite link* on Matrix accounts; design doc §13 "As built (step 6)"
 - [ ] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`) — store the channel **before** the first merge; refuse a link whose group id this device holds as a non-link group; invalidate `currentParticipant` after setting "me"
 - [ ] 8. Background round link phase
 - [ ] 9. Settings: relay list + status, peers sheet
@@ -650,14 +650,18 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed
 - [ ] 12. Reset invite link
 - [ ] 13. Device pass (Pixel + emulator + web)
-- [ ] (from step 5) **Creating a link group while signed in:** a Matrix
+- [x] (from step 5) **Creating a link group while signed in:** a Matrix
       device signs every write, so a group it created has a signed meta and
       `openLinkChannel` refuses it (`signedGroup` — it would turn `mixed`,
       G53). Step 6 must open the channel **before the first write** (e.g. a
       "share by link" choice in *Create group*, so the meta is written
       unsigned in `linkOnly`) — or this waits for G53. Decide in step 6.
-- [ ] (from step 5) Wire the seams: step 6 invite → `LinkSyncEngine.
-      openChannel`; step 7 join → `putChannel` + `refresh(groupId:)` + set
+      — **Done in step 6:** *Share with an invite link* switch in *Create
+      group* (Matrix accounts only, default off = Matrix group, §14 Q13);
+      the channel is stored before the first write. Existing Matrix groups
+      show no link entry until G53.
+- [ ] (from step 5) Wire the seams: ~~step 6 invite → `LinkSyncEngine.
+      openChannel`~~ (done: `linkChannelOpenerProvider`); step 7 join → `putChannel` + `refresh(groupId:)` + set
       "me"; step 8 background round → `refresh()` + `publishAll()`; step 9
       icon / peers sheet → `linkGroupSyncStatusProvider`, `link_peers`,
       `relayPolicy.rejecting` + `link_relay_state:<url>`; step 10 leave →
@@ -665,6 +669,18 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 5) The group page's sync cloud for a link-only group still
       comes from the Matrix `groupSyncStatusProvider` — switch it to the link
       status in step 9
+- [ ] (from step 6) Disclosure: name the **configured** relays + "(one
+      operator)" + "linked in Settings → Relays" / "add your own relay"
+      once step 9 has the relay list; link *Why Matrix?* (G54) from it
+- [ ] (from step 6) Invite sheet: the "Invite a Matrix user (secure)"
+      section (§8.4) is left out — a link-only group refuses Matrix claims
+      until G53; add it with G53's mixed groups
+- [ ] (from step 6) §8.2: rename the local-mode chip "Local only" → "No
+      account" and its sheet / onboarding texts (device-only vs. shared by
+      link) — with step 11 or G54
+- [ ] (from step 6) Leaving / deleting a link group uses `groupExitKind`
+      (Matrix claims) — a link group of a signed-in user shows *Delete*;
+      revisit with step 10 (unpublish)
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a

@@ -78,7 +78,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Privacy policy'), findsOneWidget);
-    expect(find.textContaining('Last updated: Oct 17, 2026'), findsOneWidget);
+    expect(find.textContaining('Last updated: Oct 21, 2026'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('What your Matrix homeserver sees'),
       200,
@@ -88,7 +88,16 @@ void main() {
       find.text('Local mode (without an account)'),
       200,
     );
-    expect(find.textContaining('nothing leaves your device'), findsOneWidget);
+    expect(
+      find.textContaining("groups you don't share send nothing"),
+      findsOneWidget,
+    );
+    // G52 step 6: shared (link) groups have their own section.
+    await tester.scrollUntilVisible(
+      find.text('Shared groups (invite link)'),
+      200,
+    );
+    expect(find.textContaining('public Nostr relays'), findsWidgets);
     // G78: receipt photos stay on this device.
     await tester.scrollUntilVisible(find.text('Receipt photos (Android)'), 200);
     expect(find.textContaining('It is never sent anywhere'), findsOneWidget);
@@ -112,7 +121,7 @@ void main() {
     await _tapTile(tester, 'privacyPolicyTile');
     await tester.pumpAndSettle();
     expect(find.text('Datenschutzerklärung'), findsOneWidget);
-    expect(find.textContaining('Stand: 17. Okt. 2026'), findsOneWidget);
+    expect(find.textContaining('Stand: 21. Okt. 2026'), findsOneWidget);
   });
 
   test('ARB files: same keys and placeholders in EN and DE', () {

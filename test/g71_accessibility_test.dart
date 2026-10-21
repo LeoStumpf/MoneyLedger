@@ -34,6 +34,7 @@ import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/groups/group_settings_page.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
 import 'package:money_ledger/features/history/restore_points.dart';
+import 'package:money_ledger/features/link/link_invite.dart';
 import 'package:money_ledger/features/receipts/receipt_store.dart';
 import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/models/expense_model.dart';
@@ -377,6 +378,37 @@ void main() {
       'Carl',
     );
     await tester.tap(find.byKey(const Key('createGroupPersonAdd')));
+    await tester.pumpAndSettle();
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  testWidgets('G52 invite-link sheet', (tester) async {
+    _phone(tester, height: 1200);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(
+        const Scaffold(
+          body: LinkInviteSheet(
+            link:
+                'https://leostumpf.github.io/moneyledger/join#v=1&'
+                'k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&n=Rome',
+            groupName: 'Rome',
+          ),
+        ),
+        _overrides(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('QR code of the invite link'), findsOneWidget);
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  testWidgets('G52 link disclosure', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(_routed(const LinkDisclosurePage(), _overrides()));
     await tester.pumpAndSettle();
     await _expectGuidelines(tester);
     handle.dispose();

@@ -542,7 +542,7 @@
   "privacyHomeserverTitle": "What your Matrix homeserver sees",
   "privacyHomeserverBody": "To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the devices of the others in the group. Your homeserver (and their homeservers) relay these messages and keep each one only until the receiving device has fetched it, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. MoneyLedger creates no rooms, saves nothing in your account's settings and never marks you as online; when it syncs, it asks your homeserver only for these messages and for encryption-key updates — not for your rooms, presence or account settings. What your homeserver still keeps is what every Matrix app needs: your account, its list of devices (this one is named “MoneyLedger”, with when and from which IP address it was last used), each device's public encryption keys and one-time keys, and the messages above until they are delivered (for a device that never comes back, until it is removed). Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.",
   "privacyNoTrackingTitle": "No analytics, no servers of ours",
-  "privacyNoTrackingBody": "The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element's sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
+  "privacyNoTrackingBody": "Apart from the Nostr relays of groups you share with an invite link (see “Shared groups (invite link)”), the app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element's sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
   "privacyBackgroundTitle": "Background sync on Android",
   "privacyBackgroundBody": "On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.",
   "privacyCsvTitle": "Export, backup and import",
@@ -1700,7 +1700,7 @@
   "@privacyLocalTitle": {
     "description": "Privacy policy section title (G40)"
   },
-  "privacyLocalBody": "If you use MoneyLedger without a Matrix account, nothing leaves your device: the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.",
+  "privacyLocalBody": "If you use MoneyLedger without a Matrix account, groups you don't share send nothing: for them the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). A group you share with an invite link syncs through public Nostr relays (see “Shared groups (invite link)”). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.",
   "@privacyLocalBody": {
     "description": "Privacy policy section body (G40)"
   },
@@ -2894,5 +2894,114 @@
   "receiptRemovedSnack": "Receipt photo removed",
   "@receiptRemovedSnack": {
     "description": "G78: snackbar after removing only the receipt photo of an expense"
+  },
+  "inviteByLink": "Invite with a link",
+  "@inviteByLink": {
+    "description": "G52 step 6: menu / tile / button that opens the invite-link sheet"
+  },
+  "inviteByLinkTileBody": "Share a link or QR code — no account needed",
+  "@inviteByLinkTileBody": {
+    "description": "G52: group settings tile subtitle before the group has a link"
+  },
+  "inviteByLinkTileBodyOpen": "Show the invite link and QR code",
+  "@inviteByLinkTileBodyOpen": {
+    "description": "G52: group settings tile subtitle once the group has a link"
+  },
+  "linkInviteSheetBody": "Send this link to the people in the group. They open it in MoneyLedger and pick who they are — no account needed.",
+  "@linkInviteSheetBody": {
+    "description": "G52: invite sheet intro"
+  },
+  "linkInviteQrLabel": "QR code of the invite link",
+  "@linkInviteQrLabel": {
+    "description": "G52: screen-reader label of the invite QR code"
+  },
+  "linkInviteQrHint": "Or let them scan this code with their phone's camera.",
+  "@linkInviteQrHint": {
+    "description": "G52: line under the invite QR code"
+  },
+  "linkInviteShare": "Share link",
+  "@linkInviteShare": {
+    "description": "G52: invite sheet button (system share sheet)"
+  },
+  "linkInviteCopied": "Invite link copied",
+  "@linkInviteCopied": {
+    "description": "G52: snackbar after copying the invite link"
+  },
+  "linkInviteWarning": "Anyone with this link can see and change this group. Only share it with the people in it.",
+  "@linkInviteWarning": {
+    "description": "G52 (§8.4): the warning on the invite sheet"
+  },
+  "linkInviteRecoveryHint": "If something gets changed or deleted by mistake, you can reset the group to an earlier state in the group settings.",
+  "@linkInviteRecoveryHint": {
+    "description": "G52 (§14 risks): recovery hint on the invite sheet"
+  },
+  "linkInviteMatrixGroup": "This group is shared with Matrix accounts, so it can't get an invite link yet. Invite people by Matrix ID on the People page.",
+  "@linkInviteMatrixGroup": {
+    "description": "G52: shown if a Matrix group's invite link is requested (until G53)"
+  },
+  "linkDisclosureTitle": "Sharing with a link",
+  "@linkDisclosureTitle": {
+    "description": "G52 (§9.2): title of the first-use disclosure"
+  },
+  "linkDisclosureRelays": "Shared groups sync through public Nostr relays: {relays}. They are independent services with their own terms.",
+  "@linkDisclosureRelays": {
+    "description": "G52 (§9.2): disclosure paragraph; relays = comma-separated host names",
+    "placeholders": {
+      "relays": {
+        "type": "String"
+      }
+    }
+  },
+  "linkDisclosureEncrypted": "They store your group encrypted — only people with the link can read it.",
+  "@linkDisclosureEncrypted": {
+    "description": "G52 (§9.2): disclosure paragraph"
+  },
+  "linkDisclosureMetadata": "The relays see your IP address and when you sync, and may keep data longer than the 30 days we ask for.",
+  "@linkDisclosureMetadata": {
+    "description": "G52 (§9.2): disclosure paragraph"
+  },
+  "linkDisclosureAnyone": "Anyone with the link can see and change the group.",
+  "@linkDisclosureAnyone": {
+    "description": "G52 (§9.2): disclosure paragraph"
+  },
+  "linkDisclosureMatrix": "Want accounts and verified devices? Use Matrix (secure mode).",
+  "@linkDisclosureMatrix": {
+    "description": "G52 (§9.2): disclosure paragraph"
+  },
+  "linkDisclosureContinue": "Continue",
+  "@linkDisclosureContinue": {
+    "description": "G52: the disclosure's explicit Continue button"
+  },
+  "createGroupShareByLink": "Share with an invite link",
+  "@createGroupShareByLink": {
+    "description": "G52 step 6: create-group switch (Matrix accounts only)"
+  },
+  "createGroupShareByLinkBody": "Others join without an account. Anyone with the link can see and change the group. Off: you invite Matrix accounts (secure).",
+  "@createGroupShareByLinkBody": {
+    "description": "G52 step 6: subtitle of the create-group switch"
+  },
+  "linkMembersHint": "Shared with a link: people are added by name. Whoever opens the invite link picks who they are.",
+  "@linkMembersHint": {
+    "description": "G52: hint card on the people page of a link group"
+  },
+  "privacyLinkTitle": "Shared groups (invite link)",
+  "@privacyLinkTitle": {
+    "description": "G52: privacy policy section title (keep in sync with PRIVACY.md)"
+  },
+  "privacyLinkBody": "A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can't read names, amounts or notes, but they see your device's IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link or create it with “Share with an invite link”.",
+  "@privacyLinkBody": {
+    "description": "G52: privacy policy section body (keep in sync with PRIVACY.md)"
+  },
+  "linkInviteShareText": "Join “{group}” in MoneyLedger: {link}",
+  "@linkInviteShareText": {
+    "description": "G52: text handed to the share sheet with the invite link",
+    "placeholders": {
+      "group": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      }
+    }
   }
 }

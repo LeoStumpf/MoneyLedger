@@ -95,6 +95,11 @@ class DevicePrefs {
   /// G75 (U31): the web limits notice (groups page, web only) was dismissed.
   final bool webNoticeSeen;
 
+  /// G52 step 6: the link-sharing disclosure (§9.2 — relays, what they
+  /// see, anyone with the link) was accepted on this device — shown before
+  /// the first invite / join.
+  final bool linkDisclosureSeen;
+
   const DevicePrefs({
     this.welcomeSeen = false,
     this.localProfile,
@@ -102,6 +107,7 @@ class DevicePrefs {
     this.adoptInto,
     this.lastAdoptedInto,
     this.webNoticeSeen = false,
+    this.linkDisclosureSeen = false,
   });
 
   /// Used when the store can't be read: never strand the user on the
@@ -114,6 +120,7 @@ class DevicePrefs {
   static const _adoptKey = 'local_adopt_into';
   static const _lastAdoptKey = 'local_last_adopted_into';
   static const _webNoticeKey = 'web_notice_seen';
+  static const _linkDisclosureKey = 'link_disclosure_seen';
 
   factory DevicePrefs.fromMap(Map<String, String> m) => DevicePrefs(
     welcomeSeen: m[_welcomeKey] == '1',
@@ -122,6 +129,7 @@ class DevicePrefs {
     adoptInto: _nonEmpty(m[_adoptKey]),
     lastAdoptedInto: _nonEmpty(m[_lastAdoptKey]),
     webNoticeSeen: m[_webNoticeKey] == '1',
+    linkDisclosureSeen: m[_linkDisclosureKey] == '1',
   );
 
   Map<String, String> toMap() => {
@@ -131,6 +139,7 @@ class DevicePrefs {
     _adoptKey: ?adoptInto,
     _lastAdoptKey: ?lastAdoptedInto,
     if (webNoticeSeen) _webNoticeKey: '1',
+    if (linkDisclosureSeen) _linkDisclosureKey: '1',
   };
 
   DevicePrefs copyWith({
@@ -140,6 +149,7 @@ class DevicePrefs {
     Object? adoptInto = _keep,
     Object? lastAdoptedInto = _keep,
     bool? webNoticeSeen,
+    bool? linkDisclosureSeen,
   }) => DevicePrefs(
     welcomeSeen: welcomeSeen ?? this.welcomeSeen,
     localProfile: identical(localProfile, _keep)
@@ -153,6 +163,7 @@ class DevicePrefs {
         ? this.lastAdoptedInto
         : lastAdoptedInto as String?,
     webNoticeSeen: webNoticeSeen ?? this.webNoticeSeen,
+    linkDisclosureSeen: linkDisclosureSeen ?? this.linkDisclosureSeen,
   );
 
   static String? _nonEmpty(String? s) => (s == null || s.isEmpty) ? null : s;
@@ -166,7 +177,8 @@ class DevicePrefs {
       other.connecting == connecting &&
       other.adoptInto == adoptInto &&
       other.lastAdoptedInto == lastAdoptedInto &&
-      other.webNoticeSeen == webNoticeSeen;
+      other.webNoticeSeen == webNoticeSeen &&
+      other.linkDisclosureSeen == linkDisclosureSeen;
 
   @override
   int get hashCode => Object.hash(
@@ -177,6 +189,7 @@ class DevicePrefs {
     adoptInto,
     lastAdoptedInto,
     webNoticeSeen,
+    linkDisclosureSeen,
   );
 }
 
@@ -224,6 +237,10 @@ class DevicePrefsNotifier extends AsyncNotifier<DevicePrefs> {
   /// G75 (U31): the web limits notice was dismissed (device-wide).
   Future<void> markWebNoticeSeen() =>
       _update((p) => p.copyWith(webNoticeSeen: true));
+
+  /// G52 step 6: the link-sharing disclosure was accepted (device-wide).
+  Future<void> markLinkDisclosureSeen() =>
+      _update((p) => p.copyWith(linkDisclosureSeen: true));
 
   /// G39: the welcome was completed (any of its three choices).
   Future<void> markWelcomeSeen() =>

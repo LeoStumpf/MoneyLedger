@@ -82,7 +82,14 @@ void main() {
       await tester.enterText(search, 'zlo');
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('currency-PLN')), findsOneWidget);
-      expect(find.byType(ListTile), findsOneWidget);
+      // (In the sheet — the page below has the G52 link switch tile.)
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(ListTile),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Suggested'), findsNothing);
 
       await tester.enterText(search, 'qqq');

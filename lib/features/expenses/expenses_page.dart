@@ -37,11 +37,13 @@ import '../../models/record_signature.dart';
 import 'record_attribution.dart';
 import 'record_actions.dart';
 import 'record_details_sheet.dart';
+import '../link/link_invite.dart';
 import '../../core/widgets/action_error.dart';
 
-/// G65 (U22): the group ⋮ menu — the frequent actions only (G52 adds
-/// *Invite* here); the rest is on the group settings page.
-enum _GroupMenuAction { addMember, archive, settings }
+/// G65 (U22): the group ⋮ menu — the frequent actions only (G52 step 6:
+/// *Invite with a link*, link groups / local mode only); the rest is on the
+/// group settings page.
+enum _GroupMenuAction { inviteLink, addMember, archive, settings }
 
 /// G56: groups whose "just you so far" card was dismissed — for this app
 /// session only (it comes back on the next start while still true).
@@ -100,6 +102,13 @@ class ExpensesPage extends ConsumerWidget {
     final l = context.l10n;
     final theme = Theme.of(context);
     final activeCount = members.where((m) => m.isActive).length;
+    // G52 step 6: *Invite with a link* — only where a link can exist
+    // (a link group, or a local-mode group's first invite).
+    final linkInvite =
+        canEdit &&
+        (ref.watch(linkInviteStateProvider(roomId)).value ??
+                LinkInviteState.unavailable) !=
+            LinkInviteState.unavailable;
 
     return Scaffold(
       appBar: AppBar(
@@ -176,6 +185,11 @@ class ExpensesPage extends ConsumerWidget {
                   key: const Key('groupMenu'),
                   tooltip: l.moreTooltip,
                   onSelected: (action) => switch (action) {
+                    _GroupMenuAction.inviteLink => inviteByLinkFlow(
+                      context,
+                      ref,
+                      roomId,
+                    ),
                     _GroupMenuAction.addMember => showAddPersonDialog(
                       context,
                       ref,
@@ -193,6 +207,16 @@ class ExpensesPage extends ConsumerWidget {
                     ),
                   },
                   itemBuilder: (_) => [
+                    if (linkInvite)
+                      PopupMenuItem(
+                        value: _GroupMenuAction.inviteLink,
+                        child: ListTile(
+                          key: const Key('inviteLinkMenuItem'),
+                          leading: const Icon(Icons.link),
+                          title: Text(l.inviteByLink),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
                     PopupMenuItem(
                       value: _GroupMenuAction.addMember,
                       enabled: !adderState.isLoading && !removed,
@@ -315,6 +339,7 @@ class ExpensesPage extends ConsumerWidget {
                   myId: meAsync.value?.userId,
                   // G46: I'm the group's only active participant.
                   onlyMe: canEdit && activeCount <= 1,
+                  linkInvite: linkInvite,
                   filter: search,
                   customCategories: group?.categories ?? const [],
                 ),
@@ -346,6 +371,7 @@ class ExpensesPage extends ConsumerWidget {
     required bool busy,
     required String? myId,
     bool onlyMe = false,
+    bool linkInvite = false,
     LedgerFilter? filter,
     List<CustomCategory> customCategories = const [],
   }) {
@@ -433,7 +459,23 @@ class ExpensesPage extends ConsumerWidget {
             ? l.expensesEmptyAloneBody
             : l.expensesEmptyBody,
         actions: [
-          if (invitePeople)
+          // G52 step 6: where a link can be shared, inviting by link comes
+          // first; adding people by name stays next to it.
+          if (invitePeople && linkInvite)
+            FilledButton.icon(
+              key: const Key('emptyInviteLink'),
+              onPressed: () => inviteByLinkFlow(context, ref, roomId),
+              icon: const Icon(Icons.link),
+              label: Text(l.inviteByLink),
+            ),
+          if (invitePeople && linkInvite)
+            OutlinedButton.icon(
+              key: const Key('emptyAddPeople'),
+              onPressed: () => showAddPersonDialog(context, ref, roomId),
+              icon: const Icon(Icons.person_add_outlined),
+              label: Text(l.addPeople),
+            )
+          else if (invitePeople)
             FilledButton.icon(
               key: const Key('emptyAddPeople'),
               onPressed: () => showAddPersonDialog(context, ref, roomId),
@@ -599,7 +641,9 @@ class ExpensesPage extends ConsumerWidget {
             !readOnly &&
             onlyMe &&
             !ref.watch(addPeopleHintDismissedProvider).contains(roomId))
-          ContentWidth(child: _AddPeopleCard(roomId: roomId)),
+          ContentWidth(
+            child: _AddPeopleCard(roomId: roomId, linkInvite: linkInvite),
+          ),
         for (final section in sections)
           ContentWidth(
             child: Column(
@@ -910,7 +954,10 @@ class _FilterBar extends ConsumerWidget {
 /// same action as the empty state's CTA, dismissible for the session.
 class _AddPeopleCard extends ConsumerWidget {
   final String roomId;
-  const _AddPeopleCard({required this.roomId});
+
+  /// G52 step 6: also offer *Invite with a link*.
+  final bool linkInvite;
+  const _AddPeopleCard({required this.roomId, this.linkInvite = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -953,17 +1000,34 @@ class _AddPeopleCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    TextButton.icon(
-                      key: const Key('cardAddPeople'),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.s,
+                    Wrap(
+                      children: [
+                        if (linkInvite)
+                          TextButton.icon(
+                            key: const Key('cardInviteLink'),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: Insets.s,
+                              ),
+                            ),
+                            onPressed: () =>
+                                inviteByLinkFlow(context, ref, roomId),
+                            icon: const Icon(Icons.link, size: 18),
+                            label: Text(l.inviteByLink),
+                          ),
+                        TextButton.icon(
+                          key: const Key('cardAddPeople'),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: Insets.s,
+                            ),
+                          ),
+                          onPressed: () =>
+                              showAddPersonDialog(context, ref, roomId),
+                          icon: const Icon(Icons.person_add_outlined, size: 18),
+                          label: Text(l.addPeople),
                         ),
-                      ),
-                      onPressed: () =>
-                          showAddPersonDialog(context, ref, roomId),
-                      icon: const Icon(Icons.person_add_outlined, size: 18),
-                      label: Text(l.addPeople),
+                      ],
                     ),
                   ],
                 ),

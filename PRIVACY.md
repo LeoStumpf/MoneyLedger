@@ -1,6 +1,6 @@
 # MoneyLedger — Privacy Policy
 
-_Last updated: 2026-10-17_
+_Last updated: 2026-10-21_
 
 <!-- Keep in sync with the in-app privacy policy (About → Privacy policy),
      whose text lives in lib/l10n/app_en.arb / app_de.arb (privacy* keys). -->
@@ -21,8 +21,8 @@ MoneyLedger server that could receive your data.
 | What the homeserver can read | Nothing of the ledger — only encrypted messages and their metadata |
 | What the homeserver keeps | Your account, its devices and their encryption keys, and encrypted messages until they are delivered — no rooms, no presence, no account settings from MoneyLedger |
 | Analytics, crash reporting, ads, tracking | None |
-| Leaves the device | Encrypted sync messages, sign-in and profile / device lookups — to your homeserver only; a CSV or backup file only when you export one |
-| Third parties (Google, CDNs, …) | None — links open in your browser only when you tap them |
+| Leaves the device | Encrypted sync messages, sign-in and profile / device lookups — to your homeserver only; for groups you share with an invite link, an encrypted copy of the group to public Nostr relays; a CSV or backup file only when you export one |
+| Third parties (Google, CDNs, …) | None — except the public Nostr relays of groups you share with an invite link; links open in your browser only when you tap them |
 
 ## Your ledger stays on your devices
 
@@ -52,17 +52,18 @@ privacy policy.
 
 ## No analytics, no servers of ours
 
-The app talks only to Matrix homeservers: on the sign-in page to the server you
-enter — and only once you confirm it or sign in — and after that only to your
-own homeserver. Through it, the app also looks up the Matrix profile names and
-devices of the people in your groups (your homeserver may ask theirs). If you use
-single sign-on or sign up on the web, your browser opens the pages your
-homeserver sends you to (for matrix.org possibly Element's sign-up page,
-app.element.io). Links in the app — to the source code on GitHub, for example —
-open in your browser only when you tap them. The web version is loaded entirely
-from the site that hosts it: no code or fonts from Google or any other third
-party. There is no analytics, no crash reporting, no advertising ID and no
-tracking of any kind.
+Apart from the Nostr relays of groups you share with an invite link (see
+“Shared groups (invite link)”), the app talks only to Matrix homeservers: on
+the sign-in page to the server you enter — and only once you confirm it or sign
+in — and after that only to your own homeserver. Through it, the app also looks
+up the Matrix profile names and devices of the people in your groups (your
+homeserver may ask theirs). If you use single sign-on or sign up on the web,
+your browser opens the pages your homeserver sends you to (for matrix.org
+possibly Element's sign-up page, app.element.io). Links in the app — to the
+source code on GitHub, for example — open in your browser only when you tap
+them. The web version is loaded entirely from the site that hosts it: no code
+or fonts from Google or any other third party. There is no analytics, no crash
+reporting, no advertising ID and no tracking of any kind.
 
 ## Background sync on Android
 
@@ -73,15 +74,32 @@ it off in Settings. The web version syncs only while its tab is open.
 
 ## Local mode (without an account)
 
-If you use MoneyLedger without a Matrix account, nothing leaves your device: the
-app contacts no server and nothing is synced (the web version is only loaded
-from the site that hosts it). Links you tap, e.g. to the source code, open in
-your browser. Your name, groups, expenses and
-payments are stored only in a local database on this device, plus a small
-preferences file (whether you saw the welcome, your local profile name).
-Deleting local data in the settings, or uninstalling the app, removes them. If
-you later connect a Matrix account, the local data moves into that account and
-from then on the sections above apply.
+If you use MoneyLedger without a Matrix account, groups you don't share send
+nothing: for them the app contacts no server and nothing is synced (the web
+version is only loaded from the site that hosts it). A group you share with an
+invite link syncs through public Nostr relays (see “Shared groups (invite
+link)”). Links you tap, e.g. to the source code, open in your browser. Your
+name, groups, expenses and payments are stored only in a local database on this
+device, plus a small preferences file (whether you saw the welcome, your local
+profile name). Deleting local data in the settings, or uninstalling the app,
+removes them. If you later connect a Matrix account, the local data moves into
+that account and from then on the sections above apply.
+
+## Shared groups (invite link)
+
+A group you share with an invite link syncs through public Nostr relays — by
+default nos.lol and nostr.mom, which have one operator. They are independent
+services with their own terms. Every device in the group publishes its copy of
+the group there, encrypted (AES-256-GCM) with a key that only the link
+contains; the key never goes to a relay or to any server of ours. The relays
+can't read names, amounts or notes, but they see your device's IP address, when
+it syncs, roughly how large the group is and how many devices take part, and
+that the data comes from MoneyLedger. We ask them to delete each copy after 30
+days (renewed while the group is in use), but relays may keep or archive data
+longer — and anyone who gets the link, now or later, can read and change the
+group, also from archived copies. A group only on this device never contacts a
+relay: a group starts syncing only when you invite with a link or create it
+with “Share with an invite link”.
 
 ## Export, backup and import
 

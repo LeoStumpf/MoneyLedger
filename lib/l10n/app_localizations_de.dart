@@ -903,7 +903,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyNoTrackingBody =>
-      'Die App kommuniziert nur mit Matrix-Homeservern: auf der Anmeldeseite mit dem Server, den du einträgst – und erst, wenn du ihn bestätigst oder dich anmeldest –, danach nur mit deinem eigenen Homeserver. Über ihn fragt sie auch die Matrix-Profilnamen und Geräte der Personen in deinen Gruppen ab (dein Homeserver fragt dafür ggf. deren Homeserver). Wenn du Single Sign-on nutzt oder dich im Web registrierst, öffnet dein Browser die Seiten, zu denen dich dein Homeserver schickt (bei matrix.org ggf. die Registrierungsseite von Element, app.element.io). Links in der App – etwa zum Quellcode auf GitHub – öffnen sich erst in deinem Browser, wenn du darauf tippst. Die Web-Version wird vollständig von der Seite geladen, auf der sie bereitgestellt wird: kein Code und keine Schriften von Google oder anderen Dritten. Es gibt keine Analyse, keine Absturzberichte, keine Werbe-ID und keinerlei Tracking.';
+      'Abgesehen von den Nostr-Relays der Gruppen, die du mit einem Einladungslink teilst (siehe „Geteilte Gruppen (Einladungslink)“), kommuniziert die App nur mit Matrix-Homeservern: auf der Anmeldeseite mit dem Server, den du einträgst – und erst, wenn du ihn bestätigst oder dich anmeldest –, danach nur mit deinem eigenen Homeserver. Über ihn fragt sie auch die Matrix-Profilnamen und Geräte der Personen in deinen Gruppen ab (dein Homeserver fragt dafür ggf. deren Homeserver). Wenn du Single Sign-on nutzt oder dich im Web registrierst, öffnet dein Browser die Seiten, zu denen dich dein Homeserver schickt (bei matrix.org ggf. die Registrierungsseite von Element, app.element.io). Links in der App – etwa zum Quellcode auf GitHub – öffnen sich erst in deinem Browser, wenn du darauf tippst. Die Web-Version wird vollständig von der Seite geladen, auf der sie bereitgestellt wird: kein Code und keine Schriften von Google oder anderen Dritten. Es gibt keine Analyse, keine Absturzberichte, keine Werbe-ID und keinerlei Tracking.';
 
   @override
   String get privacyBackgroundTitle =>
@@ -2019,7 +2019,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLocalBody =>
-      'Wenn du MoneyLedger ohne Matrix-Konto nutzt, verlässt nichts dein Gerät: Die App kontaktiert keinen Server und synchronisiert nichts (die Web-Version wird nur von der Seite geladen, auf der sie bereitgestellt wird). Links, auf die du tippst – etwa zum Quellcode –, öffnen sich in deinem Browser. Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben.';
+      'Wenn du MoneyLedger ohne Matrix-Konto nutzt, senden Gruppen, die du nicht teilst, nichts: Für sie kontaktiert die App keinen Server und synchronisiert nichts (die Web-Version wird nur von der Seite geladen, auf der sie bereitgestellt wird). Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays (siehe „Geteilte Gruppen (Einladungslink)“). Links, auf die du tippst – etwa zum Quellcode –, öffnen sich in deinem Browser. Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben.';
 
   @override
   String get categoryNone => 'Keine Kategorie';
@@ -2966,4 +2966,92 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get receiptRemovedSnack => 'Belegfoto entfernt';
+
+  @override
+  String get inviteByLink => 'Mit Link einladen';
+
+  @override
+  String get inviteByLinkTileBody => 'Link oder QR-Code teilen – ohne Konto';
+
+  @override
+  String get inviteByLinkTileBodyOpen => 'Einladungslink und QR-Code anzeigen';
+
+  @override
+  String get linkInviteSheetBody =>
+      'Schick diesen Link an die Personen in der Gruppe. Sie öffnen ihn in MoneyLedger und wählen aus, wer sie sind – ohne Konto.';
+
+  @override
+  String get linkInviteQrLabel => 'QR-Code des Einladungslinks';
+
+  @override
+  String get linkInviteQrHint =>
+      'Oder lass sie diesen Code mit der Kamera ihres Handys scannen.';
+
+  @override
+  String get linkInviteShare => 'Link teilen';
+
+  @override
+  String get linkInviteCopied => 'Einladungslink kopiert';
+
+  @override
+  String get linkInviteWarning =>
+      'Alle, die diesen Link haben, können die Gruppe sehen und ändern. Teile ihn nur mit den Personen darin.';
+
+  @override
+  String get linkInviteRecoveryHint =>
+      'Wird etwas versehentlich geändert oder gelöscht, kannst du die Gruppe in den Gruppeneinstellungen auf einen früheren Stand zurücksetzen.';
+
+  @override
+  String get linkInviteMatrixGroup =>
+      'Diese Gruppe wird mit Matrix-Konten geteilt und kann deshalb noch keinen Einladungslink bekommen. Lade Personen auf der Personen-Seite per Matrix-ID ein.';
+
+  @override
+  String get linkDisclosureTitle => 'Teilen mit einem Link';
+
+  @override
+  String linkDisclosureRelays(String relays) {
+    return 'Geteilte Gruppen synchronisieren über öffentliche Nostr-Relays: $relays. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen.';
+  }
+
+  @override
+  String get linkDisclosureEncrypted =>
+      'Sie speichern deine Gruppe verschlüsselt – lesen können sie nur Personen mit dem Link.';
+
+  @override
+  String get linkDisclosureMetadata =>
+      'Die Relays sehen deine IP-Adresse und wann du synchronisierst und behalten Daten eventuell länger als die 30 Tage, um die wir bitten.';
+
+  @override
+  String get linkDisclosureAnyone =>
+      'Alle mit dem Link können die Gruppe sehen und ändern.';
+
+  @override
+  String get linkDisclosureMatrix =>
+      'Du willst Konten und verifizierte Geräte? Nutze Matrix (sicherer Modus).';
+
+  @override
+  String get linkDisclosureContinue => 'Weiter';
+
+  @override
+  String get createGroupShareByLink => 'Mit Einladungslink teilen';
+
+  @override
+  String get createGroupShareByLinkBody =>
+      'Andere machen ohne Konto mit. Alle mit dem Link können die Gruppe sehen und ändern. Aus: Du lädst Matrix-Konten ein (sicher).';
+
+  @override
+  String get linkMembersHint =>
+      'Mit Link geteilt: Personen werden mit Namen hinzugefügt. Wer den Einladungslink öffnet, wählt die passende Person aus.';
+
+  @override
+  String get privacyLinkTitle => 'Geteilte Gruppen (Einladungslink)';
+
+  @override
+  String get privacyLinkBody =>
+      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst oder sie mit „Mit Einladungslink teilen“ erstellst.';
+
+  @override
+  String linkInviteShareText(String group, String link) {
+    return 'Mach mit bei „$group“ in MoneyLedger: $link';
+  }
 }

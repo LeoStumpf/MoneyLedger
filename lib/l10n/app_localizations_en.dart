@@ -894,7 +894,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyNoTrackingBody =>
-      'The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.';
+      'Apart from the Nostr relays of groups you share with an invite link (see “Shared groups (invite link)”), the app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.';
 
   @override
   String get privacyBackgroundTitle => 'Background sync on Android';
@@ -1996,7 +1996,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyLocalBody =>
-      'If you use MoneyLedger without a Matrix account, nothing leaves your device: the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.';
+      'If you use MoneyLedger without a Matrix account, groups you don\'t share send nothing: for them the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). A group you share with an invite link syncs through public Nostr relays (see “Shared groups (invite link)”). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.';
 
   @override
   String get categoryNone => 'No category';
@@ -2936,4 +2936,93 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get receiptRemovedSnack => 'Receipt photo removed';
+
+  @override
+  String get inviteByLink => 'Invite with a link';
+
+  @override
+  String get inviteByLinkTileBody =>
+      'Share a link or QR code — no account needed';
+
+  @override
+  String get inviteByLinkTileBodyOpen => 'Show the invite link and QR code';
+
+  @override
+  String get linkInviteSheetBody =>
+      'Send this link to the people in the group. They open it in MoneyLedger and pick who they are — no account needed.';
+
+  @override
+  String get linkInviteQrLabel => 'QR code of the invite link';
+
+  @override
+  String get linkInviteQrHint =>
+      'Or let them scan this code with their phone\'s camera.';
+
+  @override
+  String get linkInviteShare => 'Share link';
+
+  @override
+  String get linkInviteCopied => 'Invite link copied';
+
+  @override
+  String get linkInviteWarning =>
+      'Anyone with this link can see and change this group. Only share it with the people in it.';
+
+  @override
+  String get linkInviteRecoveryHint =>
+      'If something gets changed or deleted by mistake, you can reset the group to an earlier state in the group settings.';
+
+  @override
+  String get linkInviteMatrixGroup =>
+      'This group is shared with Matrix accounts, so it can\'t get an invite link yet. Invite people by Matrix ID on the People page.';
+
+  @override
+  String get linkDisclosureTitle => 'Sharing with a link';
+
+  @override
+  String linkDisclosureRelays(String relays) {
+    return 'Shared groups sync through public Nostr relays: $relays. They are independent services with their own terms.';
+  }
+
+  @override
+  String get linkDisclosureEncrypted =>
+      'They store your group encrypted — only people with the link can read it.';
+
+  @override
+  String get linkDisclosureMetadata =>
+      'The relays see your IP address and when you sync, and may keep data longer than the 30 days we ask for.';
+
+  @override
+  String get linkDisclosureAnyone =>
+      'Anyone with the link can see and change the group.';
+
+  @override
+  String get linkDisclosureMatrix =>
+      'Want accounts and verified devices? Use Matrix (secure mode).';
+
+  @override
+  String get linkDisclosureContinue => 'Continue';
+
+  @override
+  String get createGroupShareByLink => 'Share with an invite link';
+
+  @override
+  String get createGroupShareByLinkBody =>
+      'Others join without an account. Anyone with the link can see and change the group. Off: you invite Matrix accounts (secure).';
+
+  @override
+  String get linkMembersHint =>
+      'Shared with a link: people are added by name. Whoever opens the invite link picks who they are.';
+
+  @override
+  String get privacyLinkTitle => 'Shared groups (invite link)';
+
+  @override
+  String get privacyLinkBody =>
+      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link or create it with “Share with an invite link”.';
+
+  @override
+  String linkInviteShareText(String group, String link) {
+    return 'Join “$group” in MoneyLedger: $link';
+  }
 }

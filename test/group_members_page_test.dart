@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/features/groups/group_members_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/features/link/link_invite.dart';
 import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/fake_device_gateway.dart';
@@ -16,6 +17,13 @@ void main() {
     List<Object> overridesFor(List<MemberModel> members, String selfId) => [
       currentUserIdProvider.overrideWithValue(selfId),
       groupMembersProvider('g1').overrideWith((ref) => Stream.value(members)),
+      // G52 step 6: "me" + the link-invite state (no DB here).
+      currentParticipantProvider(
+        'g1',
+      ).overrideWith((ref) async => claimedBy(members, selfId)),
+      linkInviteStateProvider(
+        'g1',
+      ).overrideWith((ref) async => LinkInviteState.unavailable),
       ...FakeTrustStore().overrides(FakeDeviceGateway(const [])),
     ];
 

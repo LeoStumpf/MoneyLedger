@@ -26,6 +26,7 @@ library;
 
 import 'dart:math';
 
+import '../../models/group_model.dart';
 import '../../models/link_model.dart';
 import '../../models/member_model.dart';
 import '../database/app_database.dart';
@@ -57,6 +58,43 @@ class LinkChannelException implements Exception {
   String toString() => 'LinkChannelException(${kind.name})';
 }
 
+/// Why [openLinkChannel] would refuse a group (null = it can get a link
+/// channel) — pure, so the invite UI (G52 step 6) offers *Invite with a
+/// link* exactly when opening can succeed. [group] is the stored meta
+/// (null = not stored), [people] its participants, [identity] the ledger
+/// identity whose own claim the channel drops.
+LinkChannelError? linkChannelBlocker(
+  GroupModel? group,
+  List<MemberModel> people, {
+  required String? identity,
+}) {
+  if (group == null) return LinkChannelError.noGroup;
+  if (group.sig != null) return LinkChannelError.signedGroup;
+  if (people.any((m) => m.matrixId != null && m.matrixId != identity)) {
+    return LinkChannelError.matrixMembers;
+  }
+  return null;
+}
+
+/// A fresh channel of [groupId] (epoch 1): a new 32-byte link secret and a
+/// new per-group Nostr key (§3.1). Shared by [openLinkChannel] and the
+/// *Create group → Share with a link* path (G52 step 6), which stores it
+/// **before** the group's first write so the meta is written unsigned in a
+/// `linkOnly` group.
+LinkChannelModel newLinkChannel(
+  String groupId, {
+  required String? myParticipantId,
+  required int openedAt,
+  Random? random,
+}) => LinkChannelModel(
+  groupId: groupId,
+  epoch: 1,
+  secret: encodeLinkSecret(generateLinkSecret(random)),
+  nostrPriv: generateNostrPrivateKey(random),
+  openedAt: openedAt,
+  myParticipantId: myParticipantId,
+);
+
 /// Opens (or returns) this device's link channel of [groupId] — see the
 /// library doc. [identity] is the ledger identity (MXID / `local:self`;
 /// null = none, then no participant is "me" yet). [clock] (ms) and
@@ -77,16 +115,10 @@ Future<LinkChannelModel> openLinkChannel(
     final existing = await link.getChannel(groupId);
     if (existing != null) return existing;
     final group = await groups.getGroup(groupId);
-    if (group == null) {
-      throw const LinkChannelException(LinkChannelError.noGroup);
-    }
-    if (group.sig != null) {
-      throw const LinkChannelException(LinkChannelError.signedGroup);
-    }
     final people = await members.getMembers(groupId);
-    if (people.any((m) => m.matrixId != null && m.matrixId != identity)) {
-      throw const LinkChannelException(LinkChannelError.matrixMembers);
-    }
+    final blocker = linkChannelBlocker(group, people, identity: identity);
+    if (blocker != null) throw LinkChannelException(blocker);
+    final meta = group!; // stored: no blocker
     final mine = identity == null ? null : claimedBy(people, identity);
 
     // 2. + 3. — members: our claim dropped, pendingSign → link version.
@@ -108,9 +140,9 @@ Future<LinkChannelModel> openLinkChannel(
       }
       await members.upsertMemberLww(memberCompanion(next));
     }
-    if (group.pendingSign) {
+    if (meta.pendingSign) {
       await groups.upsertGroupLww(
-        groupCompanion(group.asLinkVersion(group.linkAuthor)),
+        groupCompanion(meta.asLinkVersion(meta.linkAuthor)),
       );
     }
     for (final e in await expenses.getAllExpensesForGroup(groupId)) {
@@ -127,13 +159,11 @@ Future<LinkChannelModel> openLinkChannel(
     }
 
     // 4. — the channel.
-    final channel = LinkChannelModel(
-      groupId: groupId,
-      epoch: 1,
-      secret: encodeLinkSecret(generateLinkSecret(random)),
-      nostrPriv: generateNostrPrivateKey(random),
-      openedAt: now(),
+    final channel = newLinkChannel(
+      groupId,
       myParticipantId: mine?.userId,
+      openedAt: now(),
+      random: random,
     );
     await link.putChannel(channel);
     return channel;

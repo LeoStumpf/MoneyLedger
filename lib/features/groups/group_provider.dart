@@ -5,6 +5,7 @@ import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/link_dao.dart';
+import '../../core/link/link_channel.dart' show newLinkChannel;
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
@@ -271,12 +272,26 @@ class GroupCreator extends _$GroupCreator {
   /// group has no other claimed member yet (our own other devices learn it
   /// from the next digest, like the group itself).
   ///
+  /// G52 step 6 — [viaLink] (*Create group → Share with a link*): the group
+  /// is a **link group from its first write**. Its link channel is stored
+  /// first (fresh secret + Nostr key, `my_participant_id` = the creator), so
+  /// the group is `linkOnly` before anything is written: the meta and every
+  /// participant are stored unsigned with `by` = the creator — also on a
+  /// Matrix device, which would otherwise sign the meta and make the group
+  /// a Matrix group (`openLinkChannel` refuses signed metas; mixed groups
+  /// are G53). The creator is a participant **without** a claim and with a
+  /// fresh UUIDv7 id (§6.1: link member records carry no `matrix_id`, and
+  /// the MXID must not become a participant id the relays could see). All
+  /// in one transaction; the link sync engine sees the new channel and
+  /// publishes.
+  ///
   /// Returns the new group's id once it is stored (G46: the create page opens
   /// it), or null when the write failed (see [state]) or the DB closed.
   Future<String?> create(
     String name,
     String currency, {
     List<String> people = const [],
+    bool viaLink = false,
   }) async {
     String? created;
     await _runGroupWrite(ref, (s) => state = s, (w) async {
@@ -285,6 +300,13 @@ class GroupCreator extends _$GroupCreator {
       final me = await w.myMxid();
       final myName = await w.profileNameOrLocalpart(me);
       if (w.db.isClosed) return;
+      if (viaLink) {
+        await w.db.transaction(
+          () => _createLinkGroup(w, groupId, name, currency, myName, people),
+        );
+        if (!w.db.isClosed) created = groupId;
+        return;
+      }
       final group = await w.signer.group(
         GroupModel(
           roomId: groupId,
@@ -327,6 +349,56 @@ class GroupCreator extends _$GroupCreator {
       created = groupId;
     });
     return created;
+  }
+
+  static Future<void> _createLinkGroup(
+    _GroupWriteContext w,
+    String groupId,
+    String name,
+    String currency,
+    String myName,
+    List<String> people,
+  ) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final myParticipant = const Uuid().v7();
+    // The channel first: from here on the group is linkOnly, so the signer
+    // stores every version below unsigned (`by` = myParticipant).
+    await w.link.putChannel(
+      newLinkChannel(groupId, myParticipantId: myParticipant, openedAt: now),
+    );
+    final group = await w.signer.group(
+      GroupModel(
+        roomId: groupId,
+        name: name,
+        currency: currency,
+        updatedAt: now,
+      ),
+    );
+    await w.groups.upsertGroupLww(groupCompanion(group));
+    await w.saveMember(
+      MemberModel(
+        groupId: groupId,
+        userId: myParticipant,
+        displayName: myName,
+        matrixId: null,
+        status: 'active',
+        updatedAt: now,
+      ),
+    );
+    for (final person in people) {
+      final personName = person.trim();
+      if (personName.isEmpty) continue;
+      await w.saveMember(
+        MemberModel(
+          groupId: groupId,
+          userId: const Uuid().v7(),
+          displayName: personName,
+          matrixId: null,
+          status: 'active',
+          updatedAt: now,
+        ),
+      );
+    }
   }
 }
 

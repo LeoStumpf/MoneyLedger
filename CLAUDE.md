@@ -25,6 +25,7 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE UI strings (ARB) + locale formatting (G12)
 - [`package_info_plus`](https://pub.dev/packages/package_info_plus) 10.x — app version on the About page
 - [`share_plus`](https://pub.dev/packages/share_plus) 13.x (BSD-3) — system share sheet (G69 balance text; G52 invite sheet), via `core/platform/text_sharer.dart`
+- [`qr`](https://pub.dev/packages/qr) 3.0 (BSD-3) — G52 invite QR code (pure-Dart encoder, painted by `core/widgets/qr_code_view.dart`)
 - [`image_picker`](https://pub.dev/packages/image_picker) 1.2 (BSD-3) — G78 receipt photo (Android only): camera app via intent / system photo picker, scaled natively
 - [`file_picker`](https://pub.dev/packages/file_picker) 13.x — CSV/backup save + open (static `FilePicker.saveFile` / `pickFile`, web download included)
 - `vodozemac` (Ed25519 verify), [`canonical_json`](https://pub.dev/packages/canonical_json) + [`crypto`](https://pub.dev/packages/crypto) (SHA-256) — G6 signed records
@@ -294,6 +295,7 @@ lib/
     about/                     # AboutPage (version, source, AGPL, licenses) + PrivacyPolicyPage
     settings/                  # G65 SettingsPage (/settings): account, sync, advanced (Matrix), backup, data, about, debug
     web/                       # G75 (U31) web_limits.dart: one-time web limits notice + About entry
+    link/                      # G52 step 6 link_invite.dart: invite state, disclosure page, invite sheet, flow
 test/
   flutter_test_config.dart     # Per-test-file setup (Drift multi-DB warning off; sqlite3 via hooks)
   helpers/
@@ -609,6 +611,44 @@ meta only in `linkOnly`; the Matrix path drops `by`. G40 adoption copies
 `link_channels` / `link_peers` and keeps a link-only group unclaimed and
 unsigned. Design doc §6.4 "As built"; tests `test/core/link_policy_test.dart`,
 `test/integration/link_group_matrix_skip_test.dart`.
+
+### Invite by link (G52 step 6)
+
+`lib/features/link/link_invite.dart`. **Who gets *Invite with a link***
+(pure `linkInviteStateOf` → `linkInviteStateProvider(groupId)`, one-shot
+channel read, invalidated by the flow): a group with a `link_channels` row →
+`open` (show its link, any mode); in **local mode** a group
+`linkChannelBlocker` accepts (unsigned meta, no other Matrix claim) →
+`canOpen`; everything else — every **Matrix group** — `unavailable`: no
+entry at all (stays Matrix until G53, design §14 Q13). Entry points: group
+⋮ (`inviteLinkMenuItem`, first), the solo empty state (`emptyInviteLink`
+primary, *Add people* outlined) and the G56 card (`cardInviteLink`), group
+settings → People (`inviteLinkTile`), people page app bar
+(`membersInviteLink`). `inviteByLinkFlow`: `canOpen` → first-use
+disclosure (`ensureLinkDisclosure` → `LinkDisclosurePage`, §9.2, explicit
+*Continue*; device-wide `DevicePrefs.linkDisclosureSeen`,
+`link_disclosure_seen`) → `linkChannelOpenerProvider` (=
+`LinkSyncEngine.openChannel`; tests replace it) → invalidate state +
+`currentParticipant` → `LinkInviteSheet`: QR (`QrCodeView`, `qr` package,
+ink on paper + quiet zone in both themes), *Share link*
+(`textSharerProvider`, text `linkInviteShareText`), *Copy*, the warning
+"Anyone with this link …" + the G48 reset hint. The link is
+`linkInviteUri` (https form with `n` = group name). **Create group on a
+Matrix account:** a *Share with an invite link* switch
+(`createGroupViaLink`, default off; not in local mode — there the first
+invite opens the link, §14 Q9 — nor the offline demo) → disclosure →
+`GroupCreator.create(viaLink: true)`: in one transaction the channel is
+stored **first** (`newLinkChannel`, `my_participant_id` = a fresh UUIDv7
+creator id), so the group is `linkOnly` before its first write — meta and
+people unsigned, not `pendingSign`, `by` = creator, creator **without** a
+claim (no MXID reaches the relays; nothing goes over Matrix). The people
+page treats a link group like local mode (names only, no Matrix
+invite / claim / devices; hint `linkMembersHint`) and finds "me" via
+`currentParticipant` (`selfId`). PRIVACY.md + `privacyLink*` (new
+section), `privacyLocalBody` / `privacyNoTrackingBody` updated (pinned by
+`test/g52_link_invite_test.dart`). Tests: `test/g52_link_invite_test.dart`,
+`test/integration/link_invite_sync_test.dart`, G71 guideline tests (sheet,
+disclosure).
 
 ### Link sync engine (G52 step 5)
 

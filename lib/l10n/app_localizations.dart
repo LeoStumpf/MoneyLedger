@@ -1565,7 +1565,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyNoTrackingBody.
   ///
   /// In en, this message translates to:
-  /// **'The app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.'**
+  /// **'Apart from the Nostr relays of groups you share with an invite link (see “Shared groups (invite link)”), the app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.'**
   String get privacyNoTrackingBody;
 
   /// No description provided for @privacyBackgroundTitle.
@@ -3203,7 +3203,7 @@ abstract class AppLocalizations {
   /// Privacy policy section body (G40)
   ///
   /// In en, this message translates to:
-  /// **'If you use MoneyLedger without a Matrix account, nothing leaves your device: the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.'**
+  /// **'If you use MoneyLedger without a Matrix account, groups you don\'t share send nothing: for them the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). A group you share with an invite link syncs through public Nostr relays (see “Shared groups (invite link)”). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.'**
   String get privacyLocalBody;
 
   /// Category selector entry / value for an expense without a category (G47)
@@ -4651,6 +4651,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Receipt photo removed'**
   String get receiptRemovedSnack;
+
+  /// G52 step 6: menu / tile / button that opens the invite-link sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Invite with a link'**
+  String get inviteByLink;
+
+  /// G52: group settings tile subtitle before the group has a link
+  ///
+  /// In en, this message translates to:
+  /// **'Share a link or QR code — no account needed'**
+  String get inviteByLinkTileBody;
+
+  /// G52: group settings tile subtitle once the group has a link
+  ///
+  /// In en, this message translates to:
+  /// **'Show the invite link and QR code'**
+  String get inviteByLinkTileBodyOpen;
+
+  /// G52: invite sheet intro
+  ///
+  /// In en, this message translates to:
+  /// **'Send this link to the people in the group. They open it in MoneyLedger and pick who they are — no account needed.'**
+  String get linkInviteSheetBody;
+
+  /// G52: screen-reader label of the invite QR code
+  ///
+  /// In en, this message translates to:
+  /// **'QR code of the invite link'**
+  String get linkInviteQrLabel;
+
+  /// G52: line under the invite QR code
+  ///
+  /// In en, this message translates to:
+  /// **'Or let them scan this code with their phone\'s camera.'**
+  String get linkInviteQrHint;
+
+  /// G52: invite sheet button (system share sheet)
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get linkInviteShare;
+
+  /// G52: snackbar after copying the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link copied'**
+  String get linkInviteCopied;
+
+  /// G52 (§8.4): the warning on the invite sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this link can see and change this group. Only share it with the people in it.'**
+  String get linkInviteWarning;
+
+  /// G52 (§14 risks): recovery hint on the invite sheet
+  ///
+  /// In en, this message translates to:
+  /// **'If something gets changed or deleted by mistake, you can reset the group to an earlier state in the group settings.'**
+  String get linkInviteRecoveryHint;
+
+  /// G52: shown if a Matrix group's invite link is requested (until G53)
+  ///
+  /// In en, this message translates to:
+  /// **'This group is shared with Matrix accounts, so it can\'t get an invite link yet. Invite people by Matrix ID on the People page.'**
+  String get linkInviteMatrixGroup;
+
+  /// G52 (§9.2): title of the first-use disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing with a link'**
+  String get linkDisclosureTitle;
+
+  /// G52 (§9.2): disclosure paragraph; relays = comma-separated host names
+  ///
+  /// In en, this message translates to:
+  /// **'Shared groups sync through public Nostr relays: {relays}. They are independent services with their own terms.'**
+  String linkDisclosureRelays(String relays);
+
+  /// G52 (§9.2): disclosure paragraph
+  ///
+  /// In en, this message translates to:
+  /// **'They store your group encrypted — only people with the link can read it.'**
+  String get linkDisclosureEncrypted;
+
+  /// G52 (§9.2): disclosure paragraph
+  ///
+  /// In en, this message translates to:
+  /// **'The relays see your IP address and when you sync, and may keep data longer than the 30 days we ask for.'**
+  String get linkDisclosureMetadata;
+
+  /// G52 (§9.2): disclosure paragraph
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with the link can see and change the group.'**
+  String get linkDisclosureAnyone;
+
+  /// G52 (§9.2): disclosure paragraph
+  ///
+  /// In en, this message translates to:
+  /// **'Want accounts and verified devices? Use Matrix (secure mode).'**
+  String get linkDisclosureMatrix;
+
+  /// G52: the disclosure's explicit Continue button
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get linkDisclosureContinue;
+
+  /// G52 step 6: create-group switch (Matrix accounts only)
+  ///
+  /// In en, this message translates to:
+  /// **'Share with an invite link'**
+  String get createGroupShareByLink;
+
+  /// G52 step 6: subtitle of the create-group switch
+  ///
+  /// In en, this message translates to:
+  /// **'Others join without an account. Anyone with the link can see and change the group. Off: you invite Matrix accounts (secure).'**
+  String get createGroupShareByLinkBody;
+
+  /// G52: hint card on the people page of a link group
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with a link: people are added by name. Whoever opens the invite link picks who they are.'**
+  String get linkMembersHint;
+
+  /// G52: privacy policy section title (keep in sync with PRIVACY.md)
+  ///
+  /// In en, this message translates to:
+  /// **'Shared groups (invite link)'**
+  String get privacyLinkTitle;
+
+  /// G52: privacy policy section body (keep in sync with PRIVACY.md)
+  ///
+  /// In en, this message translates to:
+  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link or create it with “Share with an invite link”.'**
+  String get privacyLinkBody;
+
+  /// G52: text handed to the share sheet with the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Join “{group}” in MoneyLedger: {link}'**
+  String linkInviteShareText(String group, String link);
 }
 
 class _AppLocalizationsDelegate
