@@ -647,7 +647,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 8. Background round link phase — `runBackgroundRound(whichLedger:, openLocalDatabase:, linkOverrides:)`, `linkBackgroundRoundProvider`, local-mode scheduling via `linkGroupsExistProvider`; design doc §13 "As built (step 8)"
 - [x] 9. Settings: relay list + status, peers sheet — `lib/features/link/relay_settings{,_page}.dart` (`/settings/relays`), `LinkSyncEngine.watchRelays` / `setRelays` / `syncNow`, sync sheet with G68 (`lib/features/sync/`); design doc §13 "As built (step 9)"
 - [x] 10. Leave / delete unpublish; backup carries the secret (+ warning) — `linkUnpublisherProvider` before `GroupExiter`'s purge + *Delete local data*; backup entry `link: {epoch, secret}` (`BackupLink`), restore → `reopenLinkChannel` + "Which person are you?" banner (`chooseLinkParticipant`); design doc §13 "As built (step 10)"
-- [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed
+- [x] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed — README / CLAUDE.md / smoke-test §13 / THIRD_PARTY_NOTICES; landing repo prepared + committed **locally** at `~/git/LeoStumpf.github.io` (no GitHub repo yet, see below); demo *Climbing gym* link group (engine off); design doc §13 "As built (step 11)"
 - [x] 12. Reset invite link — `LinkSyncEngine.resetLink` / `switchLink`, `replaceLinkChannel` (`link_channel.dart`); invite sheet + group settings *Reset invite link*, join page "Switch to this link?" for a group held with another link, removal hint in link groups; design doc §13 "As built (step 12)"
 - [ ] 13. Device pass (Pixel + emulator + web)
 - [x] (from step 5) **Creating a link group while signed in:** a Matrix
@@ -704,7 +704,11 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       (`#/join?…`); consider `history.replaceState` after the join
 - [ ] (from step 7) Landing page `join.html` + `assetlinks.json` (step 11) —
       until then the https link opens the browser on Android (App Link not
-      verified) unless "Open by default" is set by hand
+      verified) unless "Open by default" is set by hand — step 11: built and
+      committed locally (`~/git/LeoStumpf.github.io`); **Leo: create the
+      GitHub repo `LeoStumpf/LeoStumpf.github.io` + enable Pages**, then add
+      the SSH remote and push; check the Digital Asset Links API +
+      `pm get-app-links` in the device pass
 - [x] (from step 8) Local mode has no settings toggle for the background
       round (it runs while a link group exists; `background_sync_enabled`
       of the local ledger is honoured but can't be changed) — add the
@@ -723,7 +727,8 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 9) The relay list is per ledger (account / local mode),
       like all `link_*` settings: after connecting an account (G40
       adoption) a custom list of local mode isn't carried over — check
-      with step 11 / the adoption code
+      with step 11 / the adoption code — step 11: checked, `adoptLocalLedger`
+      doesn't copy `link_relays` / `link_relay_state:*` (still open)
 - [ ] (from step 9) Device pass: Settings → Relays (add a real custom
       relay, NIP-11 check, remove, defaults), the sync sheet of a link and a
       Matrix group (*Sync now*), 360 dp / 200 % / TalkBack
@@ -757,6 +762,16 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       from nos.lol, new topic published), the other phone opens the new
       link → "Switch to this link?" → syncs; a third device with only the
       old link stops getting changes
+- [ ] (from step 11) Landing page: no hosted web app, Play or F-Droid
+      listing exists yet — `join.js` has `WEB_APP_URL` / `PLAY_URL` /
+      `FDROID_URL` empty (entries hidden); fill them in once Leo decides
+      where the web app is hosted / the store listings are live
+- [ ] (from step 11) `assetlinks.json`: add the Play App Signing key's
+      SHA-256 once enrolled (keep the upload key's)
+- [ ] (from step 11) The offline demo's link group never syncs (engine
+      off, status derived from the seeded channel): edits in the demo leave
+      the sync sheet's "has everything" as seeded — fine for screenshots;
+      the README / store screenshots could add the invite sheet
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:drift/drift.dart';
 
 import '../../features/expenses/split_calculator.dart';
@@ -7,9 +8,12 @@ import '../database/app_database.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
 import '../database/daos/history_dao.dart';
+import '../database/daos/link_dao.dart';
 import '../database/daos/members_dao.dart';
 import '../database/daos/settings_dao.dart';
 import '../database/daos/sync_states_dao.dart';
+import '../link/link_channel.dart' show newLinkChannel;
+import '../link/link_snapshot.dart' show linkSnapshotDigest;
 import '../sync/ledger_payloads.dart';
 import '../sync/record_signing.dart' show RecordKind;
 import '../sync/record_version.dart';
@@ -24,8 +28,15 @@ const _ben = '@ben:example.org';
 const _chiara = '@chiara:example.org';
 const _david = '@david:example.org';
 
+/// Anna's participant in the link group (G52: never her MXID).
+const _annaLink = 'demo-person-anna';
+
+/// The demo's link group (G52 step 11) — shared with an invite link.
+const kDemoLinkGroupId = 'demo-group-climbing';
+
 /// Replaces everything in [db] with the demo dataset (G15 offline demo):
-/// four groups (one settled up and archived, G16) with real-sounding people,
+/// five groups (one settled up and archived, G16; one shared with an invite
+/// link, G52 — see [_seedLinkChannel]) with real-sounding people,
 /// categories and notes, several currencies, custom splits,
 /// a few settlements and dates spread over the last weeks — relative to [now],
 /// so the demo always looks fresh. Every peer is marked in sync, so the cloud
@@ -67,6 +78,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       String creator = kDemoUserId,
       List<CustomCategory> categories = const [],
       int? categoriesAt,
+      String? by,
     }) async {
       authors[gid] = creator;
       if (categories.isNotEmpty) {
@@ -87,22 +99,29 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
               currency: Value(currency),
               updatedAt: Value(categoriesAt ?? setup),
               categoriesJson: Value(encodeCategories(categories)),
+              linkAuthor: Value(by),
             ),
           );
     }
 
-    Future<void> member(String gid, String pid, String name, {String? mxid}) =>
-        db
-            .into(db.members)
-            .insert(
-              MembersCompanion.insert(
-                groupId: gid,
-                userId: pid,
-                displayName: Value(name),
-                matrixId: Value(mxid),
-                updatedAt: setup,
-              ),
-            );
+    Future<void> member(
+      String gid,
+      String pid,
+      String name, {
+      String? mxid,
+      String? by,
+    }) => db
+        .into(db.members)
+        .insert(
+          MembersCompanion.insert(
+            groupId: gid,
+            userId: pid,
+            displayName: Value(name),
+            matrixId: Value(mxid),
+            updatedAt: setup,
+            linkAuthor: Value(by),
+          ),
+        );
 
     Future<void> expense(
       String gid,
@@ -118,10 +137,11 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       int? dayAgo,
       ({int at, int cents, Map<String, int> split})? editedTo,
       int? deletedAt,
+      String? by,
     }) {
       assert(split.values.fold(0, (a, b) => a + b) == cents);
       final eid = id('e');
-      authors[eid] = paidBy;
+      authors[eid] = by == _annaLink ? kDemoUserId : paidBy;
       final first = ExpensesCompanion.insert(
         id: eid,
         roomId: gid,
@@ -134,6 +154,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
         updatedAt: Value(when),
         category: Value(customCategory ?? category?.wire),
         note: Value(note),
+        linkAuthor: Value(by),
         // G49: back-dated to the day [dayAgo] days ago.
         expenseDate: Value(
           dayAgo == null
@@ -173,9 +194,10 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       required int when,
       String currency = 'EUR',
       int? dayAgo,
+      String? by,
     }) {
       final sid = id('s');
-      authors[sid] = from;
+      authors[sid] = by == _annaLink ? kDemoUserId : from;
       return db
           .into(db.settlements)
           .insert(
@@ -188,6 +210,7 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
               toUser: to,
               createdAt: when,
               updatedAt: Value(when),
+              linkAuthor: Value(by),
               // G60: back-dated to the day [dayAgo] days ago.
               settlementDate: Value(
                 dayAgo == null
@@ -475,6 +498,78 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
       ),
     );
 
+    // ── Climbing gym: shared with an invite link (G52), no accounts ──────
+    // A link-only group (unsigned, `by` hints): Anna is a plain participant
+    // here (a link group never claims her Matrix account), Elif and Jonas
+    // joined through the link.
+    const climbing = kDemoLinkGroupId;
+    const elif = 'demo-person-elif';
+    const jonas = 'demo-person-jonas';
+    await group(climbing, 'Climbing gym', 'EUR', by: _annaLink);
+    await member(climbing, _annaLink, 'Anna', by: _annaLink);
+    await member(climbing, elif, 'Elif', by: elif);
+    await member(climbing, jonas, 'Jonas', by: jonas);
+    const climbers = [_annaLink, elif, jonas];
+    await expense(
+      climbing,
+      'Day passes (3×)',
+      4500,
+      elif,
+      splitEqually(4500, climbers),
+      when: at(6, 18),
+      category: ExpenseCategory.entertainment,
+      by: elif,
+    );
+    await expense(
+      climbing,
+      'Chalk and tape',
+      2190,
+      _annaLink,
+      splitEqually(2190, climbers),
+      when: at(6, 18, 20),
+      category: ExpenseCategory.shopping,
+      by: _annaLink,
+    );
+    await expense(
+      climbing,
+      'Rental shoes',
+      1500,
+      jonas,
+      {_annaLink: 750, jonas: 750},
+      when: at(6, 18, 25),
+      category: ExpenseCategory.entertainment,
+      by: jonas,
+    );
+    await expense(
+      climbing,
+      'Burgers afterwards',
+      5640,
+      _annaLink,
+      splitEqually(5640, climbers),
+      when: at(6, 21, 10),
+      category: ExpenseCategory.food,
+      by: _annaLink,
+    );
+    await settlement(climbing, jonas, elif, 1500, when: at(3, 12), by: jonas);
+    await expense(
+      climbing,
+      'Day passes (3×)',
+      4500,
+      jonas,
+      splitEqually(4500, climbers),
+      when: at(1, 18, 30),
+      category: ExpenseCategory.entertainment,
+      by: jonas,
+    );
+    await _seedLinkChannel(
+      db,
+      climbing,
+      me: _annaLink,
+      openedAt: setup,
+      publishedAt: at(1, 18, 40),
+      peers: {elif: at(1, 18, 35), jonas: at(1, 18, 32)},
+    );
+
     // Everyone acknowledged everything: the sync icons show "synced".
     final syncStates = SyncStatesDao(db);
     for (final (gid, peers) in [
@@ -490,6 +585,59 @@ Future<void> seedDemoLedger(AppDatabase db, {DateTime? now}) async {
     await SettingsDao(db).markOnboardingSeen();
     await _seedHistory(db, setup, authors, firstVersions);
   });
+}
+
+/// G52 step 11: the link group's device-local bookkeeping — this device's
+/// channel (a fresh random link secret + Nostr key, "me" = [me], our
+/// snapshot "published" at [publishedAt]) and one publisher per entry of
+/// [peers] (participant → last publish, ms) whose snapshot equals ours, so
+/// the sync sheet shows everyone as up to date. Nothing is ever sent: the
+/// demo's link sync engine stays off (`linkSyncEnabledProvider`).
+Future<void> _seedLinkChannel(
+  AppDatabase db,
+  String gid, {
+  required String me,
+  required int openedAt,
+  required int publishedAt,
+  required Map<String, int> peers,
+}) async {
+  final group = await GroupsDao(db).getGroup(gid);
+  final members = await MembersDao(db).getMembers(gid)
+    ..sort((a, b) => a.userId.compareTo(b.userId));
+  final ledger = ExpensesDao(db);
+  final expenses = await ledger.getAllExpensesForGroup(gid)
+    ..sort((a, b) => a.id.compareTo(b.id));
+  final settlements = await ledger.getAllSettlementsForGroup(gid)
+    ..sort((a, b) => a.id.compareTo(b.id));
+  // The same content the link engine publishes (its change detection).
+  final digest = linkSnapshotDigest(
+    buildBootstrapContent(
+      gid,
+      group,
+      members,
+      expenses,
+      settlements,
+      includePending: true,
+    ),
+  )!;
+  final link = LinkDao(db);
+  await link.putChannel(
+    newLinkChannel(gid, myParticipantId: me, openedAt: openedAt),
+  );
+  await link.recordPublished(gid, hash: digest, at: publishedAt, parts: 1);
+  for (final MapEntry(key: pid, value: at) in peers.entries) {
+    String hex(String s) => sha256.convert(utf8.encode(s)).toString();
+    await link.recordPeerEvent(
+      groupId: gid,
+      pubkey: hex('demo-pubkey-$pid'),
+      part: 0,
+      eventId: hex('demo-event-$pid'),
+      createdAt: at ~/ 1000,
+      seenAt: at,
+      me: pid,
+      snapshotDigest: digest,
+    );
+  }
 }
 
 /// G48: the version history the seeded ledger would have left — per group

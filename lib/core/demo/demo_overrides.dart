@@ -8,6 +8,7 @@ import '../../features/devices/device_provider.dart';
 import '../../features/expenses/expenses_provider.dart';
 import '../../features/history/snapshot_store.dart';
 import '../background/background_scheduler.dart';
+import '../link/link_sync_engine.dart';
 import '../background/background_sync.dart' show backgroundSyncSupported;
 import '../background/background_sync_provider.dart';
 import '../database/app_database.dart';
@@ -35,7 +36,8 @@ SnapshotStore? Function(String dbName) demoSnapshotStores({bool? web}) {
 /// Provider overrides that turn the app into the offline demo (G15): fake
 /// auth (signed in as [kDemoUserId]), a fake relay, fake devices, the demo
 /// ledger DB instead of any account DB, no background sync (a no-op
-/// scheduler) and restore points in memory (G79). None of them
+/// scheduler), restore points in memory (G79) and no link sync — the seeded
+/// link group (G52) shows as synced. None of them
 /// touches the Matrix client, so no homeserver / Matrix store is ever opened.
 ///
 /// [openDatabase] lets tests back the demo with an in-memory database.
@@ -62,6 +64,24 @@ List<Override> demoOverrides({AppDatabase Function()? openDatabase}) {
     ssoCallbackProvider.overrideWith((ref) => const Stream<Uri>.empty()),
     joinLinkStreamProvider.overrideWith(
       (_) => const Stream<JoinLinkEvent>.empty(),
+    ),
+    // G52 step 11: no relay is ever contacted — engine off (also where
+    // kOfflineDemo isn't set, e.g. tests), no NIP-11 look-ups.
+    linkSyncEnabledProvider.overrideWithValue(false),
+    linkRelayInfoFetcherProvider.overrideWithValue(null),
+    // The link sync engine stays off in the demo (nothing
+    // contacts a relay), so a link group's status comes from its seeded
+    // channel: "synced" at the last (seeded) publish.
+    linkGroupSyncStatusProvider.overrideWith(
+      (ref, groupId) => ref
+          .watch(linkDaoProvider)
+          .watchChannel(groupId)
+          .map(
+            (ch) => LinkGroupSyncStatus(
+              phase: LinkSyncPhase.synced,
+              lastPublishedAt: ch?.lastPublishedAt,
+            ),
+          ),
     ),
     // G39: the demo starts signed in — no welcome, no stored preferences.
     devicePrefsStoreProvider.overrideWithValue(

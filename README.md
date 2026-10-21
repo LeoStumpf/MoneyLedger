@@ -16,6 +16,13 @@ and sees only ciphertext.
 - **Works without an account too:** choose *Use without an account* and
   everything stays on this device (no Matrix, no server contacted, no sync) —
   connect a Matrix account later and your local groups move into it.
+- **Share a group with an invite link (no account needed):** a link / QR
+  code carries the group's key in its `#fragment`; every device publishes its
+  copy of the group **end-to-end encrypted** (gzip + AES-256-GCM) to public
+  [Nostr](https://nostr.com) relays (by default nos.lol + nostr.mom, one
+  operator; your own relay can be added) — they see IP addresses and timing,
+  never names or amounts. Anyone with the link can read and change the group;
+  Matrix stays the secure mode (accounts, signed records, verified devices).
 - **Platforms:** Android and web. **iOS is not supported for v1** (see
   [Platform support](#platform-support)).
 - **No backend to run:** bring your own Matrix homeserver (matrix.org, self-hosted, …).
@@ -68,6 +75,17 @@ and sees only ciphertext.
 - **English + German** UI (follows the device language, English fallback),
   locale-aware amounts/dates; amount fields accept `,` or `.` as decimal
   separator. About page with version, source link, licenses and privacy policy.
+- **Link groups** (no account): *Invite with a link* (QR, share sheet,
+  copy) from a local-mode group — or *Create group → Share with an invite
+  link* on a Matrix account; opening the link (`https://leostumpf.github.io/
+  moneyledger/join#…`, verified Android App Link, or pasted under *Join with
+  an invite link*) asks "Which person are you?" and syncs live while the app
+  runs (plus the Android background round). *Settings → Relays* lists /
+  adds / removes relays; the group's sync sheet shows who published what;
+  *Reset invite link* locks out old-link holders. Leaving or deleting a
+  link group first asks the relays to delete this device's copy; a backup
+  carries the invite key (with a warning). Design:
+  [`docs/design/no-login-sharing.md`](docs/design/no-login-sharing.md).
 - **Background sync (Android):** devices sync while the app runs and, on
   Android, about every 15 min in the background (WorkManager; network
   connected, battery not low) — so a closed phone still answers its peers and
@@ -110,6 +128,13 @@ smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
 - [`go_router`](https://pub.dev/packages/go_router) — navigation
 - [`share_plus`](https://pub.dev/packages/share_plus) — system share sheet
   (BSD-3-Clause)
+- Link groups: [`bip340`](https://pub.dev/packages/bip340) +
+  [`pointycastle`](https://pub.dev/packages/pointycastle) (Nostr Schnorr
+  signatures, MIT), [`web_socket_channel`](https://pub.dev/packages/web_socket_channel)
+  (relays, BSD-3-Clause), [`archive`](https://pub.dev/packages/archive)
+  (gzip, MIT), [`cryptography`](https://pub.dev/packages/cryptography) (HKDF +
+  AES-GCM, Apache-2.0), [`qr`](https://pub.dev/packages/qr) (invite QR,
+  BSD-3-Clause)
 - [`image_picker`](https://pub.dev/packages/image_picker) — receipt photo from
   the camera app / photo picker (Android only, kept on this device only — G78;
   BSD-3-Clause)
@@ -178,8 +203,10 @@ flutter build apk --release --dart-define=OFFLINE_DEMO=true
 ```
 
 Starts signed in as "Anna" with a seeded example ledger (*Lisbon trip*,
-*Flat share*, *Ski weekend* — EUR + CHF, custom splits, payments) and no
-network at all: fake auth, a fake relay, no Matrix client, no background sync.
+*Flat share*, *Ski weekend* — EUR + CHF, custom splits, payments — and
+*Climbing gym*, a group shared with an invite link) and no
+network at all: fake auth, a fake relay, no Matrix client, no background sync,
+no Nostr relay (the link group's invite sheet works, its sync shows as done).
 The ledger lives in its own `money_ledger_offline_demo` database, reseeded on
 every start; real account data is never opened. Meant for screenshots and
 quick UI checks. Without the define the code is tree-shaken out.
@@ -268,6 +295,21 @@ Store updates become impossible and sideloaded users would have to uninstall
 If `android/key.properties` is absent (dev machines, CI without secrets), the
 release build falls back to the **debug key** so `flutter build apk --release`
 still works — such APKs are for testing only, never for distribution.
+
+### Invite-link landing page + App Links
+
+Invite links (`https://leostumpf.github.io/moneyledger/join#…`) open the app
+directly once Android has verified the App Link
+(`android:autoVerify="true"` in the manifest). The verification file
+`https://leostumpf.github.io/.well-known/assetlinks.json` and the landing
+page shown without the app (`moneyledger/join.html` — reads the `#fragment`
+in the browser only and offers *Open in MoneyLedger*) live in the separate
+user-site repo `LeoStumpf.github.io` (shared by all of Leo's apps; see its
+README). `assetlinks.json` lists the **upload key**'s SHA-256 fingerprint;
+add the Play App Signing key's once the app is enrolled. Until the site is
+live (or for builds signed with another key) the https link opens the
+browser unless *Open by default* is set by hand; `moneyledger://join#…`
+always works.
 
 ## Localization
 

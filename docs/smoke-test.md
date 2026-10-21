@@ -211,6 +211,28 @@ Run on the Pixel during the G52 step 13 device pass.
 | 12.3 | (G75) Local mode → delete an expense / a payment → *"… will be deleted from this device"* (not "for everyone") | emu |
 | 12.4 | (G75) Export fails (e.g. cancel permissions / full storage) → *error snackbar with "Try again" + Details* | phone |
 
+## 13. Link groups (G52, two devices, no accounts)
+
+Real relays (nos.lol + nostr.mom). A = Pixel in local mode, B = emulator
+(fresh install) unless noted; check `[link]` lines in logcat (debug builds
+only). Landing page / App Link items need the `LeoStumpf.github.io` site
+live.
+
+| # | Step → expected | How |
+|---|-----------------|-----|
+| 13.1 | A: local group → ⋮ → *Invite with a link* → *first-use disclosure (nos.lol + nostr.mom, one operator, IP visible, Settings → Relays)* → *Continue* → sheet with QR + *Share link* / *Copy* | phone |
+| 13.2 | B: scan A's QR with the camera app / open the shared link → *App Link opens the app directly (no browser)*; without verification → browser shows the landing page with *Open in MoneyLedger* → app | 2dev |
+| 13.3 | B: *Join* → "Which person are you?" (A's people, A's own marked "used on another phone") → pick a person or *Someone new* → group opens; a fresh install starts local mode with that name | 2dev |
+| 13.4 | A and B add / edit / delete expenses → *the other side shows it within seconds (live)*; group sync button → sheet lists the other phone as *has everything* | 2dev |
+| 13.5 | B offline (airplane), A edits, B online → *B catches up at resume / next live subscription* | 2dev |
+| 13.6 | B: swipe the app away, A edits, wait for a background round (or trigger the job, see G31) → *logcat `[bg] … link: true`, the change is there on next open* | 2dev |
+| 13.7 | Settings → Relays: add a real custom relay (`wss://…`) → *NIP-11 check, listed with status*; remove it; *Use the default relays* | phone |
+| 13.8 | A: *Reset invite link* → new link; B opens it → *"Switch to this link?"* → syncs again; a third device with only the old link stops getting A's changes | 2dev |
+| 13.9 | B: delete the group → *A keeps it; B's events gone from nos.lol*; B restores a backup → banner "Which person are you?" → syncs again | 2dev |
+| 13.10 | Web: open `https://<web app>/#/join?v=1&k=…` → join works; the secret never appears in a server request (DevTools → Network) | web |
+| 13.11 | Landing page `https://leostumpf.github.io/moneyledger/join#v=1&k=…` in a desktop browser → *DevTools → Network: only same-origin requests, no fragment in any URL*; German browser → German texts; a cut-off link → "incomplete" | web |
+| 13.12 | Offline demo (`OFFLINE_DEMO=true`) → *Climbing gym* shows synced, its invite sheet shows a QR; no network traffic | emu |
+
 ## iOS
 
 **iOS is not supported for v1.** The project is developed on Linux — there is no

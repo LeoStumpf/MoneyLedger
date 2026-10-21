@@ -21,10 +21,10 @@ The version-exact list of all packages (direct and transitive) is in
 | `canonical_json` (signed-record encoding, G6) | 1.1.3 | Apache-2.0 |
 | `crypto` (SHA-256 for signed records, G6) | 3.0.7 | BSD-3-Clause |
 | `cryptography` (Argon2id + AES-256-GCM for encrypted backups, G34; pure-Dart implementations only) | 2.9.0 | Apache-2.0 |
-| `archive` (gzip of link-group snapshots, G52; pulls in `posix`, MIT) | 4.0.9 | MIT |
+| `archive` (gzip of link-group snapshots, G52; pulls in `posix` 6.5.0, MIT) | 4.0.9 | MIT |
 | `bip340` (BIP-340 Schnorr sign / verify of link-group Nostr events, G52) | 0.3.1 | MIT |
-| `pointycastle` (secp256k1 curve for `bip340`, G52) | 4.0.0 | MIT |
-| `web_socket_channel` (Nostr relay WebSockets, G52; pulls in `web_socket`, BSD-3-Clause) | 3.0.3 | BSD-3-Clause |
+| `pointycastle` (secp256k1 curve + key generation for `bip340`, G52; Bouncy Castle port) | 4.0.0 | MIT |
+| `web_socket_channel` (Nostr relay WebSockets, G52; pulls in `web_socket` 1.0.1, BSD-3-Clause) | 3.0.3 | BSD-3-Clause |
 | `share_plus` (system share sheet — "who pays whom" as text, G69; G52 invite sheet; pulls in `share_plus_platform_interface`, `cross_file`, `mime`, all BSD-3-Clause, and the Android `androidx.core` / `kotlinx-coroutines-android`, Apache-2.0 — no Google Play services) | 13.3.1 | BSD-3-Clause |
 | `qr` (invite-link QR code, G52 step 6 — the pure-Dart encoder; painted by our own widget, no platform code) | 3.0.2 | BSD-3-Clause |
 | `image_picker` (G78 receipt photos, Android only — the system camera app via an intent and the system photo picker / file chooser; no camera or storage permission, its Play-services photo-picker hook removed from the manifest; pulls in `image_picker_*` platform packages, `file_selector_*` (desktop), `flutter_plugin_android_lifecycle`, all BSD-3-Clause, and the Android `androidx.core` / `androidx.activity` / `androidx.exifinterface`, Apache-2.0 — no Google Play services) | 1.2.4 | BSD-3-Clause |

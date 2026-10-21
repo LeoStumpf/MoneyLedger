@@ -112,7 +112,15 @@ settings show the **real platform's** texts (store screenshots): the
 background-sync toggle on Android (`backgroundSyncSupportedProvider` = the
 platform value, scheduler a no-op) and restore points kept **in memory**
 (`demoSnapshotStores()`: one `InMemorySnapshotStore` per DB name on native,
-none on the web) — never the web's "only in the installed app" texts. No
+none on the web) — never the web's "only in the installed app" texts.
+**G52 step 11:** a 5th group, *Climbing gym* (`kDemoLinkGroupId`), is a
+**link group** — unsigned, `by` hints, Anna = participant
+`demo-person-anna` (no claim), a `link_channels` row (random secret, "me",
+a seeded publish) and two `link_peers` whose digest equals ours
+(`_seedLinkChannel`), so the invite sheet shows a QR and the sync sheet
+"has everything"; `linkSyncEnabledProvider` is **false** (no relay is ever
+contacted, also in tests), no NIP-11 fetcher, and
+`linkGroupSyncStatusProvider` is derived from the channel (synced). No
 Matrix client is ever built. (Separate from the real local mode, G40.) Normal builds
 tree-shake it (`const bool.fromEnvironment`). Never import `test/` from `lib/`.
 Smoke test: `test/core/demo_mode_test.dart`. Used for README/store screenshots.
@@ -835,6 +843,20 @@ unsigned). Tests: `test/g52_link_join_test.dart`,
   unpublished, peer keeps its copy → restore → "me" → published),
   `test/core/link/link_channel_test.dart`, `test/features/ledger_backup_test.dart`,
   `test/g52_link_leave_backup_ui_test.dart` (EN + DE, 360 dp, 200 %).
+
+### Landing page + App Links (G52 step 11)
+
+The https invite link (`https://leostumpf.github.io/moneyledger/join#…`)
+needs a **separate repo**, `~/git/LeoStumpf.github.io` (GitHub Pages user
+site, **shared by all of Leo's apps**: `/<appname>/` per app, root page
+lists them, `.nojekyll`): `.well-known/assetlinks.json` (one statement per
+package; MoneyLedger = the **upload key**'s SHA-256 — add the Play App
+Signing key once enrolled; never the password) and `moneyledger/join.html`
++ `join.js` — reads `location.hash` in the browser only, builds
+*Open in MoneyLedger* (`moneyledger://join#<fragment>`), EN/DE, CSP, no
+external request / analytics; `WEB_APP_URL` / `PLAY_URL` / `FDROID_URL`
+stay empty (hidden) until they exist. The manifest's `autoVerify` App Link
+only verifies once the site is live. Smoke: `docs/smoke-test.md` §13.
 
 ### Data Flow
 

@@ -23,6 +23,11 @@ import 'package:money_ledger/core/demo/demo_transport.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
 import 'package:money_ledger/core/database/daos/history_dao.dart';
+import 'package:money_ledger/core/database/daos/link_dao.dart';
+import 'package:money_ledger/core/link/group_policy.dart';
+import 'package:money_ledger/core/link/link_uri.dart' show decodeLinkSecret;
+import 'package:money_ledger/core/link/link_sync_engine.dart';
+import 'package:money_ledger/features/sync/peer_sync_rows.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/history/group_history.dart';
 import 'package:money_ledger/models/expense_date.dart';
@@ -36,7 +41,7 @@ void main() {
   });
 
   group('seedDemoLedger', () {
-    test('four groups, real names, several currencies, all in sync', () async {
+    test('five groups, real names, several currencies, all in sync', () async {
       final db = openTestDatabase();
       addTearDown(db.close);
       final now = DateTime(2026, 10, 16, 12);
@@ -48,6 +53,7 @@ void main() {
         'Flat share',
         'Ski weekend',
         'Board game night',
+        'Climbing gym',
       });
 
       final currencies = <String>{};
@@ -219,12 +225,65 @@ void main() {
       expect(flat.where((b) => b.byMe), isNotEmpty);
     });
 
+    test('G52 step 11: one link group — link-only, "me" set, no Matrix '
+        'claims, everyone up to date', () async {
+      final db = openTestDatabase();
+      addTearDown(db.close);
+      await seedDemoLedger(db, now: DateTime(2026, 10, 16, 12));
+      final link = LinkDao(db);
+      final channels = await link.getAllChannels();
+      expect(channels.map((c) => c.groupId), [kDemoLinkGroupId]);
+      final ch = channels.single;
+      expect(ch.myParticipantId, 'demo-person-anna');
+      expect(decodeLinkSecret(ch.secret), hasLength(32));
+      expect(ch.lastPublishedHash, isNotNull);
+      expect(ch.parts, 1);
+      expect(
+        (await link.policyOf(kDemoLinkGroupId)).policy,
+        GroupPolicy.linkOnly,
+      );
+      // Only the link group has a channel: the Matrix groups stay Matrix.
+      expect(
+        (await link.policyOf('demo-group-lisbon')).policy,
+        GroupPolicy.matrix,
+      );
+
+      final members = await MembersDao(db).getMembers(kDemoLinkGroupId);
+      expect(members.map((m) => m.label).toSet(), {'Anna', 'Elif', 'Jonas'});
+      expect(members.every((m) => m.matrixId == null), isTrue);
+      final group = await GroupsDao(db).getGroup(kDemoLinkGroupId);
+      expect(group!.sig, isNull);
+      final expenses = await ExpensesDao(
+        db,
+      ).getAllExpensesForGroup(kDemoLinkGroupId);
+      expect(expenses, isNotEmpty);
+      for (final e in expenses) {
+        expect(e.sig, isNull);
+        expect(e.pendingSign, isFalse);
+        expect(e.linkAuthor, isNotNull, reason: 'the `by` hint');
+      }
+
+      // Both other people published the same snapshot → "has everything".
+      final peers = await link.getPeers(kDemoLinkGroupId);
+      final rows = linkPeerRows(
+        peers: peers,
+        members: members,
+        myParticipantId: ch.myParticipantId,
+        ourDigest: ch.lastPublishedHash,
+        ourParts: ch.parts,
+      );
+      expect(rows.map((r) => r.name), ['Elif', 'Jonas']);
+      expect(rows.every((r) => r.kind == PeerSyncKind.upToDate), isTrue);
+    });
+
     test('reseeding replaces the data instead of duplicating it', () async {
       final db = openTestDatabase();
       addTearDown(db.close);
       await seedDemoLedger(db);
       await seedDemoLedger(db);
-      expect(await GroupsDao(db).getAllGroups(), hasLength(4));
+      expect(await GroupsDao(db).getAllGroups(), hasLength(5));
+      expect(await LinkDao(db).getAllChannels(), hasLength(1));
+      expect(await LinkDao(db).getPeers(kDemoLinkGroupId), hasLength(2));
     });
   });
 
@@ -237,6 +296,35 @@ void main() {
     expect(await native(kDemoDatabaseName)!.list(), ['2026-10-18.json']);
     expect(identical(native('other'), a), isFalse);
     expect(demoSnapshotStores(web: true)(kDemoDatabaseName), isNull);
+  });
+
+  test('G52 step 11: the demo never syncs link groups — engine off, no '
+      'NIP-11; a link group shows as synced', () async {
+    final db = openTestDatabaseWithHook((db) => seedDemoLedger(db));
+    final c = ProviderContainer(
+      overrides: demoOverrides(openDatabase: () => db),
+    );
+    addTearDown(c.dispose);
+    expect(c.read(linkSyncEnabledProvider), isFalse);
+    expect(c.read(linkRelayInfoFetcherProvider), isNull);
+    final sub = c.listen(
+      linkGroupSyncStatusProvider(kDemoLinkGroupId),
+      (_, _) {},
+    );
+    addTearDown(sub.close);
+    // Signed in → the demo DB opens (seeded) → the channel's publish time.
+    await eventually(
+      () =>
+          c
+              .read(linkGroupSyncStatusProvider(kDemoLinkGroupId))
+              .value
+              ?.lastPublishedAt !=
+          null,
+    );
+    expect(
+      c.read(linkGroupSyncStatusProvider(kDemoLinkGroupId)).value!.phase,
+      LinkSyncPhase.synced,
+    );
   });
 
   test("G79: the demo shows the platform's background-sync setting", () {
@@ -301,7 +389,7 @@ void main() {
     await tester.pump();
     expect(find.text('Lisbon trip'), findsOneWidget);
     expect(find.text('Flat share'), findsOneWidget);
-    expect(find.text('Ski weekend'), findsOneWidget);
+    expect(find.text('Climbing gym'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
