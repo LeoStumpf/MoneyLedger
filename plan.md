@@ -623,7 +623,8 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       one IP (separate DBs)
 - [ ] Retention checks (`dart run bin/check_retention.dart` in
       `tool/spike/nostr/`, read-only): +1 d 2026-10-18, **+3 d 2026-10-20 =
-      gate before G52 step 5 (sync engine)**, +7 d 2026-10-24 (§12
+      gate before G52 step 5 (sync engine)** → **passed** (checked
+      2026-10-21, +105 h: 30-d probe served on nos.lol + nostr.mom), +7 d 2026-10-24 (§12
       criterion), +14 d 2026-10-31, +31 d 2026-11-17 (probe gone)
 - [x] **Leo (2026-10-17): verify on native only, skip on the web.** Web signature verify misses the target (dart2js `bip340`
       4.9 s for 20 events) — proposal: verify on native only, web relies on
@@ -638,7 +639,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 2. Mini Nostr client (event id / BIP-340 — verify native only, Leo 2026-10-17; frames, `RelayConnection` + WebSocket adapter, `NostrRelayPool`, `replaced:` handling) + `test/helpers/fake_relay_network.dart`
 - [x] 3. Schema v15 (`link_channels`, `link_peers`, `link_author`) + `LinkDao` + migration test
 - [x] 4. Policy: `GroupPolicy`, `RecordGate` link path, engines skip link-only groups; local adoption (`adoptLocalLedger`) must keep / skip link groups (it doesn't copy `link_channels` / `link_peers` yet)
-- [ ] 5. `LinkSyncEngine` (**gate: retention check 2026-10-20 must pass**)
+- [ ] 5. `LinkSyncEngine` (gate: retention check passed 2026-10-21)
       — wire `link_author` into models / companions / payloads (a companion without it keeps the old value — set it explicitly, also null)
       — also: per-relay backoff/block policy after `rate-limited:` / `blocked:`, publish debounce, monotonic `created_at`, NIP-09 delete, NIP-11 (left out of step 2)
 - [ ] 6. Invite UI (sheet, QR, share, disclosure)

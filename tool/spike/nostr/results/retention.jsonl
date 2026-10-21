@@ -14,3 +14,7 @@
 {"at":"2026-10-17T22:25:05.406902Z","relay":"wss://nos.lol","probe":"10min","ageHours":"13.7","servedById":false,"servedByD":0,"eose":true}
 {"at":"2026-10-17T22:25:05.674459Z","relay":"wss://nostr.mom","probe":"30d","ageHours":"13.7","servedById":true,"servedByD":1,"eose":true}
 {"at":"2026-10-17T22:25:05.738747Z","relay":"wss://nostr.mom","probe":"10min","ageHours":"13.7","servedById":false,"servedByD":0,"eose":true}
+{"at":"2026-10-21T18:09:38.658174Z","relay":"wss://nos.lol","probe":"30d","ageHours":"105.4","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-21T18:09:38.727390Z","relay":"wss://nos.lol","probe":"10min","ageHours":"105.4","servedById":false,"servedByD":0,"eose":true}
+{"at":"2026-10-21T18:09:39.008585Z","relay":"wss://nostr.mom","probe":"30d","ageHours":"105.4","servedById":true,"servedByD":1,"eose":true}
+{"at":"2026-10-21T18:09:39.076501Z","relay":"wss://nostr.mom","probe":"10min","ageHours":"105.4","servedById":false,"servedByD":0,"eose":true}
