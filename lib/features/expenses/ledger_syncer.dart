@@ -500,6 +500,9 @@ class LedgerSyncer {
         expenseDate: Value(_optString(content['date'])),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
+        // G52: the Matrix path never keeps a `by` hint — set it explicitly
+        // (an absent value would keep the previous version's on update).
+        linkAuthor: const Value(null),
       ),
       source: HistorySource.inbound,
     );
@@ -534,6 +537,9 @@ class LedgerSyncer {
         settlementDate: Value(_optString(content['date'])),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         origin: Value(RecordSignature.fromJson(content['origin'])?.encode()),
+        // G52: the Matrix path never keeps a `by` hint — set it explicitly
+        // (an absent value would keep the previous version's on update).
+        linkAuthor: const Value(null),
       ),
       source: HistorySource.inbound,
     );
@@ -558,6 +564,7 @@ class LedgerSyncer {
           encodeCategories(parseCustomCategories(content['categories'])),
         ),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
+        linkAuthor: const Value(null), // G52: see processExpense
       ),
       source: HistorySource.inbound,
     );
@@ -587,6 +594,7 @@ class LedgerSyncer {
           ),
         ),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
+        linkAuthor: const Value(null), // G52: see processExpense
       ),
       source: HistorySource.inbound,
     );

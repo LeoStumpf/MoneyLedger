@@ -205,7 +205,11 @@ lib/
         signing_dao.dart       # G6: KnownDeviceKeys (device-key history) + RejectedVersions
         history_dao.dart       # G48: record_history (version history) — append helper, HistorySource, prune, floor
         link_dao.dart          # G52: LinkChannels (link secret, per-group Nostr key, my participant, publish state) + LinkPeers (per-part event dedup); device-local, never logged
-        settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, left-group tombstones, G16 archive, per account); never synced
+        settings_dao.dart      # AppSettings KV — local flags (onboarding-seen, left-group tombstones, G16 archive, G52 link relays + relay state, per account); never synced
+    link/                      # G52 link groups: link_uri, link_keys (HKDF), link_envelope (gzip + AES-GCM),
+                               #   link_snapshot (sharding, digest), group_policy, link_channel (open),
+                               #   link_relay_policy, link_sync_engine; nostr/ (events, frames, relay pool,
+                               #   WebSocket adapter, nip09, nip11)
     matrix/
       record_crypto.dart          # G6 ports: RecordCrypto (sign/verify), DeviceKeyDirectory, SignerId
       hmac_record_crypto.dart     # G6 fake device keys (HMAC stand-in) for tests + offline demo
@@ -605,6 +609,49 @@ meta only in `linkOnly`; the Matrix path drops `by`. G40 adoption copies
 `link_channels` / `link_peers` and keeps a link-only group unclaimed and
 unsigned. Design doc §6.4 "As built"; tests `test/core/link_policy_test.dart`,
 `test/integration/link_group_matrix_skip_test.dart`.
+
+### Link sync engine (G52 step 5)
+
+`LinkSyncEngine` (`lib/core/link/link_sync_engine.dart`,
+`linkSyncEngineProvider` — per ledger DB like `SyncEngine`, G19 rules;
+kept alive by `linkSyncActiveProvider` in `LedgerSyncHost` for MXIDs **and**
+local mode; off on the signed-out placeholder and in the demo) syncs link
+groups over Nostr. **No link channel → no connection, no NIP-11 request.**
+- **Publish:** drift table updates (groups / members / expenses /
+  settlements) → debounced check (3 s, ≥ 5 s apart per group) → bootstrap
+  content (tombstones + `pendingSign` rows, sorted) → `linkSnapshotDigest`
+  vs `last_published_hash` (or ≥ 10 days old → refresh) → `planLinkSnapshot`
+  within the target relays' NIP-11 budget → one event per part (monotonic
+  `created_at` via `LinkDao.nextCreatedAt`, `expiration` +30 d, `alt`),
+  retired parts header-only (+1 d). Recorded only when every event reached
+  ≥ 1 relay. Nothing is published while "me" (`my_participant_id`) is unset.
+- **Relays** (`link_relay_policy.dart`): `rate-limited:` 1 min → 1 h back-off;
+  `blocked:` / `restricted:` / `invalid:` (not "too large") / `pow:` /
+  `auth-required:` → skipped until restart; `replaced:` → fetch our newest
+  event, `bumpCreatedAt`, republish once; undelivered → retry 1 min → 1 h.
+  `AppSettings` `link_relays` (list) + `link_relay_state:<url>` (NIP-11 cache
+  7 d, last OK / rejection). NIP-11: `nostr/nip11.dart`; NIP-09:
+  `nostr/nip09.dart`.
+- **Receive:** one live subscription over all topics × 8 parts (first `REQ`
+  without `since` = the full fetch; closed 30 s after pause, `since` on
+  resume); own events skipped, processed ones (`link_peers`) skipped before
+  decrypting, undecryptable / wrong group / wrong part ignored **and not
+  recorded**; else `RecordGate(linkPolicy:)`.snapshot + `recordPeerEvent` in
+  one transaction. Merges trigger a republish (unchanged digest → nothing).
+- **Status:** `linkGroupSyncStatusProvider(groupId)` → `LinkGroupSyncStatus`
+  (synced / pending / failing + `LinkSyncProblem`), engine-local (not
+  `SyncHealth`).
+- **Seams:** `openChannel` (`link_channel.dart`: drops our own claim, sets
+  "me", plain link versions, fresh secret + key; refuses signed-meta groups —
+  G53), `refresh(groupId:)` (join / pull / background), `publishAll()`,
+  `unpublish(groupId)` (header-only parts + NIP-09), `onAppPaused/Resumed`.
+- Tests: `test/integration/link_sync_engine_test.dart` (`FakeRelayNetwork`,
+  now with NIP-09), `test/core/link/link_relay_policy_test.dart`,
+  `test/core/link/link_channel_test.dart`. Container tests override
+  `linkRelayConnectorProvider`, `linkRelayInfoFetcherProvider`,
+  `linkClockProvider`, the debounce / interval / back-off providers,
+  `linkAppLifecycleProvider` (false) and `linkAppVersionProvider`, and wait
+  with `FakeRelayNetwork.settle()` + `LinkSyncEngine.isIdle`.
 
 ### Data Flow
 

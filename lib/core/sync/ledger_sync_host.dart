@@ -6,6 +6,7 @@ import '../../features/expenses/ledger_syncer.dart';
 import '../../features/history/restore_points.dart';
 import '../../features/receipts/receipt_store.dart';
 import '../background/background_sync_provider.dart';
+import '../link/link_sync_engine.dart';
 import '../session/local_adoption.dart';
 import 'sync_engine.dart';
 
@@ -35,6 +36,8 @@ class LedgerSyncHost extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(ledgerSyncActiveProvider);
+    // G52: link groups sync over Nostr relays — for accounts and local mode.
+    ref.watch(linkSyncActiveProvider);
     // G31: keep the Android periodic background sync registered while signed
     // in with it enabled (no-op on other platforms).
     ref.watch(backgroundSyncSchedulingProvider);

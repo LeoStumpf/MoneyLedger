@@ -76,6 +76,41 @@ void main() {
       final rows = await expDao.watchExpensesForRoom('g1').first;
       expect(rows.length, 1);
     });
+
+    test('G52: a newer version never keeps the stored `by` hint (the '
+        'companion sets link_author explicitly, also to null)', () async {
+      await expDao.upsertExpenseLww(
+        expenseCompanion(
+          const ExpenseModel(
+            id: 'e',
+            roomId: 'g1',
+            description: 'Old',
+            amountCents: 100,
+            currency: 'EUR',
+            paidBy: 'p1',
+            splitsJson: '{"p1":100}',
+            createdAt: 1,
+            updatedAt: 1,
+            linkAuthor: 'p1',
+          ),
+        ),
+      );
+      await LedgerSyncer.processExpense({
+        'id': 'e',
+        'group': 'g1',
+        'description': 'New',
+        'amount': 100,
+        'currency': 'EUR',
+        'paid_by': 'p1',
+        'split': {'p1': 100},
+        'created_at': 1,
+        'updated_at': 2,
+        'by': 'p9',
+      }, expDao);
+      final e = (await expDao.getAllExpensesForGroup('g1')).single;
+      expect(e.description, 'New');
+      expect(e.linkAuthor, isNull);
+    });
   });
 
   group('LedgerSyncer.processSettlement', () {

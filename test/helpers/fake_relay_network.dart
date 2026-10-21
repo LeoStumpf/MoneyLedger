@@ -25,6 +25,10 @@ import 'package:money_ledger/core/link/nostr/relay_connection.dart';
 ///   delivered live to every open matching subscription (the publisher's
 ///   own too).
 ///
+/// - **NIP-09**: a kind-5 event's `a` tags (`kind:pubkey:d`, its own
+///   pubkey) delete the stored event at that address up to its `created_at`
+///   ([FakeRelay.deleted]); the deletion event itself is stored.
+///
 /// Injected failures: [FakeRelay.offline] (connect throws),
 /// [FakeRelay.rejectWith] (every publish → `OK false <message>`, e.g.
 /// `rate-limited: …`, `blocked: …`), [FakeRelay.silent] (no `OK` / `EOSE`
@@ -120,6 +124,9 @@ class FakeRelay {
 
   /// Every client → relay frame, in arrival order.
   final List<String> received = [];
+
+  /// Ids of events removed by a NIP-09 deletion request.
+  final List<String> deleted = [];
 
   final Map<String, NostrEvent> _stored = {};
   final List<_FakeConnection> _conns = [];
@@ -269,6 +276,7 @@ class FakeRelay {
       return ok(false, 'invalid: event is expired');
     }
     if (rejectWith != null) return ok(false, rejectWith!);
+    if (event.kind == 5) _applyDeletion(event);
     final key = event.address ?? event.id;
     final current = _stored[key];
     if (current != null && current.id == event.id) {
@@ -280,6 +288,23 @@ class FakeRelay {
     _stored[key] = event;
     ok(true, '');
     _deliver(event);
+  }
+}
+
+extension on FakeRelay {
+  /// NIP-09: an `a` tag `kind:pubkey:d` of the deletion's own pubkey deletes
+  /// the stored event at that address up to the deletion's `created_at`.
+  void _applyDeletion(NostrEvent deletion) {
+    for (final t in deletion.tags) {
+      if (t.length < 2 || t[0] != 'a') continue;
+      final parts = t[1].split(':');
+      if (parts.length < 3 || parts[1] != deletion.pubkey) continue;
+      final stored = _stored[t[1]];
+      if (stored != null && stored.createdAt <= deletion.createdAt) {
+        _stored.remove(t[1]);
+        deleted.add(stored.id);
+      }
+    }
   }
 }
 

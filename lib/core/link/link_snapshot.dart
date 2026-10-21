@@ -34,6 +34,9 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:canonical_json/canonical_json.dart';
+import 'package:crypto/crypto.dart' as hash;
+
 import '../sync/record_version.dart';
 import 'link_envelope.dart';
 
@@ -282,6 +285,40 @@ LinkSnapshotHeader parseLinkSnapshotHeader(Map<String, dynamic> json) {
     parts: parts,
     app: app is String ? app : null,
   );
+}
+
+/// G52 step 5: the **content digest** of a snapshot (a bootstrap content
+/// map, or a decrypted part): lowercase hex SHA-256 of the canonical JSON of
+/// its `meta`, `members`, `expenses` and `settlements` — the record lists
+/// sorted by id, everything else (the link header, `device_keys`, the
+/// legacy top-level meta mirror) left out. Plaintext, never packed / sealed
+/// bytes (native and web deflate differ, §3.2).
+///
+/// Change detection: the engine republishes when the digest of the group's
+/// current bootstrap differs from `link_channels.last_published_hash` (§4.4).
+/// A publisher with a single part and ours compare equal exactly when they
+/// carry the same versions (the cheap "has everything" signal, §5.3). Null
+/// when the content can't be canonicalised (e.g. a float from a foreign
+/// event).
+String? linkSnapshotDigest(Map<String, dynamic> snapshot) {
+  List<Object?> sorted(Object? raw, String key) {
+    final list = [..._list(raw)];
+    String idOf(Object? r) => r is Map ? '${r[key] ?? ''}' : '';
+    list.sort((a, b) => idOf(a).compareTo(idOf(b)));
+    return list;
+  }
+
+  try {
+    final bytes = canonicalJson.encode({
+      'meta': snapshot['meta'],
+      'members': sorted(snapshot['members'], 'participant_id'),
+      'expenses': sorted(snapshot['expenses'], 'id'),
+      'settlements': sorted(snapshot['settlements'], 'id'),
+    });
+    return hash.sha256.convert(bytes).toString();
+  } catch (_) {
+    return null;
+  }
 }
 
 Map<String, dynamic> _header(

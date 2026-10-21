@@ -202,17 +202,24 @@ class NostrRelayPool {
   bool isConnected(String relay) =>
       _relays.any((r) => r.url == relay && r.conn != null);
 
-  /// Publishes [event] to every relay; one result per relay, in [relays]
-  /// order. Never throws.
+  /// Publishes [event] to every relay — or only to those in [only] (G52
+  /// step 5: relays the caller backs off / blocks are left out); one result
+  /// per relay it went to, in [relays] order. Never throws.
   Future<List<NostrPublishResult>> publish(
     NostrEvent event, {
     Duration? timeout,
+    Iterable<String>? only,
   }) async {
+    final wanted = only?.toSet();
+    final targets = [
+      for (final r in _relays)
+        if (wanted == null || wanted.contains(r.url)) r,
+    ];
     final bytes = event.jsonBytes;
     if (bytes > maxEventBytes) {
       debugPrint('[nostr] not publishing ${event.id}: $bytes bytes');
       return [
-        for (final r in _relays)
+        for (final r in targets)
           NostrPublishResult(
             r.url,
             NostrPublishStatus.tooLarge,
@@ -222,7 +229,7 @@ class NostrRelayPool {
     }
     final frame = encodeEventFrame(event);
     return Future.wait([
-      for (final r in _relays) r.publish(event.id, frame, timeout ?? okTimeout),
+      for (final r in targets) r.publish(event.id, frame, timeout ?? okTimeout),
     ]);
   }
 

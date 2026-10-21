@@ -220,4 +220,32 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
               ),
         },
       );
+
+  // ── link groups (G52) ────────────────────────────────────────────────────
+
+  static const _linkRelaysKey = 'link_relays';
+  static const _linkRelayStatePrefix = 'link_relay_state:';
+
+  Future<String?> _getValue(String key) =>
+      (select(appSettings)..where((t) => t.key.equals(key)))
+          .getSingleOrNull()
+          .then((row) => row?.value);
+
+  Future<void> _setValue(String key, String value) =>
+      into(appSettings).insertOnConflictUpdate(
+        AppSettingsCompanion(key: Value(key), value: Value(value)),
+      );
+
+  /// The `link_relays` setting as stored (a JSON list of relay URLs), or
+  /// null when unset (= the defaults; parsed by `parseLinkRelays`).
+  Future<String?> linkRelaysRaw() => _getValue(_linkRelaysKey);
+
+  Future<void> setLinkRelaysRaw(String json) => _setValue(_linkRelaysKey, json);
+
+  /// A relay's persisted state as stored (`LinkRelayState.encode`), or null.
+  Future<String?> linkRelayStateRaw(String relay) =>
+      _getValue('$_linkRelayStatePrefix$relay');
+
+  Future<void> setLinkRelayStateRaw(String relay, String json) =>
+      _setValue('$_linkRelayStatePrefix$relay', json);
 }

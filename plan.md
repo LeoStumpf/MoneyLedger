@@ -639,7 +639,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 2. Mini Nostr client (event id / BIP-340 — verify native only, Leo 2026-10-17; frames, `RelayConnection` + WebSocket adapter, `NostrRelayPool`, `replaced:` handling) + `test/helpers/fake_relay_network.dart`
 - [x] 3. Schema v15 (`link_channels`, `link_peers`, `link_author`) + `LinkDao` + migration test
 - [x] 4. Policy: `GroupPolicy`, `RecordGate` link path, engines skip link-only groups; local adoption (`adoptLocalLedger`) must keep / skip link groups (it doesn't copy `link_channels` / `link_peers` yet)
-- [ ] 5. `LinkSyncEngine` (gate: retention check passed 2026-10-21)
+- [x] 5. `LinkSyncEngine` (gate: retention check passed 2026-10-21) — `lib/core/link/link_sync_engine.dart` (+ `link_channel.dart` open, `link_relay_policy.dart`, `nostr/nip09.dart`, `nostr/nip11.dart`); design doc §13 "As built (step 5)"
       — wire `link_author` into models / companions / payloads (a companion without it keeps the old value — set it explicitly, also null)
       — also: per-relay backoff/block policy after `rate-limited:` / `blocked:`, publish debounce, monotonic `created_at`, NIP-09 delete, NIP-11 (left out of step 2)
 - [ ] 6. Invite UI (sheet, QR, share, disclosure)
@@ -650,6 +650,21 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed
 - [ ] 12. Reset invite link
 - [ ] 13. Device pass (Pixel + emulator + web)
+- [ ] (from step 5) **Creating a link group while signed in:** a Matrix
+      device signs every write, so a group it created has a signed meta and
+      `openLinkChannel` refuses it (`signedGroup` — it would turn `mixed`,
+      G53). Step 6 must open the channel **before the first write** (e.g. a
+      "share by link" choice in *Create group*, so the meta is written
+      unsigned in `linkOnly`) — or this waits for G53. Decide in step 6.
+- [ ] (from step 5) Wire the seams: step 6 invite → `LinkSyncEngine.
+      openChannel`; step 7 join → `putChannel` + `refresh(groupId:)` + set
+      "me"; step 8 background round → `refresh()` + `publishAll()`; step 9
+      icon / peers sheet → `linkGroupSyncStatusProvider`, `link_peers`,
+      `relayPolicy.rejecting` + `link_relay_state:<url>`; step 10 leave →
+      `unpublish(groupId)` before the purge
+- [ ] (from step 5) The group page's sync cloud for a link-only group still
+      comes from the Matrix `groupSyncStatusProvider` — switch it to the link
+      status in step 9
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a
