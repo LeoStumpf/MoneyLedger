@@ -37,6 +37,8 @@ import 'package:money_ledger/features/groups/group_settings_page.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
 import 'package:money_ledger/features/history/restore_points.dart';
 import 'package:money_ledger/features/link/link_invite.dart';
+import 'package:money_ledger/features/link/relay_settings_page.dart';
+import 'package:money_ledger/features/sync/group_sync_sheet.dart';
 import 'package:money_ledger/features/receipts/receipt_store.dart';
 import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/models/expense_model.dart';
@@ -407,6 +409,42 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('G52 step 9 relay settings', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(
+        const RelaySettingsPage(),
+        _overrides(
+          extra: [
+            linkRelaysSetterProvider.overrideWithValue(
+              (relays, {info = const {}}) async {},
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('relay-nos.lol')), findsOneWidget);
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  testWidgets('G68 sync sheet (Matrix group)', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(
+        const Scaffold(body: GroupSyncSheet(groupId: _g, link: false)),
+        _overrides(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('groupSyncNow')), findsOneWidget);
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
   testWidgets('G52 link disclosure', (tester) async {
     _phone(tester);
     final handle = tester.ensureSemantics();
@@ -614,16 +652,12 @@ void main() {
         tester.getSemantics(find.byKey(const Key('dayHeader')).first),
         isSemantics(isHeader: true),
       );
-      // The app-bar cloud is a status with its explanation, not a
-      // (disabled) button.
-      final cloud = find.byWidgetPredicate(
-        (w) => w is Tooltip && (w.message ?? '').startsWith('Waiting for'),
-      );
-      expect(cloud, findsOneWidget);
-      expect(
-        find.ancestor(of: cloud, matching: find.byType(IconButton)),
-        findsNothing,
-      );
+      // G68: the app-bar cloud is an enabled button (it opens the sync
+      // sheet) whose label is the status — never a disabled button.
+      final cloud = find.byKey(const Key('groupSyncButton'));
+      final button = tester.widget<IconButton>(cloud);
+      expect(button.tooltip, startsWith('Waiting for'));
+      expect(button.onPressed, isNotNull);
       handle.dispose();
     });
 

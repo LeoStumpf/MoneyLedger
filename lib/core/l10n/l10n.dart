@@ -43,3 +43,15 @@ extension AppLocalizationsX on BuildContext {
         _ => formatDate(msEpoch, localeName),
       };
 }
+
+/// A coarse "x ago" (minutes / hours / days) — last-synced lines, the G68
+/// sync sheet, relay status (G52 step 9).
+String agoText(AppLocalizations l, int msEpoch, {DateTime? now}) {
+  final d = (now ?? DateTime.now()).difference(
+    DateTime.fromMillisecondsSinceEpoch(msEpoch),
+  );
+  if (d.inMinutes < 1) return l.agoJustNow;
+  if (d.inHours < 1) return l.agoMinutes(d.inMinutes);
+  if (d.inDays < 1) return l.agoHours(d.inHours);
+  return l.agoDays(d.inDays);
+}

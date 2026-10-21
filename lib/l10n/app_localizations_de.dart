@@ -3010,7 +3010,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String linkDisclosureRelays(String relays) {
-    return 'Geteilte Gruppen synchronisieren über öffentliche Nostr-Relays: $relays. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen.';
+    return 'Geteilte Gruppen synchronisieren über öffentliche Nostr-Relays: $relays. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen (verlinkt unter Einstellungen → Relays).';
   }
 
   @override
@@ -3048,7 +3048,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
+      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Unter Einstellungen → Relays kannst du die Relays ändern: Ein neues wird zuerst nach seiner Infoseite (NIP-11) gefragt, danach synchronisieren deine geteilten Gruppen auch darüber. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
 
   @override
   String linkInviteShareText(String group, String link) {
@@ -3133,4 +3133,271 @@ class AppLocalizationsDe extends AppLocalizations {
   String joinLinkPickTitle(String group) {
     return 'Wer bist du in „$group“?';
   }
+
+  @override
+  String get syncSheetTitle => 'Synchronisierung';
+
+  @override
+  String get syncSheetAllSynced => 'Alle haben deine neuesten Änderungen.';
+
+  @override
+  String get syncSheetPending =>
+      'Noch haben nicht alle deine neuesten Änderungen.';
+
+  @override
+  String get syncSheetNoPeers =>
+      'Sonst hat niemand in dieser Gruppe ein Matrix-Konto – es gibt nichts zu synchronisieren.';
+
+  @override
+  String get syncSheetLocalPeople =>
+      'Personen ohne Matrix-Konto synchronisieren nicht – sie sind nur Einträge in der Abrechnung.';
+
+  @override
+  String get peerUpToDate => 'Hat alles';
+
+  @override
+  String peerUpToDateAt(String ago) {
+    return 'Hat alles · geprüft $ago';
+  }
+
+  @override
+  String peerWaitingSince(String ago) {
+    return 'Wartet – zuletzt synchron $ago';
+  }
+
+  @override
+  String get peerWaitingNever => 'Wartet – noch nicht synchron';
+
+  @override
+  String get peerNoDevice =>
+      'Kein angemeldetes Gerät – synchronisiert, sobald die Person sich anmeldet';
+
+  @override
+  String get peerUnverified =>
+      'Kein verifiziertes Gerät – verifiziere eines, um zu synchronisieren';
+
+  @override
+  String get peerYourDevices => 'Deine anderen Geräte';
+
+  @override
+  String get peerUnknown => 'Unbekannte Person';
+
+  @override
+  String peerPublishedAt(String ago) {
+    return 'Letzte Aktualisierung $ago';
+  }
+
+  @override
+  String peerDevices(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Geräte',
+      one: '1 Gerät',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncSheetLinkNoPeers =>
+      'Noch hat niemand sonst den Einladungslink geöffnet.';
+
+  @override
+  String get syncSheetLinkHint =>
+      'Wer den Einladungslink noch nicht geöffnet hat, erscheint hier nicht. „Hat alles“ heißt: Das Gerät hat denselben Stand veröffentlicht wie deines.';
+
+  @override
+  String linkSyncSynced(String ago) {
+    return 'Deine Änderungen liegen auf den Relays ($ago).';
+  }
+
+  @override
+  String get linkSyncSyncedNoTime => 'Deine Änderungen liegen auf den Relays.';
+
+  @override
+  String get linkSyncPending =>
+      'Deine Änderungen werden an die Relays gesendet …';
+
+  @override
+  String get linkSyncNotDelivered =>
+      'Die Relays sind nicht erreichbar – es wird erneut versucht.';
+
+  @override
+  String get linkSyncRelaysReject =>
+      'Die Relays lehnen unsere Aktualisierungen ab. Füge unter Einstellungen → Relays ein anderes hinzu.';
+
+  @override
+  String get linkSyncTooLarge =>
+      'Diese Gruppe ist zu groß zum Teilen per Link.';
+
+  @override
+  String get linkSyncNoParticipant =>
+      'Wähle zuerst, wer du in dieser Gruppe bist.';
+
+  @override
+  String get linkSyncMergeFailed =>
+      'Eine Aktualisierung konnte nicht gespeichert werden – es wird erneut versucht.';
+
+  @override
+  String get linkCloudSynced => 'Über die Relays synchronisiert';
+
+  @override
+  String get syncNow => 'Jetzt synchronisieren';
+
+  @override
+  String get syncNowSent =>
+      'Alle wurden nach ihrem Stand gefragt – sie antworten, sobald ihre App läuft.';
+
+  @override
+  String get syncNowChecked => 'Relays abgefragt.';
+
+  @override
+  String get syncNowUnreachable => 'Die Relays sind nicht erreichbar.';
+
+  @override
+  String get relaysTitle => 'Relays';
+
+  @override
+  String relaysTileBody(String relays) {
+    return 'Gruppen mit Einladungslink synchronisieren über: $relays';
+  }
+
+  @override
+  String get relaysTileProblem => 'Ein Relay lehnt unsere Aktualisierungen ab';
+
+  @override
+  String get relaysIntro =>
+      'Mit Einladungslink geteilte Gruppen synchronisieren über diese öffentlichen Nostr-Relays. Sie speichern jede Gruppe verschlüsselt und sehen deine IP-Adresse und wann du synchronisierst. Es sind unabhängige Dienste mit eigenen Nutzungsbedingungen.';
+
+  @override
+  String get relaysOneOperator =>
+      'nos.lol und nostr.mom haben denselben Betreiber. Nehmen sie keine Aktualisierungen mehr an, synchronisieren Gruppen nur noch über ein Relay, das du hinzufügst – zum Beispiel dein eigenes.';
+
+  @override
+  String get relaysCommon =>
+      'Der Einladungslink nennt keine Relays: Alle in einer Gruppe brauchen mindestens ein gemeinsames Relay. Diese Liste gilt nur für dieses Gerät.';
+
+  @override
+  String relayStatusRejects(String message) {
+    return 'Lehnt unsere Aktualisierungen ab: $message';
+  }
+
+  @override
+  String relayStatusRateLimited(int n) {
+    return 'Bittet um eine Pause – nächster Versuch in $n Min.';
+  }
+
+  @override
+  String get relayStatusNeedsAccount => 'Braucht ein Konto – nicht nutzbar';
+
+  @override
+  String get relayStatusNoExpiration => 'Unterstützt kein Ablaufdatum (NIP-40)';
+
+  @override
+  String relayStatusLastRefused(String ago, String message) {
+    return 'Hat unsere letzte Aktualisierung abgelehnt ($ago): $message';
+  }
+
+  @override
+  String relayStatusOk(String ago) {
+    return 'Hat unsere letzte Aktualisierung $ago angenommen';
+  }
+
+  @override
+  String get relayStatusUnused => 'Noch nicht genutzt';
+
+  @override
+  String get relayTerms => 'Bedingungen';
+
+  @override
+  String relayTermsOf(String relay) {
+    return 'Bedingungen von $relay';
+  }
+
+  @override
+  String relayRemove(String relay) {
+    return '$relay entfernen';
+  }
+
+  @override
+  String relayRemoveConfirmTitle(String relay) {
+    return '$relay entfernen?';
+  }
+
+  @override
+  String get relayRemoveConfirmBody =>
+      'Dieses Gerät synchronisiert geteilte Gruppen dann nicht mehr darüber.';
+
+  @override
+  String get relayRemoveConfirm => 'Entfernen';
+
+  @override
+  String get relayRemoved => 'Relay entfernt.';
+
+  @override
+  String get relayAdd => 'Relay hinzufügen …';
+
+  @override
+  String get relayAddTitle => 'Relay hinzufügen';
+
+  @override
+  String get relayAddLabel => 'Relay-Adresse';
+
+  @override
+  String get relayAddConfirm => 'Hinzufügen';
+
+  @override
+  String get relayAddInvalid =>
+      'Das ist keine Relay-Adresse (z. B. wss://relay.example.org).';
+
+  @override
+  String get relayAddNotSecure =>
+      'Nur verschlüsselte Verbindungen (wss://) werden unterstützt.';
+
+  @override
+  String get relayAddDuplicate => 'Dieses Relay ist schon in der Liste.';
+
+  @override
+  String get relayAddChecking => 'Relay wird geprüft …';
+
+  @override
+  String get relayAddNeedsAccount =>
+      'Dieses Relay braucht ein Konto – es kann nicht genutzt werden.';
+
+  @override
+  String get relayAddNoExpiration =>
+      'Dieses Relay unterstützt kein Ablaufdatum (NIP-40) – es würde deine Gruppen unbegrenzt aufbewahren.';
+
+  @override
+  String get relayAddUncheckedTitle => 'Relay konnte nicht geprüft werden';
+
+  @override
+  String get relayAddUncheckedBody =>
+      'Es hat auf die Prüfung (NIP-11) nicht geantwortet – vielleicht ist es offline oder die Adresse stimmt nicht. Trotzdem hinzufügen?';
+
+  @override
+  String get relayAddAnyway => 'Trotzdem hinzufügen';
+
+  @override
+  String get relayAdded =>
+      'Relay hinzugefügt – deine geteilten Gruppen werden jetzt dorthin gesendet.';
+
+  @override
+  String get relaysRestoreDefaults => 'Standard-Relays verwenden';
+
+  @override
+  String get relaysDefaultsRestored => 'Standard-Relays wiederhergestellt.';
+
+  @override
+  String get backgroundSyncLocalBody =>
+      'Auch etwa alle 15 Minuten die Relays nach deinen geteilten Gruppen fragen, wenn die App geschlossen ist.';
+
+  @override
+  String linkDisclosureRelaysOneOperator(String relays) {
+    return 'Geteilte Gruppen synchronisieren über zwei öffentliche Nostr-Relays, $relays (ein Betreiber). Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen (verlinkt unter Einstellungen → Relays).';
+  }
+
+  @override
+  String get linkDisclosureOwnRelay =>
+      'Unter Einstellungen → Relays kannst du ein eigenes Relay hinzufügen.';
 }

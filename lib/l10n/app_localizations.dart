@@ -4727,7 +4727,7 @@ abstract class AppLocalizations {
   /// G52 (§9.2): disclosure paragraph; relays = comma-separated host names
   ///
   /// In en, this message translates to:
-  /// **'Shared groups sync through public Nostr relays: {relays}. They are independent services with their own terms.'**
+  /// **'Shared groups sync through public Nostr relays: {relays}. They are independent services with their own terms (linked under Settings → Relays).'**
   String linkDisclosureRelays(String relays);
 
   /// G52 (§9.2): disclosure paragraph
@@ -4787,7 +4787,7 @@ abstract class AppLocalizations {
   /// G52: privacy policy section body (keep in sync with PRIVACY.md)
   ///
   /// In en, this message translates to:
-  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.'**
+  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.'**
   String get privacyLinkBody;
 
   /// G52: text handed to the share sheet with the invite link
@@ -4927,6 +4927,420 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Who are you in “{group}”?'**
   String joinLinkPickTitle(String group);
+
+  /// G68: title of a group's sync sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get syncSheetTitle;
+
+  /// G68: sync sheet summary (Matrix group, in sync)
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone has your latest changes.'**
+  String get syncSheetAllSynced;
+
+  /// G68: sync sheet summary (Matrix group, pending)
+  ///
+  /// In en, this message translates to:
+  /// **'Not everyone has your latest changes yet.'**
+  String get syncSheetPending;
+
+  /// G68: sync sheet, Matrix group without other accounts
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else in this group has a Matrix account — there is nothing to sync.'**
+  String get syncSheetNoPeers;
+
+  /// G68: sync sheet hint (Matrix group with people without an account)
+  ///
+  /// In en, this message translates to:
+  /// **'People without a Matrix account don\'t sync — they are entries in the ledger only.'**
+  String get syncSheetLocalPeople;
+
+  /// G68: a person's sync row (link group: same state as ours)
+  ///
+  /// In en, this message translates to:
+  /// **'Has everything'**
+  String get peerUpToDate;
+
+  /// G68: a person's sync row (Matrix: proven in sync); ago = e.g. '3 min ago'
+  ///
+  /// In en, this message translates to:
+  /// **'Has everything · checked {ago}'**
+  String peerUpToDateAt(String ago);
+
+  /// G68: a person's sync row (Matrix: not yet holding our latest change)
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting — last in sync {ago}'**
+  String peerWaitingSince(String ago);
+
+  /// G68: a person's sync row (Matrix: never proven in sync)
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting — not in sync yet'**
+  String get peerWaitingNever;
+
+  /// G68: a person's sync row (Matrix: no device)
+  ///
+  /// In en, this message translates to:
+  /// **'No signed-in device — syncs once they sign in'**
+  String get peerNoDevice;
+
+  /// G68: a person's sync row (verified-only sync on, no verified device)
+  ///
+  /// In en, this message translates to:
+  /// **'No verified device — verify one to sync'**
+  String get peerUnverified;
+
+  /// G68: the sync row of this account's / this person's other devices
+  ///
+  /// In en, this message translates to:
+  /// **'Your other devices'**
+  String get peerYourDevices;
+
+  /// G52 step 9: a link publisher naming nobody in the group's people
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown person'**
+  String get peerUnknown;
+
+  /// G52 step 9: a person's sync row in a link group (their phone's last publish)
+  ///
+  /// In en, this message translates to:
+  /// **'Last update {ago}'**
+  String peerPublishedAt(String ago);
+
+  /// G52 step 9: how many devices of a person published
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 device} other{{n} devices}}'**
+  String peerDevices(int n);
+
+  /// G52 step 9: link group sync sheet without other publishers
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else has opened the invite link yet.'**
+  String get syncSheetLinkNoPeers;
+
+  /// G52 step 9: link group sync sheet footer
+  ///
+  /// In en, this message translates to:
+  /// **'People who haven\'t opened the invite link yet don\'t appear here. “Has everything” means their device published the same state as yours.'**
+  String get syncSheetLinkHint;
+
+  /// G52 step 9: link group sync summary
+  ///
+  /// In en, this message translates to:
+  /// **'Your changes are on the relays ({ago}).'**
+  String linkSyncSynced(String ago);
+
+  /// G52 step 9: link group sync summary (no time known)
+  ///
+  /// In en, this message translates to:
+  /// **'Your changes are on the relays.'**
+  String get linkSyncSyncedNoTime;
+
+  /// G52 step 9: link group sync summary / tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your changes to the relays…'**
+  String get linkSyncPending;
+
+  /// G52 step 9: link group sync problem
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the relays — trying again.'**
+  String get linkSyncNotDelivered;
+
+  /// G52 step 9: link group sync problem
+  ///
+  /// In en, this message translates to:
+  /// **'The relays refuse our updates. Add another relay under Settings → Relays.'**
+  String get linkSyncRelaysReject;
+
+  /// G52 step 9: link group sync problem
+  ///
+  /// In en, this message translates to:
+  /// **'This group is too big for sharing with a link.'**
+  String get linkSyncTooLarge;
+
+  /// G52 step 9: link group sync problem
+  ///
+  /// In en, this message translates to:
+  /// **'Choose who you are in this group first.'**
+  String get linkSyncNoParticipant;
+
+  /// G52 step 9: link group sync problem
+  ///
+  /// In en, this message translates to:
+  /// **'An update couldn\'t be stored — trying again.'**
+  String get linkSyncMergeFailed;
+
+  /// G52 step 9: link group sync icon tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Synced through the relays'**
+  String get linkCloudSynced;
+
+  /// G68: button in the sync sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get syncNow;
+
+  /// G68: after Sync now (Matrix group)
+  ///
+  /// In en, this message translates to:
+  /// **'Asked everyone for their state — they answer while their app runs.'**
+  String get syncNowSent;
+
+  /// G68: after Sync now (link group)
+  ///
+  /// In en, this message translates to:
+  /// **'Checked the relays.'**
+  String get syncNowChecked;
+
+  /// G68: after Sync now (link group, no relay answered)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the relays.'**
+  String get syncNowUnreachable;
+
+  /// G52 step 9: relay settings page title + settings tile
+  ///
+  /// In en, this message translates to:
+  /// **'Relays'**
+  String get relaysTitle;
+
+  /// G52 step 9: settings tile subtitle; relays = host names
+  ///
+  /// In en, this message translates to:
+  /// **'Invite-link groups sync through: {relays}'**
+  String relaysTileBody(String relays);
+
+  /// G52 step 9: settings tile subtitle when a relay refuses
+  ///
+  /// In en, this message translates to:
+  /// **'A relay refuses our updates'**
+  String get relaysTileProblem;
+
+  /// G52 step 9: relay settings intro
+  ///
+  /// In en, this message translates to:
+  /// **'Groups shared with an invite link sync through these public Nostr relays. They store each group encrypted and see your IP address and when you sync. They are independent services with their own terms.'**
+  String get relaysIntro;
+
+  /// G52 step 9: relay settings, default-relay note (§9.4)
+  ///
+  /// In en, this message translates to:
+  /// **'nos.lol and nostr.mom have the same operator. If they stop accepting our updates, groups only keep syncing through a relay you add — for example your own.'**
+  String get relaysOneOperator;
+
+  /// G52 step 9: relay settings note (§14 Q3)
+  ///
+  /// In en, this message translates to:
+  /// **'The invite link doesn\'t name relays: everyone in a group needs at least one relay in common. This list only applies to this device.'**
+  String get relaysCommon;
+
+  /// G52 step 9: relay status; message = the relay's own text
+  ///
+  /// In en, this message translates to:
+  /// **'Refuses our updates: {message}'**
+  String relayStatusRejects(String message);
+
+  /// G52 step 9: relay status (rate-limited)
+  ///
+  /// In en, this message translates to:
+  /// **'Asked us to slow down — next try in {n} min'**
+  String relayStatusRateLimited(int n);
+
+  /// G52 step 9: relay status (NIP-11 auth / payment required)
+  ///
+  /// In en, this message translates to:
+  /// **'Needs an account — can\'t be used'**
+  String get relayStatusNeedsAccount;
+
+  /// G52 step 9: relay status (no NIP-40)
+  ///
+  /// In en, this message translates to:
+  /// **'Doesn\'t support expiring data (NIP-40)'**
+  String get relayStatusNoExpiration;
+
+  /// G52 step 9: relay status
+  ///
+  /// In en, this message translates to:
+  /// **'Refused our last update ({ago}): {message}'**
+  String relayStatusLastRefused(String ago, String message);
+
+  /// G52 step 9: relay status; ago = e.g. '3 min ago'
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted our last update {ago}'**
+  String relayStatusOk(String ago);
+
+  /// G52 step 9: relay status
+  ///
+  /// In en, this message translates to:
+  /// **'Not used yet'**
+  String get relayStatusUnused;
+
+  /// G52 step 9: opens a relay's terms of service
+  ///
+  /// In en, this message translates to:
+  /// **'Terms'**
+  String get relayTerms;
+
+  /// G52 step 9: tooltip / label of the terms button
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of {relay}'**
+  String relayTermsOf(String relay);
+
+  /// G52 step 9: remove-relay button tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {relay}'**
+  String relayRemove(String relay);
+
+  /// G52 step 9: remove-relay confirmation title
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {relay}?'**
+  String relayRemoveConfirmTitle(String relay);
+
+  /// G52 step 9: remove-relay confirmation body
+  ///
+  /// In en, this message translates to:
+  /// **'This device stops syncing shared groups through it.'**
+  String get relayRemoveConfirmBody;
+
+  /// G52 step 9: remove-relay confirm button
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get relayRemoveConfirm;
+
+  /// G52 step 9: snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Relay removed.'**
+  String get relayRemoved;
+
+  /// G52 step 9: button on the relay settings page
+  ///
+  /// In en, this message translates to:
+  /// **'Add relay…'**
+  String get relayAdd;
+
+  /// G52 step 9: add-relay dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Add a relay'**
+  String get relayAddTitle;
+
+  /// G52 step 9: add-relay field label
+  ///
+  /// In en, this message translates to:
+  /// **'Relay address'**
+  String get relayAddLabel;
+
+  /// G52 step 9: add-relay confirm button
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get relayAddConfirm;
+
+  /// G52 step 9: add-relay error
+  ///
+  /// In en, this message translates to:
+  /// **'That isn\'t a relay address (e.g. wss://relay.example.org).'**
+  String get relayAddInvalid;
+
+  /// G52 step 9: add-relay error
+  ///
+  /// In en, this message translates to:
+  /// **'Only encrypted connections (wss://) are supported.'**
+  String get relayAddNotSecure;
+
+  /// G52 step 9: add-relay error
+  ///
+  /// In en, this message translates to:
+  /// **'This relay is already in the list.'**
+  String get relayAddDuplicate;
+
+  /// G52 step 9: add-relay progress
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the relay…'**
+  String get relayAddChecking;
+
+  /// G52 step 9: add-relay refusal (NIP-11)
+  ///
+  /// In en, this message translates to:
+  /// **'This relay needs an account — it can\'t be used.'**
+  String get relayAddNeedsAccount;
+
+  /// G52 step 9: add-relay refusal (NIP-11)
+  ///
+  /// In en, this message translates to:
+  /// **'This relay doesn\'t support expiring data (NIP-40) — it would keep your groups indefinitely.'**
+  String get relayAddNoExpiration;
+
+  /// G52 step 9: NIP-11 check failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check this relay'**
+  String get relayAddUncheckedTitle;
+
+  /// G52 step 9: NIP-11 check failed
+  ///
+  /// In en, this message translates to:
+  /// **'It didn\'t answer the check (NIP-11) — maybe it\'s offline or the address is wrong. Add it anyway?'**
+  String get relayAddUncheckedBody;
+
+  /// G52 step 9: NIP-11 check failed
+  ///
+  /// In en, this message translates to:
+  /// **'Add anyway'**
+  String get relayAddAnyway;
+
+  /// G52 step 9: snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Relay added — your shared groups are sent to it now.'**
+  String get relayAdded;
+
+  /// G52 step 9: button (only when the list differs from the defaults)
+  ///
+  /// In en, this message translates to:
+  /// **'Use the default relays'**
+  String get relaysRestoreDefaults;
+
+  /// G52 step 9: snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Default relays restored.'**
+  String get relaysDefaultsRestored;
+
+  /// G52 step 9: background switch subtitle in local mode
+  ///
+  /// In en, this message translates to:
+  /// **'Also check the relays for your shared groups about every 15 minutes while the app is closed.'**
+  String get backgroundSyncLocalBody;
+
+  /// G52 (§9.2): disclosure paragraph with the default relays; relays = host names
+  ///
+  /// In en, this message translates to:
+  /// **'Shared groups sync through two public Nostr relays, {relays} (one operator). They are independent services with their own terms (linked under Settings → Relays).'**
+  String linkDisclosureRelaysOneOperator(String relays);
+
+  /// G52 (§9.2): disclosure paragraph
+  ///
+  /// In en, this message translates to:
+  /// **'You can add your own relay under Settings → Relays.'**
+  String get linkDisclosureOwnRelay;
 }
 
 class _AppLocalizationsDelegate

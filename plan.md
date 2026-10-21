@@ -645,7 +645,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 6. Invite UI (sheet, QR, share, disclosure) — `lib/features/link/link_invite.dart`, `core/widgets/qr_code_view.dart` (`qr`, BSD-3); *Create group → Share with an invite link* on Matrix accounts; design doc §13 "As built (step 6)"
 - [x] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`) — store the channel **before** the first merge; refuse a link whose group id this device holds as a non-link group; invalidate `currentParticipant` after setting "me" — `lib/features/link/link_join.dart`, `core/link/link_join_probe.dart`, `LinkSyncEngine.join` / `joinLinkChannel`; design doc §13 "As built (step 7)"
 - [x] 8. Background round link phase — `runBackgroundRound(whichLedger:, openLocalDatabase:, linkOverrides:)`, `linkBackgroundRoundProvider`, local-mode scheduling via `linkGroupsExistProvider`; design doc §13 "As built (step 8)"
-- [ ] 9. Settings: relay list + status, peers sheet
+- [x] 9. Settings: relay list + status, peers sheet — `lib/features/link/relay_settings{,_page}.dart` (`/settings/relays`), `LinkSyncEngine.watchRelays` / `setRelays` / `syncNow`, sync sheet with G68 (`lib/features/sync/`); design doc §13 "As built (step 9)"
 - [ ] 10. Leave / delete unpublish; backup carries the secret (+ warning)
 - [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed
 - [ ] 12. Reset invite link
@@ -662,16 +662,17 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       show no link entry until G53.
 - [ ] (from step 5) Wire the seams: ~~step 6 invite → `LinkSyncEngine.
       openChannel`~~ (done: `linkChannelOpenerProvider`); ~~step 7 join → `putChannel` + `refresh(groupId:)` + set
-      "me"~~ (done: `LinkSyncEngine.join` + `joinLinkGroup`); ~~step 8 background round → `refresh()` + `publishAll()`~~ (done); step 9
+      "me"~~ (done: `LinkSyncEngine.join` + `joinLinkGroup`); ~~step 8 background round → `refresh()` + `publishAll()`~~ (done); ~~step 9
       icon / peers sheet → `linkGroupSyncStatusProvider`, `link_peers`,
-      `relayPolicy.rejecting` + `link_relay_state:<url>`; step 10 leave →
+      `relayPolicy.rejecting` + `link_relay_state:<url>`~~ (done); step 10 leave →
       `unpublish(groupId)` before the purge
-- [ ] (from step 5) The group page's sync cloud for a link-only group still
+- [x] (from step 5) The group page's sync cloud for a link-only group still
       comes from the Matrix `groupSyncStatusProvider` — switch it to the link
-      status in step 9
-- [ ] (from step 6) Disclosure: name the **configured** relays + "(one
+      status in step 9 (done: `GroupSyncButton`)
+- [x] (from step 6) Disclosure: name the **configured** relays + "(one
       operator)" + "linked in Settings → Relays" / "add your own relay"
-      once step 9 has the relay list; link *Why Matrix?* (G54) from it
+      once step 9 has the relay list (done in step 9); link *Why Matrix?*
+      (G54) from it → stays with G54
 - [ ] (from step 6) Invite sheet: the "Invite a Matrix user (secure)"
       section (§8.4) is left out — a link-only group refuses Matrix claims
       until G53; add it with G53's mixed groups
@@ -700,13 +701,28 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 7) Landing page `join.html` + `assetlinks.json` (step 11) —
       until then the https link opens the browser on Android (App Link not
       verified) unless "Open by default" is set by hand
-- [ ] (from step 8) Local mode has no settings toggle for the background
+- [x] (from step 8) Local mode has no settings toggle for the background
       round (it runs while a link group exists; `background_sync_enabled`
       of the local ledger is honoured but can't be changed) — add the
       switch to the settings page's local-mode section with step 9 (relays)
+      (done: local *Sync* section; the scheduling honours it too)
 - [ ] (from step 8) Device pass: check a headless round in local mode on
       the Pixel (`[bg]` log: `link: true`), incl. the NIP-11 cache staying
       untouched and the battery / data cost (§14 risks)
+- [ ] (from step 9) The relay list is stored whole once changed: a user who
+      added a relay keeps the defaults of that app version — a later app
+      update that changes the defaults won't reach them (only *Use the
+      default relays* does). Store a diff (added / removed) if the default
+      list ever changes
+- [ ] (from step 9) Only `wss://` relays can be added (no `ws://`, e.g. a
+      relay on the home network) — conservative; revisit if asked
+- [ ] (from step 9) The relay list is per ledger (account / local mode),
+      like all `link_*` settings: after connecting an account (G40
+      adoption) a custom list of local mode isn't carried over — check
+      with step 11 / the adoption code
+- [ ] (from step 9) Device pass: Settings → Relays (add a real custom
+      relay, NIP-11 check, remove, defaults), the sync sheet of a link and a
+      Matrix group (*Sync now*), 360 dp / 200 % / TalkBack
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a
@@ -855,8 +871,12 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [x] Not done: *Try again* button on error snackbars
 
 ### G68. Sync sheet per person (U24) 🟡
-- [ ] Tappable cloud, status per person, *Sync now*; same sheet for Matrix and
-      link groups — **with G52 step 9** (peers sheet)
+- [x] Tappable cloud, status per person, *Sync now*; same sheet for Matrix and
+      link groups — **with G52 step 9** (peers sheet) — `GroupSyncButton` /
+      `GroupSyncSheet` (`lib/features/sync/`), `SyncEngine.syncGroupNow`,
+      `LinkSyncEngine.syncNow`
+- [ ] Device check with the G52 step 13 pass (sheet on two devices, *Sync
+      now* answers, TalkBack)
 
 ### G69. Share + overview (U17, U20, U19) 🟡
 - [x] "Who pays whom" as share text, group list sorted by activity, simple
@@ -1031,7 +1051,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G65 — group settings + settings page (before G52 step 6/9)
 - [x] G66 — currencies
 - [x] G67 — undo + understandable errors
-- [ ] G68 — sync sheet per person (with G52 step 9)
+- [x] G68 — sync sheet per person (with G52 step 9) — device check with G52 step 13
 - [x] G69 — share + overview
 - [x] G70 — simplify backup / restore
 - [x] G71 — accessibility + form flow

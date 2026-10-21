@@ -92,7 +92,9 @@ that account and from then on the sections above apply.
 
 A group you share with an invite link syncs through public Nostr relays — by
 default nos.lol and nostr.mom, which have one operator. They are independent
-services with their own terms. Every device in the group publishes its copy of
+services with their own terms. You can change the relays under Settings →
+Relays: adding one first asks it for its information page (NIP-11), then your
+shared groups sync through it too. Every device in the group publishes its copy of
 the group there, encrypted (AES-256-GCM) with a key that only the link
 contains; the key never goes to a relay or to any server of ours. The relays
 can't read names, amounts or notes, but they see your device's IP address, when

@@ -23,9 +23,19 @@ class GroupSyncStatus {
   /// has no peers (solo group — nothing can be pending).
   final int? minPeerInSyncAt;
 
+  /// G68: when each peer (MXID — our own account too, for our other
+  /// devices) was last proven in sync (ms epoch) — the sync sheet's rows.
+  final Map<String, int> peerInSyncAt;
+
+  /// G68: the newest record clock of the group (a peer in sync at or after
+  /// it has everything).
+  final int maxRecordUpdatedAt;
+
   const GroupSyncStatus({
     required this.pendingPeers,
     required this.minPeerInSyncAt,
+    this.peerInSyncAt = const {},
+    this.maxRecordUpdatedAt = 0,
   });
 
   /// True once every active peer has acknowledged our latest record (or there
@@ -54,7 +64,12 @@ GroupSyncStatus computeSyncStatus({
         m.matrixId!,
   ];
   if (activePeers.isEmpty) {
-    return const GroupSyncStatus(pendingPeers: {}, minPeerInSyncAt: null);
+    return GroupSyncStatus(
+      pendingPeers: const {},
+      minPeerInSyncAt: null,
+      peerInSyncAt: peerInSyncAt,
+      maxRecordUpdatedAt: maxRecordUpdatedAt,
+    );
   }
   final pending = <String>{};
   int? minInSync;
@@ -63,7 +78,12 @@ GroupSyncStatus computeSyncStatus({
     if (at < maxRecordUpdatedAt) pending.add(p);
     minInSync = (minInSync == null || at < minInSync) ? at : minInSync;
   }
-  return GroupSyncStatus(pendingPeers: pending, minPeerInSyncAt: minInSync);
+  return GroupSyncStatus(
+    pendingPeers: pending,
+    minPeerInSyncAt: minInSync,
+    peerInSyncAt: peerInSyncAt,
+    maxRecordUpdatedAt: maxRecordUpdatedAt,
+  );
 }
 
 @riverpod

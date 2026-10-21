@@ -15,7 +15,10 @@ import '../auth/auth_provider.dart';
 import '../backup/backup_ui.dart';
 import '../devices/device_provider.dart';
 import '../groups/group_provider.dart';
+import '../link/relay_settings.dart';
+import '../link/relay_settings_page.dart';
 import '../local/local_mode_ui.dart';
+import '../../core/link/link_sync_engine.dart' show linkRelaysViewProvider;
 import '../onboarding/onboarding_provider.dart';
 import '../../core/widgets/large_text.dart';
 
@@ -28,10 +31,12 @@ const kSettingsLocation = '/settings';
 /// * **Account** — the Matrix account + *Sign out* (U21: was an app-bar
 ///   icon), or local mode's name / *Connect a Matrix account* / *Delete
 ///   local data* (G40);
-/// * **Sync & devices** (Matrix only) — when this device syncs, background
-///   sync (G31), *Only sync with verified devices* (G11), *Devices &
-///   security* (G56). G52 step 9 adds the relay list here (link groups also
-///   sync in local mode — the section then shows for both);
+/// * **Sync** — when this device syncs, background sync (G31) and the
+///   relays of invite-link groups (G52 step 9, `/settings/relays`). In
+///   local mode only the relays + (while a link group exists) the
+///   background switch;
+/// * **Advanced (Matrix)** (Matrix only) — *Only sync with verified
+///   devices* (G11), *Devices & security* (G56);
 /// * **Backup & restore** — one tile (last backup date) opening the
 ///   backup page (G70: backup file, restore points, reset one group);
 /// * **Data** — *Import CSV* (U21: was an app-bar icon);
@@ -61,9 +66,12 @@ class SettingsPage extends ConsumerWidget {
               const LocalModeSettingsSection()
             else
               const _MatrixAccountSection(),
+            // G52 step 9: link groups sync in local mode too — the section
+            // then holds the relays (+ the background switch while a link
+            // group exists).
+            SettingsSectionHeader(l.settingsSectionSync),
+            if (local) const _LocalSyncSection() else const _SyncSection(),
             if (!local) ...[
-              SettingsSectionHeader(l.settingsSectionSync),
-              const _SyncSection(),
               // G75 (U27): the Matrix-specific device controls get their own
               // section, so they don't sit on a par with background sync.
               SettingsSectionHeader(l.settingsSectionAdvanced),
@@ -231,7 +239,88 @@ class _SyncSection extends ConsumerWidget {
             title: Text(l.noBackgroundSyncTitle),
             subtitle: Text(l.noBackgroundSyncBody),
           ),
+        const RelaysTile(),
       ],
+    );
+  }
+}
+
+/// G52 step 9: local mode's *Sync* section — the relays, and (Android,
+/// while a link group exists: design doc §8.3) the background round's
+/// switch (the step-8 follow-up).
+class _LocalSyncSection extends ConsumerWidget {
+  const _LocalSyncSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final supported = ref.watch(backgroundSyncSupportedProvider);
+    final links = ref.watch(linkGroupsExistProvider).value ?? false;
+    // Only read while the switch is shown (nothing to schedule otherwise).
+    final enabled = supported && links
+        ? ref.watch(backgroundSyncEnabledProvider).value ?? true
+        : true;
+    final schedulingError = ref.watch(backgroundSyncSchedulingErrorProvider);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (supported && links)
+          SwitchListTile(
+            key: const Key('backgroundSyncSwitch'),
+            secondary: const Icon(Icons.sync),
+            title: Text(l.backgroundSyncTitle),
+            subtitle: Text(l.backgroundSyncLocalBody),
+            value: enabled,
+            onChanged: (v) =>
+                ref.read(settingsDaoProvider).setBackgroundSyncEnabled(v),
+          ),
+        if (supported && links && schedulingError != null)
+          ListTile(
+            key: const Key('backgroundSyncError'),
+            leading: Icon(Icons.error_outline, color: theme.colorScheme.error),
+            title: Text(
+              l.backgroundSyncScheduleFailed(schedulingError.toString()),
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          ),
+        const RelaysTile(),
+      ],
+    );
+  }
+}
+
+/// G52 step 9: *Relays* → the relay settings page; the subtitle names the
+/// relays, or says one refuses our updates.
+class RelaysTile extends ConsumerWidget {
+  const RelaysTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final relays = ref.watch(linkRelaysViewProvider).value;
+    final problem = relays?.any((r) => relayStatusOf(r).isProblem) ?? false;
+    return ListTile(
+      key: const Key('relaysTile'),
+      leading: Icon(
+        problem ? Icons.error_outline : Icons.hub_outlined,
+        color: problem ? theme.colorScheme.error : null,
+      ),
+      title: Text(l.relaysTitle),
+      subtitle: relays == null
+          ? null
+          : Text(
+              problem
+                  ? l.relaysTileProblem
+                  : l.relaysTileBody(
+                      relays.map((r) => relayLabel(r.url)).join(', '),
+                    ),
+              style: problem ? TextStyle(color: theme.colorScheme.error) : null,
+            ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push(kRelaySettingsLocation),
     );
   }
 }

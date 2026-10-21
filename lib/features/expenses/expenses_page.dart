@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/widgets/large_text.dart';
-import '../../core/session/app_session.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/widgets/text_prompt_dialog.dart';
 import '../../core/sync/sync_engine.dart';
-import '../../core/sync/sync_health.dart';
 import '../../core/sync/sync_status_provider.dart';
 import '../../models/expense_category.dart';
 import '../../models/expense_date.dart';
@@ -38,6 +36,7 @@ import 'record_attribution.dart';
 import 'record_actions.dart';
 import 'record_details_sheet.dart';
 import '../link/link_invite.dart';
+import '../sync/group_sync_sheet.dart';
 import '../../core/widgets/action_error.dart';
 
 /// G65 (U22): the group ⋮ menu — the frequent actions only (G52 step 6:
@@ -170,9 +169,9 @@ class ExpensesPage extends ConsumerWidget {
                   onPressed: () =>
                       ref.read(ledgerSearchProvider(roomId).notifier).open(),
                 ),
-                // G40: nothing syncs in local mode.
-                if (!ref.watch(localModeActiveProvider))
-                  _SyncStatusIcon(status: syncStatus),
+                // G68 / G52 step 9: the tappable sync icon (Matrix or link
+                // status; none in local mode without a link).
+                GroupSyncButton(groupId: roomId),
                 IconButton(
                   icon: const Icon(Icons.group_outlined),
                   tooltip: l.membersTitle,
@@ -725,124 +724,6 @@ class ExpensesPage extends ConsumerWidget {
       confirmLabel: l.join,
     );
   }
-}
-
-/// App-bar indicator. **Error** (tappable) when background sync has failed
-/// repeatedly (`SyncHealth.failing`) — opens a sheet with the last error / last
-/// sync and a manual retry. Otherwise a filled cloud once every active peer has
-/// acknowledged the group's latest record, or an outlined cloud (with the first
-/// waiting peer in the tooltip) while replication is still pending.
-/// G71: a status icon in the app bar (not a button): the tooltip is what a
-/// screen reader says; long-press shows it. Same 48 dp box as an
-/// [IconButton], so the actions don't shift.
-class _StatusIcon extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  const _StatusIcon({required this.icon, required this.message});
-
-  @override
-  Widget build(BuildContext context) => Tooltip(
-    message: message,
-    child: SizedBox.square(dimension: 48, child: Icon(icon)),
-  );
-}
-
-class _SyncStatusIcon extends ConsumerWidget {
-  final GroupSyncStatus status;
-  const _SyncStatusIcon({required this.status});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final health = ref.watch(syncHealthProvider);
-    final l = context.l10n;
-    if (health.failing) {
-      return IconButton(
-        icon: Icon(Icons.cloud_off, color: Theme.of(context).colorScheme.error),
-        tooltip: l.syncProblemTooltip,
-        onPressed: () => _showHealthSheet(context, ref, health),
-      );
-    }
-    if (status.synced) {
-      return _StatusIcon(
-        icon: Icons.cloud_done_outlined,
-        message: l.syncedWithAll,
-      );
-    }
-    // A pending peer with no logged-in device (G24) or no verified one
-    // (G11, verified-only sync) isn't a sync error — say so instead of
-    // "waiting" forever.
-    final hint = pendingPeerHint(status.pendingPeers, health);
-    return _StatusIcon(
-      icon: Icons.cloud_queue,
-      message: switch (hint.reason) {
-        PendingReason.unverified => l.peerHasNoVerifiedDevice(hint.peer),
-        PendingReason.noDevice => l.peerHasNoDevice(hint.peer),
-        PendingReason.waiting => l.waitingForPeer(hint.peer),
-      },
-    );
-  }
-
-  void _showHealthSheet(
-    BuildContext context,
-    WidgetRef ref,
-    SyncHealthState health,
-  ) {
-    final l = context.l10n;
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetCtx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l.syncProblemTitle,
-                style: Theme.of(sheetCtx).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(l.syncProblemBody),
-              const SizedBox(height: 12),
-              if (health.lastSuccessAt != null)
-                Text(
-                  l.lastSynced(_ago(l, health.lastSuccessAt!)),
-                  style: Theme.of(sheetCtx).textTheme.bodySmall,
-                ),
-              if (health.lastError != null)
-                Text(
-                  l.lastError(health.lastError.toString()),
-                  style: Theme.of(sheetCtx).textTheme.bodySmall,
-                ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () {
-                  ref.read(syncEngineProvider).broadcastDigests();
-                  Navigator.pop(sheetCtx);
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(l.retryingSync)));
-                },
-                icon: const Icon(Icons.refresh),
-                label: Text(l.retryNow),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A coarse "x ago" for the last-synced line (minutes / hours / days).
-String _ago(AppLocalizations l, int msEpoch) {
-  final d = DateTime.now().difference(
-    DateTime.fromMillisecondsSinceEpoch(msEpoch),
-  );
-  if (d.inMinutes < 1) return l.agoJustNow;
-  if (d.inHours < 1) return l.agoMinutes(d.inMinutes);
-  if (d.inDays < 1) return l.agoHours(d.inHours);
-  return l.agoDays(d.inDays);
 }
 
 /// The app-bar search field (G16) — owns its controller; follows the

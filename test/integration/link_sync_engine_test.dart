@@ -842,4 +842,131 @@ void main() {
     await settle();
     expect(net.relay(_r1).connectionCount, withB);
   });
+
+  // ── G52 step 9: relay settings, G68 sync now ──────────────────────────────
+
+  test('relay list: the view needs no connection; adding a relay stores it, '
+      'keeps its NIP-11 document and sends every link group to it at once; '
+      'the defaults clear the setting', () async {
+    const r3 = 'wss://relay.example.org';
+    final d = device();
+    await d.engine.ready;
+    final views = <List<LinkRelayView>>[];
+    final sub = d.c.listen(
+      linkRelaysViewProvider,
+      (_, next) => next.whenData(views.add),
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    await eventually(() => views.isNotEmpty);
+    expect([for (final v in views.last) v.url], [_r1, _r2]);
+    expect(net.relay(_r1).connectAttempts, 0);
+    expect(fetcher.calls, 0, reason: 'no NIP-11 without a link group');
+
+    // With a link group (published to the defaults) a relay is added.
+    final a = await creator();
+    await settle();
+    final aPub = nostrPublicKey(a.channel!.nostrPriv);
+    expect(linkEvents(r3, aPub), isEmpty);
+    final hashBefore = (await a.link.getChannel(_g))!.lastPublishedHash;
+    const info = RelayInfo(
+      name: 'mine',
+      termsOfService: 'https://relay.example.org/terms',
+      supportedNips: [1, 40],
+    );
+    await a.engine.setRelays([_r1, _r2, r3], info: {r3: info});
+    await settle();
+    expect(parseLinkRelays(await SettingsDao(a.db).linkRelaysRaw(), const []), [
+      _r1,
+      _r2,
+      r3,
+    ]);
+    expect(linkEvents(r3, aPub), hasLength(1), reason: 'forced publish');
+    expect((await a.link.getChannel(_g))!.lastPublishedHash, hashBefore);
+    final v3 = a.engine.relayViews.singleWhere((v) => v.url == r3);
+    expect(v3.state.info?.termsOfService, 'https://relay.example.org/terms');
+    expect(v3.state.lastOkAt, clock.ms);
+    // A later edit goes to all three relays.
+    await putExpense(a, 'e2', at: _t0 + 10);
+    await settle();
+    expect(linkEvents(r3, aPub), hasLength(1));
+    expect(
+      (await decrypt(
+        a.channel!.secret,
+        linkEvents(r3, aPub).single,
+      ))['expenses'],
+      hasLength(2),
+    );
+
+    // Removing a relay: no more events there.
+    await a.engine.setRelays([_r1, r3]);
+    await putExpense(a, 'e3', at: _t0 + 20);
+    await settle();
+    final onR2 = linkEvents(_r2, aPub).single;
+    expect((await decrypt(a.channel!.secret, onR2))['expenses'], hasLength(2));
+    expect(
+      (await decrypt(
+        a.channel!.secret,
+        linkEvents(r3, aPub).single,
+      ))['expenses'],
+      hasLength(3),
+    );
+
+    // Back to the defaults: the setting is unset (a later app update's
+    // defaults apply).
+    await a.engine.setRelays(const [_r1, _r2]);
+    await settle();
+    expect(await SettingsDao(a.db).linkRelaysRaw(), isNull);
+    expect([for (final v in a.engine.relayViews) v.url], [_r1, _r2]);
+    expect(() => a.engine.setRelays(const []), throwsArgumentError);
+  });
+
+  test('a relay refusing our events shows in the relay view', () async {
+    net.relay(_r2).rejectWith = 'blocked: no app data';
+    final a = await creator();
+    await settle();
+    final v = a.engine.relayViews.singleWhere((v) => v.url == _r2);
+    expect(v.rejectingMessage, 'blocked: no app data');
+    expect(v.state.lastRejection, 'rejects');
+    expect(a.engine.statusOf(_g)!.phase, LinkSyncPhase.synced);
+  });
+
+  test('G68 sync now: a full fetch, then the publish right away (a long '
+      'retry back-off is cut short)', () async {
+    net.relay(_r1).offline = true;
+    net.relay(_r2).offline = true;
+    final a = device(retry: const Duration(hours: 1));
+    await a.engine.ready;
+    await GroupsDao(a.db).upsertGroupLww(
+      groupCompanion(
+        const GroupModel(roomId: _g, name: 'Trip', currency: 'EUR'),
+      ),
+    );
+    await a.members.upsertMemberLww(
+      memberCompanion(
+        const MemberModel(
+          groupId: _g,
+          userId: 'p1',
+          matrixId: kLocalAccountId,
+          status: 'active',
+          updatedAt: 1,
+        ),
+      ),
+    );
+    final ch = await a.engine.openChannel(_g);
+    await eventually(
+      () => a.engine.statusOf(_g)?.problem == LinkSyncProblem.notDelivered,
+    );
+    net.relay(_r1).offline = false;
+    net.relay(_r2).offline = false;
+    // Nothing happens for an hour on its own …
+    await settle();
+    expect(linkEvents(_r1, nostrPublicKey(ch.nostrPriv)), isEmpty);
+    // … *Sync now* fetches and publishes at once.
+    final r = await a.engine.syncNow(_g);
+    expect(r.anyComplete, isTrue);
+    await settle();
+    expect(linkEvents(_r1, nostrPublicKey(ch.nostrPriv)), hasLength(1));
+    expect(a.engine.statusOf(_g)!.phase, LinkSyncPhase.synced);
+  });
 }

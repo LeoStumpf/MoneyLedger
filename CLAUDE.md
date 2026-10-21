@@ -296,6 +296,9 @@ lib/
     settings/                  # G65 SettingsPage (/settings): account, sync, advanced (Matrix), backup, data, about, debug
     web/                       # G75 (U31) web_limits.dart: one-time web limits notice + About entry
     link/                      # G52 step 6 link_invite.dart: invite state, disclosure page, invite sheet, flow
+                               #   step 9 relay_settings{,_page}.dart: Settings → Relays (/settings/relays)
+    sync/                      # G68 group_sync_sheet.dart (tappable sync icon + per-person sheet, Sync now),
+                               #   peer_sync_rows.dart (pure rows: Matrix proofs / link publishers)
 test/
   flutter_test_config.dart     # Per-test-file setup (Drift multi-DB warning off; sqlite3 via hooks)
   helpers/
@@ -724,6 +727,53 @@ sees "me" and publishes. Works on Matrix accounts too (link-only group,
 unsigned). Tests: `test/g52_link_join_test.dart`,
 `test/integration/link_join_test.dart`, router + G71 cases.
 
+### Relays + sync sheet (G52 step 9, G68)
+
+- **Settings → Relays** (`/settings/relays`, `RelaySettingsPage`,
+  `features/link/relay_settings_page.dart`; pure helpers
+  `relay_settings.dart`): tile `relaysTile` in *Sync* — on Matrix accounts
+  **and** in local mode (local mode's *Sync* = relays + the background
+  switch while a link group exists; `backgroundSyncEnabledProvider` is
+  autoDispose and reads the local ledger in local mode, the scheduling
+  honours it). Per relay: status (`relayStatusOf`: refuses our updates this
+  run / rate-limited / NIP-11 says needs an account or no NIP-40 / refused
+  last time / accepted {ago} / not used yet), terms link (NIP-11
+  `terms_of_service`, http(s) only; the defaults' wikifreedia pages in
+  `kDefaultRelayTerms`), remove (confirm; never the last one). *Add relay…*
+  (`AddRelayDialog`): `parseRelayInput` (`wss://` only, adds the scheme,
+  refuses `ws://` / junk / duplicates) → NIP-11 fetch (the only request the
+  page makes, G43) → needs account / no NIP-40 refused, no answer → *Add
+  anyway*. *Use the default relays* clears `link_relays` (a later app
+  update's defaults apply). Data: `linkRelaysViewProvider` →
+  `LinkSyncEngine.watchRelays()` (list + `link_relay_state:<url>` + the
+  policy's rejections / rate limits; loads the list without any connection);
+  changes via `linkRelaysSetterProvider` → `LinkSyncEngine.setRelays`
+  (stores, rebuilds the pool + subscription, NIP-11 for new ones, **forced
+  publish** of every link group to an added relay). The list is per ledger,
+  device-local; the invite link names no relays (the page says so). The
+  disclosure names the configured relays (`linkDisclosureRelaysProvider`,
+  "(one operator)" for the defaults) + "add your own relay".
+- **Sync sheet (G68)** (`features/sync/group_sync_sheet.dart`): the group
+  page's cloud is a `GroupSyncButton` (always an enabled button; tooltip =
+  status) → `showGroupSyncSheet`. Link group (`groupSyncsByLinkProvider` =
+  invite state `open`) → `linkGroupSyncStatusProvider`; local mode without a
+  link → no icon; else the Matrix status / `SyncHealth`. Sheet: summary
+  (problem text), one row per person — Matrix: pure `matrixPeerRows`
+  (`GroupSyncStatus.peerInSyncAt` / `maxRecordUpdatedAt`: has everything ·
+  checked {ago} / waiting / no device / no verified device; our other
+  devices last; a hint when people have no account); link: pure
+  `linkPeerRows` from `link_peers` grouped by `me` ("has everything" when a
+  one-part publisher's digest equals our delivered one, else "last update
+  {ago}", device count, unknown person) + *Relays* entry. *Sync now*
+  (`groupSyncNowProvider`): Matrix `SyncEngine.syncGroupNow` (digest now),
+  link `LinkSyncEngine.syncNow` (full fetch, then publish at once, retry
+  back-off cut short). Replaces the old failing-only health sheet / *Retry
+  now*. `agoText` moved to `core/l10n/l10n.dart`.
+- Tests: `test/g68_sync_sheet_relays_test.dart` (EN + DE, 360 dp, 200 %),
+  `test/features/peer_sync_rows_test.dart`, `link_sync_engine_test.dart`
+  (relay list, forced publish, sync now), settings / scheduling / router /
+  G71 cases.
+
 ### Data Flow
 
 Inbound to-device message → `LedgerSyncer._onMessage` → **membership gate** →
@@ -922,10 +972,10 @@ with **no device** — not a failure, tracked in `SyncHealthState.unreachablePee
 no active device"). Digests are only marked sent to peers that had a device. It flips to
 `failing` only after `kSyncFailureThreshold` (2) **consecutive** failures — a
 single offline blip is normal (the homeserver queues to-device messages and
-anti-entropy repairs). The expenses app-bar `_SyncStatusIcon` shows a tappable
-error cloud when failing (sheet with last error / last-synced + a **Retry now**
-that calls `broadcastDigests()`); otherwise the existing `cloud_done`/
-`cloud_queue` states.
+anti-entropy repairs). The group page's sync icon (`GroupSyncButton`, G68)
+shows the error cloud when failing, else `cloud_done` / `cloud_queue`; a tap
+opens the per-person sync sheet (last error / last-synced, *Sync now* — see
+"Relays + sync sheet").
 
 ### Background sync (G31, Android)
 
@@ -2176,8 +2226,9 @@ serves the engine's Roboto itself + two fallback subsets (G43, see Building).
   and *Sign out* moved in, the empty state keeps its own *Import CSV*).
   Sections (`SettingsSectionHeader`, `core/widgets/settings_section.dart`):
   *Account* (MXID `accountTile` + `signOutTile` → `confirmSignOut`; local
-  mode: `LocalModeSettingsSection`), *Sync* (Matrix only: sync
-  text, `backgroundSyncSwitch` — G52 step 9 adds the relays here),
+  mode: `LocalModeSettingsSection`), *Sync* (Matrix: sync
+  text, `backgroundSyncSwitch`, `relaysTile`; local mode: `relaysTile` +
+  the switch while a link group exists — G52 step 9),
   *Advanced (Matrix)* (G75 / U27, Matrix only: `VerifiedOnlySyncTile`,
   `devicesTile`), *Backup & restore* (`BackupSettingsSection` —
   since G70 one tile → `/backup`),

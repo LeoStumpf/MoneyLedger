@@ -17,6 +17,7 @@ import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/onboarding/onboarding_provider.dart';
 
 import 'package:money_ledger/core/database/daos/link_dao.dart';
+import 'package:money_ledger/core/database/daos/settings_dao.dart';
 import 'package:money_ledger/core/session/app_session.dart';
 import 'package:money_ledger/models/link_model.dart';
 
@@ -147,49 +148,57 @@ void main() {
     await until(() => c.read(backgroundSyncSchedulingErrorProvider) == null);
   });
 
-  test('G52 step 8: local mode registers the round only while a link group '
-      'exists (design doc §8.3) — never consulting Matrix', () async {
-    final scheduler = RecordingScheduler();
-    final db = AppDatabase.forTesting(NativeDatabase.memory());
-    final c = ProviderContainer(
-      overrides: [
-        localModeActiveProvider.overrideWithValue(true),
-        ledgerIdentityProvider.overrideWithValue(kLocalAccountId),
-        appDatabaseProvider.overrideWithValue(db),
-        backgroundSchedulerProvider.overrideWithValue(scheduler),
-        // Building a Matrix client would throw here.
-        matrixSessionWantedProvider.overrideWith(
-          (ref) => throw StateError('Matrix consulted in local mode'),
-        ),
-      ],
-    );
-    addTearDown(() async {
-      c.dispose();
-      await db.close();
-    });
-    c.listen(backgroundSyncSchedulingProvider, (_, _) {});
-    Future<void> lastCallIs(String expected) async {
-      final sw = Stopwatch()..start();
-      while (scheduler.calls.isEmpty || scheduler.calls.last != expected) {
-        if (sw.elapsed > const Duration(seconds: 5)) {
-          fail('expected last call $expected, got ${scheduler.calls}');
+  test(
+    'G52 step 8/9: local mode registers the round only while a link group '
+    'exists (design doc §8.3) and the switch is on — never consulting Matrix',
+    () async {
+      final scheduler = RecordingScheduler();
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final c = ProviderContainer(
+        overrides: [
+          localModeActiveProvider.overrideWithValue(true),
+          ledgerIdentityProvider.overrideWithValue(kLocalAccountId),
+          appDatabaseProvider.overrideWithValue(db),
+          backgroundSchedulerProvider.overrideWithValue(scheduler),
+          // Building a Matrix client would throw here.
+          matrixSessionWantedProvider.overrideWith(
+            (ref) => throw StateError('Matrix consulted in local mode'),
+          ),
+        ],
+      );
+      addTearDown(() async {
+        c.dispose();
+        await db.close();
+      });
+      c.listen(backgroundSyncSchedulingProvider, (_, _) {});
+      Future<void> lastCallIs(String expected) async {
+        final sw = Stopwatch()..start();
+        while (scheduler.calls.isEmpty || scheduler.calls.last != expected) {
+          if (sw.elapsed > const Duration(seconds: 5)) {
+            fail('expected last call $expected, got ${scheduler.calls}');
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 5));
         }
-        await Future<void>.delayed(const Duration(milliseconds: 5));
       }
-    }
 
-    await lastCallIs('cancel'); // no link group yet
-    await LinkDao(db).putChannel(
-      const LinkChannelModel(
-        groupId: 'G',
-        epoch: 1,
-        secret: 's',
-        nostrPriv: 'k',
-        openedAt: 1,
-      ),
-    );
-    await lastCallIs('schedule');
-    await LinkDao(db).deleteChannel('G');
-    await lastCallIs('cancel');
-  });
+      await lastCallIs('cancel'); // no link group yet
+      await LinkDao(db).putChannel(
+        const LinkChannelModel(
+          groupId: 'G',
+          epoch: 1,
+          secret: 's',
+          nostrPriv: 'k',
+          openedAt: 1,
+        ),
+      );
+      await lastCallIs('schedule');
+      // G52 step 9: the settings switch (local mode's Sync section).
+      await SettingsDao(db).setBackgroundSyncEnabled(false);
+      await lastCallIs('cancel');
+      await SettingsDao(db).setBackgroundSyncEnabled(true);
+      await lastCallIs('schedule');
+      await LinkDao(db).deleteChannel('G');
+      await lastCallIs('cancel');
+    },
+  );
 }

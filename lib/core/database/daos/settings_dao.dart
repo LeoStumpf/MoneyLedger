@@ -242,6 +242,11 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> setLinkRelaysRaw(String json) => _setValue(_linkRelaysKey, json);
 
+  /// G52 step 9: back to the default relays (the setting unset, so a later
+  /// app update's defaults apply).
+  Future<void> clearLinkRelays() =>
+      (delete(appSettings)..where((t) => t.key.equals(_linkRelaysKey))).go();
+
   /// A relay's persisted state as stored (`LinkRelayState.encode`), or null.
   Future<String?> linkRelayStateRaw(String relay) =>
       _getValue('$_linkRelayStatePrefix$relay');

@@ -50,6 +50,10 @@ class RelayInfo {
   final bool paymentRequired;
   final bool restrictedWrites;
 
+  /// The relay's terms (`terms_of_service`, an http(s) URL) — linked in the
+  /// relay settings (G52 step 9, §9.4).
+  final String? termsOfService;
+
   const RelayInfo({
     this.name,
     this.software,
@@ -60,6 +64,7 @@ class RelayInfo {
     this.authRequired = false,
     this.paymentRequired = false,
     this.restrictedWrites = false,
+    this.termsOfService,
   });
 
   /// Parses a NIP-11 document; fields with a wrong type read as absent.
@@ -83,11 +88,13 @@ class RelayInfo {
       authRequired: limitation['auth_required'] == true,
       paymentRequired: limitation['payment_required'] == true,
       restrictedWrites: limitation['restricted_writes'] == true,
+      termsOfService: _httpUrl(json['terms_of_service']),
     );
   }
 
   Map<String, dynamic> toJson() => {
     'name': ?name,
+    'terms_of_service': ?termsOfService,
     'software': ?software,
     'supported_nips': supportedNips,
     'limitation': {
@@ -101,6 +108,16 @@ class RelayInfo {
   };
 
   bool supportsNip(int nip) => supportedNips.contains(nip);
+}
+
+/// [v] when it is an absolute http(s) URL, else null (a relay's document
+/// is untrusted — never link anything else).
+String? _httpUrl(Object? v) {
+  if (v is! String) return null;
+  final uri = Uri.tryParse(v.trim());
+  if (uri == null || uri.host.isEmpty) return null;
+  if (uri.scheme != 'https' && uri.scheme != 'http') return null;
+  return uri.toString();
 }
 
 /// The `content` budget (chars) for events to a relay described by [info]

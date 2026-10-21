@@ -24,6 +24,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/link/link_channel.dart';
 import '../../core/link/link_sync_engine.dart';
+import '../../core/database/daos/settings_dao.dart';
+import '../../core/link/link_relay_policy.dart' show parseLinkRelays;
 import '../../core/link/link_uri.dart';
 import '../../core/link/nostr/nostr_relay_pool.dart' show kDefaultLinkRelays;
 import '../../core/platform/text_sharer.dart';
@@ -39,6 +41,7 @@ import '../../models/link_model.dart';
 import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
 import '../groups/group_provider.dart';
+import 'relay_settings.dart';
 
 /// What *Invite with a link* can do for a group on this device.
 enum LinkInviteState {
@@ -104,11 +107,33 @@ final linkChannelOpenerProvider = Provider<LinkChannelOpener>(
       (groupId) => ref.read(linkSyncEngineProvider).openChannel(groupId),
 );
 
-/// The relays named in the disclosure (host names). Step 9 makes the list
-/// configurable; until then the defaults.
+/// The relays named in the disclosure (host names) — the configured list
+/// (G52 step 9), the defaults when none is given.
 List<String> linkDisclosureRelayHosts([
   List<String> relays = kDefaultLinkRelays,
-]) => [for (final r in relays) Uri.tryParse(r)?.host ?? r];
+]) => [for (final r in relays) relayLabel(r)];
+
+/// G52 step 9: the relays the disclosure names — the open ledger's
+/// configured list (Settings → Relays), else the defaults. Reads only a DB
+/// that is already open (never opens one) and never contacts a relay.
+final linkDisclosureRelaysProvider = Provider<Future<List<String>> Function()>(
+  (ref) => () async {
+    try {
+      if (ref.read(ledgerIdentityProvider) == null) return kDefaultLinkRelays;
+      if (!ref.exists(appDatabaseProvider)) return kDefaultLinkRelays;
+      final db = ref.read(appDatabaseProvider);
+      if (db.isSignedOutPlaceholder || db.isClosed) return kDefaultLinkRelays;
+      return parseLinkRelays(
+        await SettingsDao(
+          db,
+        ).linkRelaysRaw().timeout(const Duration(seconds: 2)),
+        kDefaultLinkRelays,
+      );
+    } catch (_) {
+      return kDefaultLinkRelays;
+    }
+  },
+);
 
 /// Shows the first-use disclosure (§9.2) unless it was accepted on this
 /// device before; true = go on (accepted now or earlier).
@@ -116,11 +141,12 @@ Future<bool> ensureLinkDisclosure(BuildContext context, WidgetRef ref) async {
   final prefs = ref.read(devicePrefsProvider.notifier);
   final seen = (await ref.read(devicePrefsProvider.future)).linkDisclosureSeen;
   if (seen) return true;
+  final relays = await ref.read(linkDisclosureRelaysProvider)();
   if (!context.mounted) return false;
   final ok = await Navigator.of(context).push<bool>(
     MaterialPageRoute(
       fullscreenDialog: true,
-      builder: (_) => const LinkDisclosurePage(),
+      builder: (_) => LinkDisclosurePage(relays: relays),
     ),
   );
   if (ok != true) return false;
@@ -361,14 +387,15 @@ class LinkInviteSheet extends ConsumerWidget {
 class LinkDisclosurePage extends StatelessWidget {
   const LinkDisclosurePage({super.key, this.relays});
 
-  /// Relay host names to name (default: [linkDisclosureRelayHosts]).
+  /// The relays (URLs) to name (default: the default relays).
   final List<String>? relays;
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final theme = Theme.of(context);
-    final hosts = (relays ?? linkDisclosureRelayHosts()).join(', ');
+    final list = relays ?? kDefaultLinkRelays;
+    final hosts = linkDisclosureRelayHosts(list).join(', ');
     Widget point(IconData icon, String text) => Padding(
       padding: const EdgeInsets.only(bottom: Insets.l),
       child: Row(
@@ -393,13 +420,20 @@ class LinkDisclosurePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      point(Icons.hub_outlined, l.linkDisclosureRelays(hosts)),
+                      point(
+                        Icons.hub_outlined,
+                        // §9.2: the defaults share one operator.
+                        isDefaultRelayList(list)
+                            ? l.linkDisclosureRelaysOneOperator(hosts)
+                            : l.linkDisclosureRelays(hosts),
+                      ),
                       point(Icons.lock_outline, l.linkDisclosureEncrypted),
                       point(
                         Icons.visibility_outlined,
                         l.linkDisclosureMetadata,
                       ),
                       point(Icons.link, l.linkDisclosureAnyone),
+                      point(Icons.dns_outlined, l.linkDisclosureOwnRelay),
                       point(
                         Icons.verified_user_outlined,
                         l.linkDisclosureMatrix,

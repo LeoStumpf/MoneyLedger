@@ -243,7 +243,7 @@ void main() {
     });
 
     testWidgets(
-      'app bar shows the error cloud and a retry sheet when sync fails',
+      'app bar shows the error cloud and the sync sheet when sync fails',
       (tester) async {
         await tester.pumpWidget(
           testApp(
@@ -264,8 +264,14 @@ void main() {
         await tester.tap(find.byIcon(Icons.cloud_off));
         await tester.pumpAndSettle();
 
-        expect(find.text('Sync problem'), findsOneWidget);
-        expect(find.widgetWithText(FilledButton, 'Retry now'), findsOneWidget);
+        // G68: the sync sheet, with the problem and *Sync now*.
+        expect(find.byKey(const Key('groupSyncSheet')), findsOneWidget);
+        expect(
+          find.textContaining('Could not reach the others'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Last error: offline'), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, 'Sync now'), findsOneWidget);
       },
     );
 

@@ -23,10 +23,14 @@ final backgroundSyncSupportedProvider = Provider<bool>(
   (ref) => backgroundSyncSupported,
 );
 
-/// The signed-in account's background-sync setting (device-local, default
-/// on). Signed out → false.
-final backgroundSyncEnabledProvider = StreamProvider<bool>((ref) {
-  if (ref.watch(accountUserIdProvider) == null) return Stream.value(false);
+/// The open ledger's background-sync setting (device-local, default on) —
+/// the signed-in account's, or (G52 step 9) local mode's. Signed out →
+/// false.
+final backgroundSyncEnabledProvider = StreamProvider.autoDispose<bool>((ref) {
+  final ledger = ref.watch(localModeActiveProvider)
+      ? ref.watch(ledgerIdentityProvider)
+      : ref.watch(accountUserIdProvider);
+  if (ledger == null) return Stream.value(false);
   return ref.watch(settingsDaoProvider).watchBackgroundSyncEnabled();
 });
 
@@ -80,12 +84,15 @@ final backgroundSyncSchedulingProvider = Provider.autoDispose<void>((ref) {
   // G40: local mode has nothing to sync over Matrix — G52 step 8: but its
   // link groups sync via relays, so the round is registered while at least
   // one exists (design doc §8.3), else cancelled (also a task left from an
-  // earlier Matrix session) — without consulting Matrix. Local mode has no
-  // settings toggle; the round still honours the ledger's
-  // `background_sync_enabled` (default on).
+  // earlier Matrix session) — without consulting Matrix. G52 step 9: and
+  // only while the local ledger's `background_sync_enabled` (settings →
+  // Sync, default on) allows it.
   if (ref.watch(localModeActiveProvider)) {
     final links = ref.watch(linkGroupsExistProvider);
-    if (links.hasValue) apply(links.requireValue);
+    final enabled = ref.watch(backgroundSyncEnabledProvider);
+    if (links.hasValue && enabled.hasValue && !enabled.isLoading) {
+      apply(links.requireValue && enabled.requireValue);
+    }
     return;
   }
   if (!ref.watch(matrixSessionWantedProvider)) return; // prefs still loading

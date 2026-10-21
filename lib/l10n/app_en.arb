@@ -2943,7 +2943,7 @@
   "@linkDisclosureTitle": {
     "description": "G52 (§9.2): title of the first-use disclosure"
   },
-  "linkDisclosureRelays": "Shared groups sync through public Nostr relays: {relays}. They are independent services with their own terms.",
+  "linkDisclosureRelays": "Shared groups sync through public Nostr relays: {relays}. They are independent services with their own terms (linked under Settings → Relays).",
   "@linkDisclosureRelays": {
     "description": "G52 (§9.2): disclosure paragraph; relays = comma-separated host names",
     "placeholders": {
@@ -2988,7 +2988,7 @@
   "@privacyLinkTitle": {
     "description": "G52: privacy policy section title (keep in sync with PRIVACY.md)"
   },
-  "privacyLinkBody": "A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can't read names, amounts or notes, but they see your device's IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.",
+  "privacyLinkBody": "A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can't read names, amounts or notes, but they see your device's IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.",
   "@privacyLinkBody": {
     "description": "G52: privacy policy section body (keep in sync with PRIVACY.md)"
   },
@@ -3101,5 +3101,354 @@
         "type": "String"
       }
     }
+  },
+  "syncSheetTitle": "Sync",
+  "@syncSheetTitle": {
+    "description": "G68: title of a group's sync sheet"
+  },
+  "syncSheetAllSynced": "Everyone has your latest changes.",
+  "@syncSheetAllSynced": {
+    "description": "G68: sync sheet summary (Matrix group, in sync)"
+  },
+  "syncSheetPending": "Not everyone has your latest changes yet.",
+  "@syncSheetPending": {
+    "description": "G68: sync sheet summary (Matrix group, pending)"
+  },
+  "syncSheetNoPeers": "Nobody else in this group has a Matrix account — there is nothing to sync.",
+  "@syncSheetNoPeers": {
+    "description": "G68: sync sheet, Matrix group without other accounts"
+  },
+  "syncSheetLocalPeople": "People without a Matrix account don't sync — they are entries in the ledger only.",
+  "@syncSheetLocalPeople": {
+    "description": "G68: sync sheet hint (Matrix group with people without an account)"
+  },
+  "peerUpToDate": "Has everything",
+  "@peerUpToDate": {
+    "description": "G68: a person's sync row (link group: same state as ours)"
+  },
+  "peerUpToDateAt": "Has everything · checked {ago}",
+  "@peerUpToDateAt": {
+    "description": "G68: a person's sync row (Matrix: proven in sync); ago = e.g. '3 min ago'",
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "peerWaitingSince": "Waiting — last in sync {ago}",
+  "@peerWaitingSince": {
+    "description": "G68: a person's sync row (Matrix: not yet holding our latest change)",
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "peerWaitingNever": "Waiting — not in sync yet",
+  "@peerWaitingNever": {
+    "description": "G68: a person's sync row (Matrix: never proven in sync)"
+  },
+  "peerNoDevice": "No signed-in device — syncs once they sign in",
+  "@peerNoDevice": {
+    "description": "G68: a person's sync row (Matrix: no device)"
+  },
+  "peerUnverified": "No verified device — verify one to sync",
+  "@peerUnverified": {
+    "description": "G68: a person's sync row (verified-only sync on, no verified device)"
+  },
+  "peerYourDevices": "Your other devices",
+  "@peerYourDevices": {
+    "description": "G68: the sync row of this account's / this person's other devices"
+  },
+  "peerUnknown": "Unknown person",
+  "@peerUnknown": {
+    "description": "G52 step 9: a link publisher naming nobody in the group's people"
+  },
+  "peerPublishedAt": "Last update {ago}",
+  "@peerPublishedAt": {
+    "description": "G52 step 9: a person's sync row in a link group (their phone's last publish)",
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "peerDevices": "{n, plural, =1{1 device} other{{n} devices}}",
+  "@peerDevices": {
+    "description": "G52 step 9: how many devices of a person published",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "syncSheetLinkNoPeers": "Nobody else has opened the invite link yet.",
+  "@syncSheetLinkNoPeers": {
+    "description": "G52 step 9: link group sync sheet without other publishers"
+  },
+  "syncSheetLinkHint": "People who haven't opened the invite link yet don't appear here. “Has everything” means their device published the same state as yours.",
+  "@syncSheetLinkHint": {
+    "description": "G52 step 9: link group sync sheet footer"
+  },
+  "linkSyncSynced": "Your changes are on the relays ({ago}).",
+  "@linkSyncSynced": {
+    "description": "G52 step 9: link group sync summary",
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "linkSyncSyncedNoTime": "Your changes are on the relays.",
+  "@linkSyncSyncedNoTime": {
+    "description": "G52 step 9: link group sync summary (no time known)"
+  },
+  "linkSyncPending": "Sending your changes to the relays…",
+  "@linkSyncPending": {
+    "description": "G52 step 9: link group sync summary / tooltip"
+  },
+  "linkSyncNotDelivered": "Couldn't reach the relays — trying again.",
+  "@linkSyncNotDelivered": {
+    "description": "G52 step 9: link group sync problem"
+  },
+  "linkSyncRelaysReject": "The relays refuse our updates. Add another relay under Settings → Relays.",
+  "@linkSyncRelaysReject": {
+    "description": "G52 step 9: link group sync problem"
+  },
+  "linkSyncTooLarge": "This group is too big for sharing with a link.",
+  "@linkSyncTooLarge": {
+    "description": "G52 step 9: link group sync problem"
+  },
+  "linkSyncNoParticipant": "Choose who you are in this group first.",
+  "@linkSyncNoParticipant": {
+    "description": "G52 step 9: link group sync problem"
+  },
+  "linkSyncMergeFailed": "An update couldn't be stored — trying again.",
+  "@linkSyncMergeFailed": {
+    "description": "G52 step 9: link group sync problem"
+  },
+  "linkCloudSynced": "Synced through the relays",
+  "@linkCloudSynced": {
+    "description": "G52 step 9: link group sync icon tooltip"
+  },
+  "syncNow": "Sync now",
+  "@syncNow": {
+    "description": "G68: button in the sync sheet"
+  },
+  "syncNowSent": "Asked everyone for their state — they answer while their app runs.",
+  "@syncNowSent": {
+    "description": "G68: after Sync now (Matrix group)"
+  },
+  "syncNowChecked": "Checked the relays.",
+  "@syncNowChecked": {
+    "description": "G68: after Sync now (link group)"
+  },
+  "syncNowUnreachable": "Couldn't reach the relays.",
+  "@syncNowUnreachable": {
+    "description": "G68: after Sync now (link group, no relay answered)"
+  },
+  "relaysTitle": "Relays",
+  "@relaysTitle": {
+    "description": "G52 step 9: relay settings page title + settings tile"
+  },
+  "relaysTileBody": "Invite-link groups sync through: {relays}",
+  "@relaysTileBody": {
+    "description": "G52 step 9: settings tile subtitle; relays = host names",
+    "placeholders": {
+      "relays": {
+        "type": "String"
+      }
+    }
+  },
+  "relaysTileProblem": "A relay refuses our updates",
+  "@relaysTileProblem": {
+    "description": "G52 step 9: settings tile subtitle when a relay refuses"
+  },
+  "relaysIntro": "Groups shared with an invite link sync through these public Nostr relays. They store each group encrypted and see your IP address and when you sync. They are independent services with their own terms.",
+  "@relaysIntro": {
+    "description": "G52 step 9: relay settings intro"
+  },
+  "relaysOneOperator": "nos.lol and nostr.mom have the same operator. If they stop accepting our updates, groups only keep syncing through a relay you add — for example your own.",
+  "@relaysOneOperator": {
+    "description": "G52 step 9: relay settings, default-relay note (§9.4)"
+  },
+  "relaysCommon": "The invite link doesn't name relays: everyone in a group needs at least one relay in common. This list only applies to this device.",
+  "@relaysCommon": {
+    "description": "G52 step 9: relay settings note (§14 Q3)"
+  },
+  "relayStatusRejects": "Refuses our updates: {message}",
+  "@relayStatusRejects": {
+    "description": "G52 step 9: relay status; message = the relay's own text",
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "relayStatusRateLimited": "Asked us to slow down — next try in {n} min",
+  "@relayStatusRateLimited": {
+    "description": "G52 step 9: relay status (rate-limited)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "relayStatusNeedsAccount": "Needs an account — can't be used",
+  "@relayStatusNeedsAccount": {
+    "description": "G52 step 9: relay status (NIP-11 auth / payment required)"
+  },
+  "relayStatusNoExpiration": "Doesn't support expiring data (NIP-40)",
+  "@relayStatusNoExpiration": {
+    "description": "G52 step 9: relay status (no NIP-40)"
+  },
+  "relayStatusLastRefused": "Refused our last update ({ago}): {message}",
+  "@relayStatusLastRefused": {
+    "description": "G52 step 9: relay status",
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "relayStatusOk": "Accepted our last update {ago}",
+  "@relayStatusOk": {
+    "description": "G52 step 9: relay status; ago = e.g. '3 min ago'",
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "relayStatusUnused": "Not used yet",
+  "@relayStatusUnused": {
+    "description": "G52 step 9: relay status"
+  },
+  "relayTerms": "Terms",
+  "@relayTerms": {
+    "description": "G52 step 9: opens a relay's terms of service"
+  },
+  "relayTermsOf": "Terms of {relay}",
+  "@relayTermsOf": {
+    "description": "G52 step 9: tooltip / label of the terms button",
+    "placeholders": {
+      "relay": {
+        "type": "String"
+      }
+    }
+  },
+  "relayRemove": "Remove {relay}",
+  "@relayRemove": {
+    "description": "G52 step 9: remove-relay button tooltip",
+    "placeholders": {
+      "relay": {
+        "type": "String"
+      }
+    }
+  },
+  "relayRemoveConfirmTitle": "Remove {relay}?",
+  "@relayRemoveConfirmTitle": {
+    "description": "G52 step 9: remove-relay confirmation title",
+    "placeholders": {
+      "relay": {
+        "type": "String"
+      }
+    }
+  },
+  "relayRemoveConfirmBody": "This device stops syncing shared groups through it.",
+  "@relayRemoveConfirmBody": {
+    "description": "G52 step 9: remove-relay confirmation body"
+  },
+  "relayRemoveConfirm": "Remove",
+  "@relayRemoveConfirm": {
+    "description": "G52 step 9: remove-relay confirm button"
+  },
+  "relayRemoved": "Relay removed.",
+  "@relayRemoved": {
+    "description": "G52 step 9: snackbar"
+  },
+  "relayAdd": "Add relay…",
+  "@relayAdd": {
+    "description": "G52 step 9: button on the relay settings page"
+  },
+  "relayAddTitle": "Add a relay",
+  "@relayAddTitle": {
+    "description": "G52 step 9: add-relay dialog title"
+  },
+  "relayAddLabel": "Relay address",
+  "@relayAddLabel": {
+    "description": "G52 step 9: add-relay field label"
+  },
+  "relayAddConfirm": "Add",
+  "@relayAddConfirm": {
+    "description": "G52 step 9: add-relay confirm button"
+  },
+  "relayAddInvalid": "That isn't a relay address (e.g. wss://relay.example.org).",
+  "@relayAddInvalid": {
+    "description": "G52 step 9: add-relay error"
+  },
+  "relayAddNotSecure": "Only encrypted connections (wss://) are supported.",
+  "@relayAddNotSecure": {
+    "description": "G52 step 9: add-relay error"
+  },
+  "relayAddDuplicate": "This relay is already in the list.",
+  "@relayAddDuplicate": {
+    "description": "G52 step 9: add-relay error"
+  },
+  "relayAddChecking": "Checking the relay…",
+  "@relayAddChecking": {
+    "description": "G52 step 9: add-relay progress"
+  },
+  "relayAddNeedsAccount": "This relay needs an account — it can't be used.",
+  "@relayAddNeedsAccount": {
+    "description": "G52 step 9: add-relay refusal (NIP-11)"
+  },
+  "relayAddNoExpiration": "This relay doesn't support expiring data (NIP-40) — it would keep your groups indefinitely.",
+  "@relayAddNoExpiration": {
+    "description": "G52 step 9: add-relay refusal (NIP-11)"
+  },
+  "relayAddUncheckedTitle": "Couldn't check this relay",
+  "@relayAddUncheckedTitle": {
+    "description": "G52 step 9: NIP-11 check failed"
+  },
+  "relayAddUncheckedBody": "It didn't answer the check (NIP-11) — maybe it's offline or the address is wrong. Add it anyway?",
+  "@relayAddUncheckedBody": {
+    "description": "G52 step 9: NIP-11 check failed"
+  },
+  "relayAddAnyway": "Add anyway",
+  "@relayAddAnyway": {
+    "description": "G52 step 9: NIP-11 check failed"
+  },
+  "relayAdded": "Relay added — your shared groups are sent to it now.",
+  "@relayAdded": {
+    "description": "G52 step 9: snackbar"
+  },
+  "relaysRestoreDefaults": "Use the default relays",
+  "@relaysRestoreDefaults": {
+    "description": "G52 step 9: button (only when the list differs from the defaults)"
+  },
+  "relaysDefaultsRestored": "Default relays restored.",
+  "@relaysDefaultsRestored": {
+    "description": "G52 step 9: snackbar"
+  },
+  "backgroundSyncLocalBody": "Also check the relays for your shared groups about every 15 minutes while the app is closed.",
+  "@backgroundSyncLocalBody": {
+    "description": "G52 step 9: background switch subtitle in local mode"
+  },
+  "linkDisclosureRelaysOneOperator": "Shared groups sync through two public Nostr relays, {relays} (one operator). They are independent services with their own terms (linked under Settings → Relays).",
+  "@linkDisclosureRelaysOneOperator": {
+    "description": "G52 (§9.2): disclosure paragraph with the default relays; relays = host names",
+    "placeholders": {
+      "relays": {
+        "type": "String"
+      }
+    }
+  },
+  "linkDisclosureOwnRelay": "You can add your own relay under Settings → Relays.",
+  "@linkDisclosureOwnRelay": {
+    "description": "G52 (§9.2): disclosure paragraph"
   }
 }

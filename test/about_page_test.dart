@@ -100,6 +100,10 @@ void main() {
     expect(find.textContaining('public Nostr relays'), findsWidgets);
     // G78: receipt photos stay on this device.
     await tester.scrollUntilVisible(find.text('Receipt photos (Android)'), 200);
+    await tester.scrollUntilVisible(
+      find.textContaining('It is never sent anywhere'),
+      200,
+    );
     expect(find.textContaining('It is never sent anywhere'), findsOneWidget);
   });
 

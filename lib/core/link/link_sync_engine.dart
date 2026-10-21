@@ -64,6 +64,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart' show TableUpdate, TableUpdateQuery;
@@ -293,6 +294,33 @@ class LinkRefreshResult {
   });
 }
 
+/// G52 step 9: one relay as the settings page shows it.
+class LinkRelayView {
+  final String url;
+
+  /// The persisted state (NIP-11 cache, last OK, last rejection).
+  final LinkRelayState state;
+
+  /// The relay refused our events this run (skipped until the next start):
+  /// its message.
+  final String? rejectingMessage;
+
+  /// Backed off after `rate-limited:` until then (ms epoch).
+  final int? rateLimitedUntil;
+
+  const LinkRelayView({
+    required this.url,
+    this.state = const LinkRelayState(),
+    this.rejectingMessage,
+    this.rateLimitedUntil,
+  });
+}
+
+/// G52 step 9: the configured relays and their state (settings page).
+final linkRelaysViewProvider = StreamProvider.autoDispose<List<LinkRelayView>>(
+  (ref) => ref.watch(linkSyncEngineProvider).watchRelays(),
+);
+
 // ── engine ──────────────────────────────────────────────────────────────────
 
 class _Channel {
@@ -333,7 +361,13 @@ class LinkSyncEngine {
 
   List<String> _relays = kDefaultLinkRelays;
   final Map<String, LinkRelayState> _relayStates = {};
-  bool _relayStatesLoaded = false;
+  Future<void>? _relaysLoading;
+  bool _relayInfoChecked = false;
+  final _relayChanges = StreamController<void>.broadcast();
+
+  /// Groups to publish even when their snapshot is unchanged (a relay was
+  /// added — it doesn't hold our events yet).
+  final Set<String> _forced = {};
 
   NostrRelayPool? _pool;
   NostrSubscription? _sub;
@@ -425,6 +459,34 @@ class LinkSyncEngine {
   /// The persisted state of [relay] as last loaded / written.
   LinkRelayState? relayState(String relay) => _relayStates[relay];
 
+  /// G52 step 9: the relays with their state, now and after every change
+  /// (a relay answer, a NIP-11 fetch, [setRelays]). Reads the relay list
+  /// from the settings but never contacts a relay.
+  Stream<List<LinkRelayView>> watchRelays() async* {
+    await _ensureRelaysLoaded();
+    if (!_alive) return;
+    yield relayViews;
+    await for (final _ in _relayChanges.stream) {
+      if (!_alive) return;
+      yield relayViews;
+    }
+  }
+
+  /// The relays with their current state (see [watchRelays]).
+  List<LinkRelayView> get relayViews => [
+    for (final r in _relays)
+      LinkRelayView(
+        url: r,
+        state: _relayStates[r] ?? const LinkRelayState(),
+        rejectingMessage: _policy.rejecting[r],
+        rateLimitedUntil: _policy.rateLimitedUntil(r),
+      ),
+  ];
+
+  void _emitRelays() {
+    if (!_relayChanges.isClosed) _relayChanges.add(null);
+  }
+
   LinkGroupSyncStatus? statusOf(String groupId) => _status[groupId];
 
   /// The status of [groupId]: the current one (if known), then every change.
@@ -504,6 +566,7 @@ class LinkSyncEngine {
     _sub = null;
     if (pool != null) unawaited(pool.close());
     unawaited(_statusChanges.close());
+    unawaited(_relayChanges.close());
     if (!_ready.isCompleted) _ready.complete();
   }
 
@@ -607,9 +670,14 @@ class LinkSyncEngine {
     if (!_alive) return;
     final models = await _link.getAllChannels();
     if (!_alive) return;
-    if (models.isNotEmpty && !_relayStatesLoaded) {
-      await _loadRelays();
+    if (models.isNotEmpty) {
+      await _ensureRelaysLoaded();
       if (!_alive) return;
+      // §4.6: NIP-11 only once there is something to sync (G43).
+      if (!_relayInfoChecked) {
+        _relayInfoChecked = true;
+        unawaited(_track(refreshRelayInfo));
+      }
     }
     final fresh = <String, _Channel>{};
     final added = <String>[];
@@ -665,16 +733,90 @@ class LinkSyncEngine {
   static bool _setEquals(Set<String> a, Set<String> b) =>
       a.length == b.length && a.containsAll(b);
 
+  /// Loads the relay list and each relay's persisted state once (no
+  /// network).
+  Future<void> _ensureRelaysLoaded() => _relaysLoading ??= _loadRelays();
+
   Future<void> _loadRelays() async {
-    _relayStatesLoaded = true;
-    _relays = parseLinkRelays(await _settings.linkRelaysRaw(), _relays);
-    for (final r in _relays) {
+    if (!_alive || _db.isSignedOutPlaceholder) return;
+    try {
+      _relays = parseLinkRelays(await _settings.linkRelaysRaw(), _relays);
+      for (final r in _relays) {
+        if (!_alive) return;
+        _relayStates[r] ??= LinkRelayState.decode(
+          await _settings.linkRelayStateRaw(r),
+        );
+      }
+    } catch (e) {
+      if (_alive) debugPrint('[link] loading relays failed: $e');
+    }
+    _emitRelays();
+  }
+
+  /// G52 step 9 — the relay settings: replaces the relay list (stored in
+  /// `link_relays`; the defaults clear the setting so a later app update's
+  /// defaults apply). [info] = NIP-11 documents the settings page fetched
+  /// while adding a relay. The connections are rebuilt; a relay that wasn't
+  /// in the list before gets every link group's snapshot at once (forced
+  /// publish — it holds none of our events yet).
+  Future<void> setRelays(
+    List<String> relays, {
+    Map<String, RelayInfo> info = const {},
+  }) => _track(() async {
+    await _ensureRelaysLoaded();
+    final next = <String>{
+      for (final r in relays)
+        if (relayInfoUrl(r) != null) r,
+    }.toList();
+    if (next.isEmpty) throw ArgumentError('at least one relay is needed');
+    if (!_alive) return;
+    if (_sameList(next, kDefaultLinkRelays)) {
+      await _settings.clearLinkRelays();
+    } else {
+      await _settings.setLinkRelaysRaw(jsonEncode(next));
+    }
+    if (!_alive) return;
+    final added = next.where((r) => !_relays.contains(r)).toList();
+    final changed = !_sameList(next, _relays);
+    _relays = next;
+    for (final r in next) {
       if (!_alive) return;
-      _relayStates[r] = LinkRelayState.decode(
+      _relayStates[r] ??= LinkRelayState.decode(
         await _settings.linkRelayStateRaw(r),
       );
     }
-    if (_alive) unawaited(_track(refreshRelayInfo));
+    for (final e in info.entries) {
+      if (!next.contains(e.key)) continue;
+      await _saveRelayState(
+        e.key,
+        (_relayStates[e.key] ?? const LinkRelayState()).copyWith(
+          info: e.value,
+          infoFetchedAt: _clock(),
+        ),
+      );
+      if (!_alive) return;
+    }
+    _emitRelays();
+    if (!changed) return;
+    // Rebuild the pool on the new list (the live subscription with it).
+    await _closeLive();
+    if (!_alive || _channels.isEmpty) return;
+    await _updateSubscription();
+    if (!_alive) return;
+    unawaited(_track(refreshRelayInfo));
+    if (added.isEmpty || _roundMode) return;
+    for (final g in _channels.keys) {
+      _forced.add(g);
+      _schedulePublish(g, delay: Duration.zero);
+    }
+  });
+
+  static bool _sameList(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   /// §4.6: fetches the NIP-11 document of every relay whose cached one is
@@ -701,6 +843,7 @@ class LinkSyncEngine {
 
   Future<void> _saveRelayState(String relay, LinkRelayState state) async {
     _relayStates[relay] = state;
+    _emitRelays();
     if (!_alive) return;
     try {
       await _settings.setLinkRelayStateRaw(relay, state.encode());
@@ -968,6 +1111,18 @@ class LinkSyncEngine {
     return refresh(groupId: groupId, timeout: timeout);
   }
 
+  /// G68 *Sync now* (the group's sync sheet): one full fetch of [groupId]
+  /// from every relay, merged, then a publish check right away (a pending
+  /// retry back-off is cut short; relays that reject us stay skipped).
+  Future<LinkRefreshResult> syncNow(String groupId, {Duration? timeout}) async {
+    final result = await refresh(groupId: groupId, timeout: timeout);
+    if (!_alive || !_channels.containsKey(groupId)) return result;
+    _retryTimers.remove(groupId)?.cancel();
+    _lastPublishAt.remove(groupId);
+    _schedulePublish(groupId, delay: Duration.zero);
+    return result;
+  }
+
   // ── publish ───────────────────────────────────────────────────────────────
 
   /// Schedules a publish check of [groupId] (after a local change the
@@ -1076,6 +1231,7 @@ class LinkSyncEngine {
     final digest = linkSnapshotDigest(bootstrap);
     final now = _clock();
     final due =
+        _forced.contains(group) ||
         digest != ch.lastPublishedHash ||
         now - ch.lastPublishedAt >= kLinkRefreshAfter.inMilliseconds;
     if (!due) {
@@ -1177,6 +1333,7 @@ class LinkSyncEngine {
       parts: parts,
     );
     if (!_alive) return;
+    _forced.remove(group);
     _lastPublishAt[group] = now;
     _failures.remove(group);
     _retryStreak.remove(group);

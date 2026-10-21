@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/background/background_scheduler.dart';
 import 'package:money_ledger/core/background/background_sync_provider.dart';
+import 'package:money_ledger/core/link/link_sync_engine.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/settings/settings_page.dart';
@@ -25,8 +26,11 @@ void _phone(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
-List<dynamic> _matrix({List<dynamic> extra = const []}) => [
-  ...testOverrides(isLoggedIn: true),
+List<dynamic> _matrix({
+  List<dynamic> extra = const [],
+  List<LinkRelayView>? relays,
+}) => [
+  ...testOverrides(isLoggedIn: true, relayViews: relays),
   currentUserIdProvider.overrideWith((_) => _me),
   ...extra,
 ];
@@ -255,7 +259,7 @@ void main() {
       (const Locale('en'), en),
       (const Locale('de'), de),
     ]) {
-      testWidgets('account = local profile; no sync / devices / sign-out '
+      testWidgets('account = local profile; relays, no devices / sign-out '
           '($locale)', (tester) async {
         _phone(tester);
         await _pump(tester, [
@@ -270,7 +274,10 @@ void main() {
         expect(find.byKey(const Key('connectAccountTile')), findsOneWidget);
         expect(find.byKey(const Key('signOutTile')), findsNothing);
         expect(find.byKey(const Key('accountTile')), findsNothing);
-        expect(find.text(l.settingsSectionSync.toUpperCase()), findsNothing);
+        // G52 step 9: *Sync* holds the relays (invite-link groups sync
+        // in local mode too); no background switch without a link group.
+        expect(find.text(l.settingsSectionSync.toUpperCase()), findsOneWidget);
+        expect(find.byKey(const Key('relaysTile')), findsOneWidget);
         expect(
           find.text(l.settingsSectionAdvanced.toUpperCase()),
           findsNothing,
@@ -288,6 +295,64 @@ void main() {
           expect(find.byKey(Key(key)), findsOneWidget, reason: key);
         }
         expect(find.byKey(const Key('debugRunBackgroundSync')), findsNothing);
+      });
+    }
+  });
+
+  // G52 step 9: the relays tile (both modes) + local mode's background
+  // switch while a link group exists.
+  group('relays (G52 step 9)', () {
+    testWidgets('Matrix: the relays tile names the relays', (tester) async {
+      _phone(tester);
+      await _pump(tester, _matrix());
+      final tile = find.byKey(const Key('relaysTile'));
+      await _show(tester, tile);
+      expect(
+        find.descendant(
+          of: tile,
+          matching: find.text(en.relaysTileBody('nos.lol, nostr.mom')),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a relay refusing our updates shows on the tile', (
+      tester,
+    ) async {
+      _phone(tester);
+      await _pump(
+        tester,
+        _matrix(
+          relays: const [
+            LinkRelayView(url: 'wss://nos.lol', rejectingMessage: 'no'),
+            LinkRelayView(url: 'wss://nostr.mom'),
+          ],
+        ),
+      );
+      final tile = find.byKey(const Key('relaysTile'));
+      await _show(tester, tile);
+      expect(find.text(en.relaysTileProblem), findsOneWidget);
+    });
+
+    for (final (locale, l) in [
+      (const Locale('en'), en),
+      (const Locale('de'), de),
+    ]) {
+      testWidgets('local mode with a link group: background switch ($locale)', (
+        tester,
+      ) async {
+        _phone(tester);
+        await _pump(tester, [
+          ...testOverrides(localProfile: 'Lea', linkGroupsExist: true),
+          backgroundSyncSupportedProvider.overrideWithValue(true),
+          backgroundSyncEnabledProvider.overrideWith((_) => Stream.value(true)),
+        ], locale: locale);
+        final sw = find.byKey(const Key('backgroundSyncSwitch'));
+        await _show(tester, sw);
+        expect(sw, findsOneWidget);
+        expect(find.text(l.backgroundSyncLocalBody), findsOneWidget);
+        expect(find.byKey(const Key('relaysTile')), findsOneWidget);
+        expect(tester.takeException(), isNull);
       });
     }
   });

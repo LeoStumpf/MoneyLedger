@@ -26,6 +26,7 @@ import '../features/groups/group_categories_page.dart';
 import '../features/groups/group_members_page.dart';
 import '../features/groups/group_settings_page.dart';
 import '../features/groups/groups_page.dart';
+import '../features/link/relay_settings_page.dart';
 import '../features/settings/settings_page.dart';
 
 part 'router.g.dart';
@@ -67,7 +68,8 @@ const _signedOutEntryPages = {kWelcomeLocation, kLocalSetupLocation};
 ///   bounce off the auth / entry pages, bare root, splash and a stale
 ///   onboarding screen to the groups list. Local mode has no devices page.
 ///   The settings pages (`/settings`, `/groups/:id/settings`, G65; the
-///   backup page `/backup`, G70) are "in" pages: signed out they redirect
+///   backup page `/backup`, G70; the relays `/settings/relays`, G52 step 9)
+///   are "in" pages: signed out they redirect
 ///   like any other.
 /// * G52 step 7: the join page ([kJoinLocation]) is **never** redirected —
 ///   an invite link works signed out (even before the welcome; the join
@@ -195,6 +197,11 @@ GoRouter router(Ref ref) {
       GoRoute(path: '/devices', builder: (_, _) => const DevicesPage()),
       // G65: the app settings page (was a sheet) — signed in or local mode.
       GoRoute(path: kSettingsLocation, builder: (_, _) => const SettingsPage()),
+      // G52 step 9: the relays of invite-link groups.
+      GoRoute(
+        path: kRelaySettingsLocation,
+        builder: (_, _) => const RelaySettingsPage(),
+      ),
       // G70: backup file + restore points + per-group reset on one page.
       GoRoute(
         path: kBackupLocation,

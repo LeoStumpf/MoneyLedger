@@ -2981,7 +2981,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String linkDisclosureRelays(String relays) {
-    return 'Shared groups sync through public Nostr relays: $relays. They are independent services with their own terms.';
+    return 'Shared groups sync through public Nostr relays: $relays. They are independent services with their own terms (linked under Settings → Relays).';
   }
 
   @override
@@ -3019,7 +3019,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.';
+      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.';
 
   @override
   String linkInviteShareText(String group, String link) {
@@ -3103,4 +3103,267 @@ class AppLocalizationsEn extends AppLocalizations {
   String joinLinkPickTitle(String group) {
     return 'Who are you in “$group”?';
   }
+
+  @override
+  String get syncSheetTitle => 'Sync';
+
+  @override
+  String get syncSheetAllSynced => 'Everyone has your latest changes.';
+
+  @override
+  String get syncSheetPending => 'Not everyone has your latest changes yet.';
+
+  @override
+  String get syncSheetNoPeers =>
+      'Nobody else in this group has a Matrix account — there is nothing to sync.';
+
+  @override
+  String get syncSheetLocalPeople =>
+      'People without a Matrix account don\'t sync — they are entries in the ledger only.';
+
+  @override
+  String get peerUpToDate => 'Has everything';
+
+  @override
+  String peerUpToDateAt(String ago) {
+    return 'Has everything · checked $ago';
+  }
+
+  @override
+  String peerWaitingSince(String ago) {
+    return 'Waiting — last in sync $ago';
+  }
+
+  @override
+  String get peerWaitingNever => 'Waiting — not in sync yet';
+
+  @override
+  String get peerNoDevice => 'No signed-in device — syncs once they sign in';
+
+  @override
+  String get peerUnverified => 'No verified device — verify one to sync';
+
+  @override
+  String get peerYourDevices => 'Your other devices';
+
+  @override
+  String get peerUnknown => 'Unknown person';
+
+  @override
+  String peerPublishedAt(String ago) {
+    return 'Last update $ago';
+  }
+
+  @override
+  String peerDevices(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n devices',
+      one: '1 device',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncSheetLinkNoPeers =>
+      'Nobody else has opened the invite link yet.';
+
+  @override
+  String get syncSheetLinkHint =>
+      'People who haven\'t opened the invite link yet don\'t appear here. “Has everything” means their device published the same state as yours.';
+
+  @override
+  String linkSyncSynced(String ago) {
+    return 'Your changes are on the relays ($ago).';
+  }
+
+  @override
+  String get linkSyncSyncedNoTime => 'Your changes are on the relays.';
+
+  @override
+  String get linkSyncPending => 'Sending your changes to the relays…';
+
+  @override
+  String get linkSyncNotDelivered =>
+      'Couldn\'t reach the relays — trying again.';
+
+  @override
+  String get linkSyncRelaysReject =>
+      'The relays refuse our updates. Add another relay under Settings → Relays.';
+
+  @override
+  String get linkSyncTooLarge =>
+      'This group is too big for sharing with a link.';
+
+  @override
+  String get linkSyncNoParticipant => 'Choose who you are in this group first.';
+
+  @override
+  String get linkSyncMergeFailed =>
+      'An update couldn\'t be stored — trying again.';
+
+  @override
+  String get linkCloudSynced => 'Synced through the relays';
+
+  @override
+  String get syncNow => 'Sync now';
+
+  @override
+  String get syncNowSent =>
+      'Asked everyone for their state — they answer while their app runs.';
+
+  @override
+  String get syncNowChecked => 'Checked the relays.';
+
+  @override
+  String get syncNowUnreachable => 'Couldn\'t reach the relays.';
+
+  @override
+  String get relaysTitle => 'Relays';
+
+  @override
+  String relaysTileBody(String relays) {
+    return 'Invite-link groups sync through: $relays';
+  }
+
+  @override
+  String get relaysTileProblem => 'A relay refuses our updates';
+
+  @override
+  String get relaysIntro =>
+      'Groups shared with an invite link sync through these public Nostr relays. They store each group encrypted and see your IP address and when you sync. They are independent services with their own terms.';
+
+  @override
+  String get relaysOneOperator =>
+      'nos.lol and nostr.mom have the same operator. If they stop accepting our updates, groups only keep syncing through a relay you add — for example your own.';
+
+  @override
+  String get relaysCommon =>
+      'The invite link doesn\'t name relays: everyone in a group needs at least one relay in common. This list only applies to this device.';
+
+  @override
+  String relayStatusRejects(String message) {
+    return 'Refuses our updates: $message';
+  }
+
+  @override
+  String relayStatusRateLimited(int n) {
+    return 'Asked us to slow down — next try in $n min';
+  }
+
+  @override
+  String get relayStatusNeedsAccount => 'Needs an account — can\'t be used';
+
+  @override
+  String get relayStatusNoExpiration =>
+      'Doesn\'t support expiring data (NIP-40)';
+
+  @override
+  String relayStatusLastRefused(String ago, String message) {
+    return 'Refused our last update ($ago): $message';
+  }
+
+  @override
+  String relayStatusOk(String ago) {
+    return 'Accepted our last update $ago';
+  }
+
+  @override
+  String get relayStatusUnused => 'Not used yet';
+
+  @override
+  String get relayTerms => 'Terms';
+
+  @override
+  String relayTermsOf(String relay) {
+    return 'Terms of $relay';
+  }
+
+  @override
+  String relayRemove(String relay) {
+    return 'Remove $relay';
+  }
+
+  @override
+  String relayRemoveConfirmTitle(String relay) {
+    return 'Remove $relay?';
+  }
+
+  @override
+  String get relayRemoveConfirmBody =>
+      'This device stops syncing shared groups through it.';
+
+  @override
+  String get relayRemoveConfirm => 'Remove';
+
+  @override
+  String get relayRemoved => 'Relay removed.';
+
+  @override
+  String get relayAdd => 'Add relay…';
+
+  @override
+  String get relayAddTitle => 'Add a relay';
+
+  @override
+  String get relayAddLabel => 'Relay address';
+
+  @override
+  String get relayAddConfirm => 'Add';
+
+  @override
+  String get relayAddInvalid =>
+      'That isn\'t a relay address (e.g. wss://relay.example.org).';
+
+  @override
+  String get relayAddNotSecure =>
+      'Only encrypted connections (wss://) are supported.';
+
+  @override
+  String get relayAddDuplicate => 'This relay is already in the list.';
+
+  @override
+  String get relayAddChecking => 'Checking the relay…';
+
+  @override
+  String get relayAddNeedsAccount =>
+      'This relay needs an account — it can\'t be used.';
+
+  @override
+  String get relayAddNoExpiration =>
+      'This relay doesn\'t support expiring data (NIP-40) — it would keep your groups indefinitely.';
+
+  @override
+  String get relayAddUncheckedTitle => 'Couldn\'t check this relay';
+
+  @override
+  String get relayAddUncheckedBody =>
+      'It didn\'t answer the check (NIP-11) — maybe it\'s offline or the address is wrong. Add it anyway?';
+
+  @override
+  String get relayAddAnyway => 'Add anyway';
+
+  @override
+  String get relayAdded =>
+      'Relay added — your shared groups are sent to it now.';
+
+  @override
+  String get relaysRestoreDefaults => 'Use the default relays';
+
+  @override
+  String get relaysDefaultsRestored => 'Default relays restored.';
+
+  @override
+  String get backgroundSyncLocalBody =>
+      'Also check the relays for your shared groups about every 15 minutes while the app is closed.';
+
+  @override
+  String linkDisclosureRelaysOneOperator(String relays) {
+    return 'Shared groups sync through two public Nostr relays, $relays (one operator). They are independent services with their own terms (linked under Settings → Relays).';
+  }
+
+  @override
+  String get linkDisclosureOwnRelay =>
+      'You can add your own relay under Settings → Relays.';
 }

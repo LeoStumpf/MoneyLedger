@@ -485,6 +485,15 @@ class SyncEngine {
     });
   }
 
+  /// G68 *Sync now* (the group's sync sheet): sends [groupId]'s digest to
+  /// its active members right away (a pending poke is dropped) — their
+  /// replies repair what differs and mark them in sync.
+  Future<void> syncGroupNow(String groupId) async {
+    if (!_alive) return;
+    _pokes.remove(groupId)?.cancel();
+    await _sendDigest(groupId);
+  }
+
   /// G36: when the last fast ack per group was scheduled.
   final Map<String, int> _fastAckAt = {};
 

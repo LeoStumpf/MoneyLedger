@@ -9,9 +9,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/core/database/account_database.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
+import 'package:money_ledger/core/link/link_sync_engine.dart';
+import 'package:money_ledger/core/link/nostr/nostr_relay_pool.dart'
+    show kDefaultLinkRelays;
 import 'package:money_ledger/core/session/app_session.dart';
 import 'package:money_ledger/core/session/device_prefs.dart';
 import 'package:money_ledger/core/sync/sync_status_provider.dart';
@@ -102,6 +106,10 @@ List<dynamic> testOverrides({
   bool connecting = false,
   // G47: the group list the pages see (e.g. a group's custom categories).
   List<GroupModel> groups = const [],
+  // G52 step 9: the relays the settings show (default: the default relays,
+  // no state) and whether the ledger has a link group (default: none).
+  List<LinkRelayView>? relayViews,
+  bool linkGroupsExist = false,
   // G71: the sync status every group shows (default: synced).
   GroupSyncStatus syncStatus = const GroupSyncStatus(
     pendingPeers: {},
@@ -141,6 +149,14 @@ List<dynamic> testOverrides({
     (_) => const Stream<JoinLinkEvent>.empty(),
   ),
   ...signingUiOverrides(archives: archives),
+  // G52 step 9: the default relays, no relay state (the link sync engine
+  // never starts in widget tests).
+  linkRelaysViewProvider.overrideWith(
+    (_) => Stream.value(
+      relayViews ?? [for (final r in kDefaultLinkRelays) LinkRelayView(url: r)],
+    ),
+  ),
+  linkGroupsExistProvider.overrideWith((_) => Stream.value(linkGroupsExist)),
   // G39/G40: device-wide preferences in memory — welcome seen, no local
   // profile (never the platform file / localStorage).
   devicePrefsStoreProvider.overrideWithValue(
