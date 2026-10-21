@@ -677,7 +677,10 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       until G53; add it with G53's mixed groups
 - [ ] (from step 6) §8.2: rename the local-mode chip "Local only" → "No
       account" and its sheet / onboarding texts (device-only vs. shared by
-      link) — with step 11 or G54
+      link) — with step 11 or G54 (step 6 review: the chip sheet's
+      "Nothing leaves this device" and the settings line already say
+      "groups you don't share …"; welcome + onboarding texts still say
+      "everything stays on this device")
 - [ ] (from step 6) Leaving / deleting a link group uses `groupExitKind`
       (Matrix claims) — a link group of a signed-in user shows *Delete*;
       revisit with step 10 (unpublish)

@@ -3035,7 +3035,7 @@ abstract class AppLocalizations {
   /// G40 explanation sheet
   ///
   /// In en, this message translates to:
-  /// **'You are using MoneyLedger without an account. Nothing leaves this device: nothing is synced, and the other people are only names in your groups.'**
+  /// **'You are using MoneyLedger without an account. Groups you don\'t share with an invite link never leave this device: they aren\'t synced, and the other people are only names in your groups.'**
   String get localModeSheetBody;
 
   /// G40 explanation sheet
@@ -3053,7 +3053,7 @@ abstract class AppLocalizations {
   /// G40 settings section subtitle
   ///
   /// In en, this message translates to:
-  /// **'No account — everything stays on this device.'**
+  /// **'No account — groups you don\'t share stay on this device.'**
   String get localModeSettingsBody;
 
   /// G40 settings: the local profile name

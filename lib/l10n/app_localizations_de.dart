@@ -1899,7 +1899,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get localModeSheetBody =>
-      'Du nutzt MoneyLedger ohne Konto. Nichts verlässt dieses Gerät: Es wird nichts synchronisiert, und die anderen Personen sind nur Namen in deinen Gruppen.';
+      'Du nutzt MoneyLedger ohne Konto. Gruppen, die du nicht mit einem Einladungslink teilst, verlassen dieses Gerät nie: Sie werden nicht synchronisiert, und die anderen Personen sind nur Namen in deinen Gruppen.';
 
   @override
   String get localModeBackupHint =>
@@ -1911,7 +1911,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get localModeSettingsBody =>
-      'Kein Konto – alles bleibt auf diesem Gerät.';
+      'Kein Konto – Gruppen, die du nicht teilst, bleiben auf diesem Gerät.';
 
   @override
   String localProfileName(Object name) {

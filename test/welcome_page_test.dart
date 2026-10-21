@@ -231,7 +231,7 @@ void main() {
       await tester.tap(find.byKey(const Key('localModeChip')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('localModeSheet')), findsOneWidget);
-      expect(find.textContaining('Nothing leaves this device'), findsOneWidget);
+      expect(find.textContaining('never leave this device'), findsOneWidget);
       expect(find.byKey(const Key('localSheetConnect')), findsOneWidget);
       expect(find.byKey(const Key('localSheetBackup')), findsOneWidget);
     });

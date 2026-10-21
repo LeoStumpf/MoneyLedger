@@ -1574,7 +1574,7 @@
   "@localModeSheetTitle": {
     "description": "G40: explanation sheet / settings section title"
   },
-  "localModeSheetBody": "You are using MoneyLedger without an account. Nothing leaves this device: nothing is synced, and the other people are only names in your groups.",
+  "localModeSheetBody": "You are using MoneyLedger without an account. Groups you don't share with an invite link never leave this device: they aren't synced, and the other people are only names in your groups.",
   "@localModeSheetBody": {
     "description": "G40 explanation sheet"
   },
@@ -1586,7 +1586,7 @@
   "@localModeConnectHint": {
     "description": "G40 explanation sheet"
   },
-  "localModeSettingsBody": "No account — everything stays on this device.",
+  "localModeSettingsBody": "No account — groups you don't share stay on this device.",
   "@localModeSettingsBody": {
     "description": "G40 settings section subtitle"
   },
