@@ -6,6 +6,7 @@ import '../../features/expenses/ledger_syncer.dart';
 import '../../features/history/restore_points.dart';
 import '../../features/receipts/receipt_store.dart';
 import '../background/background_sync_provider.dart';
+import '../link/link_self_claim.dart';
 import '../link/link_sync_engine.dart';
 import '../session/local_adoption.dart';
 import 'sync_engine.dart';
@@ -43,6 +44,8 @@ class LedgerSyncHost extends ConsumerWidget {
     ref.watch(backgroundSyncSchedulingProvider);
     // G40: move a local-mode ledger into the account just connected.
     ref.watch(localLedgerAdoptionProvider);
+    // G53: the signed self-claims of link groups adopted from local mode.
+    ref.watch(linkSelfClaimProvider);
     // G48: prune the version history + the daily on-device snapshot.
     ref.watch(restorePointsMaintenanceProvider);
     // G78: photos of deleted expenses / gone groups are removed.

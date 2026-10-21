@@ -253,4 +253,29 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> setLinkRelayStateRaw(String relay, String json) =>
       _setValue('$_linkRelayStatePrefix$relay', json);
+
+  // ── G53: signed self-claims after "Connect a Matrix account" ─────────────
+
+  static const _linkSelfClaimPrefix = 'link_self_claim:';
+
+  /// G53 step 3: [groupId] (a link group adopted from local mode) still
+  /// needs this account's signed claim of its link participant.
+  Future<void> markLinkSelfClaimPending(String groupId) =>
+      _setValue('$_linkSelfClaimPrefix$groupId', '1');
+
+  /// The groups [markLinkSelfClaimPending] marked, not claimed yet.
+  Future<List<String>> linkSelfClaimsPending() async {
+    final rows = await (select(
+      appSettings,
+    )..where((t) => t.key.like('$_linkSelfClaimPrefix%'))).get();
+    return [
+      for (final r in rows)
+        if (r.key.startsWith(_linkSelfClaimPrefix))
+          r.key.substring(_linkSelfClaimPrefix.length),
+    ];
+  }
+
+  Future<void> clearLinkSelfClaimPending(String groupId) => (delete(
+    appSettings,
+  )..where((t) => t.key.equals('$_linkSelfClaimPrefix$groupId'))).go();
 }

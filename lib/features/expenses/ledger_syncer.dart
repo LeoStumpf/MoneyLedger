@@ -229,12 +229,18 @@ class LedgerSyncer {
         }
       }
 
+      final linkOpen =
+          msg.type == memberEventType &&
+          groupKnown &&
+          (await _link.policyOf(group)).isMixed;
+      if (!_alive) return;
       if (!isSenderAuthorized(
         type: msg.type,
         senderId: msg.senderId,
         content: msg.content,
         members: members,
         groupKnown: groupKnown,
+        linkOpen: linkOpen,
       )) {
         debugPrint(
           '[ledger] dropped ${msg.type} from non-member '
@@ -404,6 +410,7 @@ class LedgerSyncer {
     required Map<String, dynamic> content,
     required List<MemberModel> members,
     required bool groupKnown,
+    bool linkOpen = false,
   }) {
     final senderIsActiveMember = members.any(
       (m) => m.isActive && m.matrixId == senderId,
@@ -422,9 +429,12 @@ class LedgerSyncer {
           return false;
         }
         final existing = members.where((m) => m.userId == participantId);
-        return existing.isNotEmpty &&
-            existing.first.matrixId == senderId &&
-            existing.first.isActive;
+        if (existing.isEmpty || !existing.first.isActive) return false;
+        // G53 (§10.1): while the group's link is open (mixed), a link
+        // participant may claim itself — an active participant nobody
+        // claims yet; the record gate requires the sender's own signature.
+        if (linkOpen && existing.first.matrixId == null) return true;
+        return existing.first.matrixId == senderId;
       case expenseEventType:
       case settlementEventType:
       case groupMetaEventType:

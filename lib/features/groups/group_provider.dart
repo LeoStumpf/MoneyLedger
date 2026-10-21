@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -6,9 +7,13 @@ import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/link_dao.dart';
-import '../../core/link/link_channel.dart' show newLinkChannel;
+import '../../core/link/link_channel.dart'
+    show LinkChannelError, LinkChannelException, lastLinkEpoch, newLinkChannel;
+import '../../core/link/link_keys.dart' show generateLinkSecret;
 import '../../core/link/link_sync_engine.dart'
-    show LinkUnpublisher, linkUnpublisherProvider;
+    show LinkUnpublisher, linkSyncEngineProvider, linkUnpublisherProvider;
+import '../../core/link/link_uri.dart' show encodeLinkSecret;
+import '../../models/link_model.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
@@ -957,4 +962,100 @@ class GroupEditor extends _$GroupEditor {
     await w.replicate(g.roomId, groupMetaEventType, groupMetaPayload(updated));
     return true;
   }
+}
+
+/// G53 step 2 (§10.1 "Matrix → link"): *Invite by link* in a Matrix group /
+/// *Reset invite link* in a mixed one, on a Matrix device — returns this
+/// device's channel of the group once it follows the new link.
+typedef MixedLinkAction = Future<LinkChannelModel> Function(String groupId);
+
+/// *Invite by link* in a **Matrix group**: this account (an active
+/// participant) writes a **signed** meta with `link: {epoch, secret}` — a
+/// fresh 32-byte secret, the next epoch ([lastLinkEpoch] + 1) — relays it to
+/// the group's Matrix members (they bridge on receipt) and lets the link
+/// sync engine bridge this device ([LinkSyncEngine.ensureBridged]: a channel
+/// with the meta's secret, "me" = our participant). A group whose meta
+/// already opens a link is only bridged. The group is `mixed` from the
+/// meta write on.
+final mixedLinkOpenerProvider = Provider<MixedLinkAction>(
+  (ref) =>
+      (groupId) => _mixedLink(ref, groupId, reset: false),
+);
+
+/// *Reset invite link* in a **mixed** group (G52 step 12 + §10.1): like the
+/// opener with a new secret and the next epoch even though a link is open —
+/// every Matrix member's device follows the new signed meta (unpublishing
+/// its copy from the old topic), people without an account need the new
+/// link sent directly.
+final mixedLinkResetterProvider = Provider<MixedLinkAction>(
+  (ref) =>
+      (groupId) => _mixedLink(ref, groupId, reset: true),
+);
+
+Future<LinkChannelModel> _mixedLink(
+  Ref ref,
+  String groupId, {
+  required bool reset,
+}) async {
+  final w = _GroupWriteContext(ref);
+  final engine = ref.read(linkSyncEngineProvider);
+  await writeMixedLinkMeta(
+    w.db,
+    groupId,
+    me: await w.myMxid(),
+    reset: reset,
+    sign: w.signer.group,
+    relay: (signed) =>
+        w.replicate(groupId, groupMetaEventType, groupMetaPayload(signed)),
+  );
+  final channel = await engine.ensureBridged(groupId);
+  if (channel == null) {
+    throw const LinkChannelException(LinkChannelError.noChannel);
+  }
+  return channel;
+}
+
+/// G53 step 2: writes the signed meta that opens (or, [reset], replaces)
+/// [groupId]'s invite link — see [mixedLinkOpenerProvider]. [me] = this
+/// device's MXID (an active participant, else
+/// [LinkChannelError.notParticipant]); [sign] must return a **signed**
+/// version (a `pendingSign` one → [TransportUnavailableException], nothing
+/// stored: an unsigned meta can't carry a link); [relay] sends it to the
+/// Matrix members. A meta that already opens a link and no [reset] → nothing
+/// is written. Returns the stored meta.
+Future<GroupModel> writeMixedLinkMeta(
+  AppDatabase db,
+  String groupId, {
+  required String me,
+  required bool reset,
+  required Future<GroupModel> Function(GroupModel) sign,
+  required Future<void> Function(GroupModel signed) relay,
+  int Function()? clock,
+}) async {
+  if (!me.startsWith('@')) throw const SignatureRequiredException();
+  final groups = GroupsDao(db);
+  final meta = await groups.getGroup(groupId);
+  if (meta == null) throw const LinkChannelException(LinkChannelError.noGroup);
+  final mine = claimedBy(await MembersDao(db).getMembers(groupId), me);
+  if (mine == null || !mine.isActive) {
+    throw const LinkChannelException(LinkChannelError.notParticipant);
+  }
+  if (!reset && meta.link != null && meta.sig != null) return meta;
+  final epoch = await lastLinkEpoch(db, groupId) + 1;
+  final next = meta.nextVersion(
+    updatedAt: nextLwwClock(meta.updatedAt, now: clock?.call()),
+    link: GroupLink(
+      epoch: epoch,
+      secret: encodeLinkSecret(generateLinkSecret()),
+    ),
+    lockedAt: null,
+  );
+  final signed = await sign(next);
+  if (signed.sig == null) {
+    throw const TransportUnavailableException('signing key not ready');
+  }
+  if (db.isClosed) return signed;
+  await groups.upsertGroupLww(groupCompanion(signed));
+  await relay(signed);
+  return signed;
 }

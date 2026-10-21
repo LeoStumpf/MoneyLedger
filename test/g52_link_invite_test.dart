@@ -132,7 +132,8 @@ void main() {
         ),
         LinkInviteState.canOpen,
       );
-      // §14 Q13: a Matrix account's group stays a Matrix group (G53).
+      // §14 Q13: an unsigned group on a Matrix account without the MXID
+      // (G53: a signed one of an active participant → canOpenMixed).
       expect(
         linkInviteStateOf(
           channel: null,

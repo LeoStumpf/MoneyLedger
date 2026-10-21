@@ -32,6 +32,7 @@ import '../../models/member_model.dart';
 import '../database/app_database.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
+import '../database/daos/history_dao.dart';
 import '../database/daos/link_dao.dart';
 import '../database/daos/members_dao.dart';
 import 'link_keys.dart';
@@ -52,6 +53,10 @@ enum LinkChannelError {
   /// G52 step 12: the group has no link channel on this device (reset /
   /// switch need one).
   noChannel,
+
+  /// G53: opening a link on a Matrix group needs this account to be an
+  /// active participant of it (it signs the meta and becomes "me").
+  notParticipant,
 }
 
 class LinkChannelException implements Exception {
@@ -318,10 +323,14 @@ Future<bool> reopenLinkChannel(
 /// rows stay as they are — the group's data simply moves to the new topic
 /// with the next publish. Unpublishing the old copy is the caller's job
 /// (`LinkSyncEngine.resetLink` / `switchLink`), before this runs.
+///
+/// G53: [epoch] — the epoch of the signed meta's link a Matrix device
+/// follows (bridging); default: the current one + 1.
 Future<LinkChannelModel> replaceLinkChannel(
   AppDatabase db,
   String groupId, {
   String? secret,
+  int? epoch,
   int Function()? clock,
   Random? random,
 }) {
@@ -341,11 +350,71 @@ Future<LinkChannelModel> replaceLinkChannel(
       myParticipantId: existing.myParticipantId,
       openedAt: now(),
       secret: secret,
-      epoch: existing.epoch + 1,
+      epoch: epoch ?? existing.epoch + 1,
       random: random,
     );
     await link.deletePeers(groupId);
     await link.putChannel(next);
     return next;
   });
+}
+
+/// G53 (§10.1 "Matrix → link", step 2): what this device must do so its
+/// link channel of [group] follows the group's **signed** meta — pure over
+/// the stored meta, this device's [channel] and whether its account claims
+/// an active participant ([me]: that participant's id, null = none / not a
+/// Matrix account).
+enum LinkBridgeAction {
+  /// Nothing to do.
+  none,
+
+  /// The meta opens a link this device doesn't share yet: create a channel
+  /// with the meta's secret + epoch, "me" = [me] (a Matrix device bridges).
+  create,
+
+  /// The meta names another link than this device's channel (someone reset
+  /// it): switch to the meta's link (unpublish the old copy first).
+  replace,
+
+  /// "Me" of the channel isn't the participant this account claims.
+  setMe,
+
+  /// The meta is signed without a link — the group was locked (or is a
+  /// Matrix group): drop the channel (unpublish first).
+  drop,
+}
+
+LinkBridgeAction linkBridgeAction({
+  required GroupModel? group,
+  required LinkChannelModel? channel,
+  required String? me,
+}) {
+  if (group == null || group.sig == null) return LinkBridgeAction.none;
+  final link = group.link;
+  if (link == null) {
+    return channel == null ? LinkBridgeAction.none : LinkBridgeAction.drop;
+  }
+  // Only a device whose Matrix account is an active participant bridges /
+  // follows the meta (a device without one shares the group by the link it
+  // opened — it switches only when the user opens a new link).
+  if (me == null) return LinkBridgeAction.none;
+  if (channel == null) return LinkBridgeAction.create;
+  if (channel.secret != link.secret) return LinkBridgeAction.replace;
+  if (channel.myParticipantId != me) return LinkBridgeAction.setMe;
+  return LinkBridgeAction.none;
+}
+
+/// The highest link epoch [groupId]'s metas ever carried on this device
+/// (current meta + the G48 version history; 0 = none) — a reopened link
+/// gets the next one (§10.1 "Reopen = a new epoch"). The epoch is
+/// informational (the keys come from the secret alone).
+Future<int> lastLinkEpoch(AppDatabase db, String groupId) async {
+  var epoch = (await GroupsDao(db).getGroup(groupId))?.link?.epoch ?? 0;
+  for (final e in await HistoryDao(db).entriesForGroup(groupId)) {
+    final link = e.meta?.link;
+    if (link != null && link.epoch > epoch) epoch = link.epoch;
+  }
+  final channel = await LinkDao(db).getChannel(groupId);
+  if (channel != null && channel.epoch > epoch) epoch = channel.epoch;
+  return epoch;
 }

@@ -212,11 +212,13 @@ class RecordGate {
   /// G52 §6.1 / §6.4 + G53 §10.1: the claim rules for participant version
   /// [m] ([current] = the stored one) wherever unsigned versions may be
   /// accepted (link path; mixed / locked groups on the Matrix path).
+  /// [extra]: the participants of the snapshot carrying [m] (link path).
   Future<String?> _claimProblem(
     GroupPolicyInfo? info,
     MemberModel m,
-    MemberModel? current,
-  ) async {
+    MemberModel? current, {
+    Iterable<MemberModel> extra = const [],
+  }) async {
     if (info == null) return null;
     final linkish =
         _linkPath || info.policy == GroupPolicy.mixed || info.lockedAt != null;
@@ -234,14 +236,27 @@ class RecordGate {
     if (!_linkPath || m.matrixId == null) return null;
     if (info.policy == GroupPolicy.matrix) return null; // G6 as usual
     if (_isSelfClaim(m, current)) return null;
-    if (info.policy == GroupPolicy.linkOnly) {
-      return 'Matrix-ID claim in a link group';
-    }
-    // mixed: a member may assign a Matrix account (an invite).
     final signer = m.sig!.user;
-    final people = await members.getMembers(m.groupId);
-    final signerActive = people.any((p) => p.isActive && p.matrixId == signer);
-    return signerActive ? null : 'claim by a non-member';
+    final stored = await members.getMembers(m.groupId);
+    bool activeIn(Iterable<MemberModel> people) =>
+        people.any((p) => p.isActive && p.matrixId == signer);
+    // A participant this device holds: only an account that is an active
+    // member here may (re)assign its claim — an invite by a member.
+    if (current != null) {
+      return activeIn(stored) ? null : 'claim by a non-member';
+    }
+    // A participant new to this device (joining, a snapshot): its signer
+    // must be an active member here or in the same snapshot — the group's
+    // Matrix members as the snapshot names them (verified signatures; the
+    // link itself is the trust anchor here, as for the meta's signer).
+    final latest = <String, MemberModel>{
+      for (final p in [...stored, ...extra]) p.userId: p,
+    };
+    for (final p in [...stored, ...extra]) {
+      final have = latest[p.userId]!;
+      if (p.updatedAt > have.updatedAt) latest[p.userId] = p;
+    }
+    return activeIn(latest.values) ? null : 'claim by a non-member';
   }
 
   /// G53 §10.1: [m] claims a stored, active participant for the Matrix
@@ -581,6 +596,7 @@ class RecordGate {
     Map<String, dynamic> content, {
     required String relayedBy,
     String? requiredSigner,
+    Iterable<MemberModel> snapshotMembers = const [],
   }) async {
     final m = memberFromPayload(content);
     if (m == null) return false;
@@ -604,7 +620,7 @@ class RecordGate {
     if (!_isAlive()) return false;
     final problem =
         memberProblem(m, allowLocalClaim: allowLocalClaims) ??
-        await _claimProblem(policy, m, current);
+        await _claimProblem(policy, m, current, extra: snapshotMembers);
     if (!_isAlive()) return false;
     if (problem != null) {
       await _refuse(
@@ -774,11 +790,8 @@ class RecordGate {
       );
       if (!_isAlive()) return;
     }
-    await meta(
-      s.meta,
-      relayedBy: relayedBy,
-      snapshotMembers: [for (final m in s.members) ?memberFromPayload(m)],
-    );
+    final snapshotMembers = [for (final m in s.members) ?memberFromPayload(m)];
+    await meta(s.meta, relayedBy: relayedBy, snapshotMembers: snapshotMembers);
     if (!_isAlive()) return;
     if (await groups.getGroup(s.groupId) == null) {
       debugPrint('[g6] dropped snapshot of ${s.groupId}: group meta refused');
@@ -786,7 +799,7 @@ class RecordGate {
     }
     for (final m in s.members) {
       if (!_isAlive()) return;
-      await member(m, relayedBy: relayedBy);
+      await member(m, relayedBy: relayedBy, snapshotMembers: snapshotMembers);
     }
     for (final e in s.expenses) {
       if (!_isAlive()) return;

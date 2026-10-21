@@ -10,11 +10,13 @@
 /// * in **local mode** a group [openLinkChannel] accepts (unsigned meta, no
 ///   other Matrix account claims a participant) → disclosure (first use) →
 ///   `LinkSyncEngine.openChannel` → the sheet;
-/// * any other group — a **Matrix group** — gets nothing: it stays a Matrix
-///   group until G53's *Invite by link* (§14 Q13). On a Matrix account a
-///   link group is created as one (*Create group → Share with an invite
-///   link*), because a Matrix device signs the meta of every group it
-///   writes and a signed meta can't get a channel.
+/// * G53: a **Matrix group** this account is an active participant of →
+///   a confirmation (it becomes a mixed group: shared by link too, the
+///   Matrix members' devices bridge, link changes aren't verified) →
+///   `mixedLinkOpenerProvider` (a signed meta with `link`) → the sheet;
+/// * anything else (a Matrix group we aren't an active participant of) →
+///   nothing. On a Matrix account a link-only group is still created as one
+///   (*Create group → Share with an invite link*).
 library;
 
 import 'package:flutter/material.dart';
@@ -52,20 +54,34 @@ enum LinkInviteState {
   /// No channel yet, but one can be opened (local mode, first invite).
   canOpen,
 
-  /// A Matrix group (or not stored): no link until G53.
+  /// G53: a Matrix group this account is an active participant of —
+  /// *Invite by link* makes it a mixed group (signed meta with `link`).
+  canOpenMixed,
+
+  /// Not stored, or a Matrix group this account isn't an active participant
+  /// of: no link.
   unavailable,
 }
 
 /// Pure: see the library doc. [localMode] = the ledger identity is local
-/// mode's `local:self` (not a Matrix account).
+/// mode's `local:self` (not a Matrix account); [identity] = this device's
+/// MXID (G53: an active participant of a signed Matrix group may open a
+/// link).
 LinkInviteState linkInviteStateOf({
   required LinkChannelModel? channel,
   required GroupModel? group,
   required List<MemberModel> members,
   required bool localMode,
+  String? identity,
 }) {
   if (channel != null) return LinkInviteState.open;
-  if (!localMode) return LinkInviteState.unavailable;
+  if (!localMode) {
+    if (group != null && group.sig != null && identity != null) {
+      final mine = claimedBy(members, identity);
+      if (mine != null && mine.isActive) return LinkInviteState.canOpenMixed;
+    }
+    return LinkInviteState.unavailable;
+  }
   return linkChannelBlocker(group, members, identity: kLocalAccountId) == null
       ? LinkInviteState.canOpen
       : LinkInviteState.unavailable;
@@ -78,6 +94,9 @@ LinkInviteState linkInviteStateOf({
 final linkInviteStateProvider = FutureProvider.autoDispose
     .family<LinkInviteState, String>((ref, groupId) async {
       final localMode = ref.watch(localModeActiveProvider);
+      // The transport's MXID ('' until ready / signed out).
+      final mxid = ref.watch(currentUserIdProvider);
+      final identity = mxid.isEmpty ? null : mxid;
       final membersF = ref.watch(groupMembersProvider(groupId).future);
       final groupsF = ref.watch(ledgerGroupsProvider.future);
       final link = ref.watch(linkDaoProvider);
@@ -92,6 +111,7 @@ final linkInviteStateProvider = FutureProvider.autoDispose
           group: group,
           members: members,
           localMode: localMode,
+          identity: identity,
         );
       } catch (_) {
         return LinkInviteState.unavailable;
@@ -171,7 +191,9 @@ Future<void> inviteByLinkFlow(
   final messenger = ScaffoldMessenger.of(context);
   final l = context.l10n;
   final opener = ref.read(linkChannelOpenerProvider);
+  final mixedOpener = ref.read(mixedLinkOpenerProvider);
   final link = ref.read(linkDaoProvider);
+  final localMode = ref.read(localModeActiveProvider);
   final LinkInviteState state;
   // Keep the auto-dispose state alive while it is read.
   final sub = ref.listenManual(linkInviteStateProvider(groupId), (_, _) {});
@@ -209,6 +231,21 @@ Future<void> inviteByLinkFlow(
         // "Me" now comes from the channel (our claim was dropped).
         ref.invalidate(currentParticipantProvider(groupId));
       }
+    case LinkInviteState.canOpenMixed:
+      if (!await ensureLinkDisclosure(context, ref)) return;
+      if (!context.mounted || !await confirmMixedLink(context)) return;
+      if (!context.mounted) return;
+      try {
+        channel = await runWithProgress(
+          context,
+          l.linkMixedOpening,
+          () => mixedOpener(groupId),
+        );
+      } catch (e) {
+        errors.show(e);
+        return;
+      }
+      if (context.mounted) ref.invalidate(linkInviteStateProvider(groupId));
     case LinkInviteState.open:
       try {
         channel = await link.getChannel(groupId);
@@ -218,6 +255,15 @@ Future<void> inviteByLinkFlow(
       }
   }
   if (channel == null || !context.mounted) return;
+  // G53: in a mixed group only a Matrix device can reset the link (it signs
+  // the meta that carries it).
+  var canReset = true;
+  if (localMode) {
+    try {
+      canReset = !(await link.policyOf(groupId)).isMixed;
+    } catch (_) {}
+    if (!context.mounted) return;
+  }
   final group = (ref.read(ledgerGroupsProvider).value ?? const [])
       .where((g) => g.roomId == groupId)
       .firstOrNull;
@@ -225,7 +271,7 @@ Future<void> inviteByLinkFlow(
     context,
     channel: channel,
     groupName: group?.name,
-    canReset: true,
+    canReset: canReset,
   );
   if (reset && context.mounted) {
     await resetInviteLinkFlow(context, ref, groupId);
@@ -237,10 +283,48 @@ typedef LinkResetter = Future<LinkChannelModel> Function(String groupId);
 
 /// The reset's seam to the link sync engine (`LinkSyncEngine.resetLink`,
 /// kept alive by `LedgerSyncHost`); widget tests replace it.
+///
+/// G53: in a **mixed** group the new link is a new signed meta
+/// (`mixedLinkResetterProvider`) — every Matrix member's device follows it.
 final linkResetterProvider = Provider<LinkResetter>(
-  (ref) =>
-      (groupId) => ref.read(linkSyncEngineProvider).resetLink(groupId),
+  (ref) => (groupId) async {
+    final engine = ref.read(linkSyncEngineProvider);
+    final mixedReset = ref.read(mixedLinkResetterProvider);
+    final policy = await ref.read(linkDaoProvider).policyOf(groupId);
+    if (policy.isMixed) return mixedReset(groupId);
+    return engine.resetLink(groupId);
+  },
 );
+
+/// G53 (§10.1): asks before a **Matrix group** gets an invite link — what
+/// changes (anyone with the link can see and change it, those changes
+/// aren't verified, the Matrix members' devices share it through the relays
+/// too, it can be made secure-only again). True = go on.
+Future<bool> confirmMixedLink(BuildContext context) async {
+  final l = context.l10n;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      key: const Key('linkMixedDialog'),
+      // 360 dp at 200 %: title, body and buttons scroll together.
+      scrollable: true,
+      title: Text(l.linkMixedTitle),
+      content: Text(l.linkMixedBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          key: const Key('linkMixedConfirm'),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(l.linkMixedConfirm),
+        ),
+      ],
+    ),
+  );
+  return ok == true;
+}
 
 /// G52 step 12 — *Reset invite link* (§7.3, §14 Q10): asks first (the old
 /// link stops working, everyone still in the group needs the new one),

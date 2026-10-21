@@ -13,6 +13,7 @@ import 'package:money_ledger/core/database/daos/link_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
 import 'package:money_ledger/core/link/group_policy.dart';
+import 'package:money_ledger/core/link/link_channel.dart';
 import 'package:money_ledger/core/link/link_uri.dart';
 import 'package:money_ledger/core/matrix/hmac_record_crypto.dart';
 import 'package:money_ledger/core/session/local_transport.dart';
@@ -26,6 +27,7 @@ import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/link_model.dart';
 import 'package:money_ledger/models/member_model.dart';
+import 'package:money_ledger/models/record_signature.dart';
 
 import '../../helpers/in_memory_database.dart';
 
@@ -94,6 +96,74 @@ GroupModel meta({
 );
 
 void main() {
+  test('linkBridgeAction (step 2): a Matrix member follows the signed '
+      'meta; a lock drops every channel', () {
+    // An unsigned meta never drives a channel.
+    expect(
+      linkBridgeAction(
+        group: meta(link: GroupLink(epoch: 2, secret: secret2)),
+        channel: null,
+        me: 'pa',
+      ),
+      LinkBridgeAction.none,
+    );
+    final signedLinked = GroupModel(
+      roomId: 'g1',
+      name: 'Trip',
+      currency: 'EUR',
+      link: GroupLink(epoch: 2, secret: secret2),
+      sig: _sig,
+    );
+    expect(
+      linkBridgeAction(group: signedLinked, channel: null, me: 'pa'),
+      LinkBridgeAction.create,
+    );
+    expect(
+      linkBridgeAction(group: signedLinked, channel: null, me: null),
+      LinkBridgeAction.none,
+      reason: 'no Matrix participant here → no bridging',
+    );
+    expect(
+      linkBridgeAction(
+        group: signedLinked,
+        channel: channel('g1', me: 'pa'),
+        me: 'pa',
+      ),
+      LinkBridgeAction.replace,
+    );
+    expect(
+      linkBridgeAction(
+        group: signedLinked,
+        channel: channel('g1', me: 'px', secret: secret2),
+        me: 'pa',
+      ),
+      LinkBridgeAction.setMe,
+    );
+    expect(
+      linkBridgeAction(
+        group: signedLinked,
+        channel: channel('g1', me: 'pa', secret: secret2),
+        me: 'pa',
+      ),
+      LinkBridgeAction.none,
+    );
+    final locked = GroupModel(
+      roomId: 'g1',
+      name: 'Trip',
+      currency: 'EUR',
+      lockedAt: 5,
+      sig: _sig,
+    );
+    expect(
+      linkBridgeAction(group: locked, channel: channel('g1'), me: null),
+      LinkBridgeAction.drop,
+    );
+    expect(
+      linkBridgeAction(group: locked, channel: null, me: 'pa'),
+      LinkBridgeAction.none,
+    );
+  });
+
   group('wire / signed body / hash', () {
     test('a meta without link state keeps its pre-G53 payload, body and '
         'hash', () {
@@ -546,3 +616,6 @@ void main() {
     });
   });
 }
+
+/// A syntactically valid signature for pure policy checks (never verified).
+const _sig = RecordSignature(user: alice, device: 'D', key: 'k', sig: 's');

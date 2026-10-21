@@ -109,7 +109,13 @@ switching to a new link someone sent you) asks the relays to delete your copy
 under the old link and publishes the group under a new key; people who only
 have the old link no longer get your changes, but keep what they already saw. A group only on this device never contacts a
 relay: a group starts syncing only when you invite with a link, create it
-with “Share with an invite link” or join it with a link someone sent you.
+with “Share with an invite link” or join it with a link someone sent you — or,
+in a group shared with Matrix accounts, when one of its members invites with
+a link: then your devices share that group through the relays in the same
+way, and changes made through the link are marked “not verified”. In such a
+group — also once someone who joined by link connects a Matrix account —
+everyone with the link sees the Matrix IDs of the people in it who use
+Matrix.
 Opening an invite link contacts nothing until you tap “Join”; the relays are
 then asked for that group.
 

@@ -25,9 +25,11 @@
 /// versions), "me" stays the channel's `my_participant_id`. Should its own
 /// participant still carry the `local:self` claim, it is rewritten without
 /// it (§6.1, a new LWW version) and becomes `my_participant_id` — so the
-/// account DB never holds a `local:self` claim for a link group. (G53 adds
-/// the signed self-claim of the account; until then the group stays
-/// link-only, unclaimed.)
+/// account DB never holds a `local:self` claim for a link group. G53 step
+/// 3: each adopted link group with a "me" is marked for the account's
+/// **signed self-claim** of that participant (`link_self_claim.dart`, once
+/// the device key is ready) — a link-only group then also gets a signed
+/// meta keeping its link and turns mixed.
 ///
 /// Afterwards the local DB is wiped and (G41) its files deleted — local mode
 /// would start empty again — and the device preferences say where the data
@@ -160,6 +162,11 @@ Future<LocalAdoptionResult> adoptLocalLedger({
       }
       if (channel != null && await toLink.getChannel(g.roomId) == null) {
         await toLink.putChannel(channel);
+      }
+      // G53 step 3: the account claims its link participant (signed) once
+      // its device key is ready — `link_self_claim.dart`.
+      if (channel != null && channel.myParticipantId != null) {
+        await to.settings.markLinkSelfClaimPending(g.roomId);
       }
       final archive = archives[g.roomId];
       if (archive != null) await to.settings.archiveGroup(g.roomId, archive);

@@ -3019,7 +3019,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. When you delete a shared group from this device (or delete local data), the app first asks the relays to delete your copy; the others in the group keep theirs. Resetting the invite link (or switching to a new link someone sent you) asks the relays to delete your copy under the old link and publishes the group under a new key; people who only have the old link no longer get your changes, but keep what they already saw. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.';
+      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. When you delete a shared group from this device (or delete local data), the app first asks the relays to delete your copy; the others in the group keep theirs. Resetting the invite link (or switching to a new link someone sent you) asks the relays to delete your copy under the old link and publishes the group under a new key; people who only have the old link no longer get your changes, but keep what they already saw. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you — or, in a group shared with Matrix accounts, when one of its members invites with a link: then your devices share that group through the relays in the same way, and changes made through the link are marked “not verified”. In such a group — also once someone who joined by link connects a Matrix account — everyone with the link sees the Matrix IDs of the people in it who use Matrix. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.';
 
   @override
   String linkInviteShareText(String group, String link) {
@@ -3493,4 +3493,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorSignatureRequiredHint =>
       'In this group, the name, currency, categories and people with a Matrix account can only be changed by someone signed in with Matrix.';
+
+  @override
+  String get linkMixedTitle => 'Also share this group by link?';
+
+  @override
+  String get linkMixedBody =>
+      'Anyone with the link can then see and change this group without an account — and sees the Matrix IDs of the people in it. Their changes are marked “not verified”, and only people signed in with Matrix can change the name, currency or categories.\n\nYour devices and those of the others signed in with Matrix will also share the group through the relays, encrypted with the link\'s key.\n\nOnce everyone has a Matrix account, you can make the group secure again: the link then stops working.';
+
+  @override
+  String get linkMixedConfirm => 'Share by link';
+
+  @override
+  String get linkMixedOpening => 'Creating the invite link…';
 }

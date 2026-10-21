@@ -75,6 +75,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/about/about_page.dart' show appVersionProvider;
 import '../../features/expenses/expenses_provider.dart';
 import '../../models/link_model.dart';
+import '../../models/member_model.dart' show claimedBy;
 import '../database/app_database.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
@@ -432,6 +433,10 @@ class LinkSyncEngine {
   Future<void> _inbound = Future.value();
   int _busy = 0;
 
+  /// G53: the serialized bridging / lock check ([_scheduleBridge]).
+  Future<void> _bridgeChain = Future.value();
+  bool _bridgeQueued = false;
+
   RecordGate? _gate;
   RecordVerifier? _verifier;
 
@@ -566,6 +571,7 @@ class LinkSyncEngine {
         .listen(_onTables);
     await _reloadChannels();
     if (!_alive) return;
+    _scheduleBridge();
     if (_followLifecycle) {
       try {
         _lifecycle = AppLifecycleListener(
@@ -671,14 +677,18 @@ class LinkSyncEngine {
     if (!_alive) return;
     var ledger = false;
     var channels = false;
+    var groups = false;
     for (final u in updates) {
       if (u.table == _db.linkChannels.actualTableName) {
         channels = true;
       } else {
         ledger = true;
+        if (u.table == _db.groups.actualTableName) groups = true;
       }
     }
     if (channels) unawaited(_reloadChannels());
+    // G53: a meta change may open / move / close a link (bridging, lock).
+    if (groups) _scheduleBridge();
     if (ledger) {
       for (final g in _channels.keys) {
         _schedulePublish(g);
@@ -1260,6 +1270,15 @@ class LinkSyncEngine {
     final ch = await _link.getChannel(group);
     final route = _channels[group];
     if (ch == null || route == null || !_alive) return;
+    // G53: a signed meta that names another link (being switched) or none
+    // (locked) is never published on this topic — the new secret must not
+    // reach the old link's holders; bridging moves / drops the channel.
+    final meta = await _groups.getGroup(group);
+    if (!_alive) return;
+    if (meta != null && meta.sig != null && meta.link?.secret != ch.secret) {
+      _scheduleBridge();
+      return;
+    }
     final me = ch.myParticipantId;
     if (me == null) {
       _setStatus(
@@ -1273,6 +1292,12 @@ class LinkSyncEngine {
     }
     final bootstrap = await _bootstrapOf(group);
     if (bootstrap == null || !_alive) return;
+    // G53: re-checked on what is actually published (the meta may have
+    // changed since the check above).
+    if (_namesOtherLink(bootstrap, ch.secret)) {
+      _scheduleBridge();
+      return;
+    }
     final digest = linkSnapshotDigest(bootstrap);
     final now = _clock();
     final due =
@@ -1612,7 +1637,11 @@ class LinkSyncEngine {
       for (var i = 0; i < used; i++) linkPartTopic(route.keys.topic, i),
     ];
     final expiry = _nowSec + kLinkRetiredExpiry.inSeconds;
-    if (bootstrap != null) {
+    // G53: when the stored meta already names a **new** link (a reset /
+    // a Matrix device following one), its header-only parts would hand the
+    // new secret to the old link's holders — then only the NIP-09 deletion
+    // is sent.
+    if (bootstrap != null && !_namesOtherLink(bootstrap, ch.secret)) {
       final empty = {
         ...bootstrap,
         'expenses': const <Object?>[],
@@ -1685,59 +1714,202 @@ class LinkSyncEngine {
     return refresh(groupId: groupId, timeout: timeout);
   }
 
-  Future<LinkChannelModel> _replaceLink(String groupId, String? secret) =>
-      _track(() async {
-        if (_started) await ready;
-        await _reloadChain;
-        if (!_alive) throw StateError('link sync engine disposed');
-        final current = await _link.getChannel(groupId);
-        if (current == null) {
-          throw const LinkChannelException(LinkChannelError.noChannel);
-        }
-        if (secret != null) {
-          if (secret == current.secret) return current;
-          decodeLinkSecret(secret); // malformed → nothing unpublished
-        }
-        _resetting.add(groupId);
-        try {
-          _debounceTimers.remove(groupId)?.cancel();
-          _retryTimers.remove(groupId)?.cancel();
-          // A publish in flight would put the old copy back on the old
-          // topic after the unpublish; a merge in flight would record a
-          // peer of the old link after the peers are forgotten.
-          await _publishRuns[groupId];
-          await _inbound;
-          if (!_alive) throw StateError('link sync engine disposed');
-          try {
-            await unpublish(
-              groupId,
-            ).timeout(kLinkUnpublishMaxWait, onTimeout: () => false);
-          } catch (e) {
-            if (_alive) debugPrint('[link] unpublish of $groupId failed: $e');
-          }
-          if (!_alive) throw StateError('link sync engine disposed');
-          final next = await replaceLinkChannel(
-            _db,
+  Future<LinkChannelModel> _replaceLink(
+    String groupId,
+    String? secret, {
+    int? epoch,
+  }) => _track(() async {
+    if (_started) await ready;
+    await _reloadChain;
+    if (!_alive) throw StateError('link sync engine disposed');
+    final current = await _link.getChannel(groupId);
+    if (current == null) {
+      throw const LinkChannelException(LinkChannelError.noChannel);
+    }
+    if (secret != null) {
+      if (secret == current.secret) return current;
+      decodeLinkSecret(secret); // malformed → nothing unpublished
+    }
+    _resetting.add(groupId);
+    try {
+      _debounceTimers.remove(groupId)?.cancel();
+      _retryTimers.remove(groupId)?.cancel();
+      // A publish in flight would put the old copy back on the old
+      // topic after the unpublish; a merge in flight would record a
+      // peer of the old link after the peers are forgotten.
+      await _publishRuns[groupId];
+      await _inbound;
+      if (!_alive) throw StateError('link sync engine disposed');
+      try {
+        await unpublish(
+          groupId,
+        ).timeout(kLinkUnpublishMaxWait, onTimeout: () => false);
+      } catch (e) {
+        if (_alive) debugPrint('[link] unpublish of $groupId failed: $e');
+      }
+      if (!_alive) throw StateError('link sync engine disposed');
+      final next = await replaceLinkChannel(
+        _db,
+        groupId,
+        secret: secret,
+        epoch: epoch,
+        clock: _clock,
+      );
+      _failures.remove(groupId);
+      _retryStreak.remove(groupId);
+      _forced.remove(groupId);
+      _lastPublishAt.remove(groupId);
+      _mergeFailed.remove(groupId);
+      _status[groupId] = const LinkGroupSyncStatus(
+        phase: LinkSyncPhase.pending,
+      );
+      _emit(groupId);
+      await _reloadChannels();
+      return next;
+    } finally {
+      _resetting.remove(groupId);
+      if (_alive) _schedulePublish(groupId, delay: Duration.zero);
+    }
+  });
+
+  // ── G53: bridging + lock (§10.1) ─────────────────────────────────────────
+
+  /// G53 step 2: makes this device's link channels follow the groups'
+  /// **signed** metas ([linkBridgeAction]) — serialized, coalesced (one
+  /// queued run at a time), triggered by every `groups` table change and at
+  /// start; not in a background round (the app catches up on its next
+  /// start):
+  /// * a meta with an open `link` and an account claiming an active
+  ///   participant → this Matrix device **bridges**: a channel with the
+  ///   meta's secret + epoch and "me" = that participant (it then publishes
+  ///   its snapshot and reads the others'); a meta naming another link
+  ///   (reset) → the channel is switched like [switchLink] (our copy leaves
+  ///   the old topic first);
+  /// * a signed meta **without** a link while a channel exists (the group
+  ///   was locked, step 4) → our copy leaves the relays ([unpublish]) and
+  ///   the channel is dropped — on every device, Matrix or not.
+  void _scheduleBridge() {
+    if (!_alive || _roundMode || _db.isSignedOutPlaceholder) return;
+    if (_bridgeQueued) return;
+    _bridgeQueued = true;
+    _busy++;
+    final next = _bridgeChain.then((_) async {
+      _bridgeQueued = false;
+      try {
+        await _bridgeNow();
+      } catch (e) {
+        if (_alive) debugPrint('[link] bridging failed: $e');
+      }
+    });
+    _bridgeChain = next.whenComplete(() => _busy--);
+  }
+
+  Future<void> _bridgeNow() async {
+    if (!_alive) return;
+    final identity = _identity;
+    for (final g in await _groups.getAllGroups()) {
+      if (!_alive) return;
+      if (g.sig == null || _resetting.contains(g.roomId)) continue;
+      final channel = await _link.getChannel(g.roomId);
+      String? me;
+      if (g.link != null && identity != null && identity.startsWith('@')) {
+        final mine = claimedBy(await _members.getMembers(g.roomId), identity);
+        if (mine != null && mine.isActive) me = mine.userId;
+      }
+      if (!_alive) return;
+      final link = g.link;
+      switch (linkBridgeAction(group: g, channel: channel, me: me)) {
+        case LinkBridgeAction.none:
+          break;
+        case LinkBridgeAction.create:
+          debugPrint('[link] bridging ${g.roomId} (shared by link)');
+          await _link.putChannel(
+            newLinkChannel(
+              g.roomId,
+              myParticipantId: me,
+              openedAt: _clock(),
+              secret: link!.secret,
+              epoch: link.epoch,
+            ),
+          );
+        case LinkBridgeAction.replace:
+          debugPrint('[link] ${g.roomId}: following the new invite link');
+          await _replaceLink(g.roomId, link!.secret, epoch: link.epoch);
+        case LinkBridgeAction.setMe:
+          await _link.setMyParticipant(g.roomId, me);
+        case LinkBridgeAction.drop:
+          debugPrint('[link] ${g.roomId} was locked: leaving the relays');
+          await _dropChannel(g.roomId);
+      }
+    }
+  }
+
+  /// G53: runs the bridging check now and returns [groupId]'s channel
+  /// afterwards (null = none) — *Invite by link* in a Matrix group writes
+  /// the signed meta, then calls this.
+  Future<LinkChannelModel?> ensureBridged(String groupId) async {
+    if (_started) await ready;
+    _bridgeQueued = false; // run a fresh check after the meta write
+    _scheduleBridge();
+    await _bridgeChain;
+    await _reloadChain;
+    if (!_alive) return null;
+    return _link.getChannel(groupId);
+  }
+
+  /// G53: our copy of [groupId] leaves the relays ([unpublish], bounded by
+  /// [kLinkUnpublishMaxWait]; [beforeDelete] runs instead when given — the
+  /// lock's final event), then the channel and its peers are dropped. The
+  /// ledger rows stay.
+  Future<void> _dropChannel(
+    String groupId, {
+    Future<void> Function()? beforeDelete,
+  }) => _track(() async {
+    if (_started) await ready;
+    await _reloadChain;
+    if (!_alive) return;
+    _resetting.add(groupId);
+    try {
+      _debounceTimers.remove(groupId)?.cancel();
+      _retryTimers.remove(groupId)?.cancel();
+      await _publishRuns[groupId];
+      await _inbound;
+      if (!_alive) return;
+      try {
+        if (beforeDelete != null) {
+          await beforeDelete();
+        } else {
+          await unpublish(
             groupId,
-            secret: secret,
-            clock: _clock,
-          );
-          _failures.remove(groupId);
-          _retryStreak.remove(groupId);
-          _forced.remove(groupId);
-          _lastPublishAt.remove(groupId);
-          _mergeFailed.remove(groupId);
-          _status[groupId] = const LinkGroupSyncStatus(
-            phase: LinkSyncPhase.pending,
-          );
-          _emit(groupId);
-          await _reloadChannels();
-          return next;
-        } finally {
-          _resetting.remove(groupId);
-          if (_alive) _schedulePublish(groupId, delay: Duration.zero);
+          ).timeout(kLinkUnpublishMaxWait, onTimeout: () => false);
         }
-      });
+      } catch (e) {
+        if (_alive) debugPrint('[link] unpublish of $groupId failed: $e');
+      }
+      if (!_alive) return;
+      await _link.deleteChannel(groupId);
+      _failures.remove(groupId);
+      _retryStreak.remove(groupId);
+      _forced.remove(groupId);
+      _lastPublishAt.remove(groupId);
+      _mergeFailed.remove(groupId);
+      _status.remove(groupId);
+      _emit(groupId);
+      await _reloadChannels();
+    } finally {
+      _resetting.remove(groupId);
+    }
+  });
+
+  /// G53: whether [bootstrap]'s signed meta opens a link other than
+  /// [secret] — publishing it under [secret]'s topic would leak the new
+  /// link to the old one's holders.
+  static bool _namesOtherLink(Map<String, dynamic> bootstrap, String secret) {
+    final meta = bootstrap['meta'];
+    if (meta is! Map || meta['sig'] == null) return false;
+    final link = meta['link'];
+    return link is Map && link['secret'] != secret;
+  }
 
   /// The status of every link group (tests / settings).
   @visibleForTesting
