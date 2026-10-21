@@ -908,7 +908,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyCsvBody =>
-      'Exporting a group writes a CSV file with its expenses, payments, the people\'s names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people\'s Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.';
+      'Exporting a group writes a CSV file with its expenses, payments, the people\'s names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people\'s Matrix IDs and deleted entries — and, for groups you share with an invite link, their invite key: anyone with the file can read and change those groups. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.';
 
   @override
   String get privacyBackupTitle => 'Device backups';
@@ -3019,7 +3019,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.';
+      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. When you delete a shared group from this device (or delete local data), the app first asks the relays to delete your copy; the others in the group keep theirs. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.';
 
   @override
   String linkInviteShareText(String group, String link) {
@@ -3366,4 +3366,58 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get linkDisclosureOwnRelay =>
       'You can add your own relay under Settings → Relays.';
+
+  @override
+  String get deleteLinkGroupNote =>
+      'This group is shared with an invite link: the others keep their copies. Your copy is removed from the relays, and you can join again with the link.';
+
+  @override
+  String get linkUnpublishing => 'Removing your copy from the relays…';
+
+  @override
+  String deleteLocalDataLinkNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count of them are shared with an invite link: the others keep their copies, yours are removed from the relays.',
+      one:
+          'One of them is shared with an invite link: the others keep their copies, yours is removed from the relays.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String backupLinkKeysWarning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'The file contains the invite keys of $count shared groups: anyone with the file can read and change them.',
+      one:
+          'The file contains the invite key of one shared group: anyone with the file can read and change that group.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreLinkKeysWarning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'This file contains the invite keys of $count shared groups: anyone with the file can read and change them. After the restore, open each of them and choose who you are — then they sync again.',
+      one:
+          'This file contains the invite key of one shared group: anyone with the file can read and change it. After the restore, open the group and choose who you are — then it syncs again.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get backupFileLinkNote =>
+      'The file also contains the invite keys of your shared groups — with it, anyone can read and change them. Set a passphrase when you save it.';
+
+  @override
+  String get linkChooseMeBanner =>
+      'Which person are you in this group? It syncs again once you choose.';
 }

@@ -693,7 +693,7 @@ final class GroupExiterProvider
   }
 }
 
-String _$groupExiterHash() => r'93fce35f3fd829ea6426d6843150856d1635a2b8';
+String _$groupExiterHash() => r'f455229463bb9da736959b442c69aa4fb7a4152e';
 
 /// Leave / delete a group (G9). Both end with the group **purged** from the
 /// local DB and a device-local [LeftGroupTombstone], so a late digest or

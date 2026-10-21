@@ -774,6 +774,46 @@ unsigned). Tests: `test/g52_link_join_test.dart`,
   (relay list, forced publish, sync now), settings / scheduling / router /
   G71 cases.
 
+### Leaving a link group, backups (G52 step 10)
+
+- **Leave / delete** (design doc §7.3): a link group has no Matrix claims,
+  so `groupExitKind` → *Delete* (= "delete from this device"; our
+  participant stays in the ledger, no "X left" record). `GroupExiter._purge`
+  first calls `linkUnpublisherProvider` (`LinkSyncEngine.unpublish`:
+  header-only parts expiring after 1 day + a NIP-09 deletion, bounded by
+  `kLinkUnpublishMaxWait` = 8 s, never throws) when the group has a channel,
+  then purges as before (`purgeGroup` drops the channel + peers). The exit
+  dialog says the others keep their copies (`deleteLinkGroupNote`);
+  `exitGroupFlow` shows a progress dialog (`runWithProgress`, from
+  `backup_ui.dart`) meanwhile. *Delete local data* unpublishes every link
+  group (in parallel, same seam) before the wipe; its confirmation adds
+  `deleteLocalDataLinkNote`.
+- **Backup carries the invite key** (§7.2, §14 Q7): each link group's entry
+  in the backup file has `link: {epoch, secret}` next to the bootstrap
+  content (`GroupSnapshot.link` / `BackupLink`, parsed by `backupGroupLink`;
+  malformed → ignored) — **not** in the signed / hashed meta (G53's meta
+  `link` field isn't built), so nothing on the wire changes; older builds
+  ignore it. Never the Nostr key or "me". Restore points (G48 snapshots)
+  carry it too. Warnings: passphrase dialog without passphrase
+  (`backupLinkKeysWarning`), restore preview (`RestorePreview.linkGroups` →
+  `restoreLinkKeysWarning`), backup page note while link groups exist
+  (`backupFileLinkNote`).
+- **Restore re-opens the channel:** inside each group's restore transaction,
+  **before** the merge, `reopenLinkChannel` (`link_channel.dart`) stores a
+  channel with the file's key + epoch, a fresh Nostr key and **no "me"** —
+  only when this device has neither a channel nor the group (an existing
+  channel is kept; a group held here without one never becomes a link
+  group). So the records go in as a `linkOnly` group (never adopted /
+  signed); nothing is published until "me" is chosen: the group page's
+  *Which person are you?* banner (`chooseMeBanner`, text
+  `linkChooseMeBanner` for a link group) → `chooseLinkParticipant`
+  (`link_join.dart`, shared with the join: picked person or someone new,
+  one transaction) → the engine publishes.
+- Tests: `test/integration/link_leave_backup_test.dart` (delete →
+  unpublished, peer keeps its copy → restore → "me" → published),
+  `test/core/link/link_channel_test.dart`, `test/features/ledger_backup_test.dart`,
+  `test/g52_link_leave_backup_ui_test.dart` (EN + DE, 360 dp, 200 %).
+
 ### Data Flow
 
 Inbound to-device message → `LedgerSyncer._onMessage` → **membership gate** →
@@ -1220,9 +1260,9 @@ a whole group gone here → a restore point (web: a backup file); new / lost
 phone → only a backup file, plus — Matrix accounts only — "shared groups
 usually come back from the others"), then three blocks: **Backup file**
 (intro, last backup, `backupExportTile`, `backupRestoreTile`, hint to *Back
-up this group* in the group settings — G52 step 10's note about link-group
-invite keys in the file goes here, the per-file warning into the restore
-preview), **Restore points** (`snapshotsSupportedProvider`: intro +
+up this group* in the group settings; G52 step 10: `backupFileLinkNote`
+while link groups exist — the per-file warnings are in the export / restore
+dialogs), **Restore points** (`snapshotsSupportedProvider`: intro +
 `restorePointsTile` → `/restore-points`; else `noSnapshotsHint`), **Undo
 changes in one group** (`resetPickGroupTile` → bottom sheet of all groups
 sorted by name → `/groups/<id>/reset`; disabled with no groups; the reset

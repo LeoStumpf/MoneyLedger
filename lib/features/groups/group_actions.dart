@@ -35,6 +35,8 @@ Future<void> exitGroupFlow(
   final errors = ActionErrors.of(context);
   final l = context.l10n;
   final group = await ref.read(groupsDaoProvider).getGroup(roomId);
+  // G52 step 10: a link group's copy leaves the relays first (§7.3).
+  final linkGroup = await ref.read(linkDaoProvider).getChannel(roomId) != null;
   if (!context.mounted) return;
   final me = ref.read(currentParticipantProvider(roomId)).value;
   final warning = unsettledWarning(
@@ -48,12 +50,17 @@ Future<void> exitGroupFlow(
     groupName: group?.name ?? l.thisGroup,
     warning: warning,
     onBackup: () async => (await runBackupExport(context, ref)).message,
+    linkGroup: linkGroup,
   );
-  if (!confirmed) return;
+  if (!confirmed || !context.mounted) return;
   final exiter = ref.read(groupExiterProvider.notifier);
-  await (kind == GroupExitKind.leave
+  Future<void> exit() => kind == GroupExitKind.leave
       ? exiter.leave(roomId)
-      : exiter.delete(roomId));
+      : exiter.delete(roomId);
+  // Unpublishing takes a moment (relays, bounded by kLinkUnpublishMaxWait).
+  await (linkGroup
+      ? runWithProgress(context, l.linkUnpublishing, exit)
+      : exit());
   final error = ref.read(groupExiterProvider).error;
   if (error != null) {
     errors.show(error);

@@ -205,4 +205,60 @@ void main() {
     expect(p1.matrixId, kLocalAccountId);
     expect(await LinkDao(db).getChannel('G'), isNull);
   });
+
+  group('G52 step 10: reopenLinkChannel (restore)', () {
+    final secret = encodeLinkSecret(List<int>.generate(32, (i) => i));
+
+    test('an unknown group gets a channel: the key + epoch from the file, '
+        'a fresh Nostr key, no "me"', () async {
+      expect(
+        await reopenLinkChannel(
+          db,
+          'G',
+          epoch: 3,
+          secret: secret,
+          clock: () => 42,
+        ),
+        isTrue,
+      );
+      final ch = (await LinkDao(db).getChannel('G'))!;
+      expect(ch.secret, secret);
+      expect(ch.epoch, 3);
+      expect(ch.myParticipantId, isNull);
+      expect(ch.openedAt, 42);
+      expect(nostrPublicKey(ch.nostrPriv), hasLength(64));
+    });
+
+    test('an existing channel is kept; a group stored without one or a '
+        'malformed key gets none', () async {
+      await reopenLinkChannel(db, 'G', epoch: 1, secret: secret);
+      final first = (await LinkDao(db).getChannel('G'))!;
+      expect(
+        await reopenLinkChannel(db, 'G', epoch: 1, secret: secret),
+        isFalse,
+      );
+      expect((await LinkDao(db).getChannel('G'))!.nostrPriv, first.nostrPriv);
+
+      await GroupsDao(db).upsertGroupLww(
+        groupCompanion(
+          const GroupModel(
+            roomId: 'M',
+            name: 'Matrix',
+            currency: 'EUR',
+            updatedAt: 1,
+          ),
+        ),
+      );
+      expect(
+        await reopenLinkChannel(db, 'M', epoch: 1, secret: secret),
+        isFalse,
+      );
+      expect(await LinkDao(db).getChannel('M'), isNull);
+      expect(
+        await reopenLinkChannel(db, 'X', epoch: 1, secret: 'not base64!'),
+        isFalse,
+      );
+      expect(await LinkDao(db).getChannel('X'), isNull);
+    });
+  });
 }

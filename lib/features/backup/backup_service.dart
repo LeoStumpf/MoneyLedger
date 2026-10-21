@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
+import '../../core/database/daos/link_dao.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
+import '../../core/link/link_channel.dart';
 import '../../core/session/app_session.dart';
 import '../../core/session/local_adoption.dart';
 import '../../core/sync/ledger_payloads.dart';
@@ -51,6 +53,10 @@ class BackupService {
 
   bool get _alive => !db.isClosed;
 
+  /// G52 step 10: this ledger's link channels (export / restore the invite
+  /// keys).
+  late final LinkDao _link = LinkDao(db);
+
   /// The backup JSON for every local group of this account — or, with
   /// [onlyGroup] (G34 per-group backup from the group menu), for that one
   /// group (same format, a single entry in `groups`).
@@ -68,6 +74,7 @@ class BackupService {
       final ms = await members.getMembers(g.roomId);
       final es = await expenses.getAllExpensesForGroup(g.roomId);
       final ss = await expenses.getAllSettlementsForGroup(g.roomId);
+      final channel = await _link.getChannel(g.roomId);
       snapshots.add(
         GroupSnapshot(
           group: g,
@@ -77,6 +84,9 @@ class BackupService {
           deviceKeys: await signing.attestationsFor(
             snapshotSigners(g, ms, es, ss),
           ),
+          link: channel == null
+              ? null
+              : BackupLink(epoch: channel.epoch, secret: channel.secret),
         ),
       );
     }
@@ -160,6 +170,7 @@ class BackupService {
       groups: plans,
       takeover: takeover,
       myAccount: myMxid,
+      linkGroups: backup.groups.where((g) => backupGroupLink(g) != null).length,
       otherAccount:
           takeover == RestoreTakeover.none &&
           backup.account != null &&
@@ -269,6 +280,19 @@ class BackupService {
           }
           await settings.clearGroupLeft(gid);
           if (!_alive) return;
+          // G52 step 10: a link group's channel comes back first, so its
+          // records go in as a link-only group (never adopted / signed).
+          if (backupGroupLink(g) case final link?) {
+            if (await reopenLinkChannel(
+              db,
+              gid,
+              epoch: link.epoch,
+              secret: link.secret,
+            )) {
+              debugPrint('[backup] $gid: link channel re-opened');
+            }
+            if (!_alive) return;
+          }
           await (ownLocal ? localGate : gate).snapshot(
             payload,
             relayedBy: backup.account ?? t.userId,
@@ -560,12 +584,16 @@ class RestorePreview {
 
   /// The ledger restored into: the signed-in MXID, or [kLocalAccountId].
   final String? myAccount;
+
+  /// G52 step 10: groups of the file that carry a link group's invite key.
+  final int linkGroups;
   const RestorePreview({
     required this.backup,
     required this.groups,
     required this.otherAccount,
     this.takeover = RestoreTakeover.none,
     this.myAccount,
+    this.linkGroups = 0,
   });
 
   int get newGroups => groups.where((g) => g.isNew).length;

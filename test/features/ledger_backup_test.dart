@@ -152,6 +152,53 @@ void main() {
     });
   });
 
+  group('G52 step 10: link groups carry their invite key', () {
+    test('only a link group gets "link"; parsed back; never in toString', () {
+      final json = buildBackupJson(
+        account: 'local:self',
+        exportedAt: 1,
+        groups: [
+          GroupSnapshot(
+            group: snapshot.group,
+            members: snapshot.members,
+            expenses: snapshot.expenses,
+            settlements: snapshot.settlements,
+            link: const BackupLink(epoch: 2, secret: 'c2VjcmV0'),
+          ),
+          empty,
+        ],
+      );
+      final b = parseBackup(json);
+      final flat = b.groups[0];
+      final trip = b.groups[1];
+      expect(flat.containsKey('link'), isFalse);
+      expect(backupGroupLink(flat), isNull);
+      final link = backupGroupLink(trip)!;
+      expect(link.epoch, 2);
+      expect(link.secret, 'c2VjcmV0');
+      expect(link.toString(), isNot(contains('c2VjcmV0')));
+      // The bootstrap content itself (meta, records) is unchanged.
+      expect(trip['name'], 'Trip');
+      expect((trip['expenses'] as List).map((e) => e['id']), ['e1', 'e2']);
+    });
+
+    test('a malformed "link" is ignored (the group restores without one)', () {
+      for (final bad in <Object?>[
+        'x',
+        {'epoch': 0, 'secret': 'abc'},
+        {'epoch': 1, 'secret': ''},
+        {'epoch': '1', 'secret': 'abc'},
+        {'secret': 'abc'},
+      ]) {
+        expect(
+          backupGroupLink({'group': 'g', 'link': bad}),
+          isNull,
+          reason: '$bad',
+        );
+      }
+    });
+  });
+
   group('parseBackup rejects', () {
     void expectKind(String text, BackupErrorKind kind) => expect(
       () => parseBackup(text),

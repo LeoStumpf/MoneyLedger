@@ -41,6 +41,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/link_dao.dart';
 import '../../core/database/daos/members_dao.dart';
@@ -254,40 +255,62 @@ Future<String> joinLinkGroup(ProviderContainer c, LinkJoinRequest r) async {
       await link.deleteChannel(r.groupId);
       throw const LinkJoinNotFoundException();
     }
-    final members = MembersDao(db);
-    await db.transaction(() async {
-      final picked = r.participantId;
-      if (picked != null) {
-        final people = await members.getMembers(r.groupId);
-        if (!people.any((m) => m.userId == picked && m.isActive)) {
-          throw const LinkJoinPersonGoneException();
-        }
-        await link.setMyParticipant(r.groupId, picked);
-      } else {
-        // Someone new: "me" first, so the new participant is written as a
-        // link version by itself (unsigned, not pendingSign, `by` = itself).
-        final id = const Uuid().v7();
-        await link.setMyParticipant(r.groupId, id);
-        await members.upsertMemberLww(
-          memberCompanion(
-            MemberModel(
-              groupId: r.groupId,
-              userId: id,
-              displayName: r.name.trim(),
-              status: 'active',
-              updatedAt: clock(),
-              linkAuthor: id,
-            ),
-          ),
-        );
-      }
-    });
+    await chooseLinkParticipant(
+      db,
+      r.groupId,
+      participantId: r.participantId,
+      newName: r.name,
+      clock: clock,
+    );
     c.invalidate(currentParticipantProvider(r.groupId));
     c.invalidate(linkInviteStateProvider(r.groupId));
     return r.groupId;
   } finally {
     keep.close();
   }
+}
+
+/// "Who am I" in link group [groupId] (§6.1/§6.2) — the join picker's
+/// confirm and (G52 step 10) the group page's picker after a restore
+/// re-opened the channel without "me". One transaction: [participantId] (an
+/// active participant) becomes `my_participant_id`, else someone new named
+/// [newName] — "me" first, so the new participant is written as a link
+/// version by itself (unsigned, not `pendingSign`, `by` = itself). Throws
+/// [LinkJoinPersonGoneException] when the picked person is gone. The caller
+/// invalidates `currentParticipantProvider` (+ the invite state).
+Future<void> chooseLinkParticipant(
+  AppDatabase db,
+  String groupId, {
+  String? participantId,
+  required String newName,
+  required int Function() clock,
+}) {
+  final link = LinkDao(db);
+  final members = MembersDao(db);
+  return db.transaction(() async {
+    if (participantId != null) {
+      final people = await members.getMembers(groupId);
+      if (!people.any((m) => m.userId == participantId && m.isActive)) {
+        throw const LinkJoinPersonGoneException();
+      }
+      await link.setMyParticipant(groupId, participantId);
+    } else {
+      final id = const Uuid().v7();
+      await link.setMyParticipant(groupId, id);
+      await members.upsertMemberLww(
+        memberCompanion(
+          MemberModel(
+            groupId: groupId,
+            userId: id,
+            displayName: newName.trim(),
+            status: 'active',
+            updatedAt: clock(),
+            linkAuthor: id,
+          ),
+        ),
+      );
+    }
+  });
 }
 
 // ── native link intake ──────────────────────────────────────────────────────

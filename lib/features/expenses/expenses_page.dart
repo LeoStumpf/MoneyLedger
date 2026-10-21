@@ -35,7 +35,9 @@ import '../../models/record_signature.dart';
 import 'record_attribution.dart';
 import 'record_actions.dart';
 import 'record_details_sheet.dart';
+import '../../core/link/link_sync_engine.dart' show linkClockProvider;
 import '../link/link_invite.dart';
+import '../link/link_join.dart' show chooseLinkParticipant;
 import '../sync/group_sync_sheet.dart';
 import '../../core/widgets/action_error.dart';
 
@@ -103,11 +105,11 @@ class ExpensesPage extends ConsumerWidget {
     final activeCount = members.where((m) => m.isActive).length;
     // G52 step 6: *Invite with a link* — only where a link can exist
     // (a link group, or a local-mode group's first invite).
-    final linkInvite =
-        canEdit &&
-        (ref.watch(linkInviteStateProvider(roomId)).value ??
-                LinkInviteState.unavailable) !=
-            LinkInviteState.unavailable;
+    final linkState =
+        ref.watch(linkInviteStateProvider(roomId)).value ??
+        LinkInviteState.unavailable;
+    final linkInvite = canEdit && linkState != LinkInviteState.unavailable;
+    final linkGroup = linkState == LinkInviteState.open;
 
     return Scaffold(
       appBar: AppBar(
@@ -313,11 +315,20 @@ class ExpensesPage extends ConsumerWidget {
             ),
           if (needsClaim)
             MaterialBanner(
-              content: Text(l.addedToGroupBanner),
+              key: const Key('chooseMeBanner'),
+              // As the removed / archived banners (G67): at 360 dp an inline
+              // action squeezes the text.
+              forceActionsBelow: true,
+              // G52 step 10: a link group whose channel a restore re-opened
+              // (no "me" on this device yet) — it syncs once chosen.
+              content: Text(
+                linkGroup ? l.linkChooseMeBanner : l.addedToGroupBanner,
+              ),
               leading: const Icon(Icons.person_pin_circle_outlined),
               actions: [
                 TextButton(
-                  onPressed: () => _showClaimPicker(context, ref, members),
+                  onPressed: () =>
+                      _showClaimPicker(context, ref, members, link: linkGroup),
                   child: Text(l.choose),
                 ),
               ],
@@ -671,8 +682,9 @@ class ExpensesPage extends ConsumerWidget {
   Future<void> _showClaimPicker(
     BuildContext context,
     WidgetRef ref,
-    List<MemberModel> members,
-  ) async {
+    List<MemberModel> members, {
+    bool link = false,
+  }) async {
     final unclaimed = members
         .where((m) => m.isActive && m.matrixId == null)
         .toList();
@@ -699,6 +711,29 @@ class ExpensesPage extends ConsumerWidget {
     );
     if (choice == null) return;
     final picked = choice.member;
+    if (link) {
+      // G52 step 10: "me" in a link group is device-local (§6.1).
+      String name = '';
+      if (picked == null) {
+        if (!context.mounted) return;
+        name = (await _promptName(context))?.trim() ?? '';
+        if (name.isEmpty) return;
+      }
+      try {
+        await chooseLinkParticipant(
+          ref.read(appDatabaseProvider),
+          roomId,
+          participantId: picked?.userId,
+          newName: name,
+          clock: ref.read(linkClockProvider),
+        );
+        ref.invalidate(currentParticipantProvider(roomId));
+        ref.invalidate(linkInviteStateProvider(roomId));
+      } catch (e) {
+        errors.show(e);
+      }
+      return;
+    }
     if (picked != null) {
       await ref
           .read(memberAdderProvider.notifier)

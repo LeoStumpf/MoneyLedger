@@ -10,9 +10,16 @@
 ///   "version": 1,
 ///   "exported_at": 1760000000000,
 ///   "account": "@alice:example.org",
-///   "groups": [ { <bootstrap payload> }, … ]
+///   "groups": [ { <bootstrap payload>, "link"?: {"epoch", "secret"} }, … ]
 /// }
 /// ```
+///
+/// G52 step 10: a **link group**'s entry also carries `link` — the invite
+/// key (`secret`, the link's `k`, base64url) and its `epoch` — so a restore
+/// can re-open the channel (design doc §7.2, §14 Q7). It sits next to the
+/// bootstrap content, not in the (signed / hashed) meta, so nothing on the
+/// wire changes; older builds ignore it. This device's Nostr key and "who
+/// am I" are **not** in the file (a restore asks again).
 ///
 /// Pure Dart (models + JSON only) — no DB, no Flutter — so it is fully
 /// unit-testable. The DB seams live in `backup_service.dart`.
@@ -67,13 +74,46 @@ class GroupSnapshot {
   /// G6: first-hand device keys of the snapshot's signers (user → device →
   /// key), so a restore on a fresh device can still check them.
   final Map<String, Map<String, String>> deviceKeys;
+
+  /// G52 step 10: the group's link channel on this device (null = not a
+  /// link group here).
+  final BackupLink? link;
   const GroupSnapshot({
     required this.group,
     required this.members,
     required this.expenses,
     required this.settlements,
     this.deviceKeys = const {},
+    this.link,
   });
+}
+
+/// G52 step 10: a link group's invite key as the backup file carries it.
+class BackupLink {
+  final int epoch;
+
+  /// The link secret, base64url without padding (the link's `k`).
+  final String secret;
+  const BackupLink({required this.epoch, required this.secret});
+
+  Map<String, Object> toJson() => {'epoch': epoch, 'secret': secret};
+
+  @override
+  String toString() => 'BackupLink(epoch: $epoch)'; // never the secret
+}
+
+/// G52 step 10: the invite key of backed-up [group] (its `link` entry), or
+/// null — also for a malformed one (the group then restores without a
+/// channel, like any other group).
+BackupLink? backupGroupLink(Map<String, dynamic> group) {
+  final raw = group['link'];
+  if (raw is! Map) return null;
+  final epoch = raw['epoch'];
+  final secret = raw['secret'];
+  if (epoch is! int || epoch < 1 || secret is! String || secret.isEmpty) {
+    return null;
+  }
+  return BackupLink(epoch: epoch, secret: secret);
 }
 
 /// Builds the backup JSON text for [groups] (pretty-printed — it is meant to
@@ -92,15 +132,18 @@ String buildBackupJson({
     'account': account,
     'groups': [
       for (final g in sorted)
-        buildBootstrapContent(
-          g.group.roomId,
-          g.group,
-          g.members,
-          g.expenses,
-          g.settlements,
-          deviceKeys: g.deviceKeys,
-          includePending: true,
-        ),
+        {
+          ...buildBootstrapContent(
+            g.group.roomId,
+            g.group,
+            g.members,
+            g.expenses,
+            g.settlements,
+            deviceKeys: g.deviceKeys,
+            includePending: true,
+          ),
+          if (g.link case final link?) 'link': link.toJson(),
+        },
     ],
   });
 }

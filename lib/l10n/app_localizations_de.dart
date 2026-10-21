@@ -918,7 +918,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyCsvBody =>
-      'Beim Export einer Gruppe entsteht eine CSV-Datei mit ihren Ausgaben, Zahlungen, den Namen der Personen und den Beträgen; eine Sicherung („Alle Gruppen sichern“ oder eine Gruppe über ihr Menü) schreibt eine JSON-Datei mit den Gruppen, inklusive der Matrix-IDs der Personen und gelöschter Einträge. Beides passiert nur, wenn du es auslöst. Wohin die Datei geht, entscheidest du. Eine CSV ist immer reiner Text; eine Sicherung ebenfalls, außer du legst eine Passphrase fest – dann wird sie auf deinem Gerät verschlüsselt (Argon2id + AES-256-GCM) und lässt sich nur mit dieser Passphrase wiederherstellen, die MoneyLedger weder speichert noch irgendwohin sendet. MoneyLedger hat danach keinen Einblick mehr in die Datei. Beim Import oder Wiederherstellen wird nur die Datei gelesen, die du auswählst.';
+      'Beim Export einer Gruppe entsteht eine CSV-Datei mit ihren Ausgaben, Zahlungen, den Namen der Personen und den Beträgen; eine Sicherung („Alle Gruppen sichern“ oder eine Gruppe über ihr Menü) schreibt eine JSON-Datei mit den Gruppen, inklusive der Matrix-IDs der Personen und gelöschter Einträge – und bei Gruppen, die du mit einem Einladungslink teilst, deren Einladungsschlüssel: Wer die Datei hat, kann diese Gruppen lesen und ändern. Beides passiert nur, wenn du es auslöst. Wohin die Datei geht, entscheidest du. Eine CSV ist immer reiner Text; eine Sicherung ebenfalls, außer du legst eine Passphrase fest – dann wird sie auf deinem Gerät verschlüsselt (Argon2id + AES-256-GCM) und lässt sich nur mit dieser Passphrase wiederherstellen, die MoneyLedger weder speichert noch irgendwohin sendet. MoneyLedger hat danach keinen Einblick mehr in die Datei. Beim Import oder Wiederherstellen wird nur die Datei gelesen, die du auswählst.';
 
   @override
   String get privacyBackupTitle => 'Gerätesicherungen';
@@ -3048,7 +3048,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Unter Einstellungen → Relays kannst du die Relays ändern: Ein neues wird zuerst nach seiner Infoseite (NIP-11) gefragt, danach synchronisieren deine geteilten Gruppen auch darüber. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
+      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Unter Einstellungen → Relays kannst du die Relays ändern: Ein neues wird zuerst nach seiner Infoseite (NIP-11) gefragt, danach synchronisieren deine geteilten Gruppen auch darüber. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Wenn du eine geteilte Gruppe von diesem Gerät löschst (oder die lokalen Daten löschst), bittet die App die Relays zuerst, deine Kopie zu löschen; die anderen in der Gruppe behalten ihre. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
 
   @override
   String linkInviteShareText(String group, String link) {
@@ -3400,4 +3400,58 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get linkDisclosureOwnRelay =>
       'Unter Einstellungen → Relays kannst du ein eigenes Relay hinzufügen.';
+
+  @override
+  String get deleteLinkGroupNote =>
+      'Diese Gruppe ist per Einladungslink geteilt: Die anderen behalten ihre Kopien. Deine Kopie wird von den Relays entfernt, und mit dem Link kannst du wieder beitreten.';
+
+  @override
+  String get linkUnpublishing => 'Deine Kopie wird von den Relays entfernt …';
+
+  @override
+  String deleteLocalDataLinkNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count davon sind per Einladungslink geteilt: Die anderen behalten ihre Kopien, deine werden von den Relays entfernt.',
+      one:
+          'Eine davon ist per Einladungslink geteilt: Die anderen behalten ihre Kopien, deine wird von den Relays entfernt.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String backupLinkKeysWarning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Die Datei enthält die Einladungsschlüssel von $count geteilten Gruppen: Wer die Datei hat, kann sie lesen und ändern.',
+      one:
+          'Die Datei enthält den Einladungsschlüssel einer geteilten Gruppe: Wer die Datei hat, kann diese Gruppe lesen und ändern.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String restoreLinkKeysWarning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Diese Datei enthält die Einladungsschlüssel von $count geteilten Gruppen: Wer die Datei hat, kann sie lesen und ändern. Öffne sie nach der Wiederherstellung und wähle jeweils, wer du bist – dann synchronisieren sie wieder.',
+      one:
+          'Diese Datei enthält den Einladungsschlüssel einer geteilten Gruppe: Wer die Datei hat, kann sie lesen und ändern. Öffne die Gruppe nach der Wiederherstellung und wähle, wer du bist – dann synchronisiert sie wieder.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get backupFileLinkNote =>
+      'Die Datei enthält auch die Einladungsschlüssel deiner geteilten Gruppen – damit kann jeder sie lesen und ändern. Lege beim Speichern eine Passphrase fest.';
+
+  @override
+  String get linkChooseMeBanner =>
+      'Welche Person bist du in dieser Gruppe? Sobald du wählst, synchronisiert sie wieder.';
 }

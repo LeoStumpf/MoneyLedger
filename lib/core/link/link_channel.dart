@@ -89,10 +89,11 @@ LinkChannelModel newLinkChannel(
   required String? myParticipantId,
   required int openedAt,
   String? secret,
+  int epoch = 1,
   Random? random,
 }) => LinkChannelModel(
   groupId: groupId,
-  epoch: 1,
+  epoch: epoch,
   secret: secret ?? encodeLinkSecret(generateLinkSecret(random)),
   nostrPriv: generateNostrPrivateKey(random),
   openedAt: openedAt,
@@ -248,5 +249,49 @@ Future<LinkChannelModel> joinLinkChannel(
     );
     await link.putChannel(channel);
     return channel;
+  });
+}
+
+/// G52 step 10: re-opens the channel of [groupId] from a backup file's
+/// invite key ([epoch] + [secret], design doc §7.2) — called by the
+/// restore **before** the group's records are merged (inside its
+/// transaction), so they already go in as a `linkOnly` group. The new
+/// channel has a fresh per-group Nostr key and no "me" (a new device for
+/// the group: the group page asks "Which person are you?"; nothing is
+/// published before). Returns whether a channel was stored. Nothing is
+/// stored when this device already has a channel of the group (kept as it
+/// is — the same link, or a newer one), when the group is stored here
+/// without one (a Matrix / unshared group — like a join, §6.2, a link never
+/// turns it into a link group) or when [secret] is malformed.
+Future<bool> reopenLinkChannel(
+  AppDatabase db,
+  String groupId, {
+  required int epoch,
+  required String secret,
+  int Function()? clock,
+  Random? random,
+}) {
+  final now = clock ?? () => DateTime.now().millisecondsSinceEpoch;
+  final link = LinkDao(db);
+  final groups = GroupsDao(db);
+  return db.transaction(() async {
+    if (await link.getChannel(groupId) != null) return false;
+    if (await groups.getGroup(groupId) != null) return false;
+    try {
+      decodeLinkSecret(secret);
+    } catch (_) {
+      return false;
+    }
+    await link.putChannel(
+      newLinkChannel(
+        groupId,
+        myParticipantId: null,
+        openedAt: now(),
+        secret: secret,
+        epoch: epoch,
+        random: random,
+      ),
+    );
+    return true;
   });
 }

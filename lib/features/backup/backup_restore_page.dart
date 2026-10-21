@@ -20,6 +20,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/background/background_sync_provider.dart'
+    show linkGroupsExistProvider;
 import '../../core/l10n/l10n.dart';
 import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../../core/theme/app_theme.dart';
@@ -46,6 +48,7 @@ class BackupRestorePage extends ConsumerWidget {
     final snapshots = ref.watch(snapshotsSupportedProvider);
     final last = ref.watch(lastBackupAtProvider).value;
     final groups = ref.watch(ledgerGroupsProvider).value ?? const [];
+    final linkGroups = ref.watch(linkGroupsExistProvider).value ?? false;
 
     return Scaffold(
       appBar: AppBar(title: AppBarTitle(l.settingsSectionBackup)),
@@ -85,10 +88,11 @@ class BackupRestorePage extends ConsumerWidget {
               subtitle: Text(l.backupRestoreBody),
               onTap: () => restoreFullBackup(context, ref),
             ),
-            // G52 step 10: link groups' invite keys travel in the file — a
-            // short note about that belongs right here (the preview dialog
-            // gets the per-file warning).
             _Para(l.backupFileGroupHint, key: const Key('backupGroupHint')),
+            // G52 step 10: link groups' invite keys travel in the file (the
+            // export / restore dialogs warn per file).
+            if (linkGroups)
+              _Para(l.backupFileLinkNote, key: const Key('backupLinkNote')),
 
             // ── restore points ──
             SettingsSectionHeader(l.restorePointsTitle),

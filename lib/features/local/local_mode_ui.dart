@@ -4,11 +4,12 @@ import '../../core/widgets/action_error.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/link/link_sync_engine.dart' show linkUnpublisherProvider;
 import '../../core/session/app_session.dart';
 import '../../core/session/device_prefs.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/text_prompt_dialog.dart';
-import '../backup/backup_ui.dart' show exportFullBackup;
+import '../backup/backup_ui.dart' show exportFullBackup, runWithProgress;
 import '../expenses/expenses_provider.dart';
 import '../groups/group_provider.dart';
 
@@ -211,11 +212,39 @@ Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
   final deleteFiles = ref.read(localDatabaseDeleterProvider);
   final container = ProviderScope.containerOf(context, listen: false);
   final groups = ref.read(ledgerGroupsProvider).value?.length ?? 0;
+  final unpublish = ref.read(linkUnpublisherProvider);
+  // G52 step 10 (§7.3): the link groups — their copies leave the relays
+  // first; the others in them keep theirs.
+  var linkIds = const <String>[];
+  try {
+    linkIds = [
+      for (final c in await ref.read(linkDaoProvider).getAllChannels())
+        c.groupId,
+    ];
+  } catch (_) {
+    // A closed DB: nothing to unpublish (the wipe reports the failure).
+  }
+  if (!context.mounted) return;
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(l.deleteLocalDataConfirmTitle),
-      content: Text(l.deleteLocalDataConfirmBody(groups)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.deleteLocalDataConfirmBody(groups)),
+            if (linkIds.isNotEmpty) ...[
+              const SizedBox(height: Insets.m),
+              Text(
+                l.deleteLocalDataLinkNote(linkIds.length),
+                key: const Key('deleteLocalDataLinkNote'),
+              ),
+            ],
+          ],
+        ),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
@@ -234,6 +263,14 @@ Future<void> confirmDeleteLocalData(BuildContext context, WidgetRef ref) async {
     ),
   );
   if (ok != true) return;
+  if (linkIds.isNotEmpty && context.mounted) {
+    // Each bounded by kLinkUnpublishMaxWait, all at once; never throws.
+    await runWithProgress(
+      context,
+      l.linkUnpublishing,
+      () => Future.wait(linkIds.map(unpublish)),
+    );
+  }
   // G46: set before local mode ends, so the router's first redirect off the
   // groups page already goes to the welcome (no login page flash).
   container

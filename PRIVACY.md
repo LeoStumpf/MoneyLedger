@@ -102,7 +102,9 @@ it syncs, roughly how large the group is and how many devices take part, and
 that the data comes from MoneyLedger. We ask them to delete each copy after 30
 days (renewed while the group is in use), but relays may keep or archive data
 longer — and anyone who gets the link, now or later, can read and change the
-group, also from archived copies. A group only on this device never contacts a
+group, also from archived copies. When you delete a shared group from this
+device (or delete local data), the app first asks the relays to delete your
+copy; the others in the group keep theirs. A group only on this device never contacts a
 relay: a group starts syncing only when you invite with a link, create it
 with “Share with an invite link” or join it with a link someone sent you.
 Opening an invite link contacts nothing until you tap “Join”; the relays are
@@ -113,7 +115,9 @@ then asked for that group.
 Exporting a group writes a CSV file with its expenses, payments, the
 people's names and the amounts; a backup ("Back up all groups" in
 Settings, or one group from its menu) writes one JSON file with the groups,
-including the people's Matrix IDs and deleted entries. Both happen only
+including the people's Matrix IDs and deleted entries — and, for groups you
+share with an invite link, their invite key: anyone with the file can read
+and change those groups. Both happen only
 when you ask for it. Where the file goes is your choice. A CSV is always plain
 text; a backup is plain text too unless you set a passphrase — then it is
 encrypted on your device (Argon2id + AES-256-GCM) and can only be restored

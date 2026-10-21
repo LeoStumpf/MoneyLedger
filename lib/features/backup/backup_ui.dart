@@ -19,6 +19,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/session/app_session.dart' show localModeActiveProvider;
+import '../expenses/expenses_provider.dart' show linkDaoProvider;
 import '../groups/group_provider.dart';
 import '../history/group_history.dart' show GroupResetPlan;
 import '../history/group_reset.dart'
@@ -88,8 +89,9 @@ String backupSavedMessage(
 };
 
 /// Runs [work] behind a modal, non-dismissible progress dialog (the Argon2id
-/// key derivation takes a moment).
-Future<T> _withProgress<T>(
+/// key derivation takes a moment; G52 step 10: unpublishing a link group
+/// before it is deleted).
+Future<T> runWithProgress<T>(
   BuildContext context,
   String text,
   Future<T> Function() work,
@@ -137,9 +139,20 @@ Future<BackupExportOutcome> runBackupExport(
   final service = ref.read(backupServiceProvider);
   final params = ref.read(backupKdfParamsProvider);
   final account = ref.read(currentUserIdProvider);
+  final link = ref.read(linkDaoProvider);
+  // G52 step 10: the file will carry these link groups' invite keys.
+  var linkGroups = 0;
+  try {
+    linkGroups = groupId == null
+        ? (await link.getAllChannels()).length
+        : (await link.getChannel(groupId) == null ? 0 : 1);
+  } catch (_) {
+    // A closed DB fails the export below anyway.
+  }
+  if (!context.mounted) return BackupExportOutcome.cancelled;
   final passphrase = await showDialog<String>(
     context: context,
-    builder: (_) => const BackupPassphraseDialog(),
+    builder: (_) => BackupPassphraseDialog(linkGroups: linkGroups),
   );
   if (passphrase == null || !context.mounted) {
     return BackupExportOutcome.cancelled;
@@ -159,7 +172,7 @@ Future<BackupExportOutcome> runBackupExport(
     if (encrypted) {
       if (!context.mounted) return BackupExportOutcome.cancelled;
       final plain = text;
-      text = await _withProgress(context, l.backupEncrypting, () async {
+      text = await runWithProgress(context, l.backupEncrypting, () async {
         final sw = Stopwatch()..start();
         final enc = await encryptBackup(plain, passphrase, params: params);
         debugPrint(
@@ -255,7 +268,9 @@ Future<void> exportGroupBackup(
 /// a strength hint. Pops the passphrase — `''` for an unencrypted file — or
 /// null when cancelled.
 class BackupPassphraseDialog extends StatefulWidget {
-  const BackupPassphraseDialog({super.key});
+  /// G52 step 10: link groups whose invite key goes into the file.
+  final int linkGroups;
+  const BackupPassphraseDialog({super.key, this.linkGroups = 0});
 
   @override
   State<BackupPassphraseDialog> createState() => _BackupPassphraseDialogState();
@@ -347,12 +362,20 @@ class _BackupPassphraseDialogState extends State<BackupPassphraseDialog> {
                 ),
               ),
             const SizedBox(height: Insets.s),
-            if (pass.isEmpty)
+            if (pass.isEmpty) ...[
               _Warning(
                 key: const Key('backupPlaintextWarning'),
                 text: l.backupPlaintextWarning,
-              )
-            else
+              ),
+              // §7.2: one more reason for a passphrase.
+              if (widget.linkGroups > 0) ...[
+                const SizedBox(height: Insets.s),
+                _Warning(
+                  key: const Key('backupLinkKeysWarning'),
+                  text: l.backupLinkKeysWarning(widget.linkGroups),
+                ),
+              ],
+            ] else
               Text(
                 l.backupPassphraseKeepSafe,
                 key: const Key('backupKeepSafe'),
@@ -403,7 +426,7 @@ Future<String?> unlockEncryptedBackup(
     );
     if (pass == null || !context.mounted) return null;
     try {
-      return await _withProgress(
+      return await runWithProgress(
         context,
         l.backupDecrypting,
         () => decrypt(text, pass),
@@ -736,6 +759,14 @@ class _RestorePreviewDialogState extends State<RestorePreviewDialog> {
               _Warning(
                 key: const Key('restoreLocalOwnFile'),
                 text: l.restoreLocalOwnFile,
+              ),
+            ],
+            // G52 step 10 (§7.2): the file holds link groups' invite keys.
+            if (preview.linkGroups > 0) ...[
+              const SizedBox(height: Insets.m),
+              _Warning(
+                key: const Key('restoreLinkKeys'),
+                text: l.restoreLinkKeysWarning(preview.linkGroups),
               ),
             ],
             if (preview.otherAccount) ...[

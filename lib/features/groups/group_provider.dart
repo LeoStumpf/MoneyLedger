@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -6,6 +7,8 @@ import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/link_dao.dart';
 import '../../core/link/link_channel.dart' show newLinkChannel;
+import '../../core/link/link_sync_engine.dart'
+    show LinkUnpublisher, linkUnpublisherProvider;
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
 import '../../core/database/daos/signing_dao.dart';
@@ -103,6 +106,7 @@ class _GroupWriteContext {
       settings = ref.read(settingsDaoProvider),
       signing = ref.read(signingDaoProvider),
       receipts = ref.read(receiptStoreProvider),
+      linkUnpublish = ref.read(linkUnpublisherProvider),
       budget = ref.read(payloadBudgetProvider),
       health = ref.read(syncHealthProvider.notifier),
       transport = withDeliveryPolicy(
@@ -136,6 +140,10 @@ class _GroupWriteContext {
 
   /// G78: this ledger's receipt photos (null where there are none).
   final ReceiptStore? receipts;
+
+  /// G52 step 10: removes this device's copy of a link group from the
+  /// relays before the group is purged (§7.3).
+  final LinkUnpublisher linkUnpublish;
 
   /// G14: max JSON bytes per to-device message (bootstraps are chunked).
   final int budget;
@@ -828,6 +836,16 @@ class GroupExiter extends _$GroupExiter {
     LeftGroupTombstone t,
   ) async {
     if (w.db.isClosed) return; // account switched meanwhile — not ours to touch
+    // G52 step 10 (§7.3): a link group's own events leave the relays first
+    // (header-only parts expiring after a day + a NIP-09 deletion) —
+    // best-effort and bounded; the peers keep their copies. The purge then
+    // drops the channel (secret + Nostr key) with the group.
+    if (await w.link.getChannel(groupId) != null) {
+      if (w.db.isClosed) return;
+      final ok = await w.linkUnpublish(groupId);
+      debugPrint('[link] $groupId unpublished before the purge: $ok');
+      if (w.db.isClosed) return;
+    }
     // G78: the group's receipt photos go with it (ids read before the purge).
     final expenseIds = w.receipts == null
         ? const <String>[]

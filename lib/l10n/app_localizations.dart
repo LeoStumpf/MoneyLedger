@@ -1589,7 +1589,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyCsvBody.
   ///
   /// In en, this message translates to:
-  /// **'Exporting a group writes a CSV file with its expenses, payments, the people\'s names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people\'s Matrix IDs and deleted entries. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.'**
+  /// **'Exporting a group writes a CSV file with its expenses, payments, the people\'s names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people\'s Matrix IDs and deleted entries — and, for groups you share with an invite link, their invite key: anyone with the file can read and change those groups. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.'**
   String get privacyCsvBody;
 
   /// No description provided for @privacyBackupTitle.
@@ -4787,7 +4787,7 @@ abstract class AppLocalizations {
   /// G52: privacy policy section body (keep in sync with PRIVACY.md)
   ///
   /// In en, this message translates to:
-  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.'**
+  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. When you delete a shared group from this device (or delete local data), the app first asks the relays to delete your copy; the others in the group keep theirs. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.'**
   String get privacyLinkBody;
 
   /// G52: text handed to the share sheet with the invite link
@@ -5341,6 +5341,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You can add your own relay under Settings → Relays.'**
   String get linkDisclosureOwnRelay;
+
+  /// G52 step 10: leave / delete dialog of a link group
+  ///
+  /// In en, this message translates to:
+  /// **'This group is shared with an invite link: the others keep their copies. Your copy is removed from the relays, and you can join again with the link.'**
+  String get deleteLinkGroupNote;
+
+  /// G52 step 10: progress while a link group is unpublished before it is deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Removing your copy from the relays…'**
+  String get linkUnpublishing;
+
+  /// G52 step 10: Delete local data confirmation, link groups
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{One of them is shared with an invite link: the others keep their copies, yours is removed from the relays.} other{{count} of them are shared with an invite link: the others keep their copies, yours are removed from the relays.}}'**
+  String deleteLocalDataLinkNote(int count);
+
+  /// G52 step 10 (§7.2): backup export without passphrase, link groups in the file
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The file contains the invite key of one shared group: anyone with the file can read and change that group.} other{The file contains the invite keys of {count} shared groups: anyone with the file can read and change them.}}'**
+  String backupLinkKeysWarning(int count);
+
+  /// G52 step 10 (§7.2): restore preview warning, link groups in the file
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{This file contains the invite key of one shared group: anyone with the file can read and change it. After the restore, open the group and choose who you are — then it syncs again.} other{This file contains the invite keys of {count} shared groups: anyone with the file can read and change them. After the restore, open each of them and choose who you are — then they sync again.}}'**
+  String restoreLinkKeysWarning(int count);
+
+  /// G52 step 10: backup page note when link groups exist
+  ///
+  /// In en, this message translates to:
+  /// **'The file also contains the invite keys of your shared groups — with it, anyone can read and change them. Set a passphrase when you save it.'**
+  String get backupFileLinkNote;
+
+  /// G52 step 10: banner in a link group re-opened by a restore (no 'me' yet)
+  ///
+  /// In en, this message translates to:
+  /// **'Which person are you in this group? It syncs again once you choose.'**
+  String get linkChooseMeBanner;
 }
 
 class _AppLocalizationsDelegate

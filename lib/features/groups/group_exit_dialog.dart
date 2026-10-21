@@ -78,6 +78,7 @@ Future<bool> confirmGroupExit(
   required String groupName,
   required String? warning,
   Future<String?> Function()? onBackup,
+  bool linkGroup = false,
 }) async {
   final result = await showDialog<bool>(
     context: context,
@@ -86,6 +87,7 @@ Future<bool> confirmGroupExit(
       groupName: groupName,
       warning: warning,
       onBackup: onBackup,
+      linkGroup: linkGroup,
     ),
   );
   return result == true;
@@ -96,11 +98,16 @@ class _GroupExitDialog extends StatefulWidget {
   final String groupName;
   final String? warning;
   final Future<String?> Function()? onBackup;
+
+  /// G52 step 10: a link group — the others keep their copies, ours leaves
+  /// the relays.
+  final bool linkGroup;
   const _GroupExitDialog({
     required this.kind,
     required this.groupName,
     required this.warning,
     required this.onBackup,
+    this.linkGroup = false,
   });
 
   @override
@@ -138,6 +145,10 @@ class _GroupExitDialogState extends State<_GroupExitDialog> {
                   ? l.leaveGroupBody(widget.groupName)
                   : l.deleteGroupBody(widget.groupName),
             ),
+            if (widget.linkGroup) ...[
+              const SizedBox(height: 12),
+              Text(l.deleteLinkGroupNote, key: const Key('exitLinkGroupNote')),
+            ],
             if (warning != null) ...[
               const SizedBox(height: 12),
               Row(

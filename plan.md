@@ -646,7 +646,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`) — store the channel **before** the first merge; refuse a link whose group id this device holds as a non-link group; invalidate `currentParticipant` after setting "me" — `lib/features/link/link_join.dart`, `core/link/link_join_probe.dart`, `LinkSyncEngine.join` / `joinLinkChannel`; design doc §13 "As built (step 7)"
 - [x] 8. Background round link phase — `runBackgroundRound(whichLedger:, openLocalDatabase:, linkOverrides:)`, `linkBackgroundRoundProvider`, local-mode scheduling via `linkGroupsExistProvider`; design doc §13 "As built (step 8)"
 - [x] 9. Settings: relay list + status, peers sheet — `lib/features/link/relay_settings{,_page}.dart` (`/settings/relays`), `LinkSyncEngine.watchRelays` / `setRelays` / `syncNow`, sync sheet with G68 (`lib/features/sync/`); design doc §13 "As built (step 9)"
-- [ ] 10. Leave / delete unpublish; backup carries the secret (+ warning)
+- [x] 10. Leave / delete unpublish; backup carries the secret (+ warning) — `linkUnpublisherProvider` before `GroupExiter`'s purge + *Delete local data*; backup entry `link: {epoch, secret}` (`BackupLink`), restore → `reopenLinkChannel` + "Which person are you?" banner (`chooseLinkParticipant`); design doc §13 "As built (step 10)"
 - [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed
 - [ ] 12. Reset invite link
 - [ ] 13. Device pass (Pixel + emulator + web)
@@ -660,12 +660,12 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       group* (Matrix accounts only, default off = Matrix group, §14 Q13);
       the channel is stored before the first write. Existing Matrix groups
       show no link entry until G53.
-- [ ] (from step 5) Wire the seams: ~~step 6 invite → `LinkSyncEngine.
+- [x] (from step 5) Wire the seams: ~~step 6 invite → `LinkSyncEngine.
       openChannel`~~ (done: `linkChannelOpenerProvider`); ~~step 7 join → `putChannel` + `refresh(groupId:)` + set
       "me"~~ (done: `LinkSyncEngine.join` + `joinLinkGroup`); ~~step 8 background round → `refresh()` + `publishAll()`~~ (done); ~~step 9
       icon / peers sheet → `linkGroupSyncStatusProvider`, `link_peers`,
-      `relayPolicy.rejecting` + `link_relay_state:<url>`~~ (done); step 10 leave →
-      `unpublish(groupId)` before the purge
+      `relayPolicy.rejecting` + `link_relay_state:<url>`~~ (done); ~~step 10 leave →
+      `unpublish(groupId)` before the purge~~ (done)
 - [x] (from step 5) The group page's sync cloud for a link-only group still
       comes from the Matrix `groupSyncStatusProvider` — switch it to the link
       status in step 9 (done: `GroupSyncButton`)
@@ -682,9 +682,11 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       "Nothing leaves this device" and the settings line already say
       "groups you don't share …"; welcome + onboarding texts still say
       "everything stays on this device")
-- [ ] (from step 6) Leaving / deleting a link group uses `groupExitKind`
+- [x] (from step 6) Leaving / deleting a link group uses `groupExitKind`
       (Matrix claims) — a link group of a signed-in user shows *Delete*;
-      revisit with step 10 (unpublish)
+      revisit with step 10 (unpublish) — kept: §7.3 says *Leave* = *Delete
+      from this device* in a link group; the dialog now says the others
+      keep their copies and the copy leaves the relays first
 - [ ] (from step 7) "Nothing found": the design keeps the pending link for
       7 days so live sync picks the group up later — not built (needs a
       pending-link store without a group id); today the page offers *Try
@@ -723,6 +725,19 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 9) Device pass: Settings → Relays (add a real custom
       relay, NIP-11 check, remove, defaults), the sync sheet of a link and a
       Matrix group (*Sync now*), 360 dp / 200 % / TalkBack
+- [ ] (from step 10) The backup carries the invite key next to the
+      bootstrap content (`link: {epoch, secret}`), not in the meta — G53's
+      signed meta `link` field may move it there (keep reading the old
+      place)
+- [ ] (from step 10) A failed unpublish (offline, 8 s cap) isn't retried —
+      the group is purged anyway and our events expire on the relays after
+      ≤ 30 days; no message tells the user
+- [ ] (from step 10) The "Which person are you?" picker after a restore
+      lists the people without the join picker's "used on another phone"
+      hints (the `link_peers` `me` of the re-fetched events)
+- [ ] (from step 10) Device pass: delete a link group on one phone (the
+      other keeps it, our events gone from nos.lol), restore the backup,
+      choose "me", syncs again
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a

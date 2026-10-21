@@ -212,6 +212,35 @@ final linkSyncEngineProvider = Provider.autoDispose<LinkSyncEngine>((ref) {
   return engine;
 });
 
+/// G52 step 10 (§7.3): how long leaving / deleting a link group (and
+/// *Delete local data*) waits for [LinkSyncEngine.unpublish] in total
+/// before it purges anyway — best-effort, the relays drop our events after
+/// their expiry regardless.
+const kLinkUnpublishMaxWait = Duration(seconds: 8);
+
+/// Unpublishes this device's copy of a link group (true = ≥ 1 relay
+/// accepted the deletion; false also when it timed out / failed).
+typedef LinkUnpublisher = Future<bool> Function(String groupId);
+
+/// G52 step 10: the seam leave / delete / *Delete local data* use before a
+/// link group is purged — [LinkSyncEngine.unpublish] on the running engine
+/// (kept alive by `LedgerSyncHost`), bounded by [kLinkUnpublishMaxWait],
+/// never throwing. Off (false at once) in the offline demo.
+final linkUnpublisherProvider = Provider<LinkUnpublisher>(
+  (ref) => (groupId) async {
+    if (!ref.read(linkSyncEnabledProvider)) return false;
+    try {
+      return await ref
+          .read(linkSyncEngineProvider)
+          .unpublish(groupId)
+          .timeout(kLinkUnpublishMaxWait, onTimeout: () => false);
+    } catch (e) {
+      debugPrint('[link] unpublish of $groupId failed: $e');
+      return false;
+    }
+  },
+);
+
 /// Keeps the link sync engine running while there is a ledger (an account
 /// or local mode) — watched by `LedgerSyncHost`.
 final linkSyncActiveProvider = Provider.autoDispose<bool>((ref) {
@@ -1538,6 +1567,8 @@ class LinkSyncEngine {
     String groupId, {
     Duration timeout = const Duration(seconds: 5),
   }) => _track(() async {
+    // G52 step 10: right after start the channels may not be loaded yet.
+    if (_started) await ready;
     await _reloadChain;
     _debounceTimers.remove(groupId)?.cancel();
     _retryTimers.remove(groupId)?.cancel();
