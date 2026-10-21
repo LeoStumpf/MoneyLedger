@@ -383,6 +383,15 @@ class _ChoicesPage extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            // G52 step 7: someone sent an invite link (G54 reorders the
+            // choices). The join itself marks the welcome seen.
+            const SizedBox(height: Insets.m),
+            TextButton.icon(
+              key: const Key('welcomeJoinLink'),
+              icon: const Icon(Icons.link),
+              label: Text(l.joinLinkEntry),
+              onPressed: () => context.push('/join'),
+            ),
           ],
         ),
       ),

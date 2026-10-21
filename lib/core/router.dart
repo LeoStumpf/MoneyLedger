@@ -6,6 +6,7 @@ import '../features/history/group_reset_page.dart';
 import '../features/history/restore_points_page.dart';
 import '../features/about/about_page.dart';
 import '../features/backup/backup_restore_page.dart';
+import '../features/link/link_join.dart';
 import '../features/local/local_setup_page.dart';
 import '../features/welcome/welcome_page.dart';
 import 'session/app_session.dart';
@@ -68,6 +69,10 @@ const _signedOutEntryPages = {kWelcomeLocation, kLocalSetupLocation};
 ///   The settings pages (`/settings`, `/groups/:id/settings`, G65; the
 ///   backup page `/backup`, G70) are "in" pages: signed out they redirect
 ///   like any other.
+/// * G52 step 7: the join page ([kJoinLocation]) is **never** redirected —
+///   an invite link works signed out (even before the welcome; the join
+///   creates a local profile), in local mode, on a Matrix account and
+///   while the session or onboarding flag still loads (the page waits).
 String? routerRedirect({
   required AppSessionKind session,
   required WelcomeStatus welcome,
@@ -76,6 +81,7 @@ String? routerRedirect({
   SignedOutLanding landing = SignedOutLanding.login,
   required String location,
 }) {
+  if (location == kJoinLocation) return null;
   final public = _publicPages.contains(location);
   switch (session) {
     case AppSessionKind.loading:
@@ -172,6 +178,13 @@ GoRouter router(Ref ref) {
           revisit: true,
           initialTopic: WelcomeTopic.fromName(s.uri.queryParameters['topic']),
         ),
+      ),
+      // G52 step 7: an invite link (`?v=1&k=…&n=…` — the link's fragment;
+      // the web's hash URL strategy delivers it like this) or the paste field.
+      GoRoute(
+        path: kJoinLocation,
+        builder: (_, s) =>
+            JoinLinkPage(key: ValueKey(s.uri.query), fragment: s.uri.query),
       ),
       GoRoute(
         path: kLocalSetupLocation,

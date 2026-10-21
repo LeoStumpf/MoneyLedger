@@ -50,6 +50,31 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="moneyledger" android:host="sso-callback"/>
             </intent-filter>
+            <!-- G52 step 7: invite links of link groups. The app form
+                 moneyledger://join#v=1&k=…&n=… (the landing page's button) … -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="moneyledger" android:host="join"/>
+            </intent-filter>
+            <!-- … and the shared https form as a verified App Link (assetlinks.json
+                 at https://leostumpf.github.io/.well-known/, G52 step 11). The
+                 secret is in the #fragment, which never reaches the server. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"
+                    android:host="leostumpf.github.io"
+                    android:pathPrefix="/moneyledger/join"/>
+            </intent-filter>
+            <!-- G52 step 7: deep links are read by app_links only (SSO callback,
+                 invite links); Flutter's own deep linking would also push the
+                 link's path as a route. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false"/>
         </activity>
         <!-- G78: image_picker (receipt photos) declares a disabled service
              that only asks Google Play services to install the backported

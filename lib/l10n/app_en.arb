@@ -2988,7 +2988,7 @@
   "@privacyLinkTitle": {
     "description": "G52: privacy policy section title (keep in sync with PRIVACY.md)"
   },
-  "privacyLinkBody": "A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can't read names, amounts or notes, but they see your device's IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link or create it with “Share with an invite link”.",
+  "privacyLinkBody": "A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can't read names, amounts or notes, but they see your device's IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.",
   "@privacyLinkBody": {
     "description": "G52: privacy policy section body (keep in sync with PRIVACY.md)"
   },
@@ -3000,6 +3000,104 @@
         "type": "String"
       },
       "link": {
+        "type": "String"
+      }
+    }
+  },
+  "joinLinkTitle": "Join a group",
+  "@joinLinkTitle": {
+    "description": "G52 step 7: join page title"
+  },
+  "joinLinkEntry": "Join with an invite link",
+  "@joinLinkEntry": {
+    "description": "G52 step 7: entry to the join page (welcome, empty groups list, create group)"
+  },
+  "joinLinkPasteHint": "Paste the invite link someone sent you.",
+  "@joinLinkPasteHint": {
+    "description": "G52 step 7: paste field intro"
+  },
+  "joinLinkPasteLabel": "Invite link",
+  "@joinLinkPasteLabel": {
+    "description": "G52 step 7: paste field label / button"
+  },
+  "joinLinkContinue": "Continue",
+  "@joinLinkContinue": {
+    "description": "G52 step 7: paste field button"
+  },
+  "joinLinkInvalidTitle": "This invite link doesn't work",
+  "@joinLinkInvalidTitle": {
+    "description": "G52 step 7: broken link title"
+  },
+  "joinLinkInvalidBody": "Check that the whole link was copied, or ask for it again.",
+  "@joinLinkInvalidBody": {
+    "description": "G52 step 7: broken link body"
+  },
+  "joinLinkUpdateApp": "This invite link needs a newer version of MoneyLedger. Please update the app.",
+  "@joinLinkUpdateApp": {
+    "description": "G52 step 7: link of an unknown version"
+  },
+  "joinLinkInvited": "You've been invited to a group.",
+  "@joinLinkInvited": {
+    "description": "G52 step 7: intro without a name hint"
+  },
+  "joinLinkIntroBody": "MoneyLedger looks the group up on the relays the link points to and then asks who you are in it.",
+  "@joinLinkIntroBody": {
+    "description": "G52 step 7: intro body"
+  },
+  "joinLinkNoAccountHint": "No account needed: MoneyLedger starts without an account on this device.",
+  "@joinLinkNoAccountHint": {
+    "description": "G52 step 7: intro hint when nobody is signed in"
+  },
+  "joinLinkSearching": "Looking for the group…",
+  "@joinLinkSearching": {
+    "description": "G52 step 7: progress"
+  },
+  "joinLinkNotFoundTitle": "Couldn't find this group yet",
+  "@joinLinkNotFoundTitle": {
+    "description": "G52 step 7: nothing found title"
+  },
+  "joinLinkNotFoundBody": "The person who invited you needs to open MoneyLedger once so the group is shared. Try again in a moment.",
+  "@joinLinkNotFoundBody": {
+    "description": "G52 step 7: nothing found body"
+  },
+  "joinLinkRetry": "Try again",
+  "@joinLinkRetry": {
+    "description": "G52 step 7: retry button"
+  },
+  "joinLinkBlockedTitle": "Can't join with this link",
+  "@joinLinkBlockedTitle": {
+    "description": "G52 step 7: refused join title"
+  },
+  "joinLinkNotALinkGroup": "This group is already on this device and isn't shared with a link here, so this link can't add it.",
+  "@joinLinkNotALinkGroup": {
+    "description": "G52 step 7: the group is held here as a non-link group"
+  },
+  "joinLinkOtherLink": "This group is already on this device with a different invite link.",
+  "@joinLinkOtherLink": {
+    "description": "G52 step 7: the group is held here with another link"
+  },
+  "joinLinkUsedElsewhere": "Already picked on another phone",
+  "@joinLinkUsedElsewhere": {
+    "description": "G52 step 7: picker hint under a person"
+  },
+  "joinLinkPersonGone": "This person is no longer in the group. Please pick again.",
+  "@joinLinkPersonGone": {
+    "description": "G52 step 7: picked person was removed meanwhile"
+  },
+  "joinLinkInvitedTo": "You've been invited to “{group}”.",
+  "@joinLinkInvitedTo": {
+    "description": "G52 step 7: intro with the link's name hint",
+    "placeholders": {
+      "group": {
+        "type": "String"
+      }
+    }
+  },
+  "joinLinkPickTitle": "Who are you in “{group}”?",
+  "@joinLinkPickTitle": {
+    "description": "G52 step 7: picker title",
+    "placeholders": {
+      "group": {
         "type": "String"
       }
     }

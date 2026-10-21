@@ -5,6 +5,7 @@ import 'core/router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/sync/ledger_sync_host.dart';
 import 'features/devices/devices_page.dart';
+import 'features/link/link_join.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -28,7 +29,11 @@ class App extends ConsumerWidget {
         child: IncomingVerificationListener(
           navigatorContext: () =>
               router.routerDelegate.navigatorKey.currentContext,
-          child: child ?? const SizedBox.shrink(),
+          // G52 step 7: an opened invite link → the join page.
+          child: JoinLinkListener(
+            go: router.go,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );

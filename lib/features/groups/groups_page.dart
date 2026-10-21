@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/demo/demo_mode.dart' show kOfflineDemo;
 import '../../core/matrix/crypto_status.dart';
 import '../../core/session/app_session.dart';
 import '../../core/session/local_adoption.dart';
@@ -341,6 +342,14 @@ class _GroupsBody extends ConsumerWidget {
                 icon: const Icon(Icons.upload_file),
                 label: Text(l.importCsv),
               ),
+              // G52 step 7: join a group someone shared by link.
+              if (!kOfflineDemo)
+                TextButton.icon(
+                  key: const Key('emptyJoinLink'),
+                  onPressed: () => context.push('/join'),
+                  icon: const Icon(Icons.link),
+                  label: Text(l.joinLinkEntry),
+                ),
             ],
           );
         }

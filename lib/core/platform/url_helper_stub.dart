@@ -19,27 +19,32 @@ Future<void> launchExternalUrl(String url) async {
   await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 }
 
-/// Incoming deep links (the SSO callback). Lazily creates [AppLinks] only when
-/// listened, so widget tests that override the SSO-callback provider never
-/// touch the platform plugin.
+/// Every deep link opened into the app (the SSO callback, G52 invite
+/// links). Lazily creates [AppLinks] only when listened, so widget tests
+/// that override the link providers never touch the platform plugin.
 ///
-/// Emits [getInitialLink] first: when SSO redirects back, a backgrounded app
-/// (commonly evicted on low-memory devices while the browser is foreground) is
-/// cold-started and the callback arrives as the launch intent, which
-/// [uriLinkStream] does NOT replay. Without this the login token is dropped and
-/// the user lands back on the login screen with nothing happening.
-Stream<Uri> incomingSsoLinks() async* {
+/// Emits [AppLinks.getInitialLink] first: when SSO redirects back, a
+/// backgrounded app (commonly evicted on low-memory devices while the
+/// browser is foreground) is cold-started and the callback arrives as the
+/// launch intent, which [AppLinks.uriLinkStream] does NOT replay — same for
+/// an invite link that starts the app. The stream may replay the launch
+/// link; it is skipped (SSO login tokens are single-use). Nothing is logged
+/// here: the links carry secrets (login tokens, invite-link keys).
+Stream<Uri> incomingAppLinks() async* {
   final appLinks = AppLinks();
   final initial = await appLinks.getInitialLink();
-  if (initial != null) {
-    debugPrint('[sso] initial link: ${redactSsoUri(initial)}');
-    yield initial;
-  }
+  if (initial != null) yield initial;
   await for (final uri in appLinks.uriLinkStream) {
-    // uriLinkStream may also replay the launch link; don't process it twice
-    // (SSO login tokens are single-use, so a re-exchange would error).
     if (uri == initial) continue;
-    debugPrint('[sso] stream link: ${redactSsoUri(uri)}');
     yield uri;
   }
 }
+
+/// Incoming SSO callback deep links ([incomingAppLinks] without the G52
+/// invite links, which `link_join.dart` reads).
+Stream<Uri> incomingSsoLinks() => incomingAppLinks()
+    .where((uri) => uri.host.toLowerCase() == 'sso-callback')
+    .map((uri) {
+      debugPrint('[sso] link: ${redactSsoUri(uri)}');
+      return uri;
+    });

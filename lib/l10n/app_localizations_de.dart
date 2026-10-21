@@ -3048,10 +3048,89 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst oder sie mit „Mit Einladungslink teilen“ erstellst.';
+      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
 
   @override
   String linkInviteShareText(String group, String link) {
     return 'Mach mit bei „$group“ in MoneyLedger: $link';
+  }
+
+  @override
+  String get joinLinkTitle => 'Gruppe beitreten';
+
+  @override
+  String get joinLinkEntry => 'Mit Einladungslink beitreten';
+
+  @override
+  String get joinLinkPasteHint =>
+      'Füge den Einladungslink ein, den du bekommen hast.';
+
+  @override
+  String get joinLinkPasteLabel => 'Einladungslink';
+
+  @override
+  String get joinLinkContinue => 'Weiter';
+
+  @override
+  String get joinLinkInvalidTitle => 'Dieser Einladungslink funktioniert nicht';
+
+  @override
+  String get joinLinkInvalidBody =>
+      'Prüf, ob der ganze Link kopiert wurde, oder lass ihn dir noch mal schicken.';
+
+  @override
+  String get joinLinkUpdateApp =>
+      'Für diesen Einladungslink brauchst du eine neuere Version von MoneyLedger. Bitte aktualisiere die App.';
+
+  @override
+  String get joinLinkInvited => 'Du wurdest zu einer Gruppe eingeladen.';
+
+  @override
+  String get joinLinkIntroBody =>
+      'MoneyLedger sucht die Gruppe über die Relays und fragt dann, wer du in der Gruppe bist.';
+
+  @override
+  String get joinLinkNoAccountHint =>
+      'Kein Konto nötig: MoneyLedger startet auf diesem Gerät ohne Konto.';
+
+  @override
+  String get joinLinkSearching => 'Gruppe wird gesucht …';
+
+  @override
+  String get joinLinkNotFoundTitle => 'Gruppe noch nicht gefunden';
+
+  @override
+  String get joinLinkNotFoundBody =>
+      'Die Person, die dich eingeladen hat, muss MoneyLedger einmal öffnen, damit die Gruppe geteilt wird. Versuch es gleich noch mal.';
+
+  @override
+  String get joinLinkRetry => 'Noch mal versuchen';
+
+  @override
+  String get joinLinkBlockedTitle => 'Beitreten mit diesem Link nicht möglich';
+
+  @override
+  String get joinLinkNotALinkGroup =>
+      'Diese Gruppe ist schon auf diesem Gerät und wird hier nicht per Link geteilt – dieser Link kann sie nicht hinzufügen.';
+
+  @override
+  String get joinLinkOtherLink =>
+      'Diese Gruppe ist schon mit einem anderen Einladungslink auf diesem Gerät.';
+
+  @override
+  String get joinLinkUsedElsewhere => 'Schon auf einem anderen Handy gewählt';
+
+  @override
+  String get joinLinkPersonGone =>
+      'Diese Person ist nicht mehr in der Gruppe. Bitte wähl neu.';
+
+  @override
+  String joinLinkInvitedTo(String group) {
+    return 'Du wurdest zu „$group“ eingeladen.';
+  }
+
+  @override
+  String joinLinkPickTitle(String group) {
+    return 'Wer bist du in „$group“?';
   }
 }

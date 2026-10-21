@@ -167,6 +167,16 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                         )
                       : Text(l.create),
                 ),
+                // G52 step 7: got an invite link instead?
+                if (!kOfflineDemo) ...[
+                  const SizedBox(height: Insets.s),
+                  TextButton.icon(
+                    key: const Key('createGroupJoinLink'),
+                    onPressed: () => context.push('/join'),
+                    icon: const Icon(Icons.link),
+                    label: Text(l.joinLinkEntry),
+                  ),
+                ],
               ],
             ),
           ),

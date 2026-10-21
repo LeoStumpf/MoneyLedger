@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/link/link_join_probe.dart';
+import 'package:money_ledger/features/link/link_join.dart';
 import 'package:money_ledger/core/database/account_database.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
@@ -413,6 +415,62 @@ void main() {
     await _expectGuidelines(tester);
     handle.dispose();
   });
+
+  for (final picker in [false, true]) {
+    testWidgets('G52 join page (${picker ? 'picker' : 'intro'})', (
+      tester,
+    ) async {
+      _phone(tester);
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _routed(
+          const JoinLinkPage(
+            fragment:
+                'v=1&k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&n=Trip',
+          ),
+          _overrides(
+            extra: [
+              linkJoinLookupProvider.overrideWithValue(
+                (c, i) async => const LinkJoinLookup(
+                  preview: LinkGroupPreview(
+                    groupId: 'g',
+                    name: 'Trip',
+                    people: [
+                      LinkJoinPerson(
+                        id: 'a',
+                        name: 'Anna',
+                        usedElsewhere: true,
+                      ),
+                      LinkJoinPerson(
+                        id: 'b',
+                        name: 'Ben',
+                        usedElsewhere: false,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (picker) {
+        await tester.tap(find.byKey(const Key('joinLinkStart')));
+        await tester.pumpAndSettle();
+        final more = find.byKey(const Key('linkDisclosureContinue'));
+        if (more.evaluate().isNotEmpty) {
+          await tester.tap(more);
+          await tester.pumpAndSettle();
+        }
+        await tester.tap(find.byKey(const Key('joinLinkPerson-b')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('joinLinkPicker')), findsOneWidget);
+      }
+      await _expectGuidelines(tester);
+      handle.dispose();
+    });
+  }
 
   group('add expense', () {
     for (final mode in ['Equally', 'Amounts', 'Shares', '%']) {

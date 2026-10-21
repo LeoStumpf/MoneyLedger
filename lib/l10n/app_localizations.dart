@@ -4787,7 +4787,7 @@ abstract class AppLocalizations {
   /// G52: privacy policy section body (keep in sync with PRIVACY.md)
   ///
   /// In en, this message translates to:
-  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link or create it with “Share with an invite link”.'**
+  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.'**
   String get privacyLinkBody;
 
   /// G52: text handed to the share sheet with the invite link
@@ -4795,6 +4795,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Join “{group}” in MoneyLedger: {link}'**
   String linkInviteShareText(String group, String link);
+
+  /// G52 step 7: join page title
+  ///
+  /// In en, this message translates to:
+  /// **'Join a group'**
+  String get joinLinkTitle;
+
+  /// G52 step 7: entry to the join page (welcome, empty groups list, create group)
+  ///
+  /// In en, this message translates to:
+  /// **'Join with an invite link'**
+  String get joinLinkEntry;
+
+  /// G52 step 7: paste field intro
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the invite link someone sent you.'**
+  String get joinLinkPasteHint;
+
+  /// G52 step 7: paste field label / button
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link'**
+  String get joinLinkPasteLabel;
+
+  /// G52 step 7: paste field button
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get joinLinkContinue;
+
+  /// G52 step 7: broken link title
+  ///
+  /// In en, this message translates to:
+  /// **'This invite link doesn\'t work'**
+  String get joinLinkInvalidTitle;
+
+  /// G52 step 7: broken link body
+  ///
+  /// In en, this message translates to:
+  /// **'Check that the whole link was copied, or ask for it again.'**
+  String get joinLinkInvalidBody;
+
+  /// G52 step 7: link of an unknown version
+  ///
+  /// In en, this message translates to:
+  /// **'This invite link needs a newer version of MoneyLedger. Please update the app.'**
+  String get joinLinkUpdateApp;
+
+  /// G52 step 7: intro without a name hint
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been invited to a group.'**
+  String get joinLinkInvited;
+
+  /// G52 step 7: intro body
+  ///
+  /// In en, this message translates to:
+  /// **'MoneyLedger looks the group up on the relays the link points to and then asks who you are in it.'**
+  String get joinLinkIntroBody;
+
+  /// G52 step 7: intro hint when nobody is signed in
+  ///
+  /// In en, this message translates to:
+  /// **'No account needed: MoneyLedger starts without an account on this device.'**
+  String get joinLinkNoAccountHint;
+
+  /// G52 step 7: progress
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for the group…'**
+  String get joinLinkSearching;
+
+  /// G52 step 7: nothing found title
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t find this group yet'**
+  String get joinLinkNotFoundTitle;
+
+  /// G52 step 7: nothing found body
+  ///
+  /// In en, this message translates to:
+  /// **'The person who invited you needs to open MoneyLedger once so the group is shared. Try again in a moment.'**
+  String get joinLinkNotFoundBody;
+
+  /// G52 step 7: retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get joinLinkRetry;
+
+  /// G52 step 7: refused join title
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t join with this link'**
+  String get joinLinkBlockedTitle;
+
+  /// G52 step 7: the group is held here as a non-link group
+  ///
+  /// In en, this message translates to:
+  /// **'This group is already on this device and isn\'t shared with a link here, so this link can\'t add it.'**
+  String get joinLinkNotALinkGroup;
+
+  /// G52 step 7: the group is held here with another link
+  ///
+  /// In en, this message translates to:
+  /// **'This group is already on this device with a different invite link.'**
+  String get joinLinkOtherLink;
+
+  /// G52 step 7: picker hint under a person
+  ///
+  /// In en, this message translates to:
+  /// **'Already picked on another phone'**
+  String get joinLinkUsedElsewhere;
+
+  /// G52 step 7: picked person was removed meanwhile
+  ///
+  /// In en, this message translates to:
+  /// **'This person is no longer in the group. Please pick again.'**
+  String get joinLinkPersonGone;
+
+  /// G52 step 7: intro with the link's name hint
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been invited to “{group}”.'**
+  String joinLinkInvitedTo(String group);
+
+  /// G52 step 7: picker title
+  ///
+  /// In en, this message translates to:
+  /// **'Who are you in “{group}”?'**
+  String joinLinkPickTitle(String group);
 }
 
 class _AppLocalizationsDelegate

@@ -81,15 +81,19 @@ LinkChannelError? linkChannelBlocker(
 /// *Create group → Share with a link* path (G52 step 6), which stores it
 /// **before** the group's first write so the meta is written unsigned in a
 /// `linkOnly` group.
+///
+/// G52 step 7: a **join** passes the link's [secret] (`k`, base64url) —
+/// the channel then belongs to the group the link names.
 LinkChannelModel newLinkChannel(
   String groupId, {
   required String? myParticipantId,
   required int openedAt,
+  String? secret,
   Random? random,
 }) => LinkChannelModel(
   groupId: groupId,
   epoch: 1,
-  secret: encodeLinkSecret(generateLinkSecret(random)),
+  secret: secret ?? encodeLinkSecret(generateLinkSecret(random)),
   nostrPriv: generateNostrPrivateKey(random),
   openedAt: openedAt,
   myParticipantId: myParticipantId,
@@ -163,6 +167,83 @@ Future<LinkChannelModel> openLinkChannel(
       groupId,
       myParticipantId: mine?.userId,
       openedAt: now(),
+      random: random,
+    );
+    await link.putChannel(channel);
+    return channel;
+  });
+}
+
+/// Why [joinLinkChannel] refuses a link (G52 step 7).
+enum LinkJoinError {
+  /// This device holds the group the link names as a **non-link** group
+  /// (a Matrix group, or a local group never shared) — joining would turn
+  /// it into a link group behind the user's back.
+  notALinkGroup,
+
+  /// This device already shares the group with a **different** link
+  /// (a reset invite link, step 12, decides what happens then).
+  otherLink,
+}
+
+class LinkJoinException implements Exception {
+  final LinkJoinError kind;
+  const LinkJoinException(this.kind);
+
+  @override
+  String toString() => 'LinkJoinException(${kind.name})';
+}
+
+/// Why [groupId] can't be joined with the link secret [secret] on this
+/// device (null = it can) — pure over what is stored: [channel] (this
+/// device's channel of the group, if any) and whether the group's meta
+/// ([groupStored]) is stored. Shared by [joinLinkChannel] and the join
+/// page's preview.
+LinkJoinError? linkJoinBlocker({
+  required LinkChannelModel? channel,
+  required bool groupStored,
+  required String secret,
+}) {
+  if (channel != null) {
+    return channel.secret == secret ? null : LinkJoinError.otherLink;
+  }
+  return groupStored ? LinkJoinError.notALinkGroup : null;
+}
+
+/// G52 step 7: stores this device's channel of [groupId] for a joined link
+/// ([secret] = its `k`) — **before** anything of the group is merged, so
+/// the first snapshot already goes through the link path of the record
+/// gate (`linkOnly`). One transaction: an existing channel with the same
+/// secret is returned unchanged (opening the link again); a different one
+/// ([LinkJoinError.otherLink]) or a stored group without a channel
+/// ([LinkJoinError.notALinkGroup]) throws [LinkJoinException]. A new
+/// channel has epoch 1, a fresh per-group Nostr key and no "me" yet (the
+/// join picker sets it; nothing is published before).
+Future<LinkChannelModel> joinLinkChannel(
+  AppDatabase db,
+  String groupId, {
+  required String secret,
+  int Function()? clock,
+  Random? random,
+}) {
+  final now = clock ?? () => DateTime.now().millisecondsSinceEpoch;
+  final link = LinkDao(db);
+  final groups = GroupsDao(db);
+  return db.transaction(() async {
+    final existing = await link.getChannel(groupId);
+    final blocker = linkJoinBlocker(
+      channel: existing,
+      groupStored: existing == null && await groups.getGroup(groupId) != null,
+      secret: secret,
+    );
+    if (blocker != null) throw LinkJoinException(blocker);
+    if (existing != null) return existing;
+    decodeLinkSecret(secret); // a malformed secret never gets stored
+    final channel = newLinkChannel(
+      groupId,
+      myParticipantId: null,
+      openedAt: now(),
+      secret: secret,
       random: random,
     );
     await link.putChannel(channel);

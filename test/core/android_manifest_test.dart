@@ -76,4 +76,37 @@ void main() {
     expect(block, contains('includeInApk = false'));
     expect(block, contains('includeInBundle = false'));
   });
+
+  test('G52 step 7: invite links open the app — the app scheme and the '
+      'verified App Link on the landing page path; app_links is the only '
+      'deep-link reader', () {
+    final filters = RegExp(
+      r'<intent-filter\b[^>]*>.*?</intent-filter>',
+      dotAll: true,
+    ).allMatches(manifest).map((m) => m.group(0)!).toList();
+    final app = filters.where(
+      (f) =>
+          f.contains('android:scheme="moneyledger"') &&
+          f.contains('android:host="join"'),
+    );
+    expect(app, hasLength(1));
+    final web = filters
+        .where((f) => f.contains('android:host="leostumpf.github.io"'))
+        .toList();
+    expect(web, hasLength(1));
+    expect(web.single, contains('android:autoVerify="true"'));
+    expect(web.single, contains('android:scheme="https"'));
+    expect(web.single, contains('android:pathPrefix="/moneyledger/join"'));
+    for (final f in [...app, ...web]) {
+      expect(f, contains('android.intent.category.BROWSABLE'));
+      expect(f, contains('android.intent.action.VIEW'));
+    }
+    expect(
+      RegExp(
+        r'android:name="flutter_deeplinking_enabled"\s+'
+        r'android:value="false"',
+      ).hasMatch(manifest),
+      isTrue,
+    );
+  });
 }

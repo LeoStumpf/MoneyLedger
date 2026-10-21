@@ -693,6 +693,36 @@ groups over Nostr. **No link channel → no connection, no NIP-11 request.**
   `linkAppLifecycleProvider` (false) and `linkAppVersionProvider`, and wait
   with `FakeRelayNetwork.settle()` + `LinkSyncEngine.isIdle`.
 
+### Joining a link group (G52 step 7)
+
+`/join` (`kJoinLocation`, `features/link/link_join.dart`) is **never
+redirected** (`routerRedirect`; the page shows a spinner while the session
+loads). Links arrive as: Android intent filter `moneyledger://join` + App
+Link `https://leostumpf.github.io/moneyledger/join` (`autoVerify`; pinned in
+`android_manifest_test.dart`) → `app_links` (`incomingAppLinks()`,
+`joinLinkStreamProvider`, `JoinLinkListener` in `App` → `/join?<fragment>`;
+`flutter_deeplinking_enabled=false`, app_links is the only reader; nothing
+logs a link); web: `#/join?v=1&k=…` (the route's query); or pasted (`/join`
+without a link — welcome, empty groups list, *Create group*). Flow
+(`JoinLinkPage`): parse (`parseLinkFragment`; newer `v` → "update the app")
+→ intro (no network) → *Join* → disclosure (first use) → **look-up**
+(`linkJoinLookupProvider` → `lookUpLinkGroup`: a short-lived
+`NostrRelayPool` + `probeLinkGroup` / pure `linkGroupPreviewFrom`
+(`core/link/link_join_probe.dart`) — **no DB, nothing stored**; refused
+when this device holds the group as a non-link group or with another link,
+`linkJoinBlocker`; already joined → opens the group) → "Who are you?"
+(active, unclaimed people; "already picked on another phone" from the
+headers' `me`; *I'm someone new* + name) → `linkJoinActionProvider` →
+`joinLinkGroup`: signed out → `startLocalProfile(name)` (welcome seen, local
+mode); `LinkSyncEngine.join` = `joinLinkChannel` (channel stored **before**
+the first merge, same refusals, epoch 1, me null) + `refresh(groupId:)`;
+group not merged → channel dropped, "not found"; then in one transaction
+`setMyParticipant` (+ for someone new the participant, unsigned, `by` =
+itself); `currentParticipant` / `linkInviteState` invalidated → the engine
+sees "me" and publishes. Works on Matrix accounts too (link-only group,
+unsigned). Tests: `test/g52_link_join_test.dart`,
+`test/integration/link_join_test.dart`, router + G71 cases.
+
 ### Data Flow
 
 Inbound to-device message → `LedgerSyncer._onMessage` → **membership gate** →

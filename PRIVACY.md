@@ -98,8 +98,10 @@ that the data comes from MoneyLedger. We ask them to delete each copy after 30
 days (renewed while the group is in use), but relays may keep or archive data
 longer — and anyone who gets the link, now or later, can read and change the
 group, also from archived copies. A group only on this device never contacts a
-relay: a group starts syncing only when you invite with a link or create it
-with “Share with an invite link”.
+relay: a group starts syncing only when you invite with a link, create it
+with “Share with an invite link” or join it with a link someone sent you.
+Opening an invite link contacts nothing until you tap “Join”; the relays are
+then asked for that group.
 
 ## Export, backup and import
 

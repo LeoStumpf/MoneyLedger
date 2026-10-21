@@ -317,4 +317,34 @@ void main() {
       }
     });
   });
+
+  group('G52 step 7: /join is never redirected', () {
+    test('in every session / welcome / onboarding state', () {
+      for (final session in AppSessionKind.values) {
+        for (final welcome in WelcomeStatus.values) {
+          for (final onboarding in OnboardingStatus.values) {
+            for (final connecting in [false, true]) {
+              expect(
+                routerRedirect(
+                  session: session,
+                  welcome: welcome,
+                  onboarding: onboarding,
+                  connecting: connecting,
+                  location: '/join',
+                ),
+                isNull,
+                reason: '$session $welcome $onboarding $connecting',
+              );
+            }
+          }
+        }
+      }
+    });
+    test('other pages still redirect (signed out, welcome not seen)', () {
+      expect(
+        redirect(false, '/groups', welcome: WelcomeStatus.notSeen),
+        '/welcome',
+      );
+    });
+  });
 }

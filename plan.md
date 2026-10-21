@@ -643,7 +643,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       — wire `link_author` into models / companions / payloads (a companion without it keeps the old value — set it explicitly, also null)
       — also: per-relay backoff/block policy after `rate-limited:` / `blocked:`, publish debounce, monotonic `created_at`, NIP-09 delete, NIP-11 (left out of step 2)
 - [x] 6. Invite UI (sheet, QR, share, disclosure) — `lib/features/link/link_invite.dart`, `core/widgets/qr_code_view.dart` (`qr`, BSD-3); *Create group → Share with an invite link* on Matrix accounts; design doc §13 "As built (step 6)"
-- [ ] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`) — store the channel **before** the first merge; refuse a link whose group id this device holds as a non-link group; invalidate `currentParticipant` after setting "me"
+- [x] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`) — store the channel **before** the first merge; refuse a link whose group id this device holds as a non-link group; invalidate `currentParticipant` after setting "me" — `lib/features/link/link_join.dart`, `core/link/link_join_probe.dart`, `LinkSyncEngine.join` / `joinLinkChannel`; design doc §13 "As built (step 7)"
 - [ ] 8. Background round link phase
 - [ ] 9. Settings: relay list + status, peers sheet
 - [ ] 10. Leave / delete unpublish; backup carries the secret (+ warning)
@@ -661,8 +661,8 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       the channel is stored before the first write. Existing Matrix groups
       show no link entry until G53.
 - [ ] (from step 5) Wire the seams: ~~step 6 invite → `LinkSyncEngine.
-      openChannel`~~ (done: `linkChannelOpenerProvider`); step 7 join → `putChannel` + `refresh(groupId:)` + set
-      "me"; step 8 background round → `refresh()` + `publishAll()`; step 9
+      openChannel`~~ (done: `linkChannelOpenerProvider`); ~~step 7 join → `putChannel` + `refresh(groupId:)` + set
+      "me"~~ (done: `LinkSyncEngine.join` + `joinLinkGroup`); step 8 background round → `refresh()` + `publishAll()`; step 9
       icon / peers sheet → `linkGroupSyncStatusProvider`, `link_peers`,
       `relayPolicy.rejecting` + `link_relay_state:<url>`; step 10 leave →
       `unpublish(groupId)` before the purge
@@ -684,6 +684,22 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 6) Leaving / deleting a link group uses `groupExitKind`
       (Matrix claims) — a link group of a signed-in user shows *Delete*;
       revisit with step 10 (unpublish)
+- [ ] (from step 7) "Nothing found": the design keeps the pending link for
+      7 days so live sync picks the group up later — not built (needs a
+      pending-link store without a group id); today the page offers *Try
+      again* only
+- [ ] (from step 7) A link for a group this device already shares with a
+      **different** secret is refused (`LinkJoinError.otherLink`) — step 12
+      (reset invite link) decides whether the new link replaces the channel
+- [ ] (from step 7) After a join that created the local profile, the router
+      shows the local-mode onboarding before the group (per-DB flag) and its
+      texts still say "everything stays on this device" — with the §8.2
+      "No account" texts (step 11 / G54)
+- [ ] (from step 7) Web: the secret stays in the tab's history
+      (`#/join?…`); consider `history.replaceState` after the join
+- [ ] (from step 7) Landing page `join.html` + `assetlinks.json` (step 11) —
+      until then the https link opens the browser on Android (App Link not
+      verified) unless "Open by default" is set by hand
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a

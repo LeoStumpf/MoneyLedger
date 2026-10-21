@@ -914,6 +914,30 @@ class LinkSyncEngine {
         );
       });
 
+  /// G52 step 7 — **join**: stores the channel of [groupId] for the link
+  /// secret [secret] ([joinLinkChannel]: refuses a group this device holds
+  /// as a non-link group or shares with another link — throws
+  /// [LinkJoinException]) **before** anything is merged, loads it, then a
+  /// full fetch of its topics ([refresh]) merges the group through the link
+  /// path. Nothing is published until "me" is set (the join picker).
+  Future<LinkRefreshResult> join(
+    String groupId,
+    String secret, {
+    Duration? timeout,
+  }) async {
+    await joinLinkChannel(_db, groupId, secret: secret, clock: _clock);
+    if (!_alive) {
+      return const LinkRefreshResult(
+        events: 0,
+        merged: 0,
+        complete: false,
+        anyComplete: false,
+      );
+    }
+    await _reloadChannels();
+    return refresh(groupId: groupId, timeout: timeout);
+  }
+
   // ── publish ───────────────────────────────────────────────────────────────
 
   /// Schedules a publish check of [groupId] (after a local change the

@@ -2,6 +2,7 @@
 /// compile issue that occurs when the matrix SDK is pulled in on native platforms.
 library;
 
+import 'package:money_ledger/features/link/link_join.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -136,6 +137,7 @@ List<dynamic> testOverrides({
   ownDeviceProtectionProvider.overrideWith((_) => false),
   // Never touch the app_links plugin in widget tests.
   ssoCallbackProvider.overrideWith((_) => const Stream<Uri>.empty()),
+  joinLinkStreamProvider.overrideWith((_) => const Stream<Uri>.empty()),
   ...signingUiOverrides(archives: archives),
   // G39/G40: device-wide preferences in memory — welcome seen, no local
   // profile (never the platform file / localStorage).

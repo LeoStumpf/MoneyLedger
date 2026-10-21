@@ -11,6 +11,9 @@ Future<void> launchExternalUrl(String url) async => navigateTo(url);
 /// Web receives the SSO callback via page query params, not deep links.
 Stream<Uri> incomingSsoLinks() => const Stream.empty();
 
+/// Web: deep links arrive as the page URL (the router reads `#/join?…`).
+Stream<Uri> incomingAppLinks() => const Stream.empty();
+
 Map<String, String> get currentUrlParams =>
     Uri.parse(web.window.location.href).queryParameters;
 

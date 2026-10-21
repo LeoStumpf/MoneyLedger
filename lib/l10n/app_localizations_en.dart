@@ -3019,10 +3019,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link or create it with “Share with an invite link”.';
+      'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.';
 
   @override
   String linkInviteShareText(String group, String link) {
     return 'Join “$group” in MoneyLedger: $link';
+  }
+
+  @override
+  String get joinLinkTitle => 'Join a group';
+
+  @override
+  String get joinLinkEntry => 'Join with an invite link';
+
+  @override
+  String get joinLinkPasteHint => 'Paste the invite link someone sent you.';
+
+  @override
+  String get joinLinkPasteLabel => 'Invite link';
+
+  @override
+  String get joinLinkContinue => 'Continue';
+
+  @override
+  String get joinLinkInvalidTitle => 'This invite link doesn\'t work';
+
+  @override
+  String get joinLinkInvalidBody =>
+      'Check that the whole link was copied, or ask for it again.';
+
+  @override
+  String get joinLinkUpdateApp =>
+      'This invite link needs a newer version of MoneyLedger. Please update the app.';
+
+  @override
+  String get joinLinkInvited => 'You\'ve been invited to a group.';
+
+  @override
+  String get joinLinkIntroBody =>
+      'MoneyLedger looks the group up on the relays the link points to and then asks who you are in it.';
+
+  @override
+  String get joinLinkNoAccountHint =>
+      'No account needed: MoneyLedger starts without an account on this device.';
+
+  @override
+  String get joinLinkSearching => 'Looking for the group…';
+
+  @override
+  String get joinLinkNotFoundTitle => 'Couldn\'t find this group yet';
+
+  @override
+  String get joinLinkNotFoundBody =>
+      'The person who invited you needs to open MoneyLedger once so the group is shared. Try again in a moment.';
+
+  @override
+  String get joinLinkRetry => 'Try again';
+
+  @override
+  String get joinLinkBlockedTitle => 'Can\'t join with this link';
+
+  @override
+  String get joinLinkNotALinkGroup =>
+      'This group is already on this device and isn\'t shared with a link here, so this link can\'t add it.';
+
+  @override
+  String get joinLinkOtherLink =>
+      'This group is already on this device with a different invite link.';
+
+  @override
+  String get joinLinkUsedElsewhere => 'Already picked on another phone';
+
+  @override
+  String get joinLinkPersonGone =>
+      'This person is no longer in the group. Please pick again.';
+
+  @override
+  String joinLinkInvitedTo(String group) {
+    return 'You\'ve been invited to “$group”.';
+  }
+
+  @override
+  String joinLinkPickTitle(String group) {
+    return 'Who are you in “$group”?';
   }
 }
