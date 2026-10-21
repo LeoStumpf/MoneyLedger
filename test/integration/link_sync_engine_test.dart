@@ -751,6 +751,26 @@ void main() {
     expect((await b.expenseMap()).keys, {'e1'});
   });
 
+  test('unpublish (step 10 review): a device that never published (no '
+      '"me" yet) sends nothing', () async {
+    final a = await creator();
+    await settle();
+    final b = await joiner(a.channel!.secret);
+    await settle();
+    final bPub = nostrPublicKey(b.channel!.nostrPriv);
+    final frames = net.relay(_r1).eventFrames.length;
+    expect(await b.engine.unpublish(_g), isTrue);
+    await settle();
+    for (final r in [_r1, _r2]) {
+      expect(
+        net.relay(r).events.where((e) => e.pubkey == bPub),
+        isEmpty,
+        reason: r,
+      );
+    }
+    expect(net.relay(_r1).eventFrames, hasLength(frames));
+  });
+
   test('G19: tearing the engine down mid-publish neither throws nor '
       'touches the closed DB', () async {
     net.relay(_r1).silent = true;

@@ -1562,7 +1562,9 @@ class LinkSyncEngine {
   /// published with a header-only part (meta + members, no records) that
   /// expires after a day, then asks the relays to delete all of them
   /// (NIP-09). Best-effort within [timeout]; returns whether ≥ 1 relay
-  /// accepted the deletion. The channel itself stays — the caller purges.
+  /// accepted the deletion (true at once, sending nothing, when this device
+  /// never published for the group). The channel itself stays — the caller
+  /// purges.
   Future<bool> unpublish(
     String groupId, {
     Duration timeout = const Duration(seconds: 5),
@@ -1575,6 +1577,11 @@ class LinkSyncEngine {
     final route = _channels[groupId];
     final ch = await _link.getChannel(groupId);
     if (route == null || ch == null || !_alive) return false;
+    // Step 10 review: this device never signed an event for the group (a
+    // restore re-opened the channel and nobody picked "me" yet) — nothing
+    // of ours is on the relays, and a header-only part would be the first
+    // thing it ever published.
+    if (ch.lastCreatedAt == 0) return true;
     final targets = [
       for (final r in _relays)
         if (!_policy.rejects(r)) r,

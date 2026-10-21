@@ -690,6 +690,11 @@ class ExpensesPage extends ConsumerWidget {
         .toList();
     final errors = ActionErrors.of(context);
     final l = context.l10n;
+    // G19: the DB, clock and container are captured before the first await
+    // (the page may be gone — account switch — when the dialog returns).
+    final db = ref.read(appDatabaseProvider);
+    final linkClock = ref.read(linkClockProvider);
+    final container = ProviderScope.containerOf(context, listen: false);
     // G46: `null` = dismissed (barrier tap / back) → nothing happens;
     // `(member: null)` = "I'm someone new".
     final choice = await showDialog<({MemberModel? member})>(
@@ -719,18 +724,20 @@ class ExpensesPage extends ConsumerWidget {
         name = (await _promptName(context))?.trim() ?? '';
         if (name.isEmpty) return;
       }
+      if (db.isClosed) return;
       try {
         await chooseLinkParticipant(
-          ref.read(appDatabaseProvider),
+          db,
           roomId,
           participantId: picked?.userId,
           newName: name,
-          clock: ref.read(linkClockProvider),
+          clock: linkClock,
         );
-        ref.invalidate(currentParticipantProvider(roomId));
-        ref.invalidate(linkInviteStateProvider(roomId));
+        container
+          ..invalidate(currentParticipantProvider(roomId))
+          ..invalidate(linkInviteStateProvider(roomId));
       } catch (e) {
-        errors.show(e);
+        if (!db.isClosed) errors.show(e);
       }
       return;
     }
