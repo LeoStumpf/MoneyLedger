@@ -1577,7 +1577,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyBackgroundBody.
   ///
   /// In en, this message translates to:
-  /// **'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and shows no notifications. You can turn it off in Settings. The web version syncs only while its tab is open.'**
+  /// **'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and, for groups you share with an invite link, the same encrypted copies on the Nostr relays (also without an account), and shows no notifications. With a Matrix account you can turn it off in Settings; without one it runs only while you have a group shared with an invite link. The web version syncs only while its tab is open.'**
   String get privacyBackgroundBody;
 
   /// No description provided for @privacyCsvTitle.

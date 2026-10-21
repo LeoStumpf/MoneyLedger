@@ -184,6 +184,13 @@ final linkVerifySignaturesProvider = Provider<bool>(
 /// container tests (no widgets binding).
 final linkAppLifecycleProvider = Provider<bool>((ref) => true);
 
+/// G52 step 8: the engine runs inside an Android background round (G31) —
+/// no live subscription, no automatic (debounced / start-up / refresh-timer)
+/// publishes: the round drives it with [LinkSyncEngine.refresh] (one full
+/// fetch) and [LinkSyncEngine.publishAll] (publish what changed), then
+/// disposes it.
+final linkBackgroundRoundProvider = Provider<bool>((ref) => false);
+
 /// The `app` header of our snapshots (§5.1; '' when unknown).
 final linkAppVersionProvider = FutureProvider<String>((ref) async {
   try {
@@ -317,6 +324,7 @@ class LinkSyncEngine {
   final RelayConnector _connector;
   final RelayInfoFetcher? _infoFetcher;
   final bool _followLifecycle;
+  final bool _roundMode;
   final Future<String> _appVersion;
   late final LinkRelayPolicy _policy;
 
@@ -381,7 +389,10 @@ class LinkSyncEngine {
       _verifySignatures = ref.read(linkVerifySignaturesProvider),
       _connector = ref.read(linkRelayConnectorProvider),
       _infoFetcher = ref.read(linkRelayInfoFetcherProvider),
-      _followLifecycle = ref.read(linkAppLifecycleProvider),
+      _roundMode = ref.read(linkBackgroundRoundProvider),
+      _followLifecycle =
+          ref.read(linkAppLifecycleProvider) &&
+          !ref.read(linkBackgroundRoundProvider),
       _appVersion = ref.read(linkAppVersionProvider.future) {
     final rl = ref.read(linkRateLimitBackoffProvider);
     _policy = LinkRelayPolicy(
@@ -401,6 +412,9 @@ class LinkSyncEngine {
   /// No work in flight and no publish waiting for its debounce (tests; the
   /// back-off retry timers don't count).
   bool get isIdle => _busy == 0 && _debounceTimers.isEmpty;
+
+  /// How many link channels the engine has loaded.
+  int get channelCount => _channels.length;
 
   /// The relays the engine publishes to / reads from.
   List<String> get relays => List.unmodifiable(_relays);
@@ -464,6 +478,7 @@ class LinkSyncEngine {
         // No widgets binding (a headless isolate): no pause / resume.
       }
     }
+    if (_roundMode) return;
     _refreshTimer = Timer.periodic(_refreshCheck, (_) {
       for (final g in _channels.keys) {
         _schedulePublish(g);
@@ -697,7 +712,8 @@ class LinkSyncEngine {
 
   Future<void> _updateSubscription({bool sinceNewest = false}) async {
     if (!_alive) return;
-    if (_byTopic.isEmpty || _paused) {
+    // Step 8: a background round reads with refresh() only.
+    if (_byTopic.isEmpty || _paused || _roundMode) {
       if (_sub != null) await _closeLive();
       return;
     }
@@ -946,6 +962,9 @@ class LinkSyncEngine {
 
   void _schedulePublish(String group, {Duration? delay}) {
     if (!_alive || !_channels.containsKey(group)) return;
+    // Step 8: in a background round only publishAll() publishes (after the
+    // full fetch merged the peers' snapshots — never our stale one first).
+    if (_roundMode) return;
     if (_publishing.contains(group)) {
       _dirty.add(group);
       return;

@@ -469,7 +469,8 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
   null); `deviceGatewayProvider` throws (device lists = unavailable, no
   incoming verification); `SyncEngine` / `LedgerSyncer` return from `start()`
   for `kLocalAccountId` (no digests, no new-device resync); background sync is
-  cancelled (`backgroundSyncSchedulingProvider`) and the foreground
+  cancelled (`backgroundSyncSchedulingProvider`; G52 step 8: registered
+  while a link group exists — link phase only) and the foreground
   `onSyncRequest` is a no-op. `vod.init()` still runs in `main()` (cheap; needed
   the moment an account is connected). `test/features/local_mode_test.dart`
   pins "no Matrix client / send / schedule".
@@ -996,6 +997,29 @@ connected + battery not low; `lib/core/background/`) fixes that:
   killed mid-write) is deleted by the next rotation. No history pruning in
   the round (app start only). Tests: `background_round_test.dart` (G58
   group), `restore_points_test.dart`.
+- **Link phase (G52 step 8, design doc §8.3):** after the Matrix phase
+  (only with a Matrix session) the round runs the link groups when the
+  ledger has a `link_channels` row — **in local mode too**:
+  `runBackgroundRound(whichLedger:)` decides from the device prefs
+  **before** anything is opened (`_whichLedger`, native: local profile →
+  `local` — no Matrix client is built, `vod.init()` only; connecting →
+  `none`, skipped; else `matrix`), `openLocalDatabase` opens local mode's
+  ledger; local without a link group → `skippedNothingToSync`. The engine
+  runs in `linkBackgroundRoundProvider` mode (no live subscription, no
+  debounced / start-up / timer publishes, no lifecycle, no NIP-11 fetch):
+  `refresh(timeout: kBackgroundLinkFetchTimeout` 10 s`)` = one full fetch
+  of every topic on every relay → merge, then `publishAll()` (publishes
+  only groups whose snapshot changed or are due for the 10-day refresh) —
+  inside the same 60 s budget / `guard`; a stopped round disposes the
+  engine (closes its relay pool) before waiting for the step in flight.
+  Result: `link`, `linkEvents`, `linkMerged`. A round delegated to the
+  running app also runs `refresh` + `publishAll` on the app's engine
+  (`_linkSyncInApp`). **Scheduling:** in local mode
+  `backgroundSyncSchedulingProvider` registers the task while
+  `linkGroupsExistProvider` is true, else cancels (no settings toggle in
+  local mode; the round still honours `background_sync_enabled`). Tests:
+  `test/core/background_round_link_test.dart`,
+  `background_sync_scheduling_test.dart`.
 - The app manifest removes the plugin's `POST_NOTIFICATIONS` permission (no
   expedited / foreground workers). Web/iOS: no background sync.
 - **Debug builds only (G36):** the settings page's *Debug* section has *Run background sync now

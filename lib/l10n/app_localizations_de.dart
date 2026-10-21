@@ -911,7 +911,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyBackgroundBody =>
-      'Unter Android kann MoneyLedger etwa alle 15 Minuten synchronisieren, während die App geschlossen ist (nur mit Netzwerkverbindung und nicht bei niedrigem Akku). Dafür werden dieselben verschlüsselten Nachrichten an deinen Homeserver genutzt; es werden keine Benachrichtigungen angezeigt. Du kannst das in den Einstellungen abschalten. Die Web-Version synchronisiert nur, solange ihr Tab geöffnet ist.';
+      'Unter Android kann MoneyLedger etwa alle 15 Minuten synchronisieren, während die App geschlossen ist (nur mit Netzwerkverbindung und nicht bei niedrigem Akku). Dafür werden dieselben verschlüsselten Nachrichten an deinen Homeserver genutzt und, für Gruppen, die du per Einladungslink teilst, dieselben verschlüsselten Kopien auf den Nostr-Relays (auch ohne Konto); es werden keine Benachrichtigungen angezeigt. Mit einem Matrix-Konto kannst du das in den Einstellungen abschalten; ohne Konto läuft es nur, solange du eine Gruppe per Einladungslink teilst. Die Web-Version synchronisiert nur, solange ihr Tab geöffnet ist.';
 
   @override
   String get privacyCsvTitle => 'Export, Sicherung und Import';

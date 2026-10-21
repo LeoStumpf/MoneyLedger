@@ -17,7 +17,10 @@ import 'package:workmanager/workmanager.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/history/snapshot_store_platform.dart';
+import '../link/link_sync_engine.dart';
 import '../session/app_session.dart';
+import '../session/device_prefs.dart';
+import '../session/device_prefs_store.dart';
 import '../database/account_database.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/matrix_ledger_transport.dart';
@@ -77,16 +80,44 @@ void attachForegroundSync(ProviderContainer container) {
     },
   );
   AppIsolateGate.instance.onSyncRequest = () async {
-    // G40: local mode never builds a Matrix client (nothing to sync).
-    if (!container.read(matrixSessionWantedProvider)) return;
-    final client = await container
-        .read(matrixClientProvider.future)
-        .timeout(const Duration(seconds: 10));
-    if (!client.isLogged()) return;
-    debugPrint('[bg] background task found the app alive — syncing in-app');
-    await client.oneShotSync().timeout(const Duration(seconds: 30));
-    await Future<void>.delayed(const Duration(seconds: 7));
+    // G52 step 8: the link groups too (the live subscription closes 30 s
+    // after the app is paused) — alongside the Matrix sync.
+    final link = _linkSyncInApp(container);
+    try {
+      // G40: local mode never builds a Matrix client (nothing to sync).
+      if (!container.read(matrixSessionWantedProvider)) return;
+      final client = await container
+          .read(matrixClientProvider.future)
+          .timeout(const Duration(seconds: 10));
+      if (!client.isLogged()) return;
+      debugPrint('[bg] background task found the app alive — syncing in-app');
+      await client.oneShotSync().timeout(const Duration(seconds: 30));
+      await Future<void>.delayed(const Duration(seconds: 7));
+    } finally {
+      await link;
+    }
   };
+}
+
+/// G52 step 8: a round delegated to the running app — one full fetch of the
+/// link groups + publish what changed, through the app's own engine.
+Future<void> _linkSyncInApp(ProviderContainer container) async {
+  if (container.read(ledgerIdentityProvider) == null) return;
+  final sub = container.listen(linkSyncEngineProvider, (_, _) {});
+  try {
+    final engine = sub.read();
+    await engine.ready.timeout(const Duration(seconds: 10));
+    if (engine.channelCount == 0) return;
+    debugPrint('[bg] background task found the app alive — link sync in-app');
+    await engine
+        .refresh(timeout: kBackgroundLinkFetchTimeout)
+        .timeout(const Duration(seconds: 20));
+    await engine.publishAll().timeout(const Duration(seconds: 20));
+  } catch (e) {
+    debugPrint('[bg] in-app link sync failed: $e');
+  } finally {
+    sub.close();
+  }
 }
 
 AppLifecycleListener? _lifecycle;
@@ -185,8 +216,11 @@ Future<BackgroundRoundResult?> runBackgroundTask() async {
     final roundHttp = RequestTimeoutHttpClient(http.Client());
     return await runBackgroundRound(
       tryAcquire: gate.tryAcquire,
+      // G52 step 8: local mode (link groups) never opens a Matrix session.
+      whichLedger: _whichLedger,
       openSession: () => _openMatrixSession(roundHttp),
       openDatabase: openAccountDatabase,
+      openLocalDatabase: openLocalDatabase,
       abort: Future.any([gate.abort, osStop.future]),
       abortRequests: roundHttp.close,
       // G58: daily restore points from background rounds too. path_provider
@@ -197,6 +231,31 @@ Future<BackgroundRoundResult?> runBackgroundTask() async {
   } finally {
     gate.release();
   }
+}
+
+/// G52 step 8: the ledger this round syncs, from the device preferences —
+/// same rules as the app (`localModeActiveProvider`): a local profile →
+/// local mode (no Matrix client is built — G40 / G79); a local profile
+/// that is connecting an account → skipped (the app finishes the
+/// adoption); otherwise the Matrix account. Unreadable preferences count
+/// as no local profile (`DevicePrefs.unreadable`).
+Future<BackgroundLedger> _whichLedger() async {
+  DevicePrefs prefs;
+  try {
+    prefs = DevicePrefs.fromMap(await createPlatformDevicePrefsStore().load());
+  } catch (e) {
+    debugPrint('[bg] device preferences unreadable: $e');
+    prefs = DevicePrefs.unreadable;
+  }
+  if (prefs.localProfile == null) return BackgroundLedger.matrix;
+  if (prefs.connecting) return BackgroundLedger.none;
+  try {
+    // Signed versions (mixed groups) are verified with vodozemac.
+    await vod.init();
+  } catch (e) {
+    debugPrint('[bg] vodozemac init failed: $e');
+  }
+  return BackgroundLedger.local;
 }
 
 /// Restores the Matrix session exactly like the app does (same store, same

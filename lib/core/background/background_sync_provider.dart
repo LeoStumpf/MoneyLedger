@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_provider.dart';
+import '../../features/expenses/expenses_provider.dart' show linkDaoProvider;
 import '../../features/onboarding/onboarding_provider.dart';
 import '../session/app_session.dart';
 import 'background_scheduler.dart';
@@ -29,6 +30,17 @@ final backgroundSyncEnabledProvider = StreamProvider<bool>((ref) {
   return ref.watch(settingsDaoProvider).watchBackgroundSyncEnabled();
 });
 
+/// G52 step 8: whether the open ledger has at least one link group (a
+/// `link_channels` row) — local mode schedules the background round only
+/// then (design doc §8.3).
+final linkGroupsExistProvider = StreamProvider.autoDispose<bool>(
+  (ref) => ref
+      .watch(linkDaoProvider)
+      .watchAllChannels()
+      .map((channels) => channels.isNotEmpty)
+      .distinct(),
+);
+
 /// The last error of registering / cancelling the OS task (G33), null once a
 /// later attempt succeeded — shown under the settings toggle instead of only
 /// being logged.
@@ -47,8 +59,9 @@ class BackgroundSyncSchedulingError extends Notifier<Object?> {
 }
 
 /// Keeps the OS registration in line with the session: registered while an
-/// account with background sync enabled is signed in, cancelled when it is
-/// turned off or the user signs out. Watched by `LedgerSyncHost`.
+/// account with background sync enabled is signed in (or, G52 step 8, local
+/// mode holds a link group), cancelled when it is turned off or the user
+/// signs out. Watched by `LedgerSyncHost`.
 final backgroundSyncSchedulingProvider = Provider.autoDispose<void>((ref) {
   final scheduler = ref.watch(backgroundSchedulerProvider);
   // Captured before any await (G19); keepAlive, so it outlives this provider.
@@ -64,10 +77,15 @@ final backgroundSyncSchedulingProvider = Provider.autoDispose<void>((ref) {
     }
   }
 
-  // G40: local mode has nothing to sync — never registered (and a task left
-  // from an earlier Matrix session is cancelled), without consulting Matrix.
+  // G40: local mode has nothing to sync over Matrix — G52 step 8: but its
+  // link groups sync via relays, so the round is registered while at least
+  // one exists (design doc §8.3), else cancelled (also a task left from an
+  // earlier Matrix session) — without consulting Matrix. Local mode has no
+  // settings toggle; the round still honours the ledger's
+  // `background_sync_enabled` (default on).
   if (ref.watch(localModeActiveProvider)) {
-    apply(false);
+    final links = ref.watch(linkGroupsExistProvider);
+    if (links.hasValue) apply(links.requireValue);
     return;
   }
   if (!ref.watch(matrixSessionWantedProvider)) return; // prefs still loading

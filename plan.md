@@ -644,7 +644,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       — also: per-relay backoff/block policy after `rate-limited:` / `blocked:`, publish debounce, monotonic `created_at`, NIP-09 delete, NIP-11 (left out of step 2)
 - [x] 6. Invite UI (sheet, QR, share, disclosure) — `lib/features/link/link_invite.dart`, `core/widgets/qr_code_view.dart` (`qr`, BSD-3); *Create group → Share with an invite link* on Matrix accounts; design doc §13 "As built (step 6)"
 - [x] 7. Join (intent filters + App Link, `/join`, `JoinLinkPage`) — store the channel **before** the first merge; refuse a link whose group id this device holds as a non-link group; invalidate `currentParticipant` after setting "me" — `lib/features/link/link_join.dart`, `core/link/link_join_probe.dart`, `LinkSyncEngine.join` / `joinLinkChannel`; design doc §13 "As built (step 7)"
-- [ ] 8. Background round link phase
+- [x] 8. Background round link phase — `runBackgroundRound(whichLedger:, openLocalDatabase:, linkOverrides:)`, `linkBackgroundRoundProvider`, local-mode scheduling via `linkGroupsExistProvider`; design doc §13 "As built (step 8)"
 - [ ] 9. Settings: relay list + status, peers sheet
 - [ ] 10. Leave / delete unpublish; backup carries the secret (+ warning)
 - [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed
@@ -662,7 +662,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       show no link entry until G53.
 - [ ] (from step 5) Wire the seams: ~~step 6 invite → `LinkSyncEngine.
       openChannel`~~ (done: `linkChannelOpenerProvider`); ~~step 7 join → `putChannel` + `refresh(groupId:)` + set
-      "me"~~ (done: `LinkSyncEngine.join` + `joinLinkGroup`); step 8 background round → `refresh()` + `publishAll()`; step 9
+      "me"~~ (done: `LinkSyncEngine.join` + `joinLinkGroup`); ~~step 8 background round → `refresh()` + `publishAll()`~~ (done); step 9
       icon / peers sheet → `linkGroupSyncStatusProvider`, `link_peers`,
       `relayPolicy.rejecting` + `link_relay_state:<url>`; step 10 leave →
       `unpublish(groupId)` before the purge
@@ -700,6 +700,13 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 7) Landing page `join.html` + `assetlinks.json` (step 11) —
       until then the https link opens the browser on Android (App Link not
       verified) unless "Open by default" is set by hand
+- [ ] (from step 8) Local mode has no settings toggle for the background
+      round (it runs while a link group exists; `background_sync_enabled`
+      of the local ledger is honoured but can't be changed) — add the
+      switch to the settings page's local-mode section with step 9 (relays)
+- [ ] (from step 8) Device pass: check a headless round in local mode on
+      the Pixel (`[bg]` log: `link: true`), incl. the NIP-11 cache staying
+      untouched and the battery / data cost (§14 risks)
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a

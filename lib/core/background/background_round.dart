@@ -14,6 +14,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/expenses_provider.dart';
@@ -22,10 +23,13 @@ import '../../features/history/restore_points.dart';
 import '../../features/history/snapshot_store.dart';
 import '../database/app_database.dart';
 import '../database/daos/settings_dao.dart';
+import '../database/daos/link_dao.dart';
 import '../database/daos/sync_states_dao.dart';
+import '../link/link_sync_engine.dart';
 import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
 import '../session/app_session.dart';
+import '../session/local_transport.dart';
 import '../sync/self_recovery.dart';
 import '../sync/sync_engine.dart';
 
@@ -44,6 +48,22 @@ const kBackgroundInFlightGrace = Duration(seconds: 10);
 /// this is left of the round's time budget (it waits for the next round /
 /// app start — exporting a big ledger takes a moment).
 const kBackgroundSnapshotMinRemaining = Duration(seconds: 10);
+
+/// G52 step 8: the link phase's full fetch waits at most this long per relay
+/// for `EOSE` (design doc §8.3).
+const kBackgroundLinkFetchTimeout = Duration(seconds: 10);
+
+/// G52 step 8: which ledger a round syncs, from the device preferences.
+enum BackgroundLedger {
+  /// The signed-in Matrix account's ledger (Matrix phase + link phase).
+  matrix,
+
+  /// Local mode's ledger (G40) — link phase only, no Matrix client is built.
+  local,
+
+  /// Nothing to sync now (e.g. local mode connecting an account) — skipped.
+  none,
+}
 
 /// A signed-in relay session opened for one background round — the real one
 /// wraps a Matrix `Client` restored from its store (never logged in/out here).
@@ -75,6 +95,9 @@ enum BackgroundRoundStatus {
   /// The signed-in account turned background sync off.
   skippedDisabled,
 
+  /// G52 step 8: local mode without a link group — nothing to sync.
+  skippedNothingToSync,
+
   /// Fetched, processed and answered everything, then shut down.
   completed,
 
@@ -104,19 +127,29 @@ class BackgroundRoundResult {
   /// G58: whether the round wrote today's snapshot (restore point).
   final bool snapshot;
 
+  /// G52 step 8: whether the link phase ran (fetch + publish) to the end.
+  final bool link;
+
+  /// G52 step 8: link events fetched / merged by the link phase.
+  final int linkEvents;
+  final int linkMerged;
+
   const BackgroundRoundResult(
     this.status, {
     this.received = 0,
     this.sent = 0,
     this.broadcastDigests = false,
     this.snapshot = false,
+    this.link = false,
+    this.linkEvents = 0,
+    this.linkMerged = 0,
   });
 
   @override
   String toString() =>
       'BackgroundRoundResult(${status.name}, '
       'received: $received, sent: $sent, digests: $broadcastDigests, '
-      'snapshot: $snapshot)';
+      'snapshot: $snapshot, link: $link ($linkMerged/$linkEvents merged))';
 }
 
 /// Runs one background round. Every dependency is injected:
@@ -135,6 +168,14 @@ class BackgroundRoundResult {
 ///   has a group, 7 daily + 4 weekly kept). Null = no snapshots. Skipped
 ///   when less than [snapshotMinRemaining] of the budget is left; stopped
 ///   midway, it writes nothing more (the file write itself is atomic).
+/// - [whichLedger] — G52 step 8: matrix / local / none, read from the
+///   device preferences **before** anything is opened (null = matrix). In
+///   local mode no Matrix session is opened at all ([openSession] isn't
+///   called); [openLocalDatabase] opens local mode's ledger.
+/// - [linkOverrides] — G52 step 8: overrides for the link sync engine
+///   (tests: the fake relays, clock). The round always runs it in
+///   [linkBackgroundRoundProvider] mode (no live subscription, no automatic
+///   publishes) and without NIP-11 fetches (the app start refreshes them).
 /// - [abortRequests] — G18 review 2: cancels the session's homeserver
 ///   requests in flight (closes its HTTP client). Called when the round is
 ///   stopped, **before** it waits for the step in flight and closes the
@@ -147,8 +188,13 @@ class BackgroundRoundResult {
 /// quiet (all answers sent); broadcast our own digests only if the last one
 /// is older than [digestMaxAge]; fetch again (with a short long-poll, picking
 /// up peers' immediate answers) while the previous pass produced traffic, at
-/// most [maxFetches] times; then dispose and close everything. The whole
-/// round is bounded by [timeout].
+/// most [maxFetches] times (the **Matrix phase**, only with a session). Then
+/// the **link phase** (G52 step 8, design doc §8.3) when the ledger has a
+/// link channel — in local mode too: one full fetch of every link group's
+/// topics on every relay (`EOSE` or [linkFetchTimeout]) merged through the
+/// link path, then publish what changed (`LinkSyncEngine.publishAll`). Then
+/// the daily snapshot; then dispose and close everything. The whole round
+/// is bounded by [timeout].
 ///
 /// G18 review: when the round is stopped (time budget / [abort]) while a step
 /// is still running, it waits up to [inFlightGrace] for that step before it
@@ -160,6 +206,10 @@ Future<BackgroundRoundResult> runBackgroundRound({
   required Future<bool> Function() tryAcquire,
   required Future<BackgroundSession?> Function() openSession,
   required AppDatabase Function(String mxid) openDatabase,
+  Future<BackgroundLedger> Function()? whichLedger,
+  AppDatabase Function()? openLocalDatabase,
+  List<Override> linkOverrides = const [],
+  Duration linkFetchTimeout = kBackgroundLinkFetchTimeout,
   Future<void>? abort,
   void Function()? abortRequests,
   SnapshotStore? Function(String dbName)? snapshotStores,
@@ -242,65 +292,109 @@ Future<BackgroundRoundResult> runBackgroundRound({
   AppDatabase? db;
   ProviderContainer? container;
   TrackingTransport? tracked;
+  LinkSyncEngine? linkEngine;
   var broadcast = false;
+  var linkDone = false;
+  var linkEvents = 0;
+  var linkMerged = 0;
+  BackgroundRoundResult ended() => _ended(
+    aborted,
+    tracked,
+    broadcast,
+    linkEvents: linkEvents,
+    linkMerged: linkMerged,
+  );
   try {
+    // G52 step 8: local mode never builds a Matrix client (G40/G79) — decide
+    // before anything is opened.
+    BackgroundLedger ledger;
     try {
-      final opening = openSession();
-      final first = await Future.any<Object?>([
-        opening,
-        stop.future.then((_) => _stopped),
-      ]);
-      if (identical(first, _stopped)) {
-        // Timed out / aborted while restoring: close it once it's open —
-        // before returning (the caller releases the slot after we return).
-        cancelRequests();
-        try {
-          final s = await opening.timeout(inFlightGrace);
-          await s?.close();
-        } catch (e) {
-          debugPrint('[bg] session still opening / close failed: $e');
-        }
-        return BackgroundRoundResult(
-          aborted
-              ? BackgroundRoundStatus.aborted
-              : BackgroundRoundStatus.timedOut,
-        );
-      }
-      session = first as BackgroundSession?;
+      ledger = whichLedger == null
+          ? BackgroundLedger.matrix
+          : await whichLedger();
     } catch (e) {
-      debugPrint('[bg] could not open the Matrix session: $e');
+      debugPrint('[bg] could not read the device preferences: $e');
       return const BackgroundRoundResult(BackgroundRoundStatus.failed);
     }
-    if (session == null || session.userId.isEmpty) {
-      debugPrint('[bg] skipped: signed out');
+    if (ledger == BackgroundLedger.none ||
+        (ledger == BackgroundLedger.local && openLocalDatabase == null)) {
+      debugPrint('[bg] skipped: no ledger to sync right now');
       return const BackgroundRoundResult(
         BackgroundRoundStatus.skippedSignedOut,
       );
     }
-    final mxid = session.userId;
+    final local = ledger == BackgroundLedger.local;
+
+    if (!local) {
+      try {
+        final opening = openSession();
+        final first = await Future.any<Object?>([
+          opening,
+          stop.future.then((_) => _stopped),
+        ]);
+        if (identical(first, _stopped)) {
+          // Timed out / aborted while restoring: close it once it's open —
+          // before returning (the caller releases the slot after we return).
+          cancelRequests();
+          try {
+            final s = await opening.timeout(inFlightGrace);
+            await s?.close();
+          } catch (e) {
+            debugPrint('[bg] session still opening / close failed: $e');
+          }
+          return BackgroundRoundResult(
+            aborted
+                ? BackgroundRoundStatus.aborted
+                : BackgroundRoundStatus.timedOut,
+          );
+        }
+        session = first as BackgroundSession?;
+      } catch (e) {
+        debugPrint('[bg] could not open the Matrix session: $e');
+        return const BackgroundRoundResult(BackgroundRoundStatus.failed);
+      }
+      if (session == null || session.userId.isEmpty) {
+        debugPrint('[bg] skipped: signed out');
+        return const BackgroundRoundResult(
+          BackgroundRoundStatus.skippedSignedOut,
+        );
+      }
+    }
+    final identity = local ? kLocalAccountId : session!.userId;
+    var hasLinks = false;
     try {
-      db = openDatabase(mxid);
-      if (!await SettingsDao(db).backgroundSyncEnabled()) {
-        debugPrint('[bg] skipped: background sync disabled for $mxid');
+      final opened = db = local ? openLocalDatabase!() : openDatabase(identity);
+      if (!await SettingsDao(opened).backgroundSyncEnabled()) {
+        debugPrint('[bg] skipped: background sync disabled for $identity');
         return const BackgroundRoundResult(
           BackgroundRoundStatus.skippedDisabled,
         );
       }
+      hasLinks = (await LinkDao(opened).getAllChannels()).isNotEmpty;
     } catch (e) {
       debugPrint('[bg] could not open the ledger DB: $e');
       return const BackgroundRoundResult(BackgroundRoundStatus.failed);
     }
+    if (local && !hasLinks) {
+      debugPrint('[bg] skipped: local mode without link groups');
+      return const BackgroundRoundResult(
+        BackgroundRoundStatus.skippedNothingToSync,
+      );
+    }
 
-    final t = tracked = TrackingTransport(session.transport);
+    final s = session;
+    final t = tracked = s == null ? null : TrackingTransport(s.transport);
+    final LedgerTransport transport = t ?? LocalOnlyTransport('');
     final openedDb = db;
     final c = container = ProviderContainer(
       overrides: [
-        accountUserIdProvider.overrideWithValue(mxid),
-        // G40: a round only ever syncs the Matrix account it opened.
-        localModeActiveProvider.overrideWithValue(false),
-        ledgerIdentityProvider.overrideWithValue(mxid),
+        accountUserIdProvider.overrideWithValue(local ? null : identity),
+        // G40: a round only ever syncs the ledger it opened.
+        localModeActiveProvider.overrideWithValue(local),
+        ledgerIdentityProvider.overrideWithValue(identity),
         accountDatabaseOpenerProvider.overrideWithValue((_) => openedDb),
-        ledgerTransportProvider.overrideWith((ref) async => t),
+        localDatabaseOpenerProvider.overrideWithValue(() => openedDb),
+        ledgerTransportProvider.overrideWith((ref) async => transport),
         // No periodic timer inside a round, a short ack debounce (the round
         // must see the ack digests go out before it shuts down), no startup
         // digest (decided below), no new-device retry loop.
@@ -310,48 +404,70 @@ Future<BackgroundRoundResult> runBackgroundRound({
         selfResyncRetryDelaysProvider.overrideWithValue(const []),
         if (snapshotStores != null)
           snapshotStoreFactoryProvider.overrideWithValue(snapshotStores),
+        // G52 step 8: the link engine only does what the round asks for.
+        linkBackgroundRoundProvider.overrideWithValue(true),
+        linkRelayInfoFetcherProvider.overrideWithValue(null),
+        ...linkOverrides,
       ],
     );
-    c.listen(ledgerSyncerProvider, (_, _) {});
-    c.listen(syncEngineProvider, (_, _) {});
-    final engine = c.read(syncEngineProvider);
-    if (!await guard(
-      Future.wait([c.read(ledgerSyncerProvider).ready, engine.ready]),
-    )) {
-      return _ended(aborted, t, broadcast);
-    }
+    debugPrint('[bg] round started for $identity');
 
-    Future<bool> waitQuiet() =>
-        guard(t.quiet(quietPeriod, deadline: deadline), touchesStores: false);
-
-    debugPrint('[bg] round started for $mxid');
-    var activityBefore = t.activity;
-    if (!await guard(session.fetchOnce())) {
-      return _ended(aborted, t, broadcast);
-    }
-    if (!await waitQuiet()) return _ended(aborted, t, broadcast);
-
-    // Our own periodic digest — only when the last one is stale (answering a
-    // peer's digest during this round already counts as a fresh one).
-    final lastDigest = await SyncStatesDao(openedDb).latestDigestSentAt();
-    if (now() - lastDigest >= digestMaxAge.inMilliseconds) {
-      broadcast = true;
-      if (!await guard(engine.broadcastDigests())) {
-        return _ended(aborted, t, broadcast);
+    // ── Matrix phase (only with a session) ──────────────────────────────
+    if (s != null && t != null) {
+      c.listen(ledgerSyncerProvider, (_, _) {});
+      c.listen(syncEngineProvider, (_, _) {});
+      final engine = c.read(syncEngineProvider);
+      if (!await guard(
+        Future.wait([c.read(ledgerSyncerProvider).ready, engine.ready]),
+      )) {
+        return ended();
       }
-      if (!await waitQuiet()) return _ended(aborted, t, broadcast);
+
+      Future<bool> waitQuiet() =>
+          guard(t.quiet(quietPeriod, deadline: deadline), touchesStores: false);
+
+      var activityBefore = t.activity;
+      if (!await guard(s.fetchOnce())) return ended();
+      if (!await waitQuiet()) return ended();
+
+      // Our own periodic digest — only when the last one is stale (answering
+      // a peer's digest during this round already counts as a fresh one).
+      final lastDigest = await SyncStatesDao(openedDb).latestDigestSentAt();
+      if (now() - lastDigest >= digestMaxAge.inMilliseconds) {
+        broadcast = true;
+        if (!await guard(engine.broadcastDigests())) return ended();
+        if (!await waitQuiet()) return ended();
+      }
+
+      // Follow-up fetches: answers / repairs from peers that are online
+      // right now arrive within seconds. Stop once a pass brings no traffic.
+      var fetches = 1;
+      while (fetches < maxFetches && t.activity != activityBefore) {
+        activityBefore = t.activity;
+        fetches++;
+        if (!await guard(s.fetchOnce(wait: followUpWait))) return ended();
+        if (!await waitQuiet()) return ended();
+      }
     }
 
-    // Follow-up fetches: answers / repairs from peers that are online right
-    // now arrive within seconds. Stop once a pass brings no traffic.
-    var fetches = 1;
-    while (fetches < maxFetches && t.activity != activityBefore) {
-      activityBefore = t.activity;
-      fetches++;
-      if (!await guard(session.fetchOnce(wait: followUpWait))) {
-        return _ended(aborted, t, broadcast);
+    // ── link phase (G52 step 8, design doc §8.3) ────────────────────────
+    if (hasLinks) {
+      c.listen(linkSyncEngineProvider, (_, _) {});
+      final link = c.read(linkSyncEngineProvider);
+      linkEngine = link;
+      if (!await guard(link.ready)) return ended();
+      if (!await guard(
+        link.refresh(timeout: linkFetchTimeout).then((r) {
+          linkEvents = r.events;
+          linkMerged = r.merged;
+        }),
+      )) {
+        return ended();
       }
-      if (!await waitQuiet()) return _ended(aborted, t, broadcast);
+      // Publish what changed (incl. a due 10-day refresh) — after the merge,
+      // so our snapshot already carries the peers' versions.
+      if (!await guard(link.publishAll())) return ended();
+      linkDone = true;
     }
 
     // G58: the daily restore point — the app may not be opened for days.
@@ -371,24 +487,32 @@ Future<BackgroundRoundResult> runBackgroundRound({
               )
               .then((wrote) => snapshot = wrote),
         )) {
-          return _ended(aborted, t, broadcast);
+          return ended();
         }
       }
     }
     final result = BackgroundRoundResult(
       BackgroundRoundStatus.completed,
-      received: t.received,
-      sent: t.sent,
+      received: t?.received ?? 0,
+      sent: t?.sent ?? 0,
       broadcastDigests: broadcast,
       snapshot: snapshot,
+      link: linkDone,
+      linkEvents: linkEvents,
+      linkMerged: linkMerged,
     );
     debugPrint('[bg] round done: $result');
     return result;
   } finally {
     budget.cancel();
     // Stopped early: cut the requests in flight first, so the step settles
-    // now instead of writing into closed stores later (G18 review 2).
-    if (stop.isCompleted) cancelRequests();
+    // now instead of writing into closed stores later (G18 review 2) — the
+    // link engine's relay connections too (disposing it closes its pool;
+    // its steps bail at their next await).
+    if (stop.isCompleted) {
+      cancelRequests();
+      linkEngine?.dispose();
+    }
     await settleInFlight();
     // Order matters: stop the sync components first, then close the ledger
     // DB, then the session (its store holds the Olm sessions — closed last,
@@ -411,17 +535,21 @@ const Object _stopped = Object();
 
 BackgroundRoundResult _ended(
   bool aborted,
-  TrackingTransport t,
-  bool broadcast,
-) {
+  TrackingTransport? t,
+  bool broadcast, {
+  int linkEvents = 0,
+  int linkMerged = 0,
+}) {
   final status = aborted
       ? BackgroundRoundStatus.aborted
       : BackgroundRoundStatus.timedOut;
   final result = BackgroundRoundResult(
     status,
-    received: t.received,
-    sent: t.sent,
+    received: t?.received ?? 0,
+    sent: t?.sent ?? 0,
     broadcastDigests: broadcast,
+    linkEvents: linkEvents,
+    linkMerged: linkMerged,
   );
   debugPrint('[bg] round stopped early: $result');
   return result;
