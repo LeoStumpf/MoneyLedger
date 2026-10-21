@@ -38,6 +38,8 @@ import 'record_details_sheet.dart';
 import '../../core/link/link_sync_engine.dart' show linkClockProvider;
 import '../link/link_invite.dart';
 import '../link/link_join.dart' show chooseLinkParticipant;
+import '../local/local_mode_ui.dart' show startConnectAccount;
+import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../sync/group_sync_sheet.dart';
 import '../../core/widgets/action_error.dart';
 
@@ -79,14 +81,23 @@ class ExpensesPage extends ConsumerWidget {
         .where((g) => g.roomId == roomId)
         .firstOrNull;
     final overview = ref.watch(groupOverviewProvider(roomId));
+    // G53 (§10.1): the group was locked (secure-only) and this device's
+    // account claims nobody in it (it used the group by link) — read-only.
+    final secureOnly =
+        group != null &&
+        group.isLocked &&
+        meAsync.hasValue &&
+        meAsync.value == null;
     // Invited but not yet linked to anyone in this group → offer self-claim.
     final needsClaim =
+        !secureOnly &&
         meAsync.hasValue &&
         meAsync.value == null &&
         members.any((m) => m.isActive);
     // G26: another member removed us — the group stays as read-only history
     // (peers would reject our writes anyway) until we delete it here.
-    final removed = meAsync.value != null && !meAsync.value!.isActive;
+    final removed =
+        secureOnly || (meAsync.value != null && !meAsync.value!.isActive);
     final canEdit = meAsync.value?.isActive ?? false;
     final adderState = ref.watch(memberAdderProvider);
     // Keep the (auto-dispose) expense notifier alive while this page can
@@ -265,7 +276,27 @@ class ExpensesPage extends ConsumerWidget {
             ),
       body: Column(
         children: [
-          if (removed)
+          if (secureOnly)
+            MaterialBanner(
+              key: const Key('secureOnlyBanner'),
+              forceActionsBelow: true,
+              content: Text(l.secureOnlyBanner),
+              leading: const Icon(Icons.verified_user_outlined),
+              actions: [
+                if (ref.watch(localModeActiveProvider))
+                  TextButton(
+                    key: const Key('secureOnlyConnect'),
+                    onPressed: () => startConnectAccount(context, ref),
+                    child: Text(l.connectMatrixAccount),
+                  ),
+                TextButton(
+                  onPressed: () =>
+                      exitGroupFlow(context, ref, roomId, GroupExitKind.delete),
+                  child: Text(l.deleteFromThisDevice),
+                ),
+              ],
+            )
+          else if (removed)
             MaterialBanner(
               key: const Key('removedBanner'),
               // G67: at 360 dp an inline action squeezed the text into a

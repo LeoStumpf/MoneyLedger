@@ -3048,7 +3048,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Unter Einstellungen → Relays kannst du die Relays ändern: Ein neues wird zuerst nach seiner Infoseite (NIP-11) gefragt, danach synchronisieren deine geteilten Gruppen auch darüber. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Wenn du eine geteilte Gruppe von diesem Gerät löschst (oder die lokalen Daten löschst), bittet die App die Relays zuerst, deine Kopie zu löschen; die anderen in der Gruppe behalten ihre. Wenn du den Einladungslink zurücksetzt (oder auf einen neuen Link umstellst, den dir jemand geschickt hat), bittet die App die Relays, deine Kopie unter dem alten Link zu löschen, und veröffentlicht die Gruppe mit einem neuen Schlüssel; wer nur den alten Link hat, bekommt deine Änderungen nicht mehr, behält aber, was schon gesehen wurde. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast – oder, in einer Gruppe, die mit Matrix-Konten geteilt wird, wenn jemand darin mit einem Link einlädt: Dann teilen deine Geräte diese Gruppe ebenso über die Relays, und Änderungen über den Link werden als „nicht überprüft“ markiert. In einer solchen Gruppe – auch sobald jemand, der per Link beigetreten ist, ein Matrix-Konto verbindet – sieht jede Person mit dem Link die Matrix-IDs derer, die Matrix nutzen. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
+      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Unter Einstellungen → Relays kannst du die Relays ändern: Ein neues wird zuerst nach seiner Infoseite (NIP-11) gefragt, danach synchronisieren deine geteilten Gruppen auch darüber. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Wenn du eine geteilte Gruppe von diesem Gerät löschst (oder die lokalen Daten löschst), bittet die App die Relays zuerst, deine Kopie zu löschen; die anderen in der Gruppe behalten ihre. Wenn du den Einladungslink zurücksetzt (oder auf einen neuen Link umstellst, den dir jemand geschickt hat), bittet die App die Relays, deine Kopie unter dem alten Link zu löschen, und veröffentlicht die Gruppe mit einem neuen Schlüssel; wer nur den alten Link hat, bekommt deine Änderungen nicht mehr, behält aber, was schon gesehen wurde. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast – oder, in einer Gruppe, die mit Matrix-Konten geteilt wird, wenn jemand darin mit einem Link einlädt: Dann teilen deine Geräte diese Gruppe ebenso über die Relays, und Änderungen über den Link werden als „nicht überprüft“ markiert. In einer solchen Gruppe – auch sobald jemand, der per Link beigetreten ist, ein Matrix-Konto verbindet – sieht jede Person mit dem Link die Matrix-IDs derer, die Matrix nutzen. Wird eine solche Gruppe abgesichert (sobald alle darin ein Matrix-Konto haben), werden die Relays gebeten, die Kopien zu löschen, und der Link funktioniert nicht mehr. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
 
   @override
   String linkInviteShareText(String group, String link) {
@@ -3542,4 +3542,43 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get linkMixedOpening => 'Einladungslink wird erstellt …';
+
+  @override
+  String get lockGroupTile => 'Gruppe absichern';
+
+  @override
+  String get lockGroupTileBody =>
+      'Ab jetzt nur noch Matrix-Konten – der Einladungslink funktioniert dann nicht mehr';
+
+  @override
+  String get lockBlockedTitle => 'Noch nicht alle haben ein Matrix-Konto';
+
+  @override
+  String lockBlockedBody(String names) {
+    return 'Bevor die Gruppe abgesichert werden kann, müssen diese Personen in MoneyLedger ein Matrix-Konto verbinden (Einstellungen → Matrix-Konto verbinden) – oder aus der Gruppe entfernt werden: $names';
+  }
+
+  @override
+  String get lockConfirmTitle => 'Diese Gruppe absichern?';
+
+  @override
+  String get lockConfirmBody =>
+      'Der Einladungslink funktioniert dann nicht mehr: Die Relays werden gebeten, die Kopien der Gruppe zu löschen, und Änderungen über den Link werden nicht mehr angenommen. Alle synchronisieren weiter mit ihrem Matrix-Konto.\n\nDu kannst die Gruppe später wieder per Link teilen – mit einem neuen Link.';
+
+  @override
+  String get lockConfirm => 'Absichern';
+
+  @override
+  String get lockRunning => 'Gruppe wird abgesichert …';
+
+  @override
+  String get lockDone =>
+      'Die Gruppe ist jetzt abgesichert – nur noch Matrix-Konten.';
+
+  @override
+  String get lockFailed => 'Die Gruppe konnte nicht abgesichert werden';
+
+  @override
+  String get secureOnlyBanner =>
+      'Diese Gruppe ist jetzt nur noch mit Matrix nutzbar – melde dich mit Matrix an, um sie weiter zu nutzen.';
 }

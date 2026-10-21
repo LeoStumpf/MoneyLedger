@@ -233,6 +233,20 @@ live.
 | 13.11 | Landing page `https://leostumpf.github.io/moneyledger/join#v=1&k=…` in a desktop browser → *DevTools → Network: only same-origin requests, no fragment in any URL*; German browser → German texts; a cut-off link → "incomplete" | web |
 | 13.12 | Offline demo (`OFFLINE_DEMO=true`) → *Climbing gym* shows synced, its invite sheet shows a QR; no network traffic | emu |
 
+## 14. Mixed groups + lock (G53, Matrix accounts + a phone without one)
+
+Real homeserver + real relays. A = Pixel signed in (@a), M = emulator
+signed in (@m, same group), L = a second emulator / browser in local mode.
+
+| # | Step → expected | How |
+|---|-----------------|-----|
+| 14.1 | A: Matrix group with M → ⋮ → *Invite with a link* → disclosure → *"Also share this group by link?"* → sheet; M's logcat `[link] bridging …`, M publishes too | 2dev |
+| 14.2 | L opens the link, joins as someone new, adds an expense → *A and M show it, footer "Changed by … via link · not verified"* | 3dev |
+| 14.3 | L: rename the group → *"Only possible with a Matrix account"*, nothing changes | phone |
+| 14.4 | A: group settings → *Make group secure* → *dialog names L's person*; remove that person (or L connects a Matrix account → the person shows as claimed on A and M) → *Make group secure* → confirm → *snackbar; A's + M's channels gone (`[link] … was locked`), L shows the secure-only banner, read-only* | 3dev |
+| 14.5 | A: *Invite with a link* again → *a new link (QR differs); M bridges again; L's old link finds nothing new* | 3dev |
+| 14.6 | 360 dp, 200 % font, German: the confirmation, the "who still needs to sign in" dialog and the secure-only banner fit | phone |
+
 ## iOS
 
 **iOS is not supported for v1.** The project is developed on Linux — there is no

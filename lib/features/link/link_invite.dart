@@ -683,3 +683,96 @@ class LinkDisclosurePage extends StatelessWidget {
     );
   }
 }
+
+/// G53 step 4 — whether this device may offer *Make group secure* for
+/// [group]: a **mixed** group (signed meta with an open link) on a Matrix
+/// account ([identity] an MXID) that claims an active participant. Pure.
+bool canOfferLock({
+  required GroupModel? group,
+  required List<MemberModel> members,
+  required String? identity,
+}) {
+  if (group == null || group.sig == null || group.link == null) return false;
+  if (identity == null || !identity.startsWith('@')) return false;
+  final mine = claimedBy(members, identity);
+  return mine != null && mine.isActive;
+}
+
+/// G53 step 4 — *Make group secure* (§10.1 Lock): when someone active has
+/// no Matrix account yet, a dialog names them (nothing is written);
+/// otherwise a confirmation, then `groupLockerProvider` behind a progress
+/// dialog and a snackbar.
+Future<void> lockGroupFlow(
+  BuildContext context,
+  WidgetRef ref,
+  String groupId,
+) async {
+  final errors = ActionErrors.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final l = context.l10n;
+  final locker = ref.read(groupLockerProvider);
+  final members =
+      ref.read(groupMembersProvider(groupId)).value ?? const <MemberModel>[];
+  final blockers = lockBlockers(members);
+  if (blockers.isNotEmpty) {
+    await _showLockBlocked(context, blockers);
+    return;
+  }
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      key: const Key('lockConfirmDialog'),
+      scrollable: true,
+      title: Text(l.lockConfirmTitle),
+      content: Text(l.lockConfirmBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          key: const Key('lockConfirm'),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(l.lockConfirm),
+        ),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  try {
+    await runWithProgress(context, l.lockRunning, () => locker(groupId));
+  } on LockNotEligibleException catch (e) {
+    // Someone joined meanwhile.
+    if (context.mounted) await _showLockBlocked(context, e.blockers);
+    return;
+  } catch (e) {
+    errors.show(e, what: l.lockFailed);
+    return;
+  }
+  if (context.mounted) ref.invalidate(linkInviteStateProvider(groupId));
+  messenger.showSnackBar(SnackBar(content: Text(l.lockDone)));
+}
+
+Future<void> _showLockBlocked(
+  BuildContext context,
+  List<MemberModel> blockers,
+) {
+  final l = context.l10n;
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      key: const Key('lockBlockedDialog'),
+      scrollable: true,
+      title: Text(l.lockBlockedTitle),
+      content: Text(
+        l.lockBlockedBody([for (final m in blockers) m.label].join(', ')),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: Text(MaterialLocalizations.of(ctx).okButtonLabel),
+        ),
+      ],
+    ),
+  );
+}

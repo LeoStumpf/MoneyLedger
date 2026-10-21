@@ -74,6 +74,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/about/about_page.dart' show appVersionProvider;
 import '../../features/expenses/expenses_provider.dart';
+import '../../models/group_model.dart';
 import '../../models/link_model.dart';
 import '../../models/member_model.dart' show claimedBy;
 import '../database/app_database.dart';
@@ -1606,9 +1607,14 @@ class LinkSyncEngine {
   /// accepted the deletion (true at once, sending nothing, when this device
   /// never published for the group). The channel itself stays — the caller
   /// purges.
+  ///
+  /// G53 [lock]: the group was just locked by this device — part 0 becomes
+  /// the final `locked: true` event ([buildLinkLockPart]) and stays until
+  /// it expires (a day); only the other parts are deleted.
   Future<bool> unpublish(
     String groupId, {
     Duration timeout = const Duration(seconds: 5),
+    bool lock = false,
   }) => _track(() async {
     // G52 step 10: right after start the channels may not be loaded yet.
     if (_started) await ready;
@@ -1649,7 +1655,9 @@ class LinkSyncEngine {
       };
       for (var i = 0; i < used; i++) {
         final part = i == 0
-            ? buildLinkSnapshotPart(empty, me: me, app: app)
+            ? (lock
+                  ? buildLinkLockPart(empty, me: me, app: app)
+                  : buildLinkSnapshotPart(empty, me: me, app: app))
             : buildRetiredLinkPart(empty, me: me, app: app, index: i, parts: 1);
         final content = await _seal(route, i, packLinkSnapshot(part));
         final createdAt = await _link.nextCreatedAt(groupId, _nowSec);
@@ -1669,12 +1677,15 @@ class LinkSyncEngine {
         if (!_alive) return false;
       }
     }
+    // A lock keeps its final event (part 0) until it expires.
+    final deleted = lock ? dTags.sublist(1) : dTags;
+    if (deleted.isEmpty) return true;
     final createdAt = await _link.nextCreatedAt(groupId, _nowSec);
     if (createdAt == null || !_alive) return false;
     final deletion = buildNostrDeletion(
       privateKey: ch.nostrPriv,
       kind: kLinkEventKind,
-      dTags: dTags,
+      dTags: deleted,
       createdAt: createdAt,
     );
     final results = await _ensurePool().publish(
@@ -1856,6 +1867,46 @@ class LinkSyncEngine {
     if (!_alive) return null;
     return _link.getChannel(groupId);
   }
+
+  /// G53 step 4 — **lock** (§10.1): this device stores the signed lock
+  /// meta [lockMeta] (no `link`, `locked_at`), publishes the final
+  /// `locked: true` event under the link (part 0, expires after a day; the
+  /// other parts deleted — [unpublish] `lock:`) and drops the channel. The
+  /// group's bridging is held meanwhile, so the meta write doesn't trigger
+  /// the plain unpublish. The other devices drop their channels when the
+  /// meta reaches them (bridging *drop*). Relaying the meta over Matrix is
+  /// the caller's job.
+  Future<void> lockLink(String groupId, GroupModel lockMeta) =>
+      _track(() async {
+        if (_started) await ready;
+        await _reloadChain;
+        if (!_alive) throw StateError('link sync engine disposed');
+        _resetting.add(groupId);
+        try {
+          _debounceTimers.remove(groupId)?.cancel();
+          _retryTimers.remove(groupId)?.cancel();
+          await _publishRuns[groupId];
+          await _inbound;
+          if (!_alive) throw StateError('link sync engine disposed');
+          await _groups.upsertGroupLww(groupCompanion(lockMeta));
+          if (!_alive) return;
+          try {
+            await unpublish(
+              groupId,
+              lock: true,
+            ).timeout(kLinkUnpublishMaxWait, onTimeout: () => false);
+          } catch (e) {
+            if (_alive) debugPrint('[link] lock event of $groupId failed: $e');
+          }
+          if (!_alive) return;
+          await _link.deleteChannel(groupId);
+          _status.remove(groupId);
+          _emit(groupId);
+          await _reloadChannels();
+        } finally {
+          _resetting.remove(groupId);
+        }
+      });
 
   /// G53: our copy of [groupId] leaves the relays ([unpublish], bounded by
   /// [kLinkUnpublishMaxWait]; [beforeDelete] runs instead when given — the

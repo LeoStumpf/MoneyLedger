@@ -84,8 +84,12 @@ and sees only ciphertext.
   adds / removes relays; the group's sync sheet shows who published what;
   *Reset invite link* locks out old-link holders. Leaving or deleting a
   link group first asks the relays to delete this device's copy; a backup
-  carries the invite key (with a warning). Design:
-  [`docs/design/no-login-sharing.md`](docs/design/no-login-sharing.md).
+  carries the invite key (with a warning). **Mixed groups (G53):** a
+  Matrix group can also get an invite link (its members' devices bridge it
+  to the relays; changes via the link show as "not verified"), someone who
+  joined by link can connect a Matrix account later and keeps their person,
+  and once everyone has an account *Make group secure* closes the link.
+  Design: [`docs/design/no-login-sharing.md`](docs/design/no-login-sharing.md).
 - **Background sync (Android):** devices sync while the app runs and, on
   Android, about every 15 min in the background (WorkManager; network
   connected, battery not low) — so a closed phone still answers its peers and

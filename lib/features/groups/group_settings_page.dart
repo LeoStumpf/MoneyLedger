@@ -124,6 +124,20 @@ class GroupSettingsPage extends ConsumerWidget {
                 enabled: canEdit,
                 onTap: () => resetInviteLinkFlow(context, ref, roomId),
               ),
+            // G53 step 4: a mixed group on a Matrix member's device.
+            if (canOfferLock(
+              group: group,
+              members: members,
+              identity: ref.watch(currentUserIdProvider),
+            ))
+              ListTile(
+                key: const Key('lockGroupTile'),
+                leading: const Icon(Icons.verified_user_outlined),
+                title: Text(l.lockGroupTile),
+                subtitle: Text(l.lockGroupTileBody),
+                enabled: canEdit,
+                onTap: () => lockGroupFlow(context, ref, roomId),
+              ),
             SettingsSectionHeader(l.settingsSectionData),
             ListTile(
               key: const Key('backupGroupTile'),

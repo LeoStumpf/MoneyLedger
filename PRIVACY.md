@@ -115,7 +115,8 @@ a link: then your devices share that group through the relays in the same
 way, and changes made through the link are marked “not verified”. In such a
 group — also once someone who joined by link connects a Matrix account —
 everyone with the link sees the Matrix IDs of the people in it who use
-Matrix.
+Matrix. Making such a group secure (once everyone in it has a Matrix account)
+asks the relays to delete the copies, and the link stops working.
 Opening an invite link contacts nothing until you tap “Join”; the relays are
 then asked for that group.
 

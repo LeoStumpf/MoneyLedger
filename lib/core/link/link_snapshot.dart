@@ -158,6 +158,26 @@ Map<String, dynamic> buildRetiredLinkPart(
   };
 }
 
+/// G53 (§10.1 Lock, step 2): the locking device's final event — part 0,
+/// header-only (meta = the signed lock meta, all members, no records) with
+/// `locked: true`.
+Map<String, dynamic> buildLinkLockPart(
+  Map<String, dynamic> bootstrap, {
+  required String me,
+  required String app,
+}) => {
+  ...buildLinkSnapshotPart(
+    {
+      ...bootstrap,
+      'expenses': const <Object?>[],
+      'settlements': const <Object?>[],
+    },
+    me: me,
+    app: app,
+  ),
+  'locked': true,
+};
+
 /// The part indices to retire when a snapshot goes from [previousParts] to
 /// [parts] parts (empty when it grows or stays).
 List<int> retiredLinkParts(int previousParts, int parts) => [
@@ -237,12 +257,18 @@ class LinkSnapshotHeader {
   final int parts;
   final String? app;
 
+  /// G53 (§10.1): the publisher locked the group — this is its final,
+  /// header-only event (the signed meta inside says so; this flag is only a
+  /// hint, never trusted on its own).
+  final bool locked;
+
   const LinkSnapshotHeader({
     required this.group,
     required this.me,
     required this.part,
     required this.parts,
     required this.app,
+    this.locked = false,
   });
 
   /// A header-only part overwriting a part no longer in use.
@@ -284,6 +310,7 @@ LinkSnapshotHeader parseLinkSnapshotHeader(Map<String, dynamic> json) {
     part: part,
     parts: parts,
     app: app is String ? app : null,
+    locked: json['locked'] == true,
   );
 }
 

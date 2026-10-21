@@ -606,10 +606,13 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
 
 ### Link-group policy (G52 step 4)
 
-`GroupPolicy` (`lib/core/link/group_policy.dart`, `LinkDao.policyOf`) =
-`matrix` without a device-local `link_channels` row (always, whatever the
-meta), else `linkOnly` (unsigned / no stored meta) or `mixed` (signed meta).
-Derived from local state only — inbound data can't downgrade a Matrix group.
+`GroupPolicy` (`lib/core/link/group_policy.dart`, `LinkDao.policyOf`):
+a **signed** stored meta decides on its own (G53) — with `link` → `mixed`
+(also before this device bridged), without → `matrix` (a Matrix group or a
+**locked** one, `GroupPolicyInfo.lockedAt`); an unsigned / missing meta →
+`linkOnly` with a device-local `link_channels` row, else `matrix`. Derived
+from local state only — inbound data can't take a Matrix group off G6 (only
+a member's verified signed meta opens / closes a link).
 `linkOnly`: `SyncEngine` (digests, bootstraps, resync answers, rule 10),
 `LedgerSyncer` (drops to-device records), `signPendingRows`,
 `reclaimGroupInPlace` / `markUnsignedPending` skip it; `LocalRecordSigner(
@@ -859,6 +862,57 @@ Signing key once enrolled; never the password) and `moneyledger/join.html`
 external request / analytics; `WEB_APP_URL` / `PLAY_URL` / `FDROID_URL`
 stay empty (hidden) until they exist. The manifest's `autoVerify` App Link
 only verifies once the site is live. Smoke: `docs/smoke-test.md` §13.
+
+### Mixed groups + lock (G53)
+
+Design doc §10.1 + "As built (G53 steps 1–4)". **Wire:** the signed group
+meta has optional `link: {epoch, secret}` (open invite link → `mixed`) and
+`locked_at` (ms) — in payload, signed body and G27 hash only when set
+(`GroupLink`, never logged); schema **v16** `groups.link_epoch` /
+`link_secret` / `locked_at` (forgets meta refusals). Meta rewrites keep the
+link state (`GroupModel.nextVersion` — editor, CSV import, G48 reset).
+- **Gate:** `RecordGate(matrixPolicy:)` on the Matrix path (`LedgerSyncer`,
+  `SyncEngine`): in `mixed` unsigned expense / payment / participant versions
+  relayed by members are accepted (stored unsigned, `by` kept, "Changed by X
+  via link · not verified" — `attributionFor(linkAuthor:)`); refused on both
+  paths: unsigned metas, unsigned claims, **unsigned changes of a claimed
+  participant**, unsigned metas carrying link state. Locked: unsigned only up
+  to `locked_at`. Opening a link forgets `unsigned` refusals. Link path: a
+  **signed self-claim** (stored, active, unclaimed participant, signed by
+  the claimed MXID) is accepted in linkOnly / mixed; other signed claims need
+  a signer who is an active member (stored, or in the same snapshot for a
+  participant new to this device).
+- **Writers without an account** (local mode) in a mixed group write link
+  versions; meta / claimed people → `SignatureRequiredException` ("Only
+  possible with a Matrix account"); in a locked group nothing.
+- **Invite by link in a Matrix group** (`canOpenMixed` → disclosure →
+  `confirmMixedLink` → `mixedLinkOpenerProvider` / `writeMixedLinkMeta`):
+  a signed meta with a fresh secret, epoch = `lastLinkEpoch` + 1, relayed
+  over Matrix. **Bridging** (`LinkSyncEngine._scheduleBridge`,
+  `linkBridgeAction`): every Matrix device whose account claims an active
+  participant creates / replaces its channel from the signed meta (reset in
+  a mixed group = a new signed meta, `mixedLinkResetterProvider`); a signed
+  meta without link drops any channel. A snapshot / header-only part whose
+  meta names another secret is never published on the old topic.
+- **Signed self-claim after "Connect a Matrix account"** (`link_self_claim.dart`):
+  the G40 adoption marks adopted link groups (`link_self_claim:<group>`);
+  `linkSelfClaimProvider` (in `LedgerSyncHost`) signs a claim of
+  `my_participant_id` (+ in a linkOnly group a signed meta keeping the link →
+  mixed) once the key is ready, relays it over Matrix (sender-gate exception
+  `isSenderAuthorized(linkOpen:)`) and the link. Not for link groups a Matrix
+  account created / joined while signed in (open point).
+- **Lock** (group settings *Make group secure*, `canOfferLock`,
+  `lockBlockers`, `groupLockerProvider` → `LinkSyncEngine.lockLink`): every
+  active participant must have a valid MXID; a signed meta without link +
+  `locked_at`, a final header-only `locked: true` event (part 0, 1-day
+  expiry, other parts NIP-09), channel dropped; others drop theirs on the
+  meta. A device without a Matrix participant shows the read-only
+  `secureOnlyBanner`. Reopen = *Invite with a link* again (new secret).
+- Privacy: PRIVACY.md + `privacyLinkBody` (bridging, Matrix IDs visible to
+  link holders, lock deletes the copies). Tests: `test/core/link/g53_mixed_gate_test.dart`,
+  `test/database/schema_v16_migration_test.dart`, `test/integration/g53_*`,
+  `test/g53_*_ui_test.dart`, harness `test/helpers/mixed_harness.dart`;
+  smoke §14.
 
 ### Data Flow
 

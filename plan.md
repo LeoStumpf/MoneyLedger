@@ -780,17 +780,58 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       answered" (no relay is ever asked) — acceptable for a demo
 
 ### G53. Mixed groups + "lock group" 🟡
-- [ ] Review (from G52 step 4): any link holder with a Matrix device can push a
+- [x] Review (from G52 step 4): any link holder with a Matrix device can push a
       *signed* meta → group turns `mixed` → unsigned metas (renames by link-only
       members) are refused from then on; decide in G53 (meta `link` field)
-- [ ] A Matrix group can open a link channel ("Invite by link"); Matrix
+      → resolved per the design (step 1): `mixed` = a signed meta **with**
+      `link`; a signed meta without it is a lock; unsigned metas stay refused
+      in mixed groups, so people without an account can't change name /
+      currency / categories / claimed people there (`SignatureRequiredException`,
+      friendly error) — **Leo to confirm** (see below)
+- [x] A Matrix group can open a link channel ("Invite by link"); Matrix
       devices bridge (publish + read the relay snapshot); link versions are
       unsigned and shown "via link, not verified" (per-group `RecordGate`
-      allowance; never re-signed by a Matrix device)
-- [ ] A link participant can sign in later and claim their participant
-- [ ] "Lock group" once every active participant has a Matrix account: link
+      allowance; never re-signed by a Matrix device) — steps 1 + 2
+- [x] A link participant can sign in later and claim their participant —
+      step 3 (after *Connect a Matrix account*)
+- [x] "Lock group" once every active participant has a Matrix account: link
       channel closed, key dropped, unsigned versions refused from then on
-      (signed group meta); reopening creates a new key + link
+      (signed group meta); reopening creates a new key + link — step 4
+- [ ] Device pass: smoke §14 (with G52 step 13)
+- [ ] (G53) **Leo:** confirm the consequence of mixed groups for people
+      without an account (no meta / claimed-people edits); alternative would
+      need a new wire rule (unsigned metas that keep `link` / `locked_at`)
+- [ ] (G53) **Leo:** lock griefing — any link holder with a Matrix account
+      can self-claim an unclaimed person (or remove the unclaimed people) and
+      lock; receivers don't check eligibility (the design names no receiver
+      check). Same class as "a link holder can wipe the group" (§14 risks),
+      but a lock isn't undone by a G48 reset (it keeps the link state) —
+      reopening needs a Matrix member
+- [ ] (G53) **Leo:** a fabricated self-claim on the link path (any MXID with
+      a self-made device key, "unverified") is accepted like G6's unknown
+      devices; Matrix members then replicate to that MXID — needs
+      cross-signing / a device-list check to close
+- [ ] (G53) **Leo:** Matrix accounts that create (*Share with an invite
+      link*) or join a link-only group while signed in still write it
+      unsigned (G52 step 4) — the self-claim runs only after *Connect a
+      Matrix account*; should they claim (→ mixed) too?
+- [ ] (G53) Bridging starts on a Matrix member's device without that
+      user's own first-use disclosure (another member opened the link) — the
+      privacy text says so; an in-app notice ("this group is also shared by
+      link") could follow
+- [ ] (G53) The lock's final `locked: true` event expires after a day
+      (`kLinkRetiredExpiry`, "short expiration"); a link-only phone offline
+      longer only sees its link go quiet (the lock meta reaches it only from
+      a snapshot still on the relays)
+- [ ] (G53) The epoch of a reopened link comes from the meta history
+      (pruned after 90 days) — informational only, may restart at 1
+- [ ] (G53) Invite sheet: the "Invite a Matrix user (secure)" section
+      (§8.4) is still missing — Matrix invites stay on the people page
+- [ ] (G53) The backup still carries the invite key next to the bootstrap
+      (`link: {epoch, secret}`) for link-only groups; a mixed group's signed
+      meta carries it too now — keep both readers
+- [ ] (G53) *Connect a Matrix account* texts don't say that shared link
+      groups become shared with Matrix too (mixed) — with G54's texts
 
 ### G54. "Why Matrix?" info screen + welcome reorder 🟡
 - [ ] Calm info page in the welcome style ("Hey, there's another mode — also
@@ -1092,7 +1133,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G50 — no-login link groups design doc (`docs/design/no-login-sharing.md`) — signed off by Leo 2026-10-17 (§14)
 - [x] G51 — Nostr spike — GO (2026-10-17); retention checks + web-verify decision open
 - [ ] G52 — link groups implementation
-- [ ] G53 — mixed groups + lock group
+- [x] G53 — mixed groups + lock group (device pass with G52 step 13; open points for Leo in G53)
 - [ ] G54 — "Why Matrix?" info screen + welcome reorder
 - [x] G55 — web glyph coverage without Google (found in G43) — accepted as is (Leo 2026-10-17); Flutter-upgrade reminder kept in G55
 - [x] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel) — done 2026-10-17: all pass; found G62

@@ -26,7 +26,8 @@ import '../../core/sync/payload_budget.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
 import '../../core/sync/sync_health.dart';
-import '../../core/sync/record_validation.dart' show groupMetaProblem;
+import '../../core/sync/record_validation.dart'
+    show groupMetaProblem, isValidMxid;
 import '../../models/expense_category.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
@@ -1059,3 +1060,65 @@ Future<GroupModel> writeMixedLinkMeta(
   await relay(signed);
   return signed;
 }
+
+/// G53 step 4 (§10.1 Lock): the active participants that keep a group from
+/// being locked — everyone active must be claimed by a Matrix account
+/// (a valid MXID). Empty = it can be locked. Pure.
+List<MemberModel> lockBlockers(Iterable<MemberModel> members) => [
+  for (final m in members)
+    if (m.isActive && !isValidMxid(m.matrixId)) m,
+];
+
+/// G53: *Make group secure* was asked for a group that can't be locked —
+/// [blockers] still need to sign in with Matrix (or be removed). Nothing
+/// was written.
+class LockNotEligibleException implements Exception {
+  final List<MemberModel> blockers;
+  const LockNotEligibleException(this.blockers);
+
+  @override
+  String toString() => 'LockNotEligibleException(${blockers.length})';
+}
+
+/// Locks a group (G53 step 4).
+typedef GroupLocker = Future<void> Function(String groupId);
+
+/// G53 step 4 — **Make group secure** (§10.1): on a Matrix device of an
+/// active participant, in a group whose every active participant is
+/// claimed by a Matrix account ([lockBlockers], else
+/// [LockNotEligibleException]): a **signed** meta without `link` and with
+/// `locked_at` = its clock — stored by the link sync engine together with
+/// the final `locked: true` event and the channel drop
+/// ([LinkSyncEngine.lockLink]) — then relayed over Matrix (the members'
+/// devices drop their channels on receipt). From then on unsigned versions
+/// newer than `locked_at` are refused everywhere. Reopening is *Invite by
+/// link* again (a new secret + epoch).
+final groupLockerProvider = Provider<GroupLocker>(
+  (ref) => (groupId) async {
+    final w = _GroupWriteContext(ref);
+    final engine = ref.read(linkSyncEngineProvider);
+    final me = await w.myMxid();
+    if (!me.startsWith('@')) throw const SignatureRequiredException();
+    final meta = await w.groups.getGroup(groupId);
+    if (meta == null) {
+      throw const LinkChannelException(LinkChannelError.noGroup);
+    }
+    final people = await w.members.getMembers(groupId);
+    final mine = claimedBy(people, me);
+    if (mine == null || !mine.isActive) {
+      throw const LinkChannelException(LinkChannelError.notParticipant);
+    }
+    final blockers = lockBlockers(people);
+    if (blockers.isNotEmpty) throw LockNotEligibleException(blockers);
+    final at = nextLwwClock(meta.updatedAt);
+    final signed = await w.signer.group(
+      meta.nextVersion(updatedAt: at, link: null, lockedAt: at),
+    );
+    if (signed.sig == null) {
+      throw const TransportUnavailableException('signing key not ready');
+    }
+    if (w.db.isClosed) return;
+    await engine.lockLink(groupId, signed);
+    await w.replicate(groupId, groupMetaEventType, groupMetaPayload(signed));
+  },
+);
