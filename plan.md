@@ -648,7 +648,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 9. Settings: relay list + status, peers sheet — `lib/features/link/relay_settings{,_page}.dart` (`/settings/relays`), `LinkSyncEngine.watchRelays` / `setRelays` / `syncNow`, sync sheet with G68 (`lib/features/sync/`); design doc §13 "As built (step 9)"
 - [x] 10. Leave / delete unpublish; backup carries the secret (+ warning) — `linkUnpublisherProvider` before `GroupExiter`'s purge + *Delete local data*; backup entry `link: {epoch, secret}` (`BackupLink`), restore → `reopenLinkChannel` + "Which person are you?" banner (`chooseLinkParticipant`); design doc §13 "As built (step 10)"
 - [ ] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed
-- [ ] 12. Reset invite link
+- [x] 12. Reset invite link — `LinkSyncEngine.resetLink` / `switchLink`, `replaceLinkChannel` (`link_channel.dart`); invite sheet + group settings *Reset invite link*, join page "Switch to this link?" for a group held with another link, removal hint in link groups; design doc §13 "As built (step 12)"
 - [ ] 13. Device pass (Pixel + emulator + web)
 - [x] (from step 5) **Creating a link group while signed in:** a Matrix
       device signs every write, so a group it created has a signed meta and
@@ -691,9 +691,11 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       7 days so live sync picks the group up later — not built (needs a
       pending-link store without a group id); today the page offers *Try
       again* only
-- [ ] (from step 7) A link for a group this device already shares with a
+- [x] (from step 7) A link for a group this device already shares with a
       **different** secret is refused (`LinkJoinError.otherLink`) — step 12
       (reset invite link) decides whether the new link replaces the channel
+      — **done in step 12:** the join page asks "Switch to this link?" and
+      `switchLink` replaces the channel ("me" kept)
 - [ ] (from step 7) After a join that created the local profile, the router
       shows the local-mode onboarding before the group (per-DB flag) and its
       texts still say "everything stays on this device" — with the §8.2
@@ -738,6 +740,23 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 10) Device pass: delete a link group on one phone (the
       other keeps it, our events gone from nos.lol), restore the backup,
       choose "me", syncs again
+- [ ] (from step 12) Members who haven't opened the new link get **no
+      hint** in their app — they just stop seeing the resetter's changes
+      (no pointer / "this link was reset" marker on the old topic: the
+      removed person could read it, §7.3). A header-only "reset" flag on
+      the old topic would be a wire change — Leo to decide whether wanted
+- [ ] (from step 12) Until everyone switched, a member still on the old
+      link merges the old-link holders' (e.g. the removed person's)
+      changes and carries them into the new link when switching — inherent
+      in whole-snapshot LWW; the confirmation says the old link stops
+      working "once everyone has switched"
+- [ ] (from step 12) The switch confirmation is the only guard against
+      being talked back onto an **older** link (a device can't tell which
+      link is newer — the link carries no epoch)
+- [ ] (from step 12) Device pass: reset on one phone (old events gone
+      from nos.lol, new topic published), the other phone opens the new
+      link → "Switch to this link?" → syncs; a third device with only the
+      old link stops getting changes
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a

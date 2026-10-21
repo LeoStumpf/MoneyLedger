@@ -48,6 +48,10 @@ enum LinkChannelError {
 
   /// Another Matrix account claims a participant — a Matrix group.
   matrixMembers,
+
+  /// G52 step 12: the group has no link channel on this device (reset /
+  /// switch need one).
+  noChannel,
 }
 
 class LinkChannelException implements Exception {
@@ -182,8 +186,11 @@ enum LinkJoinError {
   /// it into a link group behind the user's back.
   notALinkGroup,
 
-  /// This device already shares the group with a **different** link
-  /// (a reset invite link, step 12, decides what happens then).
+  /// This device already shares the group with a **different** link —
+  /// G52 step 12: the join page offers to **switch** to it
+  /// ([replaceLinkChannel] via `LinkSyncEngine.switchLink`; someone reset
+  /// the invite link and sent the new one), [joinLinkChannel] itself still
+  /// refuses it.
   otherLink,
 }
 
@@ -293,5 +300,52 @@ Future<bool> reopenLinkChannel(
       ),
     );
     return true;
+  });
+}
+
+/// G52 step 12 — **reset invite link** / **switch to a new link** (design
+/// doc §7.3, §14 Q10): replaces this device's channel of [groupId] in one
+/// transaction with a new one — the next epoch, a fresh per-group Nostr key
+/// (the old pubkey was seen on the old topic; nothing links the two), the
+/// same "me" and nothing published yet (`last_published_*`, `parts`,
+/// `last_created_at` start over) — and forgets the old channel's
+/// `link_peers` (they published under the old topic; each comes back with
+/// its new key once it switched too). [secret] = the new link's `k`
+/// (switching to a link someone else reset); null = a fresh random secret
+/// (this device resets). The same secret as now → the channel unchanged.
+/// Throws [LinkChannelException] ([LinkChannelError.noChannel]) without a
+/// channel and a `LinkUriException` for a malformed [secret]. The ledger
+/// rows stay as they are — the group's data simply moves to the new topic
+/// with the next publish. Unpublishing the old copy is the caller's job
+/// (`LinkSyncEngine.resetLink` / `switchLink`), before this runs.
+Future<LinkChannelModel> replaceLinkChannel(
+  AppDatabase db,
+  String groupId, {
+  String? secret,
+  int Function()? clock,
+  Random? random,
+}) {
+  final now = clock ?? () => DateTime.now().millisecondsSinceEpoch;
+  final link = LinkDao(db);
+  return db.transaction(() async {
+    final existing = await link.getChannel(groupId);
+    if (existing == null) {
+      throw const LinkChannelException(LinkChannelError.noChannel);
+    }
+    if (secret != null) {
+      if (secret == existing.secret) return existing;
+      decodeLinkSecret(secret); // a malformed secret never gets stored
+    }
+    final next = newLinkChannel(
+      groupId,
+      myParticipantId: existing.myParticipantId,
+      openedAt: now(),
+      secret: secret,
+      epoch: existing.epoch + 1,
+      random: random,
+    );
+    await link.deletePeers(groupId);
+    await link.putChannel(next);
+    return next;
   });
 }

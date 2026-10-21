@@ -39,6 +39,7 @@ import '../../core/widgets/qr_code_view.dart';
 import '../../models/group_model.dart';
 import '../../models/link_model.dart';
 import '../../models/member_model.dart';
+import '../backup/backup_ui.dart' show runWithProgress;
 import '../expenses/expenses_provider.dart';
 import '../groups/group_provider.dart';
 import 'relay_settings.dart';
@@ -220,7 +221,83 @@ Future<void> inviteByLinkFlow(
   final group = (ref.read(ledgerGroupsProvider).value ?? const [])
       .where((g) => g.roomId == groupId)
       .firstOrNull;
-  await showLinkInviteSheet(context, channel: channel, groupName: group?.name);
+  final reset = await showLinkInviteSheet(
+    context,
+    channel: channel,
+    groupName: group?.name,
+    canReset: true,
+  );
+  if (reset && context.mounted) {
+    await resetInviteLinkFlow(context, ref, groupId);
+  }
+}
+
+/// Replaces [groupId]'s invite link (G52 step 12); returns the new channel.
+typedef LinkResetter = Future<LinkChannelModel> Function(String groupId);
+
+/// The reset's seam to the link sync engine (`LinkSyncEngine.resetLink`,
+/// kept alive by `LedgerSyncHost`); widget tests replace it.
+final linkResetterProvider = Provider<LinkResetter>(
+  (ref) =>
+      (groupId) => ref.read(linkSyncEngineProvider).resetLink(groupId),
+);
+
+/// G52 step 12 — *Reset invite link* (§7.3, §14 Q10): asks first (the old
+/// link stops working, everyone still in the group needs the new one),
+/// replaces the link behind a progress dialog (our copy leaves the old
+/// topic first — bounded), then shows the invite sheet with the **new**
+/// link and the "send it to everyone" hint — the new link is shared
+/// directly, never posted where the old link could read it.
+Future<void> resetInviteLinkFlow(
+  BuildContext context,
+  WidgetRef ref,
+  String groupId,
+) async {
+  final errors = ActionErrors.of(context);
+  final l = context.l10n;
+  final resetter = ref.read(linkResetterProvider);
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      key: const Key('linkResetDialog'),
+      title: Text(l.linkResetTitle),
+      content: SingleChildScrollView(child: Text(l.linkResetBody)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          key: const Key('linkResetConfirm'),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(l.linkResetConfirm),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  final LinkChannelModel channel;
+  try {
+    channel = await runWithProgress(
+      context,
+      l.linkResetting,
+      () => resetter(groupId),
+    );
+  } catch (e) {
+    errors.show(e, what: l.linkResetFailed);
+    return;
+  }
+  if (!context.mounted) return;
+  ref.invalidate(linkInviteStateProvider(groupId));
+  final group = (ref.read(ledgerGroupsProvider).value ?? const [])
+      .where((g) => g.roomId == groupId)
+      .firstOrNull;
+  await showLinkInviteSheet(
+    context,
+    channel: channel,
+    groupName: group?.name,
+    afterReset: true,
+  );
 }
 
 /// The invite link of [channel] (https form — what is shared and put into
@@ -228,30 +305,47 @@ Future<void> inviteByLinkFlow(
 String linkInviteUri(LinkChannelModel channel, {String? groupName}) =>
     buildLinkUri(decodeLinkSecret(channel.secret), name: groupName);
 
-/// The invite sheet (§8.4).
-Future<void> showLinkInviteSheet(
+/// The invite sheet (§8.4). [canReset] shows *Reset invite link…* (G52
+/// step 12) — the sheet then pops true and the caller runs the reset;
+/// [afterReset] shows the "send the new link to everyone" hint. Returns
+/// whether a reset was asked for.
+Future<bool> showLinkInviteSheet(
   BuildContext context, {
   required LinkChannelModel channel,
   String? groupName,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  showDragHandle: true,
-  builder: (_) => LinkInviteSheet(
-    link: linkInviteUri(channel, groupName: groupName),
-    groupName: groupName ?? '',
-  ),
-);
+  bool canReset = false,
+  bool afterReset = false,
+}) async =>
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => LinkInviteSheet(
+        link: linkInviteUri(channel, groupName: groupName),
+        groupName: groupName ?? '',
+        canReset: canReset,
+        afterReset: afterReset,
+      ),
+    ) ==
+    true;
 
 class LinkInviteSheet extends ConsumerWidget {
   const LinkInviteSheet({
     super.key,
     required this.link,
     required this.groupName,
+    this.canReset = false,
+    this.afterReset = false,
   });
 
   final String link;
   final String groupName;
+
+  /// G52 step 12: offer *Reset invite link…* (pops the sheet with true).
+  final bool canReset;
+
+  /// G52 step 12: the link was just reset — say who needs it now.
+  final bool afterReset;
 
   Future<void> _share(BuildContext context, WidgetRef ref) async {
     final l = context.l10n;
@@ -304,6 +398,31 @@ class LinkInviteSheet extends ConsumerWidget {
               ),
               const SizedBox(height: Insets.s),
               Text(l.linkInviteSheetBody, style: muted),
+              if (afterReset) ...[
+                const SizedBox(height: Insets.m),
+                Card(
+                  key: const Key('linkInviteAfterReset'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(Insets.m),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.autorenew,
+                          color: theme.colorScheme.secondary,
+                        ),
+                        const SizedBox(width: Insets.m),
+                        Expanded(
+                          child: Text(
+                            l.linkResetDoneHint,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: Insets.l),
               Center(
                 child: QrCodeView(
@@ -374,6 +493,24 @@ class LinkInviteSheet extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (canReset) ...[
+                const SizedBox(height: Insets.m),
+                Center(
+                  child: TextButton.icon(
+                    key: const Key('linkInviteReset'),
+                    onPressed: () => Navigator.of(context).pop(true),
+                    icon: const Icon(Icons.autorenew),
+                    label: Text(l.linkResetMenu),
+                  ),
+                ),
+                Text(
+                  l.linkResetSheetHint,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ],
           ),
         ),

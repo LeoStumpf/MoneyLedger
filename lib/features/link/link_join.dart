@@ -20,7 +20,10 @@
 /// **Flow** ([JoinLinkPage]): parse → "Join …?" → first-use disclosure
 /// (§9.2) → look-up ([linkJoinLookupProvider]: a one-time fetch from the
 /// relays, nothing stored, works without any ledger DB) → refused when this
-/// device holds the group as a **non-link** group or with another link →
+/// device holds the group as a **non-link** group; with **another link**
+/// (G52 step 12: someone reset the invite link) → "Switch to this link?"
+/// ([switchLinkGroup]: this device's copy leaves the old link, the channel
+/// takes the new secret, "me" stays — no picker) → otherwise
 /// "Who are you?" (the group's people, "already used on another phone"
 /// hints, *I'm someone new* + name) → join ([linkJoinActionProvider]):
 /// 1. signed out (fresh install / no account) → a **local profile** is
@@ -148,6 +151,20 @@ final linkJoinActionProvider = Provider<LinkJoinActionFn>(
   (ref) => joinLinkGroup,
 );
 
+/// The switch to a new link of a group shared with another one (G52 step
+/// 12); returns the group's id.
+typedef LinkSwitchActionFn =
+    Future<String> Function(
+      ProviderContainer c,
+      LinkInvite invite,
+      String groupId,
+    );
+
+/// Seam: [switchLinkGroup] (widget tests replace it).
+final linkSwitchActionProvider = Provider<LinkSwitchActionFn>(
+  (ref) => switchLinkGroup,
+);
+
 /// The relays a join reads from: the ledger's configured list when one is
 /// open, else the defaults.
 Future<List<String>> _joinRelays(ProviderContainer c) async {
@@ -270,6 +287,36 @@ Future<String> joinLinkGroup(ProviderContainer c, LinkJoinRequest r) async {
   }
 }
 
+/// G52 step 12: this device shares [groupId] with another link and the
+/// user chose to switch to [invite] (someone reset the invite link) —
+/// `LinkSyncEngine.switchLink`: our copy leaves the old link (bounded),
+/// the channel takes the new secret with the next epoch and a fresh Nostr
+/// key, "me" stays, then the new link's snapshots are fetched and merged.
+Future<String> switchLinkGroup(
+  ProviderContainer c,
+  LinkInvite invite,
+  String groupId,
+) async {
+  if (!c.read(linkSyncEnabledProvider)) {
+    throw StateError('link sync is off (offline demo)');
+  }
+  final keep = c.listen(linkSyncEngineProvider, (_, _) {});
+  try {
+    final engine = keep.read();
+    await engine.ready;
+    await engine.switchLink(
+      groupId,
+      encodeLinkSecret(invite.secret),
+      timeout: c.read(linkJoinFetchTimeoutProvider),
+    );
+    c.invalidate(currentParticipantProvider(groupId));
+    c.invalidate(linkInviteStateProvider(groupId));
+    return groupId;
+  } finally {
+    keep.close();
+  }
+}
+
 /// "Who am I" in link group [groupId] (§6.1/§6.2) — the join picker's
 /// confirm and (G52 step 10) the group page's picker after a restore
 /// re-opened the channel without "me". One transaction: [participantId] (an
@@ -351,7 +398,17 @@ class JoinLinkListener extends ConsumerWidget {
 
 // ── the page ────────────────────────────────────────────────────────────────
 
-enum _Step { paste, invalid, intro, searching, notFound, blocked, pick, busy }
+enum _Step {
+  paste,
+  invalid,
+  intro,
+  searching,
+  notFound,
+  blocked,
+  switchLink,
+  pick,
+  busy,
+}
 
 /// `/join`: see the library doc. [fragment] is the link's fragment
 /// (`v=1&k=…&n=…`); null / empty → the paste field.
@@ -378,6 +435,9 @@ class _JoinLinkPageState extends ConsumerState<JoinLinkPage> {
   /// The picked participant id; [_newPerson] = "someone new".
   String? _picked;
   bool _newPerson = false;
+
+  /// The switch to a new link (step 12) is running.
+  bool _switching = false;
 
   @override
   void initState() {
@@ -462,7 +522,11 @@ class _JoinLinkPageState extends ConsumerState<JoinLinkPage> {
     }
     setState(() {
       _lookup = found;
-      _step = found!.blocker != null ? _Step.blocked : _Step.pick;
+      _step = switch (found!.blocker) {
+        null => _Step.pick,
+        LinkJoinError.otherLink => _Step.switchLink,
+        _ => _Step.blocked,
+      };
       if (_picked != null &&
           !found.preview.people.any((p) => p.id == _picked)) {
         _picked = null;
@@ -522,12 +586,34 @@ class _JoinLinkPageState extends ConsumerState<JoinLinkPage> {
       if (!mounted) return;
       setState(() {
         _lookup = LinkJoinLookup(preview: lookup.preview, blocker: e.kind);
-        _step = _Step.blocked;
+        _step = e.kind == LinkJoinError.otherLink
+            ? _Step.switchLink
+            : _Step.blocked;
       });
     } catch (e) {
       if (!mounted) return;
       errors.show(e);
       setState(() => _step = _Step.pick);
+    }
+  }
+
+  /// G52 step 12: switch this device's copy of the group to the new link.
+  Future<void> _switch() async {
+    final lookup = _lookup;
+    final invite = _invite;
+    if (lookup == null || invite == null) return;
+    final errors = ActionErrors.of(context);
+    final action = ref.read(linkSwitchActionProvider);
+    final container = ProviderScope.containerOf(context, listen: false);
+    setState(() => _switching = true);
+    try {
+      final groupId = await action(container, invite, lookup.preview.groupId);
+      if (!mounted) return;
+      context.go('/groups/$groupId/expenses');
+    } catch (e) {
+      if (!mounted) return;
+      errors.show(e);
+      setState(() => _switching = false);
     }
   }
 
@@ -671,6 +757,53 @@ class _JoinLinkPageState extends ConsumerState<JoinLinkPage> {
             LinkJoinError.otherLink => l.joinLinkOtherLink,
             _ => l.joinLinkNotALinkGroup,
           },
+        );
+      case _Step.switchLink:
+        final groupName = _lookup?.preview.name ?? _invite?.name;
+        return _paged(
+          key: const Key('joinLinkSwitch'),
+          children: [
+            const Center(child: Icon(Icons.autorenew, size: 64)),
+            const SizedBox(height: Insets.l),
+            Semantics(
+              header: true,
+              child: Text(
+                groupName == null
+                    ? l.joinLinkSwitchTitleNoName
+                    : l.joinLinkSwitchTitle(groupName),
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: Insets.m),
+            Text(l.joinLinkSwitchBody, textAlign: TextAlign.center),
+            const SizedBox(height: Insets.m),
+            Text(
+              l.joinLinkSwitchCaution,
+              textAlign: TextAlign.center,
+              style: _muted(context),
+            ),
+            const SizedBox(height: Insets.xl),
+            FilledButton(
+              key: const Key('joinLinkSwitchConfirm'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
+              onPressed: _switching ? null : _switch,
+              child: _switching
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l.joinLinkSwitchConfirm),
+            ),
+            const SizedBox(height: Insets.s),
+            TextButton(
+              key: const Key('joinLinkSwitchCancel'),
+              onPressed: _switching ? null : _leave,
+              child: Text(l.joinLinkSwitchKeep),
+            ),
+          ],
         );
       case _Step.pick:
       case _Step.busy:

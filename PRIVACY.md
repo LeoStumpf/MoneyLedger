@@ -1,6 +1,6 @@
 # MoneyLedger — Privacy Policy
 
-_Last updated: 2026-10-21_
+_Last updated: 2026-10-22_
 
 <!-- Keep in sync with the in-app privacy policy (About → Privacy policy),
      whose text lives in lib/l10n/app_en.arb / app_de.arb (privacy* keys). -->
@@ -104,7 +104,10 @@ days (renewed while the group is in use), but relays may keep or archive data
 longer — and anyone who gets the link, now or later, can read and change the
 group, also from archived copies. When you delete a shared group from this
 device (or delete local data), the app first asks the relays to delete your
-copy; the others in the group keep theirs. A group only on this device never contacts a
+copy; the others in the group keep theirs. Resetting the invite link (or
+switching to a new link someone sent you) asks the relays to delete your copy
+under the old link and publishes the group under a new key; people who only
+have the old link no longer get your changes, but keep what they already saw. A group only on this device never contacts a
 relay: a group starts syncing only when you invite with a link, create it
 with “Share with an invite link” or join it with a link someone sent you.
 Opening an invite link contacts nothing until you tap “Join”; the relays are

@@ -4787,7 +4787,7 @@ abstract class AppLocalizations {
   /// G52: privacy policy section body (keep in sync with PRIVACY.md)
   ///
   /// In en, this message translates to:
-  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. When you delete a shared group from this device (or delete local data), the app first asks the relays to delete your copy; the others in the group keep theirs. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.'**
+  /// **'A group you share with an invite link syncs through public Nostr relays — by default nos.lol and nostr.mom, which have one operator. They are independent services with their own terms. You can change the relays under Settings → Relays: adding one first asks it for its information page (NIP-11), then your shared groups sync through it too. Every device in the group publishes its copy of the group there, encrypted (AES-256-GCM) with a key that only the link contains; the key never goes to a relay or to any server of ours. The relays can\'t read names, amounts or notes, but they see your device\'s IP address, when it syncs, roughly how large the group is and how many devices take part, and that the data comes from MoneyLedger. We ask them to delete each copy after 30 days (renewed while the group is in use), but relays may keep or archive data longer — and anyone who gets the link, now or later, can read and change the group, also from archived copies. When you delete a shared group from this device (or delete local data), the app first asks the relays to delete your copy; the others in the group keep theirs. Resetting the invite link (or switching to a new link someone sent you) asks the relays to delete your copy under the old link and publishes the group under a new key; people who only have the old link no longer get your changes, but keep what they already saw. A group only on this device never contacts a relay: a group starts syncing only when you invite with a link, create it with “Share with an invite link” or join it with a link someone sent you. Opening an invite link contacts nothing until you tap “Join”; the relays are then asked for that group.'**
   String get privacyLinkBody;
 
   /// G52: text handed to the share sheet with the invite link
@@ -5383,6 +5383,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Which person are you in this group? It syncs again once you choose.'**
   String get linkChooseMeBanner;
+
+  /// G52 step 12: action (invite sheet, group settings)
+  ///
+  /// In en, this message translates to:
+  /// **'Reset invite link'**
+  String get linkResetMenu;
+
+  /// G52 step 12: group settings tile subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'New link — the old one stops working'**
+  String get linkResetTileBody;
+
+  /// G52 step 12: hint under the reset button in the invite sheet
+  ///
+  /// In en, this message translates to:
+  /// **'For example after removing someone: anyone with this link can still open the group.'**
+  String get linkResetSheetHint;
+
+  /// G52 step 12: confirm dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Reset invite link?'**
+  String get linkResetTitle;
+
+  /// G52 step 12: confirm dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'This makes a new invite link. Your changes then only go to people who use the new link — so send it to everyone who is still in the group.\n\nPeople who only have the old link (for example someone you removed) no longer see your changes; they keep what they have already seen. The old link stops working completely once everyone has switched to the new one.'**
+  String get linkResetBody;
+
+  /// G52 step 12: confirm button
+  ///
+  /// In en, this message translates to:
+  /// **'Reset link'**
+  String get linkResetConfirm;
+
+  /// G52 step 12: progress dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Resetting the invite link…'**
+  String get linkResetting;
+
+  /// G52 step 12: error title
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reset the invite link'**
+  String get linkResetFailed;
+
+  /// G52 step 12: hint in the invite sheet right after a reset
+  ///
+  /// In en, this message translates to:
+  /// **'This is the new link. Send it to everyone still in the group — until they open it, you don\'t see each other\'s changes.'**
+  String get linkResetDoneHint;
+
+  /// G52 step 12: removal dialog note in a link group
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can still open the group with the invite link. To lock them out, reset the invite link afterwards (group settings) and send the new one to the others.'**
+  String removeMemberLinkNote(Object name);
+
+  /// G52 step 12: the group is here with another link — switch title
+  ///
+  /// In en, this message translates to:
+  /// **'Switch “{group}” to this link?'**
+  String joinLinkSwitchTitle(Object group);
+
+  /// G52 step 12: switch title without a group name
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to this link?'**
+  String get joinLinkSwitchTitleNoName;
+
+  /// G52 step 12: switch body
+  ///
+  /// In en, this message translates to:
+  /// **'This group is already on this device with a different invite link. If someone in the group reset the link and sent you this one, switch to it: you stay the same person, and your phone then syncs with everyone who uses the new link.'**
+  String get joinLinkSwitchBody;
+
+  /// G52 step 12: switch caution
+  ///
+  /// In en, this message translates to:
+  /// **'Only switch if you got this link from someone in the group. Your copy is removed from the old link.'**
+  String get joinLinkSwitchCaution;
+
+  /// G52 step 12: switch button
+  ///
+  /// In en, this message translates to:
+  /// **'Use this link'**
+  String get joinLinkSwitchConfirm;
+
+  /// G52 step 12: cancel the switch
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the old link'**
+  String get joinLinkSwitchKeep;
 }
 
 class _AppLocalizationsDelegate

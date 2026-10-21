@@ -261,4 +261,79 @@ void main() {
       expect(await LinkDao(db).getChannel('X'), isNull);
     });
   });
+
+  group('G52 step 12: replaceLinkChannel (reset / switch)', () {
+    final other = encodeLinkSecret(List<int>.generate(32, (i) => 100 + i));
+
+    Future<void> withPeer() => LinkDao(db).recordPeerEvent(
+      groupId: 'G',
+      pubkey: 'ab' * 32,
+      part: 0,
+      eventId: 'e',
+      createdAt: 5,
+      seenAt: 6,
+      me: 'p2',
+    );
+
+    test('reset: a new random secret, next epoch, fresh Nostr key, "me" '
+        'kept, publish state and peers forgotten', () async {
+      await seed();
+      final old = await openLinkChannel(
+        db,
+        'G',
+        identity: kLocalAccountId,
+        clock: () => 1,
+      );
+      await LinkDao(db).recordPublished('G', hash: 'h', at: 7, parts: 2);
+      await LinkDao(db).nextCreatedAt('G', 99);
+      await withPeer();
+      final next = await replaceLinkChannel(db, 'G', clock: () => 50);
+      expect(next.secret, isNot(old.secret));
+      decodeLinkSecret(next.secret);
+      expect(next.epoch, old.epoch + 1);
+      expect(next.nostrPriv, isNot(old.nostrPriv));
+      expect(next.myParticipantId, old.myParticipantId);
+      final stored = (await LinkDao(db).getChannel('G'))!;
+      expect(stored.secret, next.secret);
+      expect(stored.lastPublishedHash, isNull);
+      expect(stored.lastPublishedAt, 0);
+      expect(stored.lastCreatedAt, 0);
+      expect(stored.parts, 1);
+      expect(stored.openedAt, 50);
+      expect(await LinkDao(db).getPeers('G'), isEmpty);
+      // The ledger rows are untouched.
+      expect(await GroupsDao(db).getGroup('G'), isNotNull);
+    });
+
+    test('switch: takes the given secret; the same secret changes nothing; '
+        'no channel / a malformed secret is refused', () async {
+      await seed();
+      final old = await openLinkChannel(db, 'G', identity: kLocalAccountId);
+      await withPeer();
+      expect(
+        (await replaceLinkChannel(db, 'G', secret: old.secret)).nostrPriv,
+        old.nostrPriv,
+      );
+      expect(await LinkDao(db).getPeers('G'), hasLength(1));
+      await expectLater(
+        replaceLinkChannel(db, 'G', secret: 'not base64!'),
+        throwsA(isA<LinkUriException>()),
+      );
+      expect((await LinkDao(db).getChannel('G'))!.secret, old.secret);
+      final next = await replaceLinkChannel(db, 'G', secret: other);
+      expect(next.secret, other);
+      expect(next.epoch, 2);
+      expect(next.myParticipantId, old.myParticipantId);
+      await expectLater(
+        replaceLinkChannel(db, 'X'),
+        throwsA(
+          isA<LinkChannelException>().having(
+            (e) => e.kind,
+            'kind',
+            LinkChannelError.noChannel,
+          ),
+        ),
+      );
+    });
+  });
 }

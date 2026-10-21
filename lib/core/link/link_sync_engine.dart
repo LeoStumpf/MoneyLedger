@@ -415,6 +415,13 @@ class LinkSyncEngine {
   final Map<String, Timer> _retryTimers = {};
   final Map<String, int> _retryStreak = {};
   final Set<String> _publishing = {};
+
+  /// The publish run in flight per group (step 12 waits for it).
+  final Map<String, Future<void>> _publishRuns = {};
+
+  /// Groups whose link is being reset / switched (step 12): nothing is
+  /// published or merged for them meanwhile.
+  final Set<String> _resetting = {};
   final Set<String> _dirty = {};
   final Map<String, int> _lastPublishAt = {};
   final Map<String, int> _failures = {};
@@ -947,6 +954,10 @@ class LinkSyncEngine {
     final ch = _channels[route.group];
     if (ch == null) return false;
     final group = route.group;
+    // Step 12: the link is being replaced — an event of the old topic is
+    // dropped (not recorded: its publisher would show up as a peer of the
+    // new link).
+    if (_resetting.contains(group)) return false;
     if (event.pubkey == ch.pubkey) {
       _ownNewest[event.dTag] = math.max(
         _ownNewest[event.dTag] ?? 0,
@@ -1160,6 +1171,7 @@ class LinkSyncEngine {
 
   void _schedulePublish(String group, {Duration? delay}) {
     if (!_alive || !_channels.containsKey(group)) return;
+    if (_resetting.contains(group)) return;
     // Step 8: in a background round only publishAll() publishes (after the
     // full fetch merged the peers' snapshots — never our stale one first).
     if (_roundMode) return;
@@ -1194,13 +1206,15 @@ class LinkSyncEngine {
   });
 
   Future<void> _publish(String group) async {
-    if (!_alive) return;
+    if (!_alive || _resetting.contains(group)) return;
     if (_publishing.contains(group)) {
       _dirty.add(group);
       return;
     }
     _publishing.add(group);
     _busy++;
+    final run = Completer<void>();
+    _publishRuns[group] = run.future;
     try {
       await _publishNow(group);
     } catch (e) {
@@ -1210,6 +1224,8 @@ class LinkSyncEngine {
       }
     } finally {
       _publishing.remove(group);
+      _publishRuns.remove(group);
+      run.complete();
       _busy--;
       if (_dirty.remove(group)) _schedulePublish(group);
     }
@@ -1639,6 +1655,89 @@ class LinkSyncEngine {
     );
     return results.any((r) => r.acceptedEquivalent);
   });
+
+  // ── reset / switch (step 12) ──────────────────────────────────────────────
+
+  /// G52 step 12 — **Reset invite link** (§7.3, §14 Q10): this device's
+  /// copy leaves the old topic ([unpublish]: header-only parts + NIP-09,
+  /// bounded by [kLinkUnpublishMaxWait] in total — offline it simply
+  /// expires), then the channel is replaced ([replaceLinkChannel]: a new
+  /// random secret, the next epoch, a fresh Nostr key, "me" kept, the old
+  /// peers forgotten) and the group is published under the new topic right
+  /// away. Nothing is posted on the old topic that points to the new one —
+  /// the removed person could read it; the new link is shared directly.
+  /// Returns the new channel (its link is what the invite sheet shows).
+  Future<LinkChannelModel> resetLink(String groupId) =>
+      _replaceLink(groupId, null);
+
+  /// G52 step 12 — **switch to a new link** of a group this device already
+  /// shares with another one (someone reset the invite link and sent the
+  /// new one; the join page asks first): like [resetLink] with the new
+  /// link's [secret] (`k`), then a full fetch of the new topic merges the
+  /// others who switched already. The same secret as now → nothing changes
+  /// (only the fetch).
+  Future<LinkRefreshResult> switchLink(
+    String groupId,
+    String secret, {
+    Duration? timeout,
+  }) async {
+    await _replaceLink(groupId, secret);
+    return refresh(groupId: groupId, timeout: timeout);
+  }
+
+  Future<LinkChannelModel> _replaceLink(String groupId, String? secret) =>
+      _track(() async {
+        if (_started) await ready;
+        await _reloadChain;
+        if (!_alive) throw StateError('link sync engine disposed');
+        final current = await _link.getChannel(groupId);
+        if (current == null) {
+          throw const LinkChannelException(LinkChannelError.noChannel);
+        }
+        if (secret != null) {
+          if (secret == current.secret) return current;
+          decodeLinkSecret(secret); // malformed → nothing unpublished
+        }
+        _resetting.add(groupId);
+        try {
+          _debounceTimers.remove(groupId)?.cancel();
+          _retryTimers.remove(groupId)?.cancel();
+          // A publish in flight would put the old copy back on the old
+          // topic after the unpublish; a merge in flight would record a
+          // peer of the old link after the peers are forgotten.
+          await _publishRuns[groupId];
+          await _inbound;
+          if (!_alive) throw StateError('link sync engine disposed');
+          try {
+            await unpublish(
+              groupId,
+            ).timeout(kLinkUnpublishMaxWait, onTimeout: () => false);
+          } catch (e) {
+            if (_alive) debugPrint('[link] unpublish of $groupId failed: $e');
+          }
+          if (!_alive) throw StateError('link sync engine disposed');
+          final next = await replaceLinkChannel(
+            _db,
+            groupId,
+            secret: secret,
+            clock: _clock,
+          );
+          _failures.remove(groupId);
+          _retryStreak.remove(groupId);
+          _forced.remove(groupId);
+          _lastPublishAt.remove(groupId);
+          _mergeFailed.remove(groupId);
+          _status[groupId] = const LinkGroupSyncStatus(
+            phase: LinkSyncPhase.pending,
+          );
+          _emit(groupId);
+          await _reloadChannels();
+          return next;
+        } finally {
+          _resetting.remove(groupId);
+          if (_alive) _schedulePublish(groupId, delay: Duration.zero);
+        }
+      });
 
   /// The status of every link group (tests / settings).
   @visibleForTesting

@@ -42,6 +42,8 @@ class _Fakes {
       const LinkJoinLookup(preview: _preview);
   final requests = <LinkJoinRequest>[];
   Object? joinError;
+  final switches = <(String, String)>[];
+  Object? switchError;
 }
 
 Widget _app(
@@ -87,6 +89,11 @@ Widget _app(
         f.requests.add(r);
         if (f.joinError != null) throw f.joinError!;
         return r.groupId;
+      }),
+      linkSwitchActionProvider.overrideWithValue((c, invite, groupId) async {
+        f.switches.add((encodeLinkSecret(invite.secret), groupId));
+        if (f.switchError != null) throw f.switchError!;
+        return groupId;
       }),
     ],
     child: MaterialApp.router(
@@ -318,22 +325,126 @@ void main() {
       expect(find.byKey(const Key('joinLinkPicker')), findsOneWidget);
     });
 
-    testWidgets('refused: held as a non-link group / with another link', (
-      tester,
-    ) async {
-      for (final (kind, text) in [
-        (LinkJoinError.notALinkGroup, en.joinLinkNotALinkGroup),
-        (LinkJoinError.otherLink, en.joinLinkOtherLink),
-      ]) {
-        final f = _Fakes()
-          ..answer = () => LinkJoinLookup(preview: _preview, blocker: kind);
-        await tester.pumpWidget(_app(f));
+    testWidgets('refused: held as a non-link group', (tester) async {
+      final f = _Fakes()
+        ..answer = () => const LinkJoinLookup(
+          preview: _preview,
+          blocker: LinkJoinError.notALinkGroup,
+        );
+      await tester.pumpWidget(_app(f));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('joinLinkStart')));
+      await tester.pumpAndSettle();
+      expect(find.text(en.joinLinkNotALinkGroup), findsOneWidget);
+      expect(find.byKey(const Key('joinLinkConfirm')), findsNothing);
+      expect(find.byKey(const Key('joinLinkSwitch')), findsNothing);
+    });
+
+    group('G52 step 12: shared with another link → switch', () {
+      _Fakes other() => _Fakes()
+        ..answer = () => const LinkJoinLookup(
+          preview: _preview,
+          blocker: LinkJoinError.otherLink,
+        );
+
+      testWidgets('asks first; "Use this link" switches (no picker) and '
+          'opens the group', (tester) async {
+        final f = other();
+        await tester.pumpWidget(_app(f, session: AppSessionKind.local));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('joinLinkStart')));
         await tester.pumpAndSettle();
-        expect(find.text(text), findsOneWidget);
-        expect(find.byKey(const Key('joinLinkConfirm')), findsNothing);
-        await tester.pumpWidget(const SizedBox());
+        expect(find.byKey(const Key('joinLinkSwitch')), findsOneWidget);
+        expect(find.text(en.joinLinkSwitchTitle('Trip')), findsOneWidget);
+        expect(find.text(en.joinLinkSwitchBody), findsOneWidget);
+        expect(find.byKey(const Key('joinLinkPicker')), findsNothing);
+        expect(f.switches, isEmpty);
+        await tester.tap(find.byKey(const Key('joinLinkSwitchConfirm')));
+        await tester.pumpAndSettle();
+        expect(f.switches, [(_secret, 'g1')]);
+        expect(f.requests, isEmpty);
+        expect(find.text('group g1'), findsOneWidget);
+      });
+
+      testWidgets('"Keep the old link" leaves without switching', (
+        tester,
+      ) async {
+        final f = other();
+        await tester.pumpWidget(_app(f, session: AppSessionKind.local));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('joinLinkStart')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('joinLinkSwitchCancel')));
+        await tester.pumpAndSettle();
+        expect(f.switches, isEmpty);
+        expect(find.text('groups'), findsOneWidget);
+      });
+
+      testWidgets('a failed switch shows the error and stays', (tester) async {
+        final f = other()..switchError = StateError('boom');
+        await tester.pumpWidget(_app(f, session: AppSessionKind.local));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('joinLinkStart')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('joinLinkSwitchConfirm')));
+        await tester.pumpAndSettle();
+        expect(find.byType(SnackBar), findsOneWidget);
+        expect(find.byKey(const Key('joinLinkSwitch')), findsOneWidget);
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.byKey(const Key('joinLinkSwitchConfirm')),
+              )
+              .onPressed,
+          isNotNull,
+        );
+      });
+
+      testWidgets('another link found at join time → the switch page', (
+        tester,
+      ) async {
+        final f = _Fakes()
+          ..joinError = const LinkJoinException(LinkJoinError.otherLink);
+        await tester.pumpWidget(_app(f, session: AppSessionKind.local));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('joinLinkStart')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('joinLinkPerson-p2')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('joinLinkConfirm')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('joinLinkSwitch')), findsOneWidget);
+      });
+
+      for (final (name, locale) in [
+        ('English', const Locale('en')),
+        ('German', const Locale('de')),
+      ]) {
+        testWidgets('$name at 360 dp, 200 % font: the switch page fits', (
+          tester,
+        ) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = const Size(360, 740);
+          tester.platformDispatcher.textScaleFactorTestValue = 2;
+          addTearDown(tester.view.reset);
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          final f = other();
+          await tester.pumpWidget(
+            _app(f, session: AppSessionKind.local, locale: locale),
+          );
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(const Key('joinLinkStart')));
+          await tester.tap(find.byKey(const Key('joinLinkStart')));
+          await tester.pumpAndSettle();
+          final l = locale.languageCode == 'de' ? de : en;
+          expect(find.byKey(const Key('joinLinkSwitch')), findsOneWidget);
+          await tester.ensureVisible(find.text(l.joinLinkSwitchCaution));
+          await tester.ensureVisible(
+            find.byKey(const Key('joinLinkSwitchCancel')),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        });
       }
     });
 

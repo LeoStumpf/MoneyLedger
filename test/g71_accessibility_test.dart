@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/link/link_channel.dart' show LinkJoinError;
 import 'package:money_ledger/core/link/link_join_probe.dart';
 import 'package:money_ledger/features/link/link_join.dart';
 import 'package:money_ledger/core/database/account_database.dart';
@@ -387,27 +388,41 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('G52 invite-link sheet', (tester) async {
-    _phone(tester, height: 1200);
-    final handle = tester.ensureSemantics();
-    await tester.pumpWidget(
-      _routed(
-        const Scaffold(
-          body: LinkInviteSheet(
-            link:
-                'https://leostumpf.github.io/moneyledger/join#v=1&'
-                'k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&n=Rome',
-            groupName: 'Rome',
+  // G52 step 12: with the reset button / right after a reset.
+  for (final afterReset in [false, true]) {
+    testWidgets('G52 invite-link sheet${afterReset ? ' after a reset' : ''}', (
+      tester,
+    ) async {
+      _phone(tester, height: 1400);
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _routed(
+          Scaffold(
+            body: LinkInviteSheet(
+              link:
+                  'https://leostumpf.github.io/moneyledger/join#v=1&'
+                  'k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&n=Rome',
+              groupName: 'Rome',
+              canReset: !afterReset,
+              afterReset: afterReset,
+            ),
           ),
+          _overrides(),
         ),
-        _overrides(),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel('QR code of the invite link'), findsOneWidget);
-    await _expectGuidelines(tester);
-    handle.dispose();
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.bySemanticsLabel('QR code of the invite link'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('linkInviteReset')),
+        afterReset ? findsNothing : findsOneWidget,
+      );
+      await _expectGuidelines(tester);
+      handle.dispose();
+    });
+  }
 
   testWidgets('G52 step 9 relay settings', (tester) async {
     _phone(tester);
@@ -450,6 +465,43 @@ void main() {
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(_routed(const LinkDisclosurePage(), _overrides()));
     await tester.pumpAndSettle();
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  testWidgets('G52 step 12 join page: switch to a new link', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(
+        const JoinLinkPage(
+          fragment: 'v=1&k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&n=Trip',
+        ),
+        _overrides(
+          extra: [
+            linkJoinLookupProvider.overrideWithValue(
+              (c, i) async => const LinkJoinLookup(
+                preview: LinkGroupPreview(
+                  groupId: 'g',
+                  name: 'Trip',
+                  people: [],
+                ),
+                blocker: LinkJoinError.otherLink,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('joinLinkStart')));
+    await tester.pumpAndSettle();
+    final more = find.byKey(const Key('linkDisclosureContinue'));
+    if (more.evaluate().isNotEmpty) {
+      await tester.tap(more);
+      await tester.pumpAndSettle();
+    }
+    expect(find.byKey(const Key('joinLinkSwitch')), findsOneWidget);
     await _expectGuidelines(tester);
     handle.dispose();
   });

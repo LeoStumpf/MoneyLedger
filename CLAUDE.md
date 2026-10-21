@@ -616,6 +616,28 @@ meta only in `linkOnly`; the Matrix path drops `by`. G40 adoption copies
 unsigned. Design doc §6.4 "As built"; tests `test/core/link_policy_test.dart`,
 `test/integration/link_group_matrix_skip_test.dart`.
 
+### Reset invite link (G52 step 12)
+
+Invite sheet → *Reset invite link* (or group settings → People → `resetLinkTile`;
+confirmation `linkResetDialog`) → `resetInviteLinkFlow` → `linkResetterProvider`
+→ `LinkSyncEngine.resetLink`: the group's publishes / merges are held (in-flight
+ones awaited), this device's copy is **unpublished** from the old topic (like a
+leave, bounded by `kLinkUnpublishMaxWait`), then `replaceLinkChannel`
+(`link_channel.dart`, one transaction): new random secret, epoch + 1, **fresh
+Nostr key**, "me" kept, publish state reset, the old `link_peers` dropped →
+published under the new topic at once; the sheet shows the new link +
+`linkInviteAfterReset` ("send it to everyone"). **No pointer on the old topic**
+(the removed person could read it). Other members **switch** by opening the new
+link: the join look-up's `LinkJoinError.otherLink` now shows *Switch to this
+link?* (`joinLinkSwitch`, `linkSwitchActionProvider` → `switchLinkGroup` →
+`LinkSyncEngine.switchLink`: same unpublish + replace with the link's secret,
+"me" kept, no picker, then a full fetch). `joinLinkChannel` still refuses
+another secret. Until everyone switched, members still on the old link carry
+old-link writes over (whole-snapshot LWW). Removing a person in a link group
+shows `removeMemberLinkNote`. No wire / schema change. Tests:
+`test/integration/link_reset_test.dart`, `test/g52_link_reset_ui_test.dart`,
+`link_channel_test.dart`, `g52_link_join_test.dart`.
+
 ### Invite by link (G52 step 6)
 
 `lib/features/link/link_invite.dart`. **Who gets *Invite with a link***

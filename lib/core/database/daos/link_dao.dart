@@ -127,6 +127,11 @@ class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
 
   // --- peers ----------------------------------------------------------------
 
+  /// Forgets every publisher seen in [groupId] (G52 step 12: the invite
+  /// link was reset — they published under the old topic).
+  Future<void> deletePeers(String groupId) =>
+      (delete(linkPeers)..where((t) => t.groupId.equals(groupId))).go();
+
   SimpleSelectStatement<$LinkPeersTable, LinkPeer> _peers(String groupId) =>
       select(linkPeers)
         ..where((t) => t.groupId.equals(groupId))

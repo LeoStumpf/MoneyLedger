@@ -78,7 +78,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Privacy policy'), findsOneWidget);
-    expect(find.textContaining('Last updated: Oct 21, 2026'), findsOneWidget);
+    expect(find.textContaining('Last updated: Oct 22, 2026'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('What your Matrix homeserver sees'),
       200,
@@ -125,7 +125,7 @@ void main() {
     await _tapTile(tester, 'privacyPolicyTile');
     await tester.pumpAndSettle();
     expect(find.text('Datenschutzerklärung'), findsOneWidget);
-    expect(find.textContaining('Stand: 21. Okt. 2026'), findsOneWidget);
+    expect(find.textContaining('Stand: 22. Okt. 2026'), findsOneWidget);
   });
 
   test('ARB files: same keys and placeholders in EN and DE', () {

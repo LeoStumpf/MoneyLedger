@@ -3048,7 +3048,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLinkBody =>
-      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Unter Einstellungen → Relays kannst du die Relays ändern: Ein neues wird zuerst nach seiner Infoseite (NIP-11) gefragt, danach synchronisieren deine geteilten Gruppen auch darüber. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Wenn du eine geteilte Gruppe von diesem Gerät löschst (oder die lokalen Daten löschst), bittet die App die Relays zuerst, deine Kopie zu löschen; die anderen in der Gruppe behalten ihre. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
+      'Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays – standardmäßig nos.lol und nostr.mom, die denselben Betreiber haben. Das sind unabhängige Dienste mit eigenen Nutzungsbedingungen. Unter Einstellungen → Relays kannst du die Relays ändern: Ein neues wird zuerst nach seiner Infoseite (NIP-11) gefragt, danach synchronisieren deine geteilten Gruppen auch darüber. Jedes Gerät in der Gruppe veröffentlicht dort seine Kopie der Gruppe, verschlüsselt (AES-256-GCM) mit einem Schlüssel, den nur der Link enthält; der Schlüssel geht nie an ein Relay oder an einen Server von uns. Die Relays können keine Namen, Beträge oder Notizen lesen, sehen aber die IP-Adresse deines Geräts, wann es synchronisiert, ungefähr wie groß die Gruppe ist und wie viele Geräte mitmachen und dass die Daten von MoneyLedger kommen. Wir bitten sie, jede Kopie nach 30 Tagen zu löschen (erneuert, solange die Gruppe genutzt wird), aber Relays können Daten länger behalten oder archivieren – und wer den Link bekommt, jetzt oder später, kann die Gruppe lesen und ändern, auch aus archivierten Kopien. Wenn du eine geteilte Gruppe von diesem Gerät löschst (oder die lokalen Daten löschst), bittet die App die Relays zuerst, deine Kopie zu löschen; die anderen in der Gruppe behalten ihre. Wenn du den Einladungslink zurücksetzt (oder auf einen neuen Link umstellst, den dir jemand geschickt hat), bittet die App die Relays, deine Kopie unter dem alten Link zu löschen, und veröffentlicht die Gruppe mit einem neuen Schlüssel; wer nur den alten Link hat, bekommt deine Änderungen nicht mehr, behält aber, was schon gesehen wurde. Eine Gruppe, die nur auf diesem Gerät liegt, kontaktiert nie ein Relay: Eine Gruppe synchronisiert erst, wenn du mit einem Link einlädst, sie mit „Mit Einladungslink teilen“ erstellst oder ihr mit einem Link beitrittst, den du bekommen hast. Ein geöffneter Einladungslink kontaktiert nichts, bis du auf „Beitreten“ tippst; dann werden die Relays nach dieser Gruppe gefragt.';
 
   @override
   String linkInviteShareText(String group, String link) {
@@ -3454,4 +3454,63 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get linkChooseMeBanner =>
       'Welche Person bist du in dieser Gruppe? Sobald du wählst, synchronisiert sie wieder.';
+
+  @override
+  String get linkResetMenu => 'Einladungslink zurücksetzen';
+
+  @override
+  String get linkResetTileBody =>
+      'Neuer Link – der alte funktioniert dann nicht mehr';
+
+  @override
+  String get linkResetSheetHint =>
+      'Zum Beispiel, nachdem du jemanden entfernt hast: Wer diesen Link hat, kann die Gruppe weiterhin öffnen.';
+
+  @override
+  String get linkResetTitle => 'Einladungslink zurücksetzen?';
+
+  @override
+  String get linkResetBody =>
+      'Damit erstellst du einen neuen Einladungslink. Deine Änderungen gehen dann nur noch an Personen, die den neuen Link nutzen – schick ihn also allen, die noch in der Gruppe sind.\n\nWer nur den alten Link hat (zum Beispiel eine Person, die du entfernt hast), sieht deine Änderungen nicht mehr; was schon gesehen wurde, bleibt dort. Ganz funktioniert der alte Link erst nicht mehr, wenn alle zum neuen gewechselt sind.';
+
+  @override
+  String get linkResetConfirm => 'Link zurücksetzen';
+
+  @override
+  String get linkResetting => 'Einladungslink wird zurückgesetzt …';
+
+  @override
+  String get linkResetFailed =>
+      'Einladungslink konnte nicht zurückgesetzt werden';
+
+  @override
+  String get linkResetDoneHint =>
+      'Das ist der neue Link. Schick ihn allen, die noch in der Gruppe sind – bis sie ihn öffnen, seht ihr die Änderungen der anderen nicht.';
+
+  @override
+  String removeMemberLinkNote(Object name) {
+    return '$name kann die Gruppe mit dem Einladungslink weiterhin öffnen. Um das zu verhindern, setz danach den Einladungslink zurück (Gruppeneinstellungen) und schick den neuen an die anderen.';
+  }
+
+  @override
+  String joinLinkSwitchTitle(Object group) {
+    return '„$group“ auf diesen Link umstellen?';
+  }
+
+  @override
+  String get joinLinkSwitchTitleNoName => 'Auf diesen Link umstellen?';
+
+  @override
+  String get joinLinkSwitchBody =>
+      'Diese Gruppe ist schon mit einem anderen Einladungslink auf diesem Gerät. Wenn jemand aus der Gruppe den Link zurückgesetzt und dir diesen geschickt hat, stell auf ihn um: Du bleibst dieselbe Person, und dein Handy synchronisiert dann mit allen, die den neuen Link nutzen.';
+
+  @override
+  String get joinLinkSwitchCaution =>
+      'Stell nur um, wenn du den Link von jemandem aus der Gruppe hast. Deine Kopie wird vom alten Link entfernt.';
+
+  @override
+  String get joinLinkSwitchConfirm => 'Diesen Link nutzen';
+
+  @override
+  String get joinLinkSwitchKeep => 'Alten Link behalten';
 }

@@ -178,6 +178,7 @@ class GroupMembersPage extends ConsumerWidget {
                             roomId: roomId,
                             readOnly: iAmRemoved,
                             local: local,
+                            linkGroup: linkGroup,
                           ),
                       ]),
                     ),
@@ -448,10 +449,15 @@ class _MemberTile extends ConsumerWidget {
     required this.roomId,
     this.readOnly = false,
     this.local = false,
+    this.linkGroup = false,
   });
 
   /// G40 local mode: no Matrix accounts / devices.
   final bool local;
+
+  /// G52: a link group — removing someone doesn't take the link away
+  /// (step 12: the removal dialog points to *Reset invite link*).
+  final bool linkGroup;
 
   bool get _isSelf =>
       (selfId != null && member.userId == selfId) ||
@@ -673,6 +679,13 @@ class _MemberTile extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l.removeMemberBody(name)),
+              if (linkGroup) ...[
+                const SizedBox(height: Insets.m),
+                Text(
+                  l.removeMemberLinkNote(name),
+                  key: const Key('removeLinkNote'),
+                ),
+              ],
               if (balance != null) ...[
                 const SizedBox(height: Insets.m),
                 Text(

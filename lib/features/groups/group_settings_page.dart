@@ -22,12 +22,12 @@ String groupSettingsLocation(String roomId) => '/groups/$roomId/settings';
 ///
 /// * **Group** — name & currency (G10), categories (G47);
 /// * **People** — the people page; G52 step 6: *Invite with a link* (link
-///   groups, local mode) — G53 adds *Secure the group*;
+///   groups, local mode); G52 step 12: *Reset invite link* (link groups)
+///   — G53 adds *Secure the group*;
 /// * **Data** — back up this group (G34), export CSV (G13), reset to an
 ///   earlier state (G48);
 /// * **On this device** — archive / unarchive (G16, device-local);
-/// * **Leave or delete** (G9) — last, in the error colour (G52 step 12 adds
-///   *Reset invite link* near it).
+/// * **Leave or delete** (G9) — last, in the error colour.
 ///
 /// A read-only group (we were removed, G26) keeps its restrictions: no
 /// edit, no reset; the exit is *Delete* ([groupExitKind]).
@@ -113,6 +113,16 @@ class GroupSettingsPage extends ConsumerWidget {
                 ),
                 enabled: canEdit,
                 onTap: () => inviteByLinkFlow(context, ref, roomId),
+              ),
+            // G52 step 12: a new link (e.g. after removing someone).
+            if (linkState == LinkInviteState.open)
+              ListTile(
+                key: const Key('resetLinkTile'),
+                leading: const Icon(Icons.autorenew),
+                title: Text(l.linkResetMenu),
+                subtitle: Text(l.linkResetTileBody),
+                enabled: canEdit,
+                onTap: () => resetInviteLinkFlow(context, ref, roomId),
               ),
             SettingsSectionHeader(l.settingsSectionData),
             ListTile(
