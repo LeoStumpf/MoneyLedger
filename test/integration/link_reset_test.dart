@@ -323,6 +323,29 @@ void main() {
     expect(again.joinedAs, 'p2');
   });
 
+  test('a reset right after a local change (publish pending / in flight) '
+      'leaves nothing of ours on the old topic', () async {
+    final s = await sharedGroup();
+    final old = (await LinkDao(s.aDb).getChannel(_g))!;
+    final oldPub = nostrPublicKey(old.nostrPriv);
+    // No settle: the change's publish is scheduled / running when the
+    // reset starts.
+    await addExpense(s.aDb, 'e2');
+    final fresh = await s.a.read(linkSyncEngineProvider).resetLink(_g);
+    await settle();
+    for (final r in [_r1, _r2]) {
+      expect(linkEvents(r, oldPub), isEmpty, reason: '$r: old copy gone');
+      expect(
+        linkEvents(r, nostrPublicKey(fresh.nostrPriv)),
+        isNotEmpty,
+        reason: r,
+      );
+    }
+    await s.c.read(linkSyncEngineProvider).refresh(groupId: _g);
+    await settle();
+    expect(await expenseIds(s.cDb), isNot(contains('e2')));
+  });
+
   test(
     'a reset offline still replaces the link (the old copy expires)',
     () async {
