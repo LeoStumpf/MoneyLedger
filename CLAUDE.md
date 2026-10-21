@@ -1003,7 +1003,8 @@ connected + battery not low; `lib/core/background/`) fixes that:
   `runBackgroundRound(whichLedger:)` decides from the device prefs
   **before** anything is opened (`_whichLedger`, native: local profile →
   `local` — no Matrix client is built, `vod.init()` only; connecting →
-  `none`, skipped; else `matrix`), `openLocalDatabase` opens local mode's
+  `none`, skipped; else `matrix` — only if the G79 Matrix store exists,
+  never creating one: pure `chooseBackgroundLedger`), `openLocalDatabase` opens local mode's
   ledger; local without a link group → `skippedNothingToSync`. The engine
   runs in `linkBackgroundRoundProvider` mode (no live subscription, no
   debounced / start-up / timer publishes, no lifecycle, no NIP-11 fetch):
@@ -1014,7 +1015,8 @@ connected + battery not low; `lib/core/background/`) fixes that:
   engine (closes its relay pool) before waiting for the step in flight.
   Result: `link`, `linkEvents`, `linkMerged`. A round delegated to the
   running app also runs `refresh` + `publishAll` on the app's engine
-  (`_linkSyncInApp`). **Scheduling:** in local mode
+  (`_linkSyncInApp`), then `releaseIdleConnections()` (a paused app drops
+  the relay sockets that fetch reopened). **Scheduling:** in local mode
   `backgroundSyncSchedulingProvider` registers the task while
   `linkGroupsExistProvider` is true, else cancels (no settings toggle in
   local mode; the round still honours `background_sync_enabled`). Tests:

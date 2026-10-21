@@ -430,4 +430,20 @@ void main() {
     final db = fileDb(name);
     expect(await LinkDao(db).getChannel(_g), isNotNull);
   });
+
+  test('chooseBackgroundLedger: local profile → local (connecting → none); '
+      'Matrix only when its store exists — never creates one', () {
+    BackgroundLedger pick(bool local, bool connecting, bool store) =>
+        chooseBackgroundLedger(
+          localProfile: local,
+          connecting: connecting,
+          matrixStoreExists: store,
+        );
+    expect(pick(true, false, false), BackgroundLedger.local);
+    expect(pick(true, false, true), BackgroundLedger.local);
+    expect(pick(true, true, true), BackgroundLedger.none);
+    expect(pick(false, false, true), BackgroundLedger.matrix);
+    // No local profile (or unreadable prefs) and no Matrix store: skipped.
+    expect(pick(false, false, false), BackgroundLedger.none);
+  });
 }

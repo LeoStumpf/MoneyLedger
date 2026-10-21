@@ -26,6 +26,7 @@ import '../matrix/ledger_transport.dart';
 import '../matrix/matrix_ledger_transport.dart';
 import '../matrix/matrix_service.dart';
 import '../matrix/request_timeout_http_client.dart';
+import '../matrix/store_probe/matrix_store_probe.dart';
 import '../logging.dart';
 import 'background_gate.dart';
 import 'background_round.dart';
@@ -113,6 +114,9 @@ Future<void> _linkSyncInApp(ProviderContainer container) async {
         .refresh(timeout: kBackgroundLinkFetchTimeout)
         .timeout(const Duration(seconds: 20));
     await engine.publishAll().timeout(const Duration(seconds: 20));
+    // A paused app closed its relay connections — don't keep the ones this
+    // fetch / publish opened (review).
+    await engine.releaseIdleConnections();
   } catch (e) {
     debugPrint('[bg] in-app link sync failed: $e');
   } finally {
@@ -237,7 +241,8 @@ Future<BackgroundRoundResult?> runBackgroundTask() async {
 /// same rules as the app (`localModeActiveProvider`): a local profile →
 /// local mode (no Matrix client is built — G40 / G79); a local profile
 /// that is connecting an account → skipped (the app finishes the
-/// adoption); otherwise the Matrix account. Unreadable preferences count
+/// adoption); otherwise the Matrix account if a Matrix store exists (never
+/// creates one — G79; review), else skipped. Unreadable preferences count
 /// as no local profile (`DevicePrefs.unreadable`).
 Future<BackgroundLedger> _whichLedger() async {
   DevicePrefs prefs;
@@ -247,8 +252,20 @@ Future<BackgroundLedger> _whichLedger() async {
     debugPrint('[bg] device preferences unreadable: $e');
     prefs = DevicePrefs.unreadable;
   }
-  if (prefs.localProfile == null) return BackgroundLedger.matrix;
-  if (prefs.connecting) return BackgroundLedger.none;
+  var storeExists = false;
+  if (prefs.localProfile == null) {
+    try {
+      storeExists = await matrixStoreExists();
+    } catch (e) {
+      debugPrint('[bg] Matrix store probe failed: $e');
+    }
+  }
+  final ledger = chooseBackgroundLedger(
+    localProfile: prefs.localProfile != null,
+    connecting: prefs.connecting,
+    matrixStoreExists: storeExists,
+  );
+  if (ledger != BackgroundLedger.local) return ledger;
   try {
     // Signed versions (mixed groups) are verified with vodozemac.
     await vod.init();

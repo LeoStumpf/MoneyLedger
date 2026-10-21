@@ -799,4 +799,47 @@ void main() {
     final req = net.relay(_r1).reqs.sublist(reqs).single;
     expect((req[2] as Map)['since'], isA<int>());
   });
+
+  test('releaseIdleConnections (step 8 review): a fetch + publish in a '
+      'paused app reopens the relays; afterwards they are closed again — '
+      'never in the foreground', () async {
+    final a = await creator();
+    await settle();
+    final b = device(pauseGrace: const Duration(milliseconds: 10));
+    await b.engine.ready;
+    await b.link.putChannel(
+      LinkChannelModel(
+        groupId: _g,
+        epoch: 1,
+        secret: a.channel!.secret,
+        nostrPriv: generateNostrPrivateKey(),
+        openedAt: clock.ms,
+        myParticipantId: 'p2',
+      ),
+    );
+    await settle();
+    final withB = net.relay(_r1).connectionCount;
+
+    // Foreground: nothing is closed.
+    await b.engine.releaseIdleConnections();
+    await settle();
+    expect(net.relay(_r1).connectionCount, withB);
+
+    b.engine.onAppPaused();
+    await eventually(() => net.relay(_r1).connectionCount == withB - 1);
+
+    // A delegated background round: full fetch + publish.
+    await b.engine.refresh();
+    await b.engine.publishAll();
+    await settle();
+    expect(net.relay(_r1).connectionCount, withB);
+
+    await b.engine.releaseIdleConnections();
+    await eventually(() => net.relay(_r1).connectionCount == withB - 1);
+
+    // Resume still reopens the live subscription.
+    b.engine.onAppResumed();
+    await settle();
+    expect(net.relay(_r1).connectionCount, withB);
+  });
 }

@@ -65,6 +65,24 @@ enum BackgroundLedger {
   none,
 }
 
+/// G52 step 8: the ledger a round syncs (pure — the native `_whichLedger`
+/// feeds it the device prefs + the G79 store probe): a local profile →
+/// [BackgroundLedger.local] ([connecting] an account → none: the app
+/// finishes the adoption); otherwise the Matrix account — but only when a
+/// Matrix SDK store exists (review: building the client would create one on
+/// a device that never signed in, e.g. local mode whose prefs couldn't be
+/// read — `DevicePrefs.unreadable` has no local profile).
+BackgroundLedger chooseBackgroundLedger({
+  required bool localProfile,
+  required bool connecting,
+  required bool matrixStoreExists,
+}) {
+  if (localProfile) {
+    return connecting ? BackgroundLedger.none : BackgroundLedger.local;
+  }
+  return matrixStoreExists ? BackgroundLedger.matrix : BackgroundLedger.none;
+}
+
 /// A signed-in relay session opened for one background round — the real one
 /// wraps a Matrix `Client` restored from its store (never logged in/out here).
 abstract interface class BackgroundSession {

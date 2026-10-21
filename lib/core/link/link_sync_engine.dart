@@ -531,6 +531,20 @@ class LinkSyncEngine {
     }
   }
 
+  /// G52 step 8 review: a background round delegated to the running app
+  /// ([refresh] + [publishAll]) reopens the relay connections while the app
+  /// is paused (its live subscription was closed after the grace period) —
+  /// close them again afterwards, so a backgrounded app doesn't hold
+  /// sockets until it resumes. No-op in the foreground, while the live
+  /// subscription is open or while other work is still running.
+  Future<void> releaseIdleConnections() async {
+    if (!_alive || !_paused || _sub != null || _busy > 0) return;
+    if (_debounceTimers.isNotEmpty) return;
+    final pool = _pool;
+    _pool = null;
+    await pool?.close();
+  }
+
   Future<void> _closeLive() async {
     final sub = _sub;
     final events = _subEvents;
