@@ -9,6 +9,7 @@ import '../../features/expenses/expenses_provider.dart';
 import '../../features/history/snapshot_store.dart';
 import '../background/background_scheduler.dart';
 import '../link/link_sync_engine.dart';
+import '../link/nostr/relay_connection.dart';
 import '../background/background_sync.dart' show backgroundSyncSupported;
 import '../background/background_sync_provider.dart';
 import '../database/app_database.dart';
@@ -19,6 +20,17 @@ import 'demo_device_gateway.dart';
 import 'demo_mode.dart';
 import 'demo_seed.dart';
 import 'demo_transport.dart';
+
+/// G52 step 11 review: the demo's relay connector — every connect fails at
+/// once, so the offline demo never opens a socket to a Nostr relay, whatever
+/// a page asks the (not started) link sync engine to do.
+class OfflineRelayConnector implements RelayConnector {
+  const OfflineRelayConnector();
+
+  @override
+  Future<RelayConnection> connect(String url) =>
+      Future.error(StateError('offline demo: no relay connections'));
+}
 
 /// Opens the demo ledger ([kDemoDatabaseName]) and reseeds it on every open,
 /// so each start shows the same fresh dataset.
@@ -69,6 +81,10 @@ List<Override> demoOverrides({AppDatabase Function()? openDatabase}) {
     // kOfflineDemo isn't set, e.g. tests), no NIP-11 look-ups.
     linkSyncEnabledProvider.overrideWithValue(false),
     linkRelayInfoFetcherProvider.overrideWithValue(null),
+    // Step 11 review: the engine still serves the UI while not started
+    // (*Reset invite link*, *Sync now*), and a reset reloads the channels,
+    // subscribes and publishes — so no relay connection can open at all.
+    linkRelayConnectorProvider.overrideWithValue(const OfflineRelayConnector()),
     // The link sync engine stays off in the demo (nothing
     // contacts a relay), so a link group's status comes from its seeded
     // channel: "synced" at the last (seeded) publish.

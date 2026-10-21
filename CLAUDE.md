@@ -119,7 +119,9 @@ none on the web) — never the web's "only in the installed app" texts.
 a seeded publish) and two `link_peers` whose digest equals ours
 (`_seedLinkChannel`), so the invite sheet shows a QR and the sync sheet
 "has everything"; `linkSyncEnabledProvider` is **false** (no relay is ever
-contacted, also in tests), no NIP-11 fetcher, and
+contacted, also in tests), no NIP-11 fetcher, `OfflineRelayConnector` (every
+connect fails — the not-started engine still serves *Reset invite link* /
+*Sync now*, and a reset would otherwise subscribe + publish), and
 `linkGroupSyncStatusProvider` is derived from the channel (synced). No
 Matrix client is ever built. (Separate from the real local mode, G40.) Normal builds
 tree-shake it (`const bool.fromEnvironment`). Never import `test/` from `lib/`.

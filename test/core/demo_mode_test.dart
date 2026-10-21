@@ -327,6 +327,43 @@ void main() {
     );
   });
 
+  test('G52 step 11 review: no relay connection can open in the demo — '
+      '*Reset invite link* still works, locally only', () async {
+    final db = openTestDatabaseWithHook((db) => seedDemoLedger(db));
+    final c = ProviderContainer(
+      overrides: demoOverrides(openDatabase: () => db),
+    );
+    addTearDown(c.dispose);
+    final connector = c.read(linkRelayConnectorProvider);
+    expect(connector, isA<OfflineRelayConnector>());
+    await expectLater(
+      connector.connect('wss://nos.lol'),
+      throwsA(isA<StateError>()),
+    );
+
+    final sub = c.listen(
+      linkGroupSyncStatusProvider(kDemoLinkGroupId),
+      (_, _) {},
+    );
+    addTearDown(sub.close);
+    await eventually(
+      () =>
+          c
+              .read(linkGroupSyncStatusProvider(kDemoLinkGroupId))
+              .value
+              ?.lastPublishedAt !=
+          null,
+    );
+    final before = (await LinkDao(db).getChannel(kDemoLinkGroupId))!;
+    // The reset reloads the channels, subscribes and publishes at once —
+    // all through the offline connector.
+    final next = await c
+        .read(linkSyncEngineProvider)
+        .resetLink(kDemoLinkGroupId);
+    expect(next.secret, isNot(before.secret));
+    expect(next.myParticipantId, before.myParticipantId);
+  });
+
   test("G79: the demo shows the platform's background-sync setting", () {
     final c = ProviderContainer(overrides: demoOverrides());
     addTearDown(c.dispose);

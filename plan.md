@@ -772,6 +772,12 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       off, status derived from the seeded channel): edits in the demo leave
       the sync sheet's "has everything" as seeded — fine for screenshots;
       the README / store screenshots could add the invite sheet
+- [x] (step 11 review) The not-started demo engine still served
+      *Reset invite link* (reload → subscribe → publish) with the real
+      WebSocket connector — the demo would have contacted nos.lol / nostr.mom;
+      `demoOverrides` now uses `OfflineRelayConnector` (every connect fails).
+      Left: in the demo *Sync now* on the link group says "no relay
+      answered" (no relay is ever asked) — acceptable for a demo
 
 ### G53. Mixed groups + "lock group" 🟡
 - [ ] Review (from G52 step 4): any link holder with a Matrix device can push a
