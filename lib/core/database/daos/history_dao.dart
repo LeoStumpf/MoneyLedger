@@ -11,7 +11,7 @@ import '../../../models/expense_model.dart';
 import '../../../models/group_model.dart';
 import '../../../models/member_model.dart';
 import '../../../models/record_signature.dart';
-import 'groups_dao.dart' show decodeCategories;
+import 'groups_dao.dart' show decodeCategories, linkFromColumns;
 
 part 'history_dao.g.dart';
 
@@ -160,6 +160,8 @@ Future<void> backfillRecordHistory(AppDatabase db) async {
         currency: g.currency,
         updatedAt: g.updatedAt,
         categories: decodeCategories(g.categoriesJson),
+        link: linkFromColumns(g.linkEpoch, g.linkSecret),
+        lockedAt: g.lockedAt,
         sig: RecordSignature.decode(g.sig),
       );
       b.insert(

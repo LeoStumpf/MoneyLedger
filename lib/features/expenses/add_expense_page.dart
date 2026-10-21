@@ -819,6 +819,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                   recordId: e.id,
                                   origin: e.origin,
                                   sig: e.sig,
+                                  linkAuthor: e.linkAuthor,
                                   createdAt: e.createdAt,
                                   updatedAt: e.updatedAt,
                                   members: members,

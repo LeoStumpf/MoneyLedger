@@ -42,6 +42,10 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
         categories: group.categoriesJson.present
             ? decodeCategories(group.categoriesJson.value)
             : const [],
+        link: group.linkSecret.present
+            ? linkFromColumns(group.linkEpoch.value, group.linkSecret.value)
+            : null,
+        lockedAt: group.lockedAt.present ? group.lockedAt.value : null,
       ),
     );
     final oldVersion = old == null ? null : groupMetaVersion(_toModel(old));
@@ -82,11 +86,17 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
     currency: g.currency,
     updatedAt: g.updatedAt,
     categories: decodeCategories(g.categoriesJson),
+    link: linkFromColumns(g.linkEpoch, g.linkSecret),
+    lockedAt: g.lockedAt,
     sig: RecordSignature.decode(g.sig),
     pendingSign: g.pendingSign,
     linkAuthor: g.linkAuthor,
   );
 }
+
+/// G53: the stored `link_epoch` / `link_secret` (no secret → no link).
+GroupLink? linkFromColumns(int? epoch, String? secret) =>
+    secret == null ? null : GroupLink(epoch: epoch ?? 0, secret: secret);
 
 /// G47: the stored `categories_json` (NULL / unreadable → none).
 List<CustomCategory> decodeCategories(String? json) {
@@ -115,4 +125,8 @@ GroupsCompanion groupCompanion(GroupModel g) => GroupsCompanion(
   // G52: always set (also to null) — an absent value would keep the
   // previous version's hint on update.
   linkAuthor: Value(g.linkAuthor),
+  // G53: always set (also to null) — a lock must clear the link.
+  linkEpoch: Value(g.link?.epoch),
+  linkSecret: Value(g.link?.secret),
+  lockedAt: Value(g.lockedAt),
 );

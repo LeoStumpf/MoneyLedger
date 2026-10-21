@@ -879,12 +879,11 @@ class GroupEditor extends _$GroupEditor {
     if (current.name == name && current.currency == currency) return;
     await _write(
       w,
-      GroupModel(
-        roomId: groupId,
+      // G47: categories kept; G53: the link state (open link / lock) too.
+      current.nextVersion(
+        updatedAt: nextLwwClock(current.updatedAt),
         name: name,
         currency: currency,
-        updatedAt: nextLwwClock(current.updatedAt),
-        categories: current.categories, // G47: kept
       ),
     );
   });
@@ -940,10 +939,7 @@ class GroupEditor extends _$GroupEditor {
     GroupModel current,
     List<CustomCategory> categories,
   ) async {
-    final next = GroupModel(
-      roomId: current.roomId,
-      name: current.name,
-      currency: current.currency,
+    final next = current.nextVersion(
       updatedAt: nextLwwClock(current.updatedAt),
       categories: categories,
     );

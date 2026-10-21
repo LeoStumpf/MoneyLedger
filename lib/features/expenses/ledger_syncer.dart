@@ -166,6 +166,8 @@ class LedgerSyncer {
       groups: _groups,
       members: _members,
       expenses: _expenses,
+      // G53: mixed groups accept unsigned versions their members relay.
+      matrixPolicy: _link.policyOf,
       isAlive: () => _alive,
       onRefused: _onRefused,
     );

@@ -72,6 +72,9 @@ Map<String, dynamic> groupMetaPayload(GroupModel g) => {
   // G47: optional — absent when the group has no custom categories.
   if (g.categories.isNotEmpty)
     'categories': [for (final c in g.categories) c.toJson()],
+  // G53: optional — the open invite link of a mixed group / the lock time.
+  if (g.link != null) 'link': g.link!.toJson(),
+  if (g.lockedAt != null) 'locked_at': g.lockedAt,
   if (g.sig != null) 'sig': g.sig!.toJson(),
   // G52: the unsigned, unhashed author hint of a link-group version.
   if (g.linkAuthor != null) 'by': g.linkAuthor,
@@ -354,7 +357,15 @@ GroupModel? groupMetaFromPayload(Map<String, dynamic> c) {
     updatedAt: c['updated_at'] as int? ?? 0,
     // G47 (optional; malformed → an invalid entry, refused by the gate).
     categories: parseCustomCategories(c['categories']),
+    // G53 (optional; malformed → invalid values, refused by the gate).
+    link: GroupLink.fromJson(c['link']),
+    lockedAt: _lockedAtFromPayload(c['locked_at']),
     sig: RecordSignature.fromJson(c['sig']),
     linkAuthor: linkAuthorFromPayload(c),
   );
 }
+
+/// G53: `locked_at` — absent → null; anything but an int → -1 (refused by
+/// the content rules, never silently dropped).
+int? _lockedAtFromPayload(Object? raw) =>
+    raw == null ? null : (raw is int ? raw : -1);

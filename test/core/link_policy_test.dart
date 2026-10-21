@@ -90,7 +90,31 @@ void main() {
       );
       expect(deriveGroupPolicy(channel: null, meta: null), GroupPolicy.matrix);
     });
-    test('channel + unsigned / no meta → linkOnly; + signed → mixed', () {
+    // G53: a signed meta decides on its own — with an open link → mixed,
+    // without one → matrix (a Matrix group, or a locked link group).
+    final linkedMeta = GroupModel(
+      roomId: 'g',
+      name: 'G',
+      currency: 'EUR',
+      link: const GroupLink(epoch: 1, secret: 'k'),
+      sig: signedMeta.sig,
+    );
+    test('G53: a signed meta with a link → mixed, also without a channel', () {
+      expect(
+        deriveGroupPolicy(channel: null, meta: linkedMeta),
+        GroupPolicy.mixed,
+      );
+      expect(
+        deriveGroupPolicy(channel: channel('g'), meta: linkedMeta),
+        GroupPolicy.mixed,
+      );
+      // A signed meta without a link over a channel: locked → matrix.
+      expect(
+        deriveGroupPolicy(channel: channel('g'), meta: signedMeta),
+        GroupPolicy.matrix,
+      );
+    });
+    test('channel + unsigned / no meta → linkOnly', () {
       expect(
         deriveGroupPolicy(channel: channel('g'), meta: meta),
         GroupPolicy.linkOnly,
@@ -98,10 +122,6 @@ void main() {
       expect(
         deriveGroupPolicy(channel: channel('g'), meta: null),
         GroupPolicy.linkOnly,
-      );
-      expect(
-        deriveGroupPolicy(channel: channel('g'), meta: signedMeta),
-        GroupPolicy.mixed,
       );
       expect(GroupPolicy.linkOnly.matrixSyncs, isFalse);
       expect(GroupPolicy.mixed.matrixSyncs, isTrue);
@@ -270,7 +290,9 @@ void main() {
         1,
         reason: 'recorded as invalid_record',
       );
-      // Signed by the claimant itself: still refused (G53 adds that case).
+      // Signed by the claimant itself, but for a participant that isn't
+      // stored here: still refused (G53's self-claim needs an existing,
+      // unclaimed participant — see g53_mixed_gate_test.dart).
       final signedClaim = await signMember(
         aliceDevice,
         member('p3', matrixId: alice),
@@ -313,11 +335,12 @@ void main() {
       );
       final signedMeta = await signGroupMeta(
         aliceDevice,
-        const GroupModel(
+        GroupModel(
           roomId: 'g1',
           name: 'Signed',
           currency: 'EUR',
           updatedAt: 2,
+          link: GroupLink(epoch: 1, secret: 'A' * 43),
         ),
       );
       expect(

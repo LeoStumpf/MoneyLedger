@@ -1,54 +1,64 @@
-/// G52: which sync rules apply to a group — Matrix (G6), link-only or mixed
-/// (`docs/design/no-login-sharing.md` §6.4). Plain Dart, no DB.
+/// G52 / G53: which sync rules apply to a group — Matrix (G6), link-only or
+/// mixed (`docs/design/no-login-sharing.md` §6.4, §10.1). Plain Dart, no DB.
 ///
-/// **Why inbound data can never downgrade a Matrix group to the link
-/// path.** The policy is derived from two pieces of **local** state only:
-///  1. whether this device has a `link_channels` row for the group — created
-///     only by this user's own action (opening an invite link for a group /
-///     joining one), device-local, never synced, never read from a backup
-///     file, a digest, a bootstrap or a link snapshot; without it the policy
-///     is always [GroupPolicy.matrix], whatever any stored or inbound row
-///     says;
-///  2. with a channel, whether the **stored** meta is signed: signed →
-///     [GroupPolicy.mixed], unsigned / not stored yet → [GroupPolicy.linkOnly].
-///     Inbound data can only move a channel's group from linkOnly to mixed
-///     (a signed meta replacing an unsigned one), i.e. towards *more* Matrix
-///     rules, never the other way: a signed meta can only be replaced by
-///     another verified signed meta — on the Matrix path (G6) and on the
-///     link path alike (an unsigned meta is accepted via link only in a
-///     linkOnly group, never over a signed one). Only a backup restore the
-///     user starts can store an unsigned meta over a signed one.
+/// Derived from **local** state only — this device's `link_channels` row
+/// for the group and the **stored** meta ([deriveGroupPolicy]):
+///  * a **signed** meta decides on its own (G53): with an open `link` →
+///    [GroupPolicy.mixed], without one → [GroupPolicy.matrix] (a Matrix
+///    group, or a link group that was **locked** — its `locked_at` is kept
+///    in [GroupPolicyInfo.lockedAt]; a leftover channel is then dropped by
+///    the link sync engine);
+///  * an unsigned (or not yet stored) meta → [GroupPolicy.linkOnly] when
+///    this device has a channel, else [GroupPolicy.matrix] (legacy unsigned
+///    Matrix groups and local-mode groups).
 ///
-/// On top of that, unsigned versions are only ever accepted by a
-/// `RecordGate` built **for the link path** (`linkPolicy:`); the Matrix
-/// (to-device) path never loosens G6 — a Matrix group stays exactly as
-/// strict as before even if a peer relays unsigned versions for it.
-/// (The join flow, G52 step 7, must therefore refuse to open a channel for a
-/// group id this device already holds as a non-link group — otherwise the
-/// user's own join would turn that group mixed.)
+/// **What inbound data can change.** A stored signed meta can only be
+/// replaced by another *verified* signed meta (G6 rules on both paths; an
+/// unsigned meta is accepted via link only in a linkOnly group, never over
+/// a signed one) whose signer claims a participant of the group (record
+/// gate rule 5). So only a **member** can open a link on a Matrix group
+/// (G53 *Invite by link*: → mixed) or lock a link group (→ matrix), and a
+/// linkOnly group turns mixed only through a signed meta of a Matrix device
+/// that claimed a participant (§10.1 "Link → Matrix"). The channel itself
+/// is device-local and never read from a backup file, a digest, a bootstrap
+/// or a snapshot; without one an unsigned meta never makes a group
+/// link-only, so inbound data can't take a Matrix group off the G6 rules.
+/// (The join flow therefore refuses to open a channel for a group id this
+/// device already holds as a non-link group.)
+///
+/// Unsigned versions are accepted (`RecordGate`):
+///  * linkOnly — on the link path (every kind; Matrix never touches it);
+///  * mixed — on the link path **and** relayed over Matrix by an active
+///    member (§10.1), except metas and Matrix-ID claims, which must be
+///    signed there;
+///  * matrix after a lock — only versions not newer than `locked_at`
+///    (history from the link time); none in a Matrix group never linked.
 library;
 
 import '../../models/group_model.dart';
 import '../../models/link_model.dart';
 
 enum GroupPolicy {
-  /// No link channel on this device: G6 / G18 unchanged; the link path
-  /// treats it like any Matrix group (unsigned refused).
+  /// A Matrix group (signed meta without a link — also a locked link group)
+  /// or any group without a link channel and without a signed link: G6 /
+  /// G18 unchanged (see [GroupPolicyInfo.lockedAt] for a locked group's
+  /// history).
   matrix,
 
   /// A link channel and an unsigned (or not yet stored) meta — created in
   /// local mode / via a link. Matrix never syncs it (no digests, bootstraps,
   /// resync answers, relays; inbound to-device records for it are dropped);
   /// on the link path unsigned versions are accepted, signed ones verified,
-  /// Matrix-ID claims refused.
+  /// Matrix-ID claims refused (except G53's signed self-claim).
   linkOnly,
 
-  /// A link channel and a signed meta (G53: the meta will carry
-  /// `link: {epoch, secret}`). Matrix path unchanged for now (G53 adds the
-  /// relayed-unsigned exception); the link path accepts unsigned versions.
+  /// G53: a signed meta with an open `link: {epoch, secret}` — a Matrix
+  /// group shared by link too. Matrix devices bridge (publish + read the
+  /// relays); unsigned versions are accepted on both paths (not metas, not
+  /// claims).
   mixed;
 
-  /// Whether a gate on the **link path** accepts unsigned versions.
+  /// Whether a gate on the **link path** may accept unsigned versions.
   bool get acceptsUnsignedViaLink => this != GroupPolicy.matrix;
 
   /// Whether the Matrix engines (`SyncEngine`, `LedgerSyncer`, relays) may
@@ -62,9 +72,10 @@ GroupPolicy deriveGroupPolicy({
   required LinkChannelModel? channel,
   required GroupModel? meta,
 }) {
-  if (channel == null) return GroupPolicy.matrix;
-  if (meta != null && meta.sig != null) return GroupPolicy.mixed;
-  return GroupPolicy.linkOnly;
+  if (meta != null && meta.sig != null) {
+    return meta.link != null ? GroupPolicy.mixed : GroupPolicy.matrix;
+  }
+  return channel == null ? GroupPolicy.matrix : GroupPolicy.linkOnly;
 }
 
 /// A group's policy plus who this device is in it on the link path
@@ -73,11 +84,41 @@ class GroupPolicyInfo {
   final GroupPolicy policy;
   final String? myParticipantId;
 
-  const GroupPolicyInfo(this.policy, {this.myParticipantId});
+  /// G53: the stored signed meta's `locked_at` while the group is locked
+  /// (policy [GroupPolicy.matrix]); null otherwise.
+  final int? lockedAt;
+
+  /// Whether this device has a link channel of the group.
+  final bool hasChannel;
+
+  const GroupPolicyInfo(
+    this.policy, {
+    this.myParticipantId,
+    this.lockedAt,
+    this.hasChannel = false,
+  });
 
   static const matrix = GroupPolicyInfo(GroupPolicy.matrix);
 
   bool get isLinkOnly => policy == GroupPolicy.linkOnly;
+
+  bool get isMixed => policy == GroupPolicy.mixed;
+}
+
+/// [deriveGroupPolicy] + the rest of [GroupPolicyInfo] (pure).
+GroupPolicyInfo groupPolicyInfo({
+  required LinkChannelModel? channel,
+  required GroupModel? meta,
+}) {
+  final policy = deriveGroupPolicy(channel: channel, meta: meta);
+  return GroupPolicyInfo(
+    policy,
+    myParticipantId: channel?.myParticipantId,
+    lockedAt: policy == GroupPolicy.matrix && meta?.isLocked == true
+        ? meta!.lockedAt
+        : null,
+    hasChannel: channel != null,
+  );
 }
 
 /// Looks up a group's [GroupPolicyInfo] (production: `LinkDao.policyOf`).

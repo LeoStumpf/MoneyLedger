@@ -284,10 +284,8 @@ class CsvImporter extends _$CsvImporter {
     );
     if (existing != null && newCategories.isNotEmpty) {
       final group = await signer.group(
-        GroupModel(
-          roomId: groupId,
-          name: existing.name,
-          currency: existing.currency,
+        // G53: the link state (open link / lock) is kept.
+        existing.nextVersion(
           updatedAt: nextLwwClock(existing.updatedAt, now: now),
           categories: [...existing.categories, ...newCategories],
         ),

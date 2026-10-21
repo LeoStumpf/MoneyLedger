@@ -23,6 +23,13 @@ class Groups extends Table {
   // G52: the writer's link-group participant (wire `by`) — see
   // Expenses.linkAuthor.
   TextColumn get linkAuthor => text().nullable()();
+  // G53: the open invite link of a mixed group (wire `link: {epoch,
+  // secret}`, signed meta only) — both NULL = no link. The secret is a
+  // **secret**: never log it.
+  IntColumn get linkEpoch => integer().nullable()();
+  TextColumn get linkSecret => text().nullable()();
+  // G53: when the group was locked (wire `locked_at`, ms); NULL = never.
+  IntColumn get lockedAt => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {roomId};
@@ -418,7 +425,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -455,6 +462,17 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(expenses, expenses.linkAuthor);
         await m.addColumn(settlements, settlements.linkAuthor);
         if (from >= 2) await m.addColumn(members, members.linkAuthor);
+      }
+
+      // G53 (v16): the meta's link state — same reason (the v12 backfill
+      // reads the groups table with today's columns).
+      var groupLinkAdded = false;
+      Future<void> addGroupLink() async {
+        if (groupLinkAdded) return;
+        groupLinkAdded = true;
+        await m.addColumn(groups, groups.linkEpoch);
+        await m.addColumn(groups, groups.linkSecret);
+        await m.addColumn(groups, groups.lockedAt);
       }
 
       // v2 (Phase B): add the local membership table. Existing
@@ -591,6 +609,7 @@ class AppDatabase extends _$AppDatabase {
         await addExpenseDate();
         await addSettlementDate();
         await addLinkAuthors();
+        await addGroupLink();
         await backfillRecordHistory(this);
       }
       // v13 (G49): the optional expense date (nullable — existing expenses
@@ -626,6 +645,19 @@ class AppDatabase extends _$AppDatabase {
         await addLinkAuthors();
         await m.createTable(linkChannels);
         await m.createTable(linkPeers);
+      }
+      // v16 (G53 mixed groups + lock): the signed meta's optional `link`
+      // and `locked_at` (NULL for every existing meta — signatures and
+      // hashes unchanged). Like v11: a pre-G53 build refused signed metas
+      // carrying them (its rebuilt body lacks the fields) — forget meta
+      // refusals so peers re-send and this build verifies them properly.
+      if (from < 16) {
+        await addGroupLink();
+        if (from >= 6) {
+          await customStatement(
+            "DELETE FROM rejected_versions WHERE kind = 'meta'",
+          );
+        }
       }
     },
     beforeOpen: (_) async {

@@ -150,6 +150,7 @@ Future<bool> confirmDeleteSettlement(
             recordId: settlement.id,
             origin: settlement.origin,
             sig: settlement.sig,
+            linkAuthor: settlement.linkAuthor,
             createdAt: settlement.createdAt,
             updatedAt: settlement.updatedAt,
           ),

@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_ledger/core/errors/action_errors.dart';
 import 'package:money_ledger/core/matrix/ledger_transport.dart';
 import 'package:money_ledger/core/sync/payload_budget.dart';
+import 'package:money_ledger/core/sync/record_signing.dart'
+    show SignatureRequiredException;
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 
@@ -108,6 +110,8 @@ void main() {
             ActionErrorKind.recordGone => const RecordDeletedException(),
             ActionErrorKind.tooLarge => const PayloadTooLargeException('t', 1),
             ActionErrorKind.linkOnly => const LinkOnlyGroupException(),
+            ActionErrorKind.signatureRequired =>
+              const SignatureRequiredException(),
             ActionErrorKind.file => _Text('FileSystemException: x'),
             ActionErrorKind.storage => _Text('SqliteException(1)'),
             ActionErrorKind.timeout => TimeoutException('t'),

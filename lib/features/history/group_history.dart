@@ -570,12 +570,13 @@ GroupResetPlan planGroupResetTo({
   GroupModel? metaChange;
   final oldMeta = target.meta;
   if (meta != null && oldMeta != null && !_sameMeta(oldMeta, meta)) {
-    final next = GroupModel(
-      roomId: groupId,
+    // G53: a reset never changes the link state — the current meta's open
+    // link / lock is kept (only name, currency and categories go back).
+    final next = meta.nextVersion(
+      updatedAt: nextLwwClock(meta.updatedAt, now: now),
       name: oldMeta.name,
       currency: oldMeta.currency,
       categories: oldMeta.categories,
-      updatedAt: nextLwwClock(meta.updatedAt, now: now),
     );
     if (target._usable(
           RecordKind.meta,

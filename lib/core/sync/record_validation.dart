@@ -5,6 +5,7 @@ import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
+import '../link/link_uri.dart' show decodeLinkSecret;
 
 /// Content rules every expense / payment must satisfy (G18 review) — plain
 /// Dart, shared by the inbound gate (`RecordGate` refuses violations as
@@ -75,6 +76,19 @@ String? settlementProblem(SettlementModel s, {DateTime? now}) {
 /// name that isn't trimmed / 1 … [kMaxCategoryNameLength] long
 /// ([isValidCategoryName]), or an icon outside [kCustomCategoryIcons].
 String? groupMetaProblem(GroupModel g) {
+  // G53: the link state — a link with a positive epoch and a canonical
+  // 32-byte secret; a non-negative lock time.
+  final link = g.link;
+  if (link != null) {
+    if (link.epoch < 1) return 'link epoch ${link.epoch}';
+    try {
+      decodeLinkSecret(link.secret);
+    } catch (_) {
+      return 'link secret';
+    }
+  }
+  final lockedAt = g.lockedAt;
+  if (lockedAt != null && lockedAt < 0) return 'locked_at $lockedAt';
   final cats = g.categories;
   if (cats.length > kMaxCustomCategories) {
     return '${cats.length} categories';

@@ -5479,6 +5479,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep the old link'**
   String get joinLinkSwitchKeep;
+
+  /// G53: attribution of an unsigned version written via an invite link (no known author)
+  ///
+  /// In en, this message translates to:
+  /// **'Via link · not verified'**
+  String get recordViaLink;
+
+  /// G53: attribution of an unsigned version written via an invite link; name = the writer's person (unsigned hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Changed by {name} via link · not verified'**
+  String recordViaLinkBy(String name);
+
+  /// G53: action error — a change that must be signed in a group shared with Matrix accounts / made secure
+  ///
+  /// In en, this message translates to:
+  /// **'Only possible with a Matrix account'**
+  String get errorSignatureRequiredTitle;
+
+  /// G53: action error hint
+  ///
+  /// In en, this message translates to:
+  /// **'In this group, the name, currency, categories and people with a Matrix account can only be changed by someone signed in with Matrix.'**
+  String get errorSignatureRequiredHint;
 }
 
 class _AppLocalizationsDelegate

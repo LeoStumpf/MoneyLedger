@@ -896,5 +896,9 @@
   "joinLinkSwitchBody": "Diese Gruppe ist schon mit einem anderen Einladungslink auf diesem Gerät. Wenn jemand aus der Gruppe den Link zurückgesetzt und dir diesen geschickt hat, stell auf ihn um: Du bleibst dieselbe Person, und dein Handy synchronisiert dann mit allen, die den neuen Link nutzen.",
   "joinLinkSwitchCaution": "Stell nur um, wenn du den Link von jemandem aus der Gruppe hast. Deine Kopie wird vom alten Link entfernt.",
   "joinLinkSwitchConfirm": "Diesen Link nutzen",
-  "joinLinkSwitchKeep": "Alten Link behalten"
+  "joinLinkSwitchKeep": "Alten Link behalten",
+  "recordViaLink": "Über den Einladungslink · nicht überprüft",
+  "recordViaLinkBy": "Von {name} über den Einladungslink geändert · nicht überprüft",
+  "errorSignatureRequiredTitle": "Nur mit einem Matrix-Konto möglich",
+  "errorSignatureRequiredHint": "In dieser Gruppe können Name, Währung, Kategorien und Personen mit Matrix-Konto nur von jemandem geändert werden, der mit Matrix angemeldet ist."
 }

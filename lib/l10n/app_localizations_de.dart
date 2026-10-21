@@ -3513,4 +3513,20 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get joinLinkSwitchKeep => 'Alten Link behalten';
+
+  @override
+  String get recordViaLink => 'Über den Einladungslink · nicht überprüft';
+
+  @override
+  String recordViaLinkBy(String name) {
+    return 'Von $name über den Einladungslink geändert · nicht überprüft';
+  }
+
+  @override
+  String get errorSignatureRequiredTitle =>
+      'Nur mit einem Matrix-Konto möglich';
+
+  @override
+  String get errorSignatureRequiredHint =>
+      'In dieser Gruppe können Name, Währung, Kategorien und Personen mit Matrix-Konto nur von jemandem geändert werden, der mit Matrix angemeldet ist.';
 }

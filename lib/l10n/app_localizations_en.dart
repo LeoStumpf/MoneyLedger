@@ -3477,4 +3477,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get joinLinkSwitchKeep => 'Keep the old link';
+
+  @override
+  String get recordViaLink => 'Via link · not verified';
+
+  @override
+  String recordViaLinkBy(String name) {
+    return 'Changed by $name via link · not verified';
+  }
+
+  @override
+  String get errorSignatureRequiredTitle =>
+      'Only possible with a Matrix account';
+
+  @override
+  String get errorSignatureRequiredHint =>
+      'In this group, the name, currency, categories and people with a Matrix account can only be changed by someone signed in with Matrix.';
 }

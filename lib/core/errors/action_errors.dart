@@ -19,6 +19,7 @@ import '../../l10n/app_localizations.dart';
 import '../link/link_snapshot.dart' show LinkSnapshotTooLargeException;
 import '../matrix/ledger_transport.dart' show TransportUnavailableException;
 import '../sync/payload_budget.dart' show PayloadTooLargeException;
+import '../sync/record_signing.dart' show SignatureRequiredException;
 
 enum ActionErrorKind {
   /// The ledger DB closed / the account switched while the action ran.
@@ -35,6 +36,10 @@ enum ActionErrorKind {
 
   /// A Matrix membership change in a link-only group (G52).
   linkOnly,
+
+  /// G53: the change must be signed (mixed / locked group) and this device
+  /// has no Matrix account.
+  signatureRequired,
 
   /// Reading / writing a file failed.
   file,
@@ -81,6 +86,9 @@ ActionErrorKind classifyActionError(Object error) {
     return ActionErrorKind.tooLarge;
   }
   if (error is LinkOnlyGroupException) return ActionErrorKind.linkOnly;
+  if (error is SignatureRequiredException) {
+    return ActionErrorKind.signatureRequired;
+  }
   if (error is TimeoutException) return ActionErrorKind.timeout;
   if (error is FormatException) return ActionErrorKind.invalidData;
 
@@ -157,6 +165,10 @@ ActionErrorMessage describeActionError(Object error, AppLocalizations l) {
     ),
     ActionErrorKind.tooLarge => (l.errorTooLargeTitle, l.errorTooLargeHint),
     ActionErrorKind.linkOnly => (l.errorLinkOnlyTitle, l.errorLinkOnlyHint),
+    ActionErrorKind.signatureRequired => (
+      l.errorSignatureRequiredTitle,
+      l.errorSignatureRequiredHint,
+    ),
     ActionErrorKind.file => (l.errorFileTitle, l.errorFileHint),
     ActionErrorKind.storage => (l.errorStorageTitle, l.errorStorageHint),
     ActionErrorKind.timeout => (l.errorTimeoutTitle, l.errorTimeoutHint),

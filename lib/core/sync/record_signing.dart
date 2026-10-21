@@ -158,6 +158,10 @@ Map<String, Object?> groupMetaContent(GroupModel g) => {
   // has exactly the pre-G47 body, so older signatures and hashes stay valid.
   if (g.categories.isNotEmpty)
     'categories': [for (final c in g.categories) c.toJson()],
+  // G53: only while a link is open / once the group was locked — every
+  // other meta keeps exactly its pre-G53 body and hash.
+  if (g.link != null) 'link': g.link!.toJson(),
+  if (g.lockedAt != null) 'locked_at': g.lockedAt,
 };
 
 Map<String, Object?> groupMetaBody(GroupModel g, SignerId signer) => {
@@ -276,39 +280,65 @@ class LocalRecordSigner {
   final Future<LedgerTransport> _transport;
   final GroupPolicyLookup? policy;
 
-  /// The link-only author hint for a write into [groupId], or null when the
-  /// group isn't link-only (`linkOnly` false → sign as usual).
-  Future<({bool linkOnly, String? author})> _link(String groupId) async {
+  /// The group's policy for a write into [groupId] (null without a lookup /
+  /// when it fails — then every version is signed as before).
+  Future<GroupPolicyInfo?> _policy(String groupId) async {
     final lookup = policy;
-    if (lookup == null) return (linkOnly: false, author: null);
+    if (lookup == null) return null;
     try {
-      final info = await lookup(groupId);
-      return (linkOnly: info.isLinkOnly, author: info.myParticipantId);
+      return await lookup(groupId);
     } catch (_) {
       // Fail towards the stricter path: a signed version is valid anywhere.
-      return (linkOnly: false, author: null);
-    }
-  }
-
-  Future<RecordCrypto?> _crypto() async {
-    try {
-      final t = await _transport.timeout(kSignerWaitTimeout);
-      return t.crypto.identity == null ? null : t.crypto;
-    } catch (_) {
       return null;
     }
   }
 
+  /// This device's signing key, or null when it can't sign (yet).
+  /// [noAccount] = the transport belongs to no Matrix account at all (local
+  /// mode — it never can).
+  Future<({RecordCrypto? crypto, bool noAccount})> _signer() async {
+    try {
+      final t = await _transport.timeout(kSignerWaitTimeout);
+      return (
+        crypto: t.crypto.identity == null ? null : t.crypto,
+        noAccount: !t.userId.startsWith('@'),
+      );
+    } catch (_) {
+      return (crypto: null, noAccount: false);
+    }
+  }
+
+  /// [claimed]: the written participant version claims a Matrix account;
+  /// [meta]: a group-meta version — G53: neither can be written unsigned in
+  /// a mixed / locked group (peers refuse it), so a device without a Matrix
+  /// account throws [SignatureRequiredException] there.
   Future<T> _run<T>(
     String groupId,
     Future<T> Function(RecordCrypto c) sign,
     T Function() pending,
-    T Function(String? author) linkVersion,
-  ) async {
-    final link = await _link(groupId);
-    if (link.linkOnly) return linkVersion(link.author);
-    final c = await _crypto();
-    if (c == null) return pending();
+    T Function(String? author) linkVersion, {
+    bool meta = false,
+    bool claimed = false,
+  }) async {
+    final info = await _policy(groupId);
+    if (info != null && info.isLinkOnly) {
+      return linkVersion(info.myParticipantId);
+    }
+    final s = await _signer();
+    final c = s.crypto;
+    if (c == null) {
+      // G53: local mode in a mixed group (shared by link with Matrix
+      // members) writes plain link versions — unsigned, `by` = "me" —
+      // except what only a signature may change.
+      if (s.noAccount && info != null && info.policy == GroupPolicy.mixed) {
+        if (meta || claimed) throw const SignatureRequiredException();
+        return linkVersion(info.myParticipantId);
+      }
+      if (s.noAccount && info?.lockedAt != null) {
+        throw const SignatureRequiredException();
+      }
+      return pending();
+    }
     try {
       return await sign(c);
     } catch (_) {
@@ -338,6 +368,7 @@ class LocalRecordSigner {
     (c) => signMember(c, m),
     () => m.withSigning(pendingSign: true),
     m.asLinkVersion,
+    claimed: m.matrixId != null,
   );
 
   Future<GroupModel> group(GroupModel g) => _run(
@@ -345,5 +376,17 @@ class LocalRecordSigner {
     (c) => signGroupMeta(c, g),
     () => g.withSigning(pendingSign: true),
     g.asLinkVersion,
+    meta: true,
   );
+}
+
+/// G53: a write that must be signed — the group meta or a participant a
+/// Matrix account claims in a group shared with Matrix members (mixed), or
+/// anything in a group that was made secure-only (locked) — was attempted
+/// on a device without a Matrix account. Nothing was written.
+class SignatureRequiredException implements Exception {
+  const SignatureRequiredException();
+
+  @override
+  String toString() => 'SignatureRequiredException';
 }

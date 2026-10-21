@@ -61,6 +61,7 @@ void main() {
     String me = '@me:z',
     AppLocalizations? l,
     RecordKind kind = RecordKind.expense,
+    String? linkAuthor,
   }) => attributionFor(
     origin: origin,
     sig: s,
@@ -71,6 +72,7 @@ void main() {
     keys: keys,
     l: l ?? en,
     kind: kind,
+    linkAuthor: linkAuthor,
   );
 
   test('added + edited by, verified → no hint (EN + DE)', () {
@@ -115,6 +117,14 @@ void main() {
       ).line,
       'Recorded by Alex',
     );
+  });
+
+  test('G53: an unsigned link version says "via link, not verified" — '
+      'with the writer when known', () {
+    expect(of(linkAuthor: 'p-b').line, en.recordViaLinkBy('Sam'));
+    expect(of(linkAuthor: 'p-b', l: de).line, de.recordViaLinkBy('Sam'));
+    expect(of(linkAuthor: 'p-gone').line, en.recordViaLink);
+    expect(en.recordViaLinkBy('Sam'), contains('not verified'));
   });
 
   test('legacy (unsigned) rows say so', () {

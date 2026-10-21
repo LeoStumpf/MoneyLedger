@@ -3563,5 +3563,26 @@
   "joinLinkSwitchKeep": "Keep the old link",
   "@joinLinkSwitchKeep": {
     "description": "G52 step 12: cancel the switch"
+  },
+  "recordViaLink": "Via link · not verified",
+  "@recordViaLink": {
+    "description": "G53: attribution of an unsigned version written via an invite link (no known author)"
+  },
+  "recordViaLinkBy": "Changed by {name} via link · not verified",
+  "@recordViaLinkBy": {
+    "description": "G53: attribution of an unsigned version written via an invite link; name = the writer's person (unsigned hint)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSignatureRequiredTitle": "Only possible with a Matrix account",
+  "@errorSignatureRequiredTitle": {
+    "description": "G53: action error — a change that must be signed in a group shared with Matrix accounts / made secure"
+  },
+  "errorSignatureRequiredHint": "In this group, the name, currency, categories and people with a Matrix account can only be changed by someone signed in with Matrix.",
+  "@errorSignatureRequiredHint": {
+    "description": "G53: action error hint"
   }
 }

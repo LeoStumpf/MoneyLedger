@@ -88,8 +88,20 @@ Attribution attributionFor({
   required AppLocalizations l,
   RecordKind kind = RecordKind.expense,
   String? group,
+  String? linkAuthor,
 }) {
-  if (sig == null) return Attribution(line: l.recordUnsigned);
+  if (sig == null) {
+    // G53 (§6.4): an unsigned version written via an invite link carries
+    // the writer's participant as an unsigned hint — "via link, not
+    // verified"; one without it is a legacy (pre-G6) row.
+    if (linkAuthor != null) {
+      final who = members.where((m) => m.userId == linkAuthor).firstOrNull;
+      return Attribution(
+        line: who == null ? l.recordViaLink : l.recordViaLinkBy(who.label),
+      );
+    }
+    return Attribution(line: l.recordUnsigned);
+  }
   final added = kind == RecordKind.settlement
       ? l.recordRecordedBy
       : l.recordAddedBy;
@@ -162,7 +174,12 @@ class RecordAttribution extends ConsumerWidget {
     required this.createdAt,
     required this.updatedAt,
     this.members,
+    this.linkAuthor,
   });
+
+  /// G53: the version's unsigned `by` hint (link versions) — an unsigned
+  /// version with it reads "via link, not verified".
+  final String? linkAuthor;
 
   /// The group's participants when the caller already has them (avoids a
   /// second members stream); else watched from the DB.
@@ -205,6 +222,7 @@ class RecordAttribution extends ConsumerWidget {
       l: l,
       kind: kind,
       group: groupId,
+      linkAuthor: linkAuthor,
     );
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,

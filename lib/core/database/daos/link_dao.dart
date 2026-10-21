@@ -23,14 +23,13 @@ class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
   /// G52 step 4: [groupId]'s [GroupPolicy] (+ who this device is in it),
   /// derived from this device's channel and the **stored** meta only
   /// ([deriveGroupPolicy] — never from inbound data, see `group_policy.dart`).
+  ///
+  /// G53: a signed meta with an open link makes the group `mixed` also
+  /// without a channel here (a Matrix device that hasn't bridged yet).
   Future<GroupPolicyInfo> policyOf(String groupId) async {
     final channel = await getChannel(groupId);
-    if (channel == null) return GroupPolicyInfo.matrix;
     final meta = await GroupsDao(attachedDatabase).getGroup(groupId);
-    return GroupPolicyInfo(
-      deriveGroupPolicy(channel: channel, meta: meta),
-      myParticipantId: channel.myParticipantId,
-    );
+    return groupPolicyInfo(channel: channel, meta: meta);
   }
 
   /// Whether [groupId] is link-only here (the Matrix engines skip it).

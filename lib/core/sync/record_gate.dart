@@ -83,7 +83,31 @@ import 'record_verifier.dart';
 ///   meta** is accepted only in a `linkOnly` group — never over the signed
 ///   meta of a `mixed` one (that would turn it link-only).
 /// The `by` hint is dropped on the Matrix path (only link-path and restored
-/// versions keep it).
+/// versions keep it — G53: and unsigned versions a mixed group accepts).
+///
+/// **G53 mixed groups + lock** (§10.1; policies in `group_policy.dart`):
+/// * `mixed` (a signed meta with an open `link`): unsigned expense /
+///   payment / participant versions are accepted on the link path **and**,
+///   with [matrixPolicy] set, when an active member relays them over Matrix
+///   (the membership gate in `LedgerSyncer` / `SyncEngine` still applies) —
+///   stored unsigned, never re-signed, shown "via link, not verified". An
+///   unsigned **meta** or Matrix-ID claim is refused on both paths.
+/// * a **locked** group (a signed meta without `link`, with `locked_at`):
+///   an unsigned version newer than `locked_at` is refused (`unsigned`,
+///   recorded — no repair loop); older ones are history from the link time
+///   and accepted.
+/// * an **unsigned** version of a participant some Matrix account claims is
+///   refused (it would change or drop the claim without that account).
+/// * a **signed self-claim** (§10.1 "Link participant joins Matrix") on the
+///   link path: a participant version claiming Matrix ID X, signed by X,
+///   for a stored, active participant nobody claims yet (or X already does)
+///   is accepted in a `linkOnly` or `mixed` group; any other signed claim
+///   via link must be signed by an account that claims an active
+///   participant of the group. (Over Matrix the sender gate decides.)
+/// * an **unsigned meta** carrying `link` / `locked_at` is refused
+///   (`invalid_record`): the link state only exists signed.
+/// * a meta that opens a link (a new `link` secret) forgets the group's
+///   earlier `unsigned` refusals, so peers re-send those versions.
 class RecordGate {
   RecordGate({
     required this.verifier,
@@ -94,6 +118,7 @@ class RecordGate {
     this.acceptUnsigned = false,
     this.allowLocalClaims = false,
     this.linkPolicy,
+    this.matrixPolicy,
     bool Function()? isAlive,
     this.onRefused,
     int Function()? clock,
@@ -114,6 +139,13 @@ class RecordGate {
   /// G52: set → this gate serves the **link path** (see the class doc); the
   /// lookup gives each record group's policy. Null on the Matrix path.
   final GroupPolicyLookup? linkPolicy;
+
+  /// G53: set on the **Matrix** path (to-device records, bootstraps, digest
+  /// gossip) — each record group's policy, so a `mixed` group accepts
+  /// unsigned versions relayed by its members and a locked group keeps its
+  /// link-time history (see the class doc). Ignored when [linkPolicy] is
+  /// set. Null → plain G6.
+  final GroupPolicyLookup? matrixPolicy;
   final bool Function() _isAlive;
   final int Function() _clock;
 
@@ -137,48 +169,96 @@ class RecordGate {
   /// `LedgerSyncer.clampInboundClock`.
   int _clamp(int t) => t > _ceiling ? _ceiling : t;
 
-  /// G52: [group]'s policy on the link path; null on the Matrix path. A
-  /// failing lookup counts as `matrix` (the strict rules).
-  Future<GroupPolicy?> _linkPolicyOf(String group) async {
-    final lookup = linkPolicy;
+  bool get _linkPath => linkPolicy != null;
+
+  /// G52 / G53: [group]'s policy — via [linkPolicy] on the link path, via
+  /// [matrixPolicy] on the Matrix path; null when neither is set (plain
+  /// G6). A failing lookup counts as `matrix` (the strict rules).
+  Future<GroupPolicyInfo?> _policyOf(String group) async {
+    final lookup = linkPolicy ?? matrixPolicy;
     if (lookup == null) return null;
     try {
-      return (await lookup(group)).policy;
+      return await lookup(group);
     } catch (_) {
-      return GroupPolicy.matrix;
+      return GroupPolicyInfo.matrix;
     }
   }
 
-  /// G52: whether the refusal [v] of a version signed by [sig] is waived —
-  /// an unsigned version on the link path of a link group (§6.4). Only the
-  /// `unsigned` verdict is ever waived (the future clock is checked first).
-  bool _unsignedViaLink(
-    GroupPolicy? policy,
+  /// G52 / G53: whether the refusal [v] of a version (clock [at]) signed by
+  /// [sig] is waived — an unsigned version the group's policy accepts
+  /// (§6.4, §10.1). Only the `unsigned` verdict is ever waived (the future
+  /// clock is checked first).
+  bool _unsignedWaived(
+    GroupPolicyInfo? info,
     RecordSignature? sig,
-    Verdict v, {
+    Verdict v,
+    int at, {
     bool meta = false,
-  }) =>
-      policy != null &&
-      sig == null &&
-      v.reason == RejectReason.unsigned &&
-      (meta ? policy == GroupPolicy.linkOnly : policy.acceptsUnsignedViaLink);
+  }) {
+    if (info == null || sig != null || v.reason != RejectReason.unsigned) {
+      return false;
+    }
+    switch (info.policy) {
+      case GroupPolicy.linkOnly:
+        return _linkPath;
+      case GroupPolicy.mixed:
+        return !meta;
+      case GroupPolicy.matrix:
+        final lockedAt = info.lockedAt;
+        return !meta && lockedAt != null && at <= lockedAt;
+    }
+  }
 
-  /// G52 §6.1 / §6.4: on the link path a participant version may not claim
-  /// a Matrix ID in a `linkOnly` group (its "me" is device-local), nor —
-  /// unsigned — in a `mixed` one.
-  String? _linkClaimProblem(GroupPolicy? policy, MemberModel m) {
-    if (policy == null || m.matrixId == null) return null;
-    if (policy == GroupPolicy.linkOnly) {
+  /// G52 §6.1 / §6.4 + G53 §10.1: the claim rules for participant version
+  /// [m] ([current] = the stored one) wherever unsigned versions may be
+  /// accepted (link path; mixed / locked groups on the Matrix path).
+  Future<String?> _claimProblem(
+    GroupPolicyInfo? info,
+    MemberModel m,
+    MemberModel? current,
+  ) async {
+    if (info == null) return null;
+    final linkish =
+        _linkPath || info.policy == GroupPolicy.mixed || info.lockedAt != null;
+    if (!linkish) return null;
+    if (m.sig == null) {
+      if (m.matrixId != null) {
+        return 'unsigned Matrix-ID claim in a link group';
+      }
+      if (current?.matrixId != null) {
+        return 'unsigned change of a claimed participant';
+      }
+      return null;
+    }
+    // Signed versions over Matrix: the sender gate decides (unchanged).
+    if (!_linkPath || m.matrixId == null) return null;
+    if (info.policy == GroupPolicy.matrix) return null; // G6 as usual
+    if (_isSelfClaim(m, current)) return null;
+    if (info.policy == GroupPolicy.linkOnly) {
       return 'Matrix-ID claim in a link group';
     }
-    if (policy == GroupPolicy.mixed && m.sig == null) {
-      return 'unsigned Matrix-ID claim in a link group';
-    }
-    return null;
+    // mixed: a member may assign a Matrix account (an invite).
+    final signer = m.sig!.user;
+    final people = await members.getMembers(m.groupId);
+    final signerActive = people.any((p) => p.isActive && p.matrixId == signer);
+    return signerActive ? null : 'claim by a non-member';
   }
 
-  /// The `by` hint is kept only for link-path and restored versions.
-  bool get _keepsLinkAuthor => linkPolicy != null || acceptUnsigned;
+  /// G53 §10.1: [m] claims a stored, active participant for the Matrix
+  /// account that signed it, and nobody else claims it yet (or the same
+  /// account does already — a later version of its own claim).
+  static bool _isSelfClaim(MemberModel m, MemberModel? current) {
+    final sig = m.sig;
+    if (sig == null || m.matrixId == null || sig.user != m.matrixId) {
+      return false;
+    }
+    if (current == null || !current.isActive || !m.isActive) return false;
+    return current.matrixId == null || current.matrixId == m.matrixId;
+  }
+
+  /// The `by` hint is kept only for link-path and restored versions — G53:
+  /// and for an unsigned version a mixed / locked group accepts ([waived]).
+  bool _keepsLinkAuthor(bool waived) => _linkPath || acceptUnsigned || waived;
 
   /// Whether [v] is exactly the version of record [id] we refused before.
   /// A restore ([acceptUnsigned]) bypasses earlier refusals.
@@ -367,10 +447,10 @@ class RecordGate {
       );
       return false;
     }
-    final policy = await _linkPolicyOf(e.roomId);
+    final policy = await _policyOf(e.roomId);
     final v = await verifier.expense(e, stored: stored);
     if (!_isAlive()) return false;
-    final viaLink = _unsignedViaLink(policy, e.sig, v);
+    final viaLink = _unsignedWaived(policy, e.sig, v, e.updatedAt);
     if (!v.accepted && !viaLink && !_legacyOk(e.sig, v)) {
       await _refuse(
         e.roomId,
@@ -402,7 +482,9 @@ class RecordGate {
             e.withSigning(),
           ).copyWith(updatedAt: Value(_clamp(e.updatedAt)));
     await expenses.upsertExpenseLww(
-      _keepsLinkAuthor ? row : row.copyWith(linkAuthor: const Value(null)),
+      _keepsLinkAuthor(viaLink)
+          ? row
+          : row.copyWith(linkAuthor: const Value(null)),
       source: _historySource,
     );
     await _clearRefusal(e.roomId, RecordKind.expense, e.id, version);
@@ -449,10 +531,10 @@ class RecordGate {
       );
       return false;
     }
-    final policy = await _linkPolicyOf(s.roomId);
+    final policy = await _policyOf(s.roomId);
     final v = await verifier.settlement(s, stored: stored);
     if (!_isAlive()) return false;
-    final viaLink = _unsignedViaLink(policy, s.sig, v);
+    final viaLink = _unsignedWaived(policy, s.sig, v, s.updatedAt);
     if (!v.accepted && !viaLink && !_legacyOk(s.sig, v)) {
       await _refuse(
         s.roomId,
@@ -484,7 +566,9 @@ class RecordGate {
             s.withSigning(),
           ).copyWith(updatedAt: Value(_clamp(s.updatedAt)));
     await expenses.upsertSettlementLww(
-      _keepsLinkAuthor ? row : row.copyWith(linkAuthor: const Value(null)),
+      _keepsLinkAuthor(viaLink)
+          ? row
+          : row.copyWith(linkAuthor: const Value(null)),
       source: _historySource,
     );
     await _clearRefusal(s.roomId, RecordKind.settlement, s.id, version);
@@ -516,11 +600,12 @@ class RecordGate {
     )) {
       return false;
     }
-    final policy = await _linkPolicyOf(m.groupId);
+    final policy = await _policyOf(m.groupId);
     if (!_isAlive()) return false;
     final problem =
         memberProblem(m, allowLocalClaim: allowLocalClaims) ??
-        _linkClaimProblem(policy, m);
+        await _claimProblem(policy, m, current);
+    if (!_isAlive()) return false;
     if (problem != null) {
       await _refuse(
         m.groupId,
@@ -536,7 +621,7 @@ class RecordGate {
     }
     final v = await verifier.member(m, requiredSigner: requiredSigner);
     if (!_isAlive()) return false;
-    final viaLink = _unsignedViaLink(policy, m.sig, v);
+    final viaLink = _unsignedWaived(policy, m.sig, v, m.updatedAt);
     if (!v.accepted && !viaLink && !_legacyOk(m.sig, v)) {
       await _refuse(
         m.groupId,
@@ -553,7 +638,9 @@ class RecordGate {
         ? memberCompanion(m)
         : memberCompanion(m).copyWith(updatedAt: Value(_clamp(m.updatedAt)));
     await members.upsertMemberLww(
-      _keepsLinkAuthor ? row : row.copyWith(linkAuthor: const Value(null)),
+      _keepsLinkAuthor(viaLink)
+          ? row
+          : row.copyWith(linkAuthor: const Value(null)),
       source: _historySource,
     );
     await _clearRefusal(m.groupId, RecordKind.member, m.userId, version);
@@ -579,7 +666,11 @@ class RecordGate {
     if (await _refusedExactly(g.roomId, RecordKind.meta, g.roomId, version)) {
       return false;
     }
-    final problem = groupMetaProblem(g);
+    final problem =
+        groupMetaProblem(g) ??
+        (g.sig == null && (g.link != null || g.lockedAt != null)
+            ? 'unsigned link state'
+            : null);
     if (problem != null) {
       await _refuse(
         g.roomId,
@@ -593,10 +684,10 @@ class RecordGate {
       );
       return false;
     }
-    final policy = await _linkPolicyOf(g.roomId);
+    final policy = await _policyOf(g.roomId);
     final v = await verifier.meta(g);
     if (!_isAlive()) return false;
-    final viaLink = _unsignedViaLink(policy, g.sig, v, meta: true);
+    final viaLink = _unsignedWaived(policy, g.sig, v, g.updatedAt, meta: true);
     if (!v.accepted && !viaLink && !_legacyOk(g.sig, v)) {
       await _refuse(
         g.roomId,
@@ -625,10 +716,19 @@ class RecordGate {
         ? groupCompanion(g)
         : groupCompanion(g).copyWith(updatedAt: Value(_clamp(g.updatedAt)));
     await groups.upsertGroupLww(
-      _keepsLinkAuthor ? row : row.copyWith(linkAuthor: const Value(null)),
+      _keepsLinkAuthor(viaLink)
+          ? row
+          : row.copyWith(linkAuthor: const Value(null)),
       source: _historySource,
     );
     await _clearRefusal(g.roomId, RecordKind.meta, g.roomId, version);
+    // G53: a link was opened (or replaced) — versions refused for being
+    // unsigned before are acceptable now; let peers re-send them.
+    final link = g.link;
+    if (link != null && g.sig != null && stored?.link?.secret != link.secret) {
+      if (!_isAlive()) return true;
+      await signing.clearUnsignedRefusals(g.roomId);
+    }
     return true;
   }
 

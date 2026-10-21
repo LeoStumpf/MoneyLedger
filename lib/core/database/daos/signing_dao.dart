@@ -294,6 +294,15 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
           ))
           .go();
 
+  /// G53: forgets every refusal of [groupId] for being **unsigned** — the
+  /// group just opened a link (mixed: unsigned versions are accepted now),
+  /// so peers may re-send them and they are looked at again.
+  Future<void> clearUnsignedRefusals(String groupId) =>
+      (delete(rejectedVersions)..where(
+            (t) => t.groupId.equals(groupId) & t.reason.equals('unsigned'),
+          ))
+          .go();
+
   /// Forgets the refusals of one record up to (and including) [version] — a
   /// restore the user started stored that version after all (G18 review).
   Future<void> clearRejectedUpTo(
