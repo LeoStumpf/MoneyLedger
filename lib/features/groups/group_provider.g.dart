@@ -507,7 +507,7 @@ final class MemberAdderProvider
   }
 }
 
-String _$memberAdderHash() => r'76be8fea705ebbc2abb8c50c1cd383f19dab7c5f';
+String _$memberAdderHash() => r'94e83b92f66e5e230d373876c6a8a0825f106bc6';
 
 abstract class _$MemberAdder extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
@@ -646,7 +646,7 @@ final class ProfileNameRefreshProvider
 }
 
 String _$profileNameRefreshHash() =>
-    r'3c72fbb41f1806fa17fa16de2a11f4fdcd4e7fce';
+    r'9a75a3ca6420067adb65459aeeea2ef54e6dd872';
 
 /// Leave / delete a group (G9). Both end with the group **purged** from the
 /// local DB and a device-local [LeftGroupTombstone], so a late digest or

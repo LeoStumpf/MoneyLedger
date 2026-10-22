@@ -59,8 +59,10 @@ const _v8Schema = [
       "('@a:x', 'D1', 'K1', 'server', NULL, 1)",
   "INSERT INTO known_device_keys VALUES "
       "('@a:x', 'FAKE', 'K2', 'attested', '@m:x', 2)",
+  // A kind no later migration forgets (v19 forgets member + meta
+  // refusals, earlier steps expense / settlement ones).
   "INSERT INTO rejected_versions VALUES "
-      "('g1', 'member', 'e1', 70, 'unsigned', '@m:x', NULL, 3)",
+      "('g1', 'test_kind', 'e1', 70, 'unsigned', '@m:x', NULL, 3)",
   'PRAGMA user_version = 8',
 ];
 
@@ -86,7 +88,7 @@ void main() {
     expect(keys.single.group, isNull);
 
     // An unknown hash ('') matches any version at that clock.
-    expect(await signing.rejectedVersion('g1', 'member', 'e1'), (
+    expect(await signing.rejectedVersion('g1', 'test_kind', 'e1'), (
       at: 70,
       hash: '',
     ));
@@ -118,7 +120,7 @@ void main() {
     await signing.recordRejected(
       const RefusedVersion(
         groupId: 'g1',
-        kind: 'member',
+        kind: 'test_kind',
         recordId: 'e1',
         updatedAt: 70,
         reason: 'bad_signature',
@@ -129,7 +131,7 @@ void main() {
     await signing.recordRejected(
       const RefusedVersion(
         groupId: 'g1',
-        kind: 'member',
+        kind: 'test_kind',
         recordId: 'e1',
         updatedAt: 60,
         reason: 'bad_signature',
@@ -137,7 +139,7 @@ void main() {
         versionHash: 'aaaa',
       ),
     );
-    expect(await signing.rejectedVersion('g1', 'member', 'e1'), (
+    expect(await signing.rejectedVersion('g1', 'test_kind', 'e1'), (
       at: 70,
       hash: 'ffff',
     ));

@@ -315,6 +315,8 @@ no-op. The DAO upserts are unchanged.
 - Two *different* signed versions with the same clock remain G27's tie-break problem. Until then, the first one stored wins.
 - A forged high clock can't win, because the version is rejected before the upsert.
 - Verification status never enters LWW. It is receiver-relative and would break convergence.
+- **G57 (C1, schema v19):** the group **meta** is the exception — it merges field by field (per-field `clocks` in the signed body); an inbound meta that isn't newer is still verified when it holds a newer field, and a merge that equals neither version is written and **signed by the merging device** as its own new version (`meta_merge.dart`, `docs/design/g57-category-merge.md` "As built"). Its "last edited by" names that device.
+- **G74:** a member version may carry the participant's `payment` details only from the participant itself (signed by the claiming account); another member's version must carry them over unchanged (`payment_not_own`, transient otherwise).
 
 ### 6.3 Digests without repair loops
 

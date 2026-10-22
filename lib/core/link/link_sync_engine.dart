@@ -90,6 +90,7 @@ import '../matrix/transport_provider.dart';
 import '../session/app_session.dart';
 import '../session/local_transport.dart';
 import '../sync/ledger_payloads.dart';
+import '../sync/meta_merge.dart';
 import '../sync/record_gate.dart';
 import '../sync/record_verifier.dart';
 import '../sync/sync_health.dart' show kSyncFailureThreshold;
@@ -1097,6 +1098,13 @@ class LinkSyncEngine {
       members: _members,
       expenses: _expenses,
       linkPolicy: _link.policyOf,
+      // G57: concurrent metas merge per field — in a link-only group the
+      // merge is this device's unsigned link version.
+      mergeMeta: metaMergeSigner(
+        transport: Future.value(transport),
+        members: _members,
+        policy: _link.policyOf,
+      ),
       isAlive: () => _alive,
       clock: _clock,
     );

@@ -976,9 +976,22 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] Leaving a filled add-expense form with ← asks nothing (discard confirm?)
 
 ### G57. Custom-category follow-ups (found in G47) 🟢
-- [ ] Concurrent category edits lose one (whole meta is LWW) — per-category
+- [x] Concurrent category edits lose one (whole meta is LWW) — per-category
       merge if it matters; duplicate names only blocked in the dialog —
       **Leo 2026-10-17: later**, together with the link-group wire changes
+      — **done (wire bundle, schema v19):** C1 per-field clocks (`clocks`)
+      in the signed meta for name, currency, rates, link state and each
+      category; `RecordGate.meta` merges (also an older version holding a
+      newer field) and the merging device writes the merge as its own
+      version (`meta_merge.dart`, `metaMergeSigner`; Matrix + link path);
+      a reset hides a category instead of dropping it; v19 forgets meta +
+      member refusals; tests incl. two-device Matrix (live + lost messages)
+      and relay runs
+- [ ] (G57) A device without a Matrix account in a **mixed** group can't
+      sign a merged meta (falls back to whole-meta LWW until a Matrix
+      member merges); a restore never merges (never signs) — accepted?
+- [ ] (G57) Device check: concurrent rename / category add on two phones
+      (Matrix and a link group) — `[g57] merged meta` in logcat
 - [x] Decide (Leo): design note `docs/design/g57-category-merge.md`
       (2026-10-22) — keep whole-meta LWW, per-category clocks in the meta,
       or categories as their own record kind; also the G53 link / lock meta
@@ -1214,6 +1227,18 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       set), a schema step forgets member refusals, removed details stay in
       others' history / backups / restore points (privacy text says so),
       wording "Name auf dem Konto" kept
+- [x] Synced part, wire: optional signed `payment` field of the member
+      record (only when set; digest gossip / bootstrap / backup / history
+      carry it), content rule `paymentProblem`, only the participant itself
+      may set / change / clear it (`RecordGate`, transient
+      `payment_not_own`; a new claim clears it), every member writer
+      carries it over; schema v19 (`members.payment_json`, forgets member
+      refusals) — `PaymentDetails` moved to `models/payment_details.dart`
+- [ ] Synced part, rest: write my details into every group I'm active in
+      (link groups too) on save / when joining, the payer's sheet shows the
+      payee's details, settings text ("anyone with a group's link can read
+      them"), PRIVACY.md + in-app privacy (removed details stay in others'
+      history / backups / restore points)
 - [ ] Device check: smoke 5.21 (banking-app scan, PayPal link, DE 360 dp)
 - [ ] Later maybe: payment details in the G69 share text (opt-in)
 
@@ -1343,7 +1368,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G58 — restore-point follow-ups (found in G48)
 - [x] G60 — expense-date follow-ups (found in G49)
 - [ ] G61 — split follow-ups (found in G59)
-- [ ] G57 — custom-category follow-ups (found in G47)
+- [~] G57 — custom-category follow-ups (found in G47) — C1 merge built (wire bundle, v19); device check open
 - [x] G56 — UX follow-ups (found in G46)
 - [x] G63 — correctness + texts before release (usability review U11 …)
 - [x] G64 — people when creating a group (before G52 step 6/7)
@@ -1357,7 +1382,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G72 — local notifications (on by default) — device check smoke 7.13 open
 - [x] G73 — manual exchange rates + fetch button (with G57) — device check smoke 6.7 + G57 decision open
 - [x] G75 — usability polish (review leftovers)
-- [~] G74 — payment details + GiroCode (with G57 / G73) — device-local part done; synced part needs Leo (wire / privacy)
+- [~] G74 — payment details + GiroCode (with G57 / G73) — device-local part + synced wire field done; distribution / payer sheet / privacy texts next
 - [x] G76 — multiple payers (wire: `payers` + empty `paid_by`) — device check smoke 5.22 open
 - [ ] G79 — DEV-I findings (calculator keyboard, truncations, lazy Matrix store)
 - [x] G77 — itemized split

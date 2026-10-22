@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../models/member_model.dart';
+import '../../../models/payment_details.dart';
 import '../../../models/record_signature.dart';
 import '../../sync/record_validation.dart' show isValidMxid;
 import '../../sync/ledger_payloads.dart';
@@ -110,6 +113,9 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
         matrixId: member.matrixId.present ? member.matrixId.value : null,
         status: member.status.present ? member.status.value : 'active',
         updatedAt: member.updatedAt.value,
+        payment: member.paymentJson.present
+            ? decodePayment(member.paymentJson.value)
+            : null,
       ),
     );
     final oldVersion = old == null ? null : memberVersion(_toModel(old));
@@ -142,8 +148,24 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
     sig: RecordSignature.decode(m.sig),
     pendingSign: m.pendingSign,
     linkAuthor: m.linkAuthor,
+    payment: decodePayment(m.paymentJson),
   );
 }
+
+/// G74: the stored `payment_json` (NULL → none; unreadable → an invalid
+/// entry, like a malformed wire value).
+PaymentDetails? decodePayment(String? json) {
+  if (json == null || json.isEmpty) return null;
+  try {
+    return PaymentDetails.fromWire(jsonDecode(json));
+  } catch (_) {
+    return PaymentDetails.invalid;
+  }
+}
+
+/// G74: [p] as stored (none → NULL).
+String? encodePayment(PaymentDetails? p) =>
+    p == null ? null : jsonEncode(p.toJson());
 
 /// Maps a [MemberModel] to a fully-populated companion (all columns set) for an
 /// LWW upsert.
@@ -159,4 +181,6 @@ MembersCompanion memberCompanion(MemberModel m) => MembersCompanion(
   // G52: always set (also to null) — an absent value would keep the
   // previous version's hint on update.
   linkAuthor: Value(m.linkAuthor),
+  // G74: always set (also to null) — removing the details must clear them.
+  paymentJson: Value(encodePayment(m.payment)),
 );

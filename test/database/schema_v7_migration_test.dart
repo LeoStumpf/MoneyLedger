@@ -104,7 +104,8 @@ void main() {
 
     final signing = SigningDao(db);
     expect(await signing.rejectedClock('g1', 'expense', 'e2'), isNull);
-    expect(await signing.rejectedClock('g1', 'member', 'p9'), 70);
+    // v19 (G57 / G74) forgets member refusals too.
+    expect(await signing.rejectedClock('g1', 'member', 'p9'), isNull);
 
     // v7 writes with the new fields work.
     await expenses.upsertExpenseLww(

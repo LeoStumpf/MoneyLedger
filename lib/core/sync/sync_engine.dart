@@ -23,6 +23,7 @@ import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
 import 'delivery_policy.dart';
 import 'ledger_payloads.dart';
+import 'meta_merge.dart';
 import 'left_groups.dart';
 import 'payload_budget.dart';
 import 'record_gate.dart';
@@ -252,6 +253,12 @@ class SyncEngine {
       expenses: _expenses,
       // G53: mixed groups accept unsigned versions their members relay.
       matrixPolicy: _link.policyOf,
+      // G57: concurrent metas merge per field; this device signs the merge.
+      mergeMeta: metaMergeSigner(
+        transport: Future.value(transport),
+        members: _members,
+        policy: _link.policyOf,
+      ),
       isAlive: () => _alive,
     );
     _sub = transport.onMessage.listen(_onMessage);
@@ -1020,6 +1027,8 @@ Map<String, dynamic> _digestHeader(
           'updated_at': m.updatedAt,
           'name': m.displayName,
           'matrix_id': m.matrixId,
+          // G74: part of the signed member version when set.
+          if (m.payment != null) 'payment': m.payment!.toJson(),
           if (m.sig != null) 'sig': m.sig!.toJson(),
         },
   },

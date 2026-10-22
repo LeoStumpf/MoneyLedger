@@ -370,6 +370,8 @@ MemberModel linkAdoptedMember(MemberModel m) {
       status: m.status,
       updatedAt: nextLwwClock(m.updatedAt),
       linkAuthor: m.userId,
+      // G74: the same person ("me") — written as its own link version.
+      payment: m.payment,
     );
   }
   return m.pendingSign ? m.asLinkVersion(m.linkAuthor) : m;
@@ -406,6 +408,8 @@ MemberModel reclaimedMember(
     status: m.status,
     updatedAt: nextLwwClock(m.updatedAt),
     pendingSign: true,
+    // G74: the same person, now signing with its account.
+    payment: m.payment,
   );
 }
 

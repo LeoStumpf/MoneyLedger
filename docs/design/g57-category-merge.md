@@ -117,3 +117,48 @@ versions). That's a UX decision too (retagging writes many versions).
    link state).
 4. Not decided separately — duplicates stay possible after a concurrent add
    (never refused on the wire); both survive now (union by id).
+
+## As built (C1, wire bundle — schema v19)
+
+- **Wire:** the signed meta gets an optional `clocks: {field: ms}` — fields
+  `name`, `currency`, `exchange_rates`, `link` (the link state = `link` +
+  `locked_at` together) and each custom category id. Only entries **below
+  `updated_at`** are carried (a field without an entry was changed by this
+  version), sorted; present in the signed body / G27 hash only when
+  non-empty, so every pre-C1 meta keeps its body, signature and hash. The
+  **empty** link state (never shared by link) has clock 0 and is never
+  carried — it never beats a link opened concurrently, and unsigned metas
+  (which can't hold the link state) need no `link` clock. Content rule:
+  keys = the four fields or a category id of the same meta, values ≥ 0; a
+  malformed `clocks` is refused (`invalid_record`), never dropped.
+- **Local writes** (`GroupModel.nextVersion`, used by every meta writer —
+  editor, categories, rates, link open / lock, self-claim, CSV, G48 reset /
+  G58 exact state): a changed field gets the new clock, the others keep
+  theirs; a category missing from the new list is kept **hidden** (no
+  deletes — a merge would bring it back; old expenses keep their label).
+- **Merge** (`lib/core/sync/meta_merge.dart`): per field the higher
+  `(clock, hash of the value)`; categories = union by id, each by its own
+  clock; commutative / associative / idempotent. `RecordGate.meta` also
+  looks at a version that isn't newer when it holds a newer field; once it
+  passes the usual checks (refusals, content, signature, signer rule) the
+  gate stores it as is if it holds the whole merge and wins LWW, else
+  writes the merge as **this device's own version** (clock
+  `nextLwwClock(max(stored, inbound))`) through `metaMergeSigner` — the same
+  `LocalRecordSigner` as local writes: signed, `pendingSign`, or an
+  unsigned link version (`by` = me) in a link-only group. It declines (→
+  plain LWW) when "me" isn't an active participant (a removed member's
+  merge would be dropped by everyone) or the group needs a signature the
+  device can't give (no account in a mixed / locked group). A restore
+  never merges (it never signs).
+- **Digests / link snapshots:** unchanged — the stored meta's clock never
+  goes back, so "the side with the newer meta sends it, the other merges"
+  converges (a merge that differs is newer and flows back). Bootstrap,
+  backup, G48 history and resets carry `clocks` through the payload.
+- **Migration:** schema v19 adds `groups.field_clocks_json` and forgets
+  refused `meta` versions (a pre-v19 build refuses metas with `clocks`);
+  the same step adds G74's `members.payment_json` and forgets `member`
+  refusals.
+- **Tests:** `test/core/meta_merge_test.dart` (goldens, merge, rules, gate),
+  `test/integration/meta_merge_sync_test.dart` (two Matrix devices, lost and
+  live), `test/integration/link_meta_merge_test.dart` (two phones without
+  an account, fake relays), `test/database/schema_v19_migration_test.dart`.

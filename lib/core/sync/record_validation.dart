@@ -7,6 +7,7 @@ import '../../models/expense_model.dart';
 import '../../models/expense_payers.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
+import '../../models/payment_details.dart';
 import '../link/link_uri.dart' show decodeLinkSecret;
 
 /// Content rules every expense / payment must satisfy (G18 review) — plain
@@ -120,6 +121,15 @@ String? groupMetaProblem(GroupModel g) {
   if (lockedAt != null && lockedAt < 0) return 'locked_at $lockedAt';
   final fxProblem = exchangeRatesProblem(g.exchangeRates);
   if (fxProblem != null) return fxProblem;
+  // G57: per-field clocks name a known field or one of this meta's
+  // categories, with a non-negative clock (entries not below `updated_at`
+  // are ignored — the field then counts as changed by this version).
+  final catIds = {for (final c in g.categories) c.id};
+  for (final MapEntry(key: k, value: v) in g.fieldClocks.entries) {
+    if (v < 0 || !(kMetaScalarFields.contains(k) || catIds.contains(k))) {
+      return 'field clock "$k"';
+    }
+  }
   final cats = g.categories;
   if (cats.length > kMaxCustomCategories) {
     return '${cats.length} categories';
@@ -177,10 +187,47 @@ final _mxidPattern = RegExp(r'^@[^\s:]+:[^\s]+$');
 /// lookup as a replication target. [allowLocalClaim]: a claim by local
 /// mode's pseudo account ([kLocalClaimId]) is fine — local mode's own backup.
 String? memberProblem(MemberModel m, {bool allowLocalClaim = false}) {
+  final payment = paymentProblem(m.payment);
+  if (payment != null) return payment;
   final claim = m.matrixId;
   if (claim == null || isValidMxid(claim)) return null;
   if (allowLocalClaim && claim == kLocalClaimId) return null;
   return 'invalid matrix id';
+}
+
+/// G74: the longest account holder a GiroCode carries.
+const kMaxPaymentNameLength = 70;
+
+/// G74: why [p] isn't a valid `payment` value of a member version (null =
+/// valid or absent): every field that is set must be in the stored form —
+/// account holder trimmed, 1 … [kMaxPaymentNameLength] chars; IBAN
+/// normalised with a valid checksum ([isValidIban]); BIC normalised
+/// ([isValidBic]) and only next to an IBAN; PayPal.me a bare user name —
+/// and something usable must be set (an IBAN with its holder, or PayPal.me).
+String? paymentProblem(PaymentDetails? p) {
+  if (p == null) return null;
+  final name = p.name;
+  if (name != null &&
+      (name.trim() != name ||
+          name.isEmpty ||
+          name.length > kMaxPaymentNameLength)) {
+    return 'payment name';
+  }
+  final iban = p.iban;
+  if (iban != null && (normalizeIban(iban) != iban || !isValidIban(iban))) {
+    return 'payment iban';
+  }
+  final bic = p.bic;
+  if (bic != null &&
+      (iban == null || normalizeBic(bic) != bic || !isValidBic(bic))) {
+    return 'payment bic';
+  }
+  final paypal = p.paypalMe;
+  if (paypal != null && normalizePaypalMe(paypal) != paypal) {
+    return 'payment paypal';
+  }
+  if (p.isEmpty) return 'payment empty';
+  return null;
 }
 
 /// Local mode's pseudo account (`kLocalAccountId` in `app_session.dart`,

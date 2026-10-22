@@ -146,6 +146,8 @@ Future<LinkChannelModel> openLinkChannel(
           status: m.status,
           updatedAt: nextLwwClock(m.updatedAt, now: now()),
           linkAuthor: mine?.userId ?? m.userId,
+          // G74: carried over unchanged.
+          payment: m.payment,
         );
       } else if (m.pendingSign) {
         next = m.asLinkVersion(m.linkAuthor);

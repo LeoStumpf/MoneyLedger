@@ -175,11 +175,16 @@ peers'), and SAS works with other members' devices (members page). Open:
   that group (also renames / currency changes) until it is updated. Same
   caveat and fix as G16: the v11 migration forgets refused *meta* versions,
   so peers re-send them after the update. Unreleased app → accepted.
-- **Concurrent edits are whole-meta LWW:** two members adding a category at
-  the same time (or one renaming the group while another adds a category)
-  → the newer meta version wins and the other change is lost (the loser sees
-  it vanish). A per-category CRDT / merge would fix it; rare in practice.
-  Options + questions: `docs/design/g57-category-merge.md` (G57, open).
+- **Concurrent edits merge per field (G57 C1, schema v19):** name,
+  currency, rates, link state and every category carry their own clock in
+  the signed meta (`clocks`); concurrent metas merge field by field (union
+  of the categories) and the merging device re-signs the merge as its own
+  version (`docs/design/g57-category-merge.md` "As built"). Left: a device
+  without a Matrix account in a **mixed** group can't sign a merge (falls
+  back to whole-meta LWW until a Matrix member merges); a **restore** never
+  merges (it never signs); "last edited by" of a merged meta names the
+  merging device; a pre-v19 build refuses every meta carrying `clocks`
+  (most metas after the first edit) until updated.
 - **No delete** — only *hide* (old expenses stay labelled). An expense whose
   `c:` id the group doesn't define (e.g. a CSV from another group without a
   name column, or the definition lost to the LWW case above) shows as
@@ -189,7 +194,11 @@ peers'), and SAS works with other members' devices (members page). Open:
   import (default icon); icons and the hidden flag aren't in the CSV. The
   JSON backup is lossless (signed meta).
 - Duplicate names are prevented in the dialog (case-insensitive) but not by
-  the content rules (two peers may create "Dog" concurrently).
+  the content rules (two peers may create "Dog" concurrently — since G57
+  both survive the merge).
+- **Reset (G48 / G58) hides, never drops:** a reset to a state before a
+  category existed keeps it **hidden** (`GroupModel.nextVersion`) — a
+  dropped one would come back with the next merge.
 
 ### Exchange rates (G73) — limits
 - **Mixed versions:** the rates live in the signed group meta
@@ -198,9 +207,8 @@ peers'), and SAS works with other members' devices (members page). Open:
   version of the group until updated (link-only groups: it stores the
   unsigned meta without the rates). The v17 migration forgets refused meta
   versions, like v11 / v16. Unreleased app → accepted.
-- **Whole-meta LWW** (as G47): a rate change concurrent with a rename /
-  category edit loses one of them — part of the G57 decision
-  (`docs/design/g57-category-merge.md`).
+- **Concurrent edits** merge per field since G57 C1 (the rates are one
+  field: two concurrent rate changes still keep only the newer set).
 - **One base per group**, set when the first rate is added (the group
   currency then); changing it means removing all rates first. Rates are
   fixed (no history): changing a rate re-values **every** earlier expense

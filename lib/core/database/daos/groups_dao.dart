@@ -50,6 +50,9 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
         exchangeRates: group.exchangeRatesJson.present
             ? decodeExchangeRates(group.exchangeRatesJson.value)
             : null,
+        fieldClocks: group.fieldClocksJson.present
+            ? decodeFieldClocks(group.fieldClocksJson.value)
+            : const {},
       ),
     );
     final oldVersion = old == null ? null : groupMetaVersion(_toModel(old));
@@ -96,7 +99,26 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
     sig: RecordSignature.decode(g.sig),
     pendingSign: g.pendingSign,
     linkAuthor: g.linkAuthor,
+    fieldClocks: decodeFieldClocks(g.fieldClocksJson),
   );
+}
+
+/// G57: the stored `field_clocks_json` (NULL → none; unreadable → an invalid
+/// entry, like a malformed wire value).
+Map<String, int> decodeFieldClocks(String? json) {
+  if (json == null || json.isEmpty) return const {};
+  try {
+    return metaClocksFromPayload(jsonDecode(json));
+  } catch (_) {
+    return const {'': -1};
+  }
+}
+
+/// G57: the per-field clocks of [g] as stored — exactly what the wire
+/// carries ([GroupModel.wireClocks]); none → NULL.
+String? encodeFieldClocks(GroupModel g) {
+  final c = g.wireClocks;
+  return c.isEmpty ? null : jsonEncode(c);
 }
 
 /// G53: the stored `link_epoch` / `link_secret` (no secret → no link).
@@ -151,4 +173,6 @@ GroupsCompanion groupCompanion(GroupModel g) => GroupsCompanion(
   lockedAt: Value(g.lockedAt),
   // G73: always set (also to null) — removing the last rate must clear it.
   exchangeRatesJson: Value(encodeExchangeRates(g.exchangeRates)),
+  // G57: always set (also to null) — a version changing every field has none.
+  fieldClocksJson: Value(encodeFieldClocks(g)),
 );

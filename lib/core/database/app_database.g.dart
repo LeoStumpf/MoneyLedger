@@ -141,6 +141,17 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _fieldClocksJsonMeta = const VerificationMeta(
+    'fieldClocksJson',
+  );
+  @override
+  late final GeneratedColumn<String> fieldClocksJson = GeneratedColumn<String>(
+    'field_clocks_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     roomId,
@@ -155,6 +166,7 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
     linkSecret,
     lockedAt,
     exchangeRatesJson,
+    fieldClocksJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -253,6 +265,15 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         ),
       );
     }
+    if (data.containsKey('field_clocks_json')) {
+      context.handle(
+        _fieldClocksJsonMeta,
+        fieldClocksJson.isAcceptableOrUnknown(
+          data['field_clocks_json']!,
+          _fieldClocksJsonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -310,6 +331,10 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         DriftSqlType.string,
         data['${effectivePrefix}exchange_rates_json'],
       ),
+      fieldClocksJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field_clocks_json'],
+      ),
     );
   }
 
@@ -332,6 +357,7 @@ class Group extends DataClass implements Insertable<Group> {
   final String? linkSecret;
   final int? lockedAt;
   final String? exchangeRatesJson;
+  final String? fieldClocksJson;
   const Group({
     required this.roomId,
     required this.name,
@@ -345,6 +371,7 @@ class Group extends DataClass implements Insertable<Group> {
     this.linkSecret,
     this.lockedAt,
     this.exchangeRatesJson,
+    this.fieldClocksJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -375,6 +402,9 @@ class Group extends DataClass implements Insertable<Group> {
     if (!nullToAbsent || exchangeRatesJson != null) {
       map['exchange_rates_json'] = Variable<String>(exchangeRatesJson);
     }
+    if (!nullToAbsent || fieldClocksJson != null) {
+      map['field_clocks_json'] = Variable<String>(fieldClocksJson);
+    }
     return map;
   }
 
@@ -404,6 +434,9 @@ class Group extends DataClass implements Insertable<Group> {
       exchangeRatesJson: exchangeRatesJson == null && nullToAbsent
           ? const Value.absent()
           : Value(exchangeRatesJson),
+      fieldClocksJson: fieldClocksJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fieldClocksJson),
     );
   }
 
@@ -427,6 +460,7 @@ class Group extends DataClass implements Insertable<Group> {
       exchangeRatesJson: serializer.fromJson<String?>(
         json['exchangeRatesJson'],
       ),
+      fieldClocksJson: serializer.fromJson<String?>(json['fieldClocksJson']),
     );
   }
   @override
@@ -445,6 +479,7 @@ class Group extends DataClass implements Insertable<Group> {
       'linkSecret': serializer.toJson<String?>(linkSecret),
       'lockedAt': serializer.toJson<int?>(lockedAt),
       'exchangeRatesJson': serializer.toJson<String?>(exchangeRatesJson),
+      'fieldClocksJson': serializer.toJson<String?>(fieldClocksJson),
     };
   }
 
@@ -461,6 +496,7 @@ class Group extends DataClass implements Insertable<Group> {
     Value<String?> linkSecret = const Value.absent(),
     Value<int?> lockedAt = const Value.absent(),
     Value<String?> exchangeRatesJson = const Value.absent(),
+    Value<String?> fieldClocksJson = const Value.absent(),
   }) => Group(
     roomId: roomId ?? this.roomId,
     name: name ?? this.name,
@@ -478,6 +514,9 @@ class Group extends DataClass implements Insertable<Group> {
     exchangeRatesJson: exchangeRatesJson.present
         ? exchangeRatesJson.value
         : this.exchangeRatesJson,
+    fieldClocksJson: fieldClocksJson.present
+        ? fieldClocksJson.value
+        : this.fieldClocksJson,
   );
   Group copyWithCompanion(GroupsCompanion data) {
     return Group(
@@ -503,6 +542,9 @@ class Group extends DataClass implements Insertable<Group> {
       exchangeRatesJson: data.exchangeRatesJson.present
           ? data.exchangeRatesJson.value
           : this.exchangeRatesJson,
+      fieldClocksJson: data.fieldClocksJson.present
+          ? data.fieldClocksJson.value
+          : this.fieldClocksJson,
     );
   }
 
@@ -520,7 +562,8 @@ class Group extends DataClass implements Insertable<Group> {
           ..write('linkEpoch: $linkEpoch, ')
           ..write('linkSecret: $linkSecret, ')
           ..write('lockedAt: $lockedAt, ')
-          ..write('exchangeRatesJson: $exchangeRatesJson')
+          ..write('exchangeRatesJson: $exchangeRatesJson, ')
+          ..write('fieldClocksJson: $fieldClocksJson')
           ..write(')'))
         .toString();
   }
@@ -539,6 +582,7 @@ class Group extends DataClass implements Insertable<Group> {
     linkSecret,
     lockedAt,
     exchangeRatesJson,
+    fieldClocksJson,
   );
   @override
   bool operator ==(Object other) =>
@@ -555,7 +599,8 @@ class Group extends DataClass implements Insertable<Group> {
           other.linkEpoch == this.linkEpoch &&
           other.linkSecret == this.linkSecret &&
           other.lockedAt == this.lockedAt &&
-          other.exchangeRatesJson == this.exchangeRatesJson);
+          other.exchangeRatesJson == this.exchangeRatesJson &&
+          other.fieldClocksJson == this.fieldClocksJson);
 }
 
 class GroupsCompanion extends UpdateCompanion<Group> {
@@ -571,6 +616,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
   final Value<String?> linkSecret;
   final Value<int?> lockedAt;
   final Value<String?> exchangeRatesJson;
+  final Value<String?> fieldClocksJson;
   final Value<int> rowid;
   const GroupsCompanion({
     this.roomId = const Value.absent(),
@@ -585,6 +631,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.linkSecret = const Value.absent(),
     this.lockedAt = const Value.absent(),
     this.exchangeRatesJson = const Value.absent(),
+    this.fieldClocksJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupsCompanion.insert({
@@ -600,6 +647,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.linkSecret = const Value.absent(),
     this.lockedAt = const Value.absent(),
     this.exchangeRatesJson = const Value.absent(),
+    this.fieldClocksJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : roomId = Value(roomId),
        name = Value(name);
@@ -616,6 +664,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Expression<String>? linkSecret,
     Expression<int>? lockedAt,
     Expression<String>? exchangeRatesJson,
+    Expression<String>? fieldClocksJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -631,6 +680,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
       if (linkSecret != null) 'link_secret': linkSecret,
       if (lockedAt != null) 'locked_at': lockedAt,
       if (exchangeRatesJson != null) 'exchange_rates_json': exchangeRatesJson,
+      if (fieldClocksJson != null) 'field_clocks_json': fieldClocksJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -648,6 +698,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Value<String?>? linkSecret,
     Value<int?>? lockedAt,
     Value<String?>? exchangeRatesJson,
+    Value<String?>? fieldClocksJson,
     Value<int>? rowid,
   }) {
     return GroupsCompanion(
@@ -663,6 +714,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
       linkSecret: linkSecret ?? this.linkSecret,
       lockedAt: lockedAt ?? this.lockedAt,
       exchangeRatesJson: exchangeRatesJson ?? this.exchangeRatesJson,
+      fieldClocksJson: fieldClocksJson ?? this.fieldClocksJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -706,6 +758,9 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     if (exchangeRatesJson.present) {
       map['exchange_rates_json'] = Variable<String>(exchangeRatesJson.value);
     }
+    if (fieldClocksJson.present) {
+      map['field_clocks_json'] = Variable<String>(fieldClocksJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -727,6 +782,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
           ..write('linkSecret: $linkSecret, ')
           ..write('lockedAt: $lockedAt, ')
           ..write('exchangeRatesJson: $exchangeRatesJson, ')
+          ..write('fieldClocksJson: $fieldClocksJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2880,6 +2936,17 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _paymentJsonMeta = const VerificationMeta(
+    'paymentJson',
+  );
+  @override
+  late final GeneratedColumn<String> paymentJson = GeneratedColumn<String>(
+    'payment_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     groupId,
@@ -2891,6 +2958,7 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
     sig,
     pendingSign,
     linkAuthor,
+    paymentJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2970,6 +3038,15 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
         linkAuthor.isAcceptableOrUnknown(data['link_author']!, _linkAuthorMeta),
       );
     }
+    if (data.containsKey('payment_json')) {
+      context.handle(
+        _paymentJsonMeta,
+        paymentJson.isAcceptableOrUnknown(
+          data['payment_json']!,
+          _paymentJsonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3015,6 +3092,10 @@ class $MembersTable extends Members with TableInfo<$MembersTable, Member> {
         DriftSqlType.string,
         data['${effectivePrefix}link_author'],
       ),
+      paymentJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payment_json'],
+      ),
     );
   }
 
@@ -3034,6 +3115,7 @@ class Member extends DataClass implements Insertable<Member> {
   final String? sig;
   final bool pendingSign;
   final String? linkAuthor;
+  final String? paymentJson;
   const Member({
     required this.groupId,
     required this.userId,
@@ -3044,6 +3126,7 @@ class Member extends DataClass implements Insertable<Member> {
     this.sig,
     required this.pendingSign,
     this.linkAuthor,
+    this.paymentJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3063,6 +3146,9 @@ class Member extends DataClass implements Insertable<Member> {
     if (!nullToAbsent || linkAuthor != null) {
       map['link_author'] = Variable<String>(linkAuthor);
     }
+    if (!nullToAbsent || paymentJson != null) {
+      map['payment_json'] = Variable<String>(paymentJson);
+    }
     return map;
   }
 
@@ -3081,6 +3167,9 @@ class Member extends DataClass implements Insertable<Member> {
       linkAuthor: linkAuthor == null && nullToAbsent
           ? const Value.absent()
           : Value(linkAuthor),
+      paymentJson: paymentJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paymentJson),
     );
   }
 
@@ -3099,6 +3188,7 @@ class Member extends DataClass implements Insertable<Member> {
       sig: serializer.fromJson<String?>(json['sig']),
       pendingSign: serializer.fromJson<bool>(json['pendingSign']),
       linkAuthor: serializer.fromJson<String?>(json['linkAuthor']),
+      paymentJson: serializer.fromJson<String?>(json['paymentJson']),
     );
   }
   @override
@@ -3114,6 +3204,7 @@ class Member extends DataClass implements Insertable<Member> {
       'sig': serializer.toJson<String?>(sig),
       'pendingSign': serializer.toJson<bool>(pendingSign),
       'linkAuthor': serializer.toJson<String?>(linkAuthor),
+      'paymentJson': serializer.toJson<String?>(paymentJson),
     };
   }
 
@@ -3127,6 +3218,7 @@ class Member extends DataClass implements Insertable<Member> {
     Value<String?> sig = const Value.absent(),
     bool? pendingSign,
     Value<String?> linkAuthor = const Value.absent(),
+    Value<String?> paymentJson = const Value.absent(),
   }) => Member(
     groupId: groupId ?? this.groupId,
     userId: userId ?? this.userId,
@@ -3137,6 +3229,7 @@ class Member extends DataClass implements Insertable<Member> {
     sig: sig.present ? sig.value : this.sig,
     pendingSign: pendingSign ?? this.pendingSign,
     linkAuthor: linkAuthor.present ? linkAuthor.value : this.linkAuthor,
+    paymentJson: paymentJson.present ? paymentJson.value : this.paymentJson,
   );
   Member copyWithCompanion(MembersCompanion data) {
     return Member(
@@ -3155,6 +3248,9 @@ class Member extends DataClass implements Insertable<Member> {
       linkAuthor: data.linkAuthor.present
           ? data.linkAuthor.value
           : this.linkAuthor,
+      paymentJson: data.paymentJson.present
+          ? data.paymentJson.value
+          : this.paymentJson,
     );
   }
 
@@ -3169,7 +3265,8 @@ class Member extends DataClass implements Insertable<Member> {
           ..write('updatedAt: $updatedAt, ')
           ..write('sig: $sig, ')
           ..write('pendingSign: $pendingSign, ')
-          ..write('linkAuthor: $linkAuthor')
+          ..write('linkAuthor: $linkAuthor, ')
+          ..write('paymentJson: $paymentJson')
           ..write(')'))
         .toString();
   }
@@ -3185,6 +3282,7 @@ class Member extends DataClass implements Insertable<Member> {
     sig,
     pendingSign,
     linkAuthor,
+    paymentJson,
   );
   @override
   bool operator ==(Object other) =>
@@ -3198,7 +3296,8 @@ class Member extends DataClass implements Insertable<Member> {
           other.updatedAt == this.updatedAt &&
           other.sig == this.sig &&
           other.pendingSign == this.pendingSign &&
-          other.linkAuthor == this.linkAuthor);
+          other.linkAuthor == this.linkAuthor &&
+          other.paymentJson == this.paymentJson);
 }
 
 class MembersCompanion extends UpdateCompanion<Member> {
@@ -3211,6 +3310,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
   final Value<String?> sig;
   final Value<bool> pendingSign;
   final Value<String?> linkAuthor;
+  final Value<String?> paymentJson;
   final Value<int> rowid;
   const MembersCompanion({
     this.groupId = const Value.absent(),
@@ -3222,6 +3322,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
     this.sig = const Value.absent(),
     this.pendingSign = const Value.absent(),
     this.linkAuthor = const Value.absent(),
+    this.paymentJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MembersCompanion.insert({
@@ -3234,6 +3335,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
     this.sig = const Value.absent(),
     this.pendingSign = const Value.absent(),
     this.linkAuthor = const Value.absent(),
+    this.paymentJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : groupId = Value(groupId),
        userId = Value(userId),
@@ -3248,6 +3350,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
     Expression<String>? sig,
     Expression<bool>? pendingSign,
     Expression<String>? linkAuthor,
+    Expression<String>? paymentJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3260,6 +3363,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
       if (sig != null) 'sig': sig,
       if (pendingSign != null) 'pending_sign': pendingSign,
       if (linkAuthor != null) 'link_author': linkAuthor,
+      if (paymentJson != null) 'payment_json': paymentJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3274,6 +3378,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
     Value<String?>? sig,
     Value<bool>? pendingSign,
     Value<String?>? linkAuthor,
+    Value<String?>? paymentJson,
     Value<int>? rowid,
   }) {
     return MembersCompanion(
@@ -3286,6 +3391,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
       sig: sig ?? this.sig,
       pendingSign: pendingSign ?? this.pendingSign,
       linkAuthor: linkAuthor ?? this.linkAuthor,
+      paymentJson: paymentJson ?? this.paymentJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3320,6 +3426,9 @@ class MembersCompanion extends UpdateCompanion<Member> {
     if (linkAuthor.present) {
       map['link_author'] = Variable<String>(linkAuthor.value);
     }
+    if (paymentJson.present) {
+      map['payment_json'] = Variable<String>(paymentJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3338,6 +3447,7 @@ class MembersCompanion extends UpdateCompanion<Member> {
           ..write('sig: $sig, ')
           ..write('pendingSign: $pendingSign, ')
           ..write('linkAuthor: $linkAuthor, ')
+          ..write('paymentJson: $paymentJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6708,6 +6818,7 @@ typedef $$GroupsTableCreateCompanionBuilder =
       Value<String?> linkSecret,
       Value<int?> lockedAt,
       Value<String?> exchangeRatesJson,
+      Value<String?> fieldClocksJson,
       Value<int> rowid,
     });
 typedef $$GroupsTableUpdateCompanionBuilder =
@@ -6724,6 +6835,7 @@ typedef $$GroupsTableUpdateCompanionBuilder =
       Value<String?> linkSecret,
       Value<int?> lockedAt,
       Value<String?> exchangeRatesJson,
+      Value<String?> fieldClocksJson,
       Value<int> rowid,
     });
 
@@ -6793,6 +6905,11 @@ class $$GroupsTableFilterComposer
 
   ColumnFilters<String> get exchangeRatesJson => $composableBuilder(
     column: $table.exchangeRatesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fieldClocksJson => $composableBuilder(
+    column: $table.fieldClocksJson,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6865,6 +6982,11 @@ class $$GroupsTableOrderingComposer
     column: $table.exchangeRatesJson,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get fieldClocksJson => $composableBuilder(
+    column: $table.fieldClocksJson,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GroupsTableAnnotationComposer
@@ -6921,6 +7043,11 @@ class $$GroupsTableAnnotationComposer
     column: $table.exchangeRatesJson,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get fieldClocksJson => $composableBuilder(
+    column: $table.fieldClocksJson,
+    builder: (column) => column,
+  );
 }
 
 class $$GroupsTableTableManager
@@ -6963,6 +7090,7 @@ class $$GroupsTableTableManager
                 Value<String?> linkSecret = const Value.absent(),
                 Value<int?> lockedAt = const Value.absent(),
                 Value<String?> exchangeRatesJson = const Value.absent(),
+                Value<String?> fieldClocksJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion(
                 roomId: roomId,
@@ -6977,6 +7105,7 @@ class $$GroupsTableTableManager
                 linkSecret: linkSecret,
                 lockedAt: lockedAt,
                 exchangeRatesJson: exchangeRatesJson,
+                fieldClocksJson: fieldClocksJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6993,6 +7122,7 @@ class $$GroupsTableTableManager
                 Value<String?> linkSecret = const Value.absent(),
                 Value<int?> lockedAt = const Value.absent(),
                 Value<String?> exchangeRatesJson = const Value.absent(),
+                Value<String?> fieldClocksJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion.insert(
                 roomId: roomId,
@@ -7007,6 +7137,7 @@ class $$GroupsTableTableManager
                 linkSecret: linkSecret,
                 lockedAt: lockedAt,
                 exchangeRatesJson: exchangeRatesJson,
+                fieldClocksJson: fieldClocksJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -7987,6 +8118,7 @@ typedef $$MembersTableCreateCompanionBuilder =
       Value<String?> sig,
       Value<bool> pendingSign,
       Value<String?> linkAuthor,
+      Value<String?> paymentJson,
       Value<int> rowid,
     });
 typedef $$MembersTableUpdateCompanionBuilder =
@@ -8000,6 +8132,7 @@ typedef $$MembersTableUpdateCompanionBuilder =
       Value<String?> sig,
       Value<bool> pendingSign,
       Value<String?> linkAuthor,
+      Value<String?> paymentJson,
       Value<int> rowid,
     });
 
@@ -8054,6 +8187,11 @@ class $$MembersTableFilterComposer
 
   ColumnFilters<String> get linkAuthor => $composableBuilder(
     column: $table.linkAuthor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paymentJson => $composableBuilder(
+    column: $table.paymentJson,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8111,6 +8249,11 @@ class $$MembersTableOrderingComposer
     column: $table.linkAuthor,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get paymentJson => $composableBuilder(
+    column: $table.paymentJson,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MembersTableAnnotationComposer
@@ -8154,6 +8297,11 @@ class $$MembersTableAnnotationComposer
     column: $table.linkAuthor,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get paymentJson => $composableBuilder(
+    column: $table.paymentJson,
+    builder: (column) => column,
+  );
 }
 
 class $$MembersTableTableManager
@@ -8193,6 +8341,7 @@ class $$MembersTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> linkAuthor = const Value.absent(),
+                Value<String?> paymentJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MembersCompanion(
                 groupId: groupId,
@@ -8204,6 +8353,7 @@ class $$MembersTableTableManager
                 sig: sig,
                 pendingSign: pendingSign,
                 linkAuthor: linkAuthor,
+                paymentJson: paymentJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8217,6 +8367,7 @@ class $$MembersTableTableManager
                 Value<String?> sig = const Value.absent(),
                 Value<bool> pendingSign = const Value.absent(),
                 Value<String?> linkAuthor = const Value.absent(),
+                Value<String?> paymentJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MembersCompanion.insert(
                 groupId: groupId,
@@ -8228,6 +8379,7 @@ class $$MembersTableTableManager
                 sig: sig,
                 pendingSign: pendingSign,
                 linkAuthor: linkAuthor,
+                paymentJson: paymentJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

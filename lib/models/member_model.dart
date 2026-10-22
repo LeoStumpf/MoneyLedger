@@ -1,3 +1,4 @@
+import 'payment_details.dart';
 import 'record_signature.dart';
 
 /// A group participant, projected from the Members table.
@@ -27,6 +28,11 @@ class MemberModel {
   /// `ExpenseModel.linkAuthor`.
   final String? linkAuthor;
 
+  /// G74: the participant's own payment details (bank account / PayPal.me)
+  /// — optional, part of the signed body and the G27 hash **only when
+  /// set**, written by the participant's own device only (`RecordGate`).
+  final PaymentDetails? payment;
+
   const MemberModel({
     required this.groupId,
     required this.userId,
@@ -37,6 +43,7 @@ class MemberModel {
     this.sig,
     this.pendingSign = false,
     this.linkAuthor,
+    this.payment,
   });
 
   /// A copy with the G6 signing fields replaced (content unchanged).
@@ -51,6 +58,7 @@ class MemberModel {
         sig: sig,
         pendingSign: pendingSign,
         linkAuthor: linkAuthor,
+        payment: payment,
       );
 
   /// G52: this version as written in a link-only group — unsigned, not
@@ -64,6 +72,7 @@ class MemberModel {
     status: status,
     updatedAt: updatedAt,
     linkAuthor: author,
+    payment: payment,
   );
 
   bool get isActive => status == 'active';

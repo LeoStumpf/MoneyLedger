@@ -31,6 +31,13 @@ enum RejectReason {
   /// record that makes the signer a participant may simply not have arrived
   /// yet — the version is re-offered by the next repair.
   signerNotMember('signer_not_member', recorded: false),
+
+  /// G74: a participant version that changes the participant's payment
+  /// details wasn't written by that participant (signed: by another
+  /// account; unsigned link version: another `by`). Not recorded: the
+  /// participant's own version that set them may simply not have arrived
+  /// yet (an editor carries them over unchanged).
+  paymentNotOwn('payment_not_own', recorded: false),
   futureClock('future_clock', recorded: false);
 
   const RejectReason(this.wire, {this.recorded = true});

@@ -58,15 +58,17 @@ const _v9Schema = [
       "rejected_at INTEGER NOT NULL, "
       "version_hash TEXT NOT NULL DEFAULT '', "
       "PRIMARY KEY (group_id, kind, record_id))",
+  // A kind no later migration forgets (v19 forgets member + meta
+  // refusals, earlier steps expense / settlement ones).
   "INSERT INTO rejected_versions VALUES "
-      "('g1', 'member', 'e1', 70, 'unsigned', '@m:x', NULL, 3, 'abcd')",
+      "('g1', 'test_kind', 'e1', 70, 'unsigned', '@m:x', NULL, 3, 'abcd')",
   'PRAGMA user_version = 9',
 ];
 
 void main() {
   RefusedVersion refused(int at, String hash) => RefusedVersion(
     groupId: 'g1',
-    kind: 'member',
+    kind: 'test_kind',
     recordId: 'e1',
     updatedAt: at,
     reason: 'bad_signature',
@@ -87,7 +89,7 @@ void main() {
     addTearDown(db.close);
     expect(db.schemaVersion, greaterThanOrEqualTo(10));
     final signing = SigningDao(db);
-    expect(await signing.rejectedVersion('g1', 'member', 'e1'), (
+    expect(await signing.rejectedVersion('g1', 'test_kind', 'e1'), (
       at: 70,
       hash: 'abcd',
     ));
@@ -95,23 +97,23 @@ void main() {
     // A higher refusal no longer replaces the lower one.
     await signing.recordRejected(refused(90, 'ffff'));
     expect(
-      await signing.isRejected('g1', 'member', 'e1', (at: 70, hash: 'abcd')),
+      await signing.isRejected('g1', 'test_kind', 'e1', (at: 70, hash: 'abcd')),
       isTrue,
     );
     expect(
-      await signing.isRejected('g1', 'member', 'e1', (at: 90, hash: 'ffff')),
+      await signing.isRejected('g1', 'test_kind', 'e1', (at: 90, hash: 'ffff')),
       isTrue,
     );
     expect(
-      await signing.isRejected('g1', 'member', 'e1', (at: 90, hash: '0000')),
+      await signing.isRejected('g1', 'test_kind', 'e1', (at: 90, hash: '0000')),
       isFalse,
     );
-    expect(await signing.rejectedVersion('g1', 'member', 'e1'), (
+    expect(await signing.rejectedVersion('g1', 'test_kind', 'e1'), (
       at: 90,
       hash: 'ffff',
     ));
     final sets = await signing.rejectedSetsForGroup('g1');
-    expect(sets['member']!['e1'], [
+    expect(sets['test_kind']!['e1'], [
       (at: 90, hash: 'ffff'),
       (at: 70, hash: 'abcd'),
     ]);
@@ -120,20 +122,24 @@ void main() {
     for (var i = 0; i < kMaxRefusedVersionsPerRecord + 2; i++) {
       await signing.recordRejected(refused(100 + i, 'aa$i'));
     }
-    final kept = (await signing.rejectedSetsForGroup('g1'))['member']!['e1']!;
+    final kept = (await signing.rejectedSetsForGroup(
+      'g1',
+    ))['test_kind']!['e1']!;
     expect(kept, hasLength(kMaxRefusedVersionsPerRecord));
     expect(kept.first.at, 100 + kMaxRefusedVersionsPerRecord + 1);
     expect(
-      await signing.isRejected('g1', 'member', 'e1', (at: 70, hash: 'abcd')),
+      await signing.isRejected('g1', 'test_kind', 'e1', (at: 70, hash: 'abcd')),
       isFalse,
     );
 
     // A restore clears the refusals up to the version it stored.
-    await signing.clearRejectedUpTo('g1', 'member', 'e1', (
+    await signing.clearRejectedUpTo('g1', 'test_kind', 'e1', (
       at: 103,
       hash: 'aa3',
     ));
-    final left = (await signing.rejectedSetsForGroup('g1'))['member']!['e1']!;
+    final left = (await signing.rejectedSetsForGroup(
+      'g1',
+    ))['test_kind']!['e1']!;
     expect(left.map((v) => v.at), [105, 104]);
   });
 }

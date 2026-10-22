@@ -33,6 +33,9 @@ class Groups extends Table {
   // G73: the fixed exchange rates (JSON, the wire `exchange_rates`
   // verbatim); NULL = none. Part of the signed meta when set.
   TextColumn get exchangeRatesJson => text().nullable()();
+  // G57 (C1): the per-field clocks below `updated_at` (JSON object, the
+  // wire `clocks` verbatim); NULL = none (every field at `updated_at`).
+  TextColumn get fieldClocksJson => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {roomId};
@@ -134,6 +137,9 @@ class Members extends Table {
   BoolColumn get pendingSign => boolean().withDefault(const Constant(false))();
   // G52 — see Expenses.linkAuthor.
   TextColumn get linkAuthor => text().nullable()();
+  // G74: the participant's own payment details (JSON, the wire `payment`
+  // verbatim); NULL = none. Part of the signed member version when set.
+  TextColumn get paymentJson => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {groupId, userId};
@@ -432,7 +438,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -498,6 +504,18 @@ class AppDatabase extends _$AppDatabase {
         if (payersAdded) return;
         payersAdded = true;
         await m.addColumn(expenses, expenses.payersJson);
+      }
+
+      // G57 + G74 (v19): `groups.field_clocks_json` and
+      // `members.payment_json` — same reason (the v12 backfill reads the
+      // groups and members tables with today's columns). A DB older than v2
+      // created `members` in today's shape already.
+      var v19ColumnsAdded = false;
+      Future<void> addV19Columns() async {
+        if (v19ColumnsAdded) return;
+        v19ColumnsAdded = true;
+        await m.addColumn(groups, groups.fieldClocksJson);
+        if (from >= 2) await m.addColumn(members, members.paymentJson);
       }
 
       // v2 (Phase B): add the local membership table. Existing
@@ -638,6 +656,7 @@ class AppDatabase extends _$AppDatabase {
         await addGroupLink();
         await addExchangeRates();
         await addPayers();
+        await addV19Columns();
         await backfillRecordHistory(this);
       }
       // v13 (G49): the optional expense date (nullable — existing expenses
@@ -710,6 +729,20 @@ class AppDatabase extends _$AppDatabase {
         if (from >= 6) {
           await customStatement(
             "DELETE FROM rejected_versions WHERE kind = 'expense'",
+          );
+        }
+      }
+      // v19 (G57 C1 per-field meta clocks + G74 payment details): the
+      // signed meta's optional `clocks` and the member's optional `payment`
+      // (NULL for every existing row — signatures and hashes unchanged). A
+      // pre-v19 build refused signed metas / member versions carrying them
+      // (its rebuilt body lacks the field) — forget meta + member refusals
+      // so peers re-send and this build verifies them properly.
+      if (from < 19) {
+        await addV19Columns();
+        if (from >= 6) {
+          await customStatement(
+            "DELETE FROM rejected_versions WHERE kind IN ('meta', 'member')",
           );
         }
       }

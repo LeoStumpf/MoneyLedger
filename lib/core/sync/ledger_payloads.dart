@@ -5,6 +5,7 @@ import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
+import '../../models/payment_details.dart';
 import '../../models/record_signature.dart';
 
 /// Protocol version carried by every outgoing payload (`"v"`). Receivers
@@ -80,6 +81,8 @@ Map<String, dynamic> groupMetaPayload(GroupModel g) => {
   if (g.lockedAt != null) 'locked_at': g.lockedAt,
   // G73: optional — the group's fixed exchange rates.
   if (g.exchangeRates != null) 'exchange_rates': g.exchangeRates!.toJson(),
+  // G57: optional — the per-field clocks older than `updated_at`.
+  if (g.wireClocks.isNotEmpty) 'clocks': g.wireClocks,
   if (g.sig != null) 'sig': g.sig!.toJson(),
   // G52: the unsigned, unhashed author hint of a link-group version.
   if (g.linkAuthor != null) 'by': g.linkAuthor,
@@ -97,6 +100,8 @@ Map<String, dynamic> memberPayload(MemberModel m) => {
   'matrix_id': m.matrixId,
   'status': m.status,
   'updated_at': m.updatedAt,
+  // G74: optional — the participant's own payment details.
+  if (m.payment != null) 'payment': m.payment!.toJson(),
   if (m.sig != null) 'sig': m.sig!.toJson(),
   // G52: the unsigned, unhashed author hint of a link-group version.
   if (m.linkAuthor != null) 'by': m.linkAuthor,
@@ -353,6 +358,8 @@ MemberModel? memberFromPayload(Map<String, dynamic> c) {
     updatedAt: c['updated_at'] as int? ?? 0,
     sig: RecordSignature.fromJson(c['sig']),
     linkAuthor: linkAuthorFromPayload(c),
+    // G74 (optional; malformed → an invalid entry, refused by the gate).
+    payment: PaymentDetails.fromWire(c['payment']),
   );
 }
 
@@ -374,7 +381,20 @@ GroupModel? groupMetaFromPayload(Map<String, dynamic> c) {
     exchangeRates: ExchangeRates.fromJson(c['exchange_rates']),
     sig: RecordSignature.fromJson(c['sig']),
     linkAuthor: linkAuthorFromPayload(c),
+    // G57 (optional; malformed → an invalid entry, refused by the gate).
+    fieldClocks: metaClocksFromPayload(c['clocks']),
   );
+}
+
+/// G57: the meta's `clocks` — absent → none; anything but an object of
+/// int values → `{'': -1}` (refused by the content rules, never silently
+/// dropped).
+Map<String, int> metaClocksFromPayload(Object? raw) {
+  if (raw == null) return const {};
+  if (raw is Map && raw.values.every((v) => v is int)) {
+    return {for (final e in raw.entries) '${e.key}': e.value as int};
+  }
+  return const {'': -1};
 }
 
 /// G53: `locked_at` — absent → null; anything but an int → -1 (refused by

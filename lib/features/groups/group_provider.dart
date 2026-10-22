@@ -478,6 +478,8 @@ class MemberAdder extends _$MemberAdder {
             matrixId: userId,
             status: 'active',
             updatedAt: nextLwwClock(existing.updatedAt),
+            // G74: the details belong to the claiming account.
+            payment: existing.matrixId == userId ? existing.payment : null,
           )
         // Added by Matrix ID → a claimed participant (id == MXID for now;
         // G40: local mode's pseudo account gets a fresh id instead).
@@ -650,6 +652,11 @@ class MemberAdder extends _$MemberAdder {
     matrixId: identical(matrixId, _unset) ? m.matrixId : matrixId as String?,
     status: status ?? m.status,
     updatedAt: nextLwwClock(m.updatedAt),
+    // G74: carried over unchanged — dropped only when the claim changes
+    // (the details belong to the claiming account).
+    payment: identical(matrixId, _unset) || matrixId == m.matrixId
+        ? m.payment
+        : null,
   );
 }
 
@@ -670,6 +677,7 @@ MemberModel? _removedCopy(List<MemberModel> members, String userId, int now) {
         matrixId: m.matrixId,
         status: 'removed',
         updatedAt: nextLwwClock(m.updatedAt, now: now),
+        payment: m.payment,
       );
     }
   }
@@ -751,6 +759,7 @@ Future<int> profileNameRefresh(Ref ref) async {
             matrixId: m.matrixId,
             status: m.status,
             updatedAt: nextLwwClock(m.updatedAt),
+            payment: m.payment,
           ),
         );
         await w.replicate(

@@ -19,6 +19,7 @@ import '../../core/matrix/ledger_transport.dart';
 import '../../core/matrix/transport_provider.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/left_groups.dart';
+import '../../core/sync/meta_merge.dart';
 import '../../core/sync/peer_convergence.dart';
 import '../../core/sync/record_gate.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
@@ -27,6 +28,7 @@ import '../../core/sync/record_verifier.dart';
 import '../../models/exchange_rates.dart';
 import '../../models/expense_category.dart' show parseCustomCategories;
 import '../../models/member_model.dart';
+import '../../models/payment_details.dart';
 import '../../models/record_signature.dart';
 import 'expenses_provider.dart';
 
@@ -169,6 +171,12 @@ class LedgerSyncer {
       expenses: _expenses,
       // G53: mixed groups accept unsigned versions their members relay.
       matrixPolicy: _link.policyOf,
+      // G57: concurrent metas merge per field; this device signs the merge.
+      mergeMeta: metaMergeSigner(
+        transport: Future.value(transport),
+        members: _members,
+        policy: _link.policyOf,
+      ),
       isAlive: () => _alive,
       onRefused: _onRefused,
     );
@@ -586,6 +594,9 @@ class LedgerSyncer {
         ),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         linkAuthor: const Value(null), // G52: see processExpense
+        fieldClocksJson: Value(
+          content['clocks'] is Map ? jsonEncode(content['clocks']) : null,
+        ),
       ),
       source: HistorySource.inbound,
     );
@@ -616,6 +627,9 @@ class LedgerSyncer {
         ),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         linkAuthor: const Value(null), // G52: see processExpense
+        paymentJson: Value(
+          encodePayment(PaymentDetails.fromWire(content['payment'])),
+        ),
       ),
       source: HistorySource.inbound,
     );

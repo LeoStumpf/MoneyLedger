@@ -144,6 +144,9 @@ Map<String, Object?> memberContent(MemberModel m) => {
   'matrix_id': m.matrixId,
   'status': m.status,
   'updated_at': m.updatedAt,
+  // G74: only when set — a participant without payment details keeps
+  // exactly the pre-G74 body, signature and hash.
+  if (m.payment != null) 'payment': m.payment!.toJson(),
 };
 
 Map<String, Object?> memberBody(MemberModel m, SignerId signer) => {
@@ -168,6 +171,9 @@ Map<String, Object?> groupMetaContent(GroupModel g) => {
   // G73: only when the group has exchange rates — every other meta keeps
   // exactly its pre-G73 body and hash.
   if (g.exchangeRates != null) 'exchange_rates': g.exchangeRates!.toJson(),
+  // G57 (C1): the per-field clocks below `updated_at` — only when some field
+  // is older than the version (every pre-G57 meta keeps its body and hash).
+  if (g.wireClocks.isNotEmpty) 'clocks': g.wireClocks,
 };
 
 Map<String, Object?> groupMetaBody(GroupModel g, SignerId signer) => {

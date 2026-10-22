@@ -827,8 +827,8 @@ Each step is a commit with tests. The fakes come first.
 **Decided by Leo on 2026-10-22** (plan.md "Leo's decisions 2026-10-22")
 15. **Reset marker:** a header-only "this link was replaced" marker on the old topic (§7.3).
 16. **Lock eligibility + self-claim check:** receivers check both (§10.1).
-17. **Concurrent meta edits (G57):** per-field clocks in the signed meta (C1, `docs/design/g57-category-merge.md`) — also for `link` / `locked_at`; on the link path the merged meta of a link-only group is an unsigned link version.
-18. **Payment details (G74):** an optional signed field of the member record, sent to every group I'm active in — link groups too (anyone with the link can read them).
+17. **Concurrent meta edits (G57):** per-field clocks in the signed meta (C1, `docs/design/g57-category-merge.md`) — also for `link` / `locked_at`; on the link path the merged meta of a link-only group is an unsigned link version. **Built** (schema v19): the link-path gate merges like the Matrix one (`metaMergeSigner`); a device without an account in a mixed group can't sign a merge and keeps whole-meta LWW there.
+18. **Payment details (G74):** an optional signed field of the member record, sent to every group I'm active in — link groups too (anyone with the link can read them). The wire field is built (schema v19); on the link path only a version `by` the participant itself may change it (a forgeable hint — anyone with the link could also write it, like everything else in a link group).
 19. **Backup nudge for link groups:** yes, with its own text ("Anyone with the link can change or empty this group — a backup protects you").
 20. **"Why Matrix?" card:** also for Matrix users with link-only groups.
 

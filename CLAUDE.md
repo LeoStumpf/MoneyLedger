@@ -235,6 +235,7 @@ lib/
       ledger_payloads.dart     # Plain-Dart payload codec (protocol v2) + bootstrap builder / parts (G14)
       payload_budget.dart      # G14: to-device size limit, budget, encrypted-size estimate, size guard
       record_version.dart      # G27: (updated_at, content hash) versions + tie-break; G14 digest buckets
+      meta_merge.dart          # G57 C1: per-field meta merge (mergeGroupMeta) + metaMergeSigner
       sync_engine.dart         # Anti-entropy: digest exchange + targeted repair + resync
       left_groups.dart         # LeftGroupTombstone + pure classifyPeerViewOfMe (G9 leave/delete)
       sync_status_provider.dart # groupSyncStatusProvider — drives the cloud icons
@@ -1847,8 +1848,8 @@ Use the full JSON backup for a lossless copy.
   (custom name; empty for built-ins); an import defines missing `c:` ids
   that have a name (`csvCategoriesToAdd`, default icon; a new meta version
   for an existing group). Local mode: same code, the meta is stored
-  `pendingSign`, nothing relayed. Limits (mixed versions, whole-meta LWW
-  loses a concurrent edit): `docs/open-points.md`.
+  `pendingSign`, nothing relayed. Concurrent edits merge per field (G57,
+  below). Limits: `docs/open-points.md`.
 - **Notes**: optional free text (form limit `kMaxNoteLength` = 500; trimmed,
   blank → none via `normalizeNote`; inbound notes are kept as signed). Shown
   on the edit form; the list marks a note with a small icon after the title.
@@ -2070,11 +2071,57 @@ PayPal.me name — Settings → *Payment details* (`PaymentDetailsTile` →
   non-EUR → no GiroCode, IBAN as text. Shown on **this** screen for the
   payer to scan — nothing is sent. Privacy: PRIVACY.md + `privacyPayment*`
   (pinned equal by `test/features/payment_details_test.dart`).
-- **Not done — needs Leo (plan.md G74):** showing the payee's details on the
-  *payer's* device needs a synced field (wire + privacy decisions: carrier
-  record, opt-in per group, link groups, old builds). Tests:
+- **Synced part (Leo 2026-10-22):** the wire field exists (member
+  `payment`, see "Per-field meta merge … (G74 wire)"); writing my details
+  into every group I'm active in + showing the payee's details on the
+  payer's device + the privacy texts are still to build. Tests:
   `test/features/payment_details_test.dart`, `test/g74_payment_details_ui_test.dart`,
   G71 guideline tests. Limits: `docs/open-points.md`.
+
+### Per-field meta merge (G57 C1) + payment field (G74 wire), schema v19
+
+Leo 2026-10-22 (plan.md "Leo's decisions 2026-10-22").
+- **Per-field clocks:** `GroupModel.fieldClocks` / `clockOf(field)` —
+  fields `name`, `currency`, `exchange_rates`, `link` (= `link` +
+  `locked_at`) and every custom category id. No entry = changed by this
+  version (`updated_at`), so every pre-G57 meta reads "all fields at
+  `updated_at`"; the **empty** link state has clock 0 (never beats an
+  opened link). Wire: optional signed `clocks: {field: ms}` (only entries
+  below `updated_at`, `wireClocks`; in the body / G27 hash only when
+  non-empty — goldens in `test/core/meta_merge_test.dart`); content rule:
+  known keys, ≥ 0 (`groupMetaProblem`). `nextVersion` gives changed fields
+  the new clock, keeps the others', and keeps a dropped category **hidden**
+  (never deleted — a G48 reset hides). Every local meta write goes through
+  `nextVersion`.
+- **Merge** (`core/sync/meta_merge.dart`, pure): `mergeGroupMeta(a, b)` —
+  per field the higher (clock, value hash), categories = union by id;
+  `sameMetaFields`. `RecordGate.meta`: an inbound version is also looked at
+  when it is **older** but holds a newer field; after the usual checks the
+  version is stored as is when it holds the whole merge and wins LWW, else
+  the merge is written as **this device's own version**
+  (`atClock(nextLwwClock(max))`) via `mergeMeta` = `metaMergeSigner`
+  (`LocalRecordSigner`: signed / `pendingSign` / unsigned link version in a
+  link-only group; null — plain LWW — when "me" isn't an active participant
+  or the group needs a signature it can't give, e.g. no account in a mixed
+  group). Wired in `LedgerSyncer`, `SyncEngine`, `LinkSyncEngine`; **not**
+  in a restore (it never signs). The stored clock never goes back, so the
+  digests' "newer meta" exchange converges (newer side sends, older merges).
+  Tests: `test/core/meta_merge_test.dart`,
+  `test/integration/meta_merge_sync_test.dart` (Matrix, live + lost),
+  `test/integration/link_meta_merge_test.dart` (relays).
+- **Payment details on the member record (G74 wire):** `MemberModel.payment`
+  (`models/payment_details.dart`, moved from `features/payment/`) — optional
+  signed `payment: {name?, iban?, bic?, paypal_me?}` in the member payload,
+  body, G27 hash and digest member gossip **only when set**; content rule
+  `paymentProblem` (stored form, IBAN checksum, something usable). Only the
+  participant itself may set / change / clear it (`RecordGate.member`:
+  signed by the claiming account, or a link version `by` itself; else
+  `payment_not_own`, transient) — editors carry it over unchanged (every
+  member writer copies it), a new claim / unclaim clears it. Nothing writes
+  it yet (the distribution to my groups + UI is the next G74 step).
+- **Schema v19:** `groups.field_clocks_json`, `members.payment_json` (added
+  before the v12 backfill); forgets `meta` + `member` refusals (a pre-v19
+  build refuses versions carrying `clocks` / `payment`).
 
 ### Settlements / recording payments (G28)
 
@@ -2121,8 +2168,8 @@ no leading / trailing zeros, ≤ 9 + 10 digits, > 0); `settle` only when true
 code ≠ base, 1 … `kMaxExchangeRates` (50) rates, no unknown keys; a
 malformed value parses to an invalid entry (refused, never dropped). Schema
 **v17** `groups.exchange_rates_json` (added before the v12 backfill; the
-v16 → v17 step forgets meta refusals like v11 / v16). Whole-meta LWW (a
-concurrent rate + name edit loses one — G57). G48 reset / G58 exact state
+v16 → v17 step forgets meta refusals like v11 / v16). Concurrent edits
+merge per field (G57 below; the rates are one field). G48 reset / G58 exact state
 reset the rates with the meta; bootstrap / backup carry them; not in the CSV.
 - **Balances:** `ledgerForSettling` (`features/balance/settle_currency.dart`,
   pure) — with `settle` on, every expense / payment in a currency **with a
@@ -2773,7 +2820,7 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 
 **`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "date"?, "origin", "sig" }` (`from`/`to` are participant ids; `date` — G60, optional ISO `YYYY-MM-DD`, only when the payment is back-dated, signed and hashed only when present, exactly like the expense `date`).
 
-**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "categories"?, "link"?, "locked_at"?, "exchange_rates"?, "sig" }` — `categories` (G47, optional, only when the group has custom categories): `[{ "id": "c:<uuidv7>", "name": "Dog", "icon": "pets", "hidden": true? }]`, part of the signed body and the G27 hash only when present. `exchange_rates` (G73, optional): `{ "base": "EUR", "rates": { "CHF": "1.0797" }, "settle": true? }` — rates as canonical decimal strings, likewise only when set (see "Exchange rates (G73)").
+**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "payment"?, "sig" }` (`payment` — G74, optional, only the participant's own: `{name?, iban?, bic?, paypal_me?}`) — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "categories"?, "link"?, "locked_at"?, "exchange_rates"?, "clocks"?, "sig" }` — `categories` (G47, optional, only when the group has custom categories): `[{ "id": "c:<uuidv7>", "name": "Dog", "icon": "pets", "hidden": true? }]`, part of the signed body and the G27 hash only when present. `clocks` (G57, optional): `{ "name"|"currency"|"exchange_rates"|"link"|"c:<id>": ms }` — the per-field clocks below `updated_at`. `exchange_rates` (G73, optional): `{ "base": "EUR", "rates": { "CHF": "1.0797" }, "settle": true? }` — rates as canonical decimal strings, likewise only when set (see "Exchange rates (G73)").
 
 **`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → "<updated_at>:<hash8>"` (G27; a bare int = clock only), **tombstones included**; `meta_hash` is the meta's hash8; the `members` map (keyed by participant id) doubles as membership/identity gossip — each entry is the full **signed** member version (verified like a member payload). `rejected` (optional, G6) lists versions the sender refused (`{expenses: {id: T}, settlements: {…}, members: {pid: T}, meta: T}`) so peers don't re-send them; G18 review 2: the highest refused version per id — further ones ride in an optional `rejected_more` (`{expenses: {id: ["T:hash8", …]}, …, meta: [...]}`). A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
 ```json

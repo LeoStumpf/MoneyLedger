@@ -115,6 +115,8 @@ Future<List<LinkSelfClaim>> claimLinkParticipants({
               matrixId: mxid,
               status: current.status,
               updatedAt: nextLwwClock(current.updatedAt, now: now),
+              // G74: the same person claiming its own participant.
+              payment: current.payment,
             ),
           );
     GroupModel? signedMeta;

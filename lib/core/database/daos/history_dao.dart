@@ -12,7 +12,12 @@ import '../../../models/group_model.dart';
 import '../../../models/member_model.dart';
 import '../../../models/record_signature.dart';
 import 'groups_dao.dart'
-    show decodeCategories, decodeExchangeRates, linkFromColumns;
+    show
+        decodeCategories,
+        decodeExchangeRates,
+        decodeFieldClocks,
+        linkFromColumns;
+import 'members_dao.dart' show decodePayment;
 
 part 'history_dao.g.dart';
 
@@ -165,6 +170,7 @@ Future<void> backfillRecordHistory(AppDatabase db) async {
         lockedAt: g.lockedAt,
         exchangeRates: decodeExchangeRates(g.exchangeRatesJson),
         sig: RecordSignature.decode(g.sig),
+        fieldClocks: decodeFieldClocks(g.fieldClocksJson),
       );
       b.insert(
         db.recordHistory,
@@ -186,6 +192,7 @@ Future<void> backfillRecordHistory(AppDatabase db) async {
         status: r.status,
         updatedAt: r.updatedAt,
         sig: RecordSignature.decode(r.sig),
+        payment: decodePayment(r.paymentJson),
       );
       b.insert(
         db.recordHistory,

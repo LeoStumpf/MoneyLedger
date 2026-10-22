@@ -165,7 +165,8 @@ void main() {
     );
     final signing = SigningDao(db);
     expect(await signing.rejectedClock('g1', 'expense', 'e8'), isNull);
-    expect(await signing.rejectedClock('g1', 'meta', 'g1'), 80);
+    // v19 (G57 / G74) forgets meta refusals too.
+    expect(await signing.rejectedClock('g1', 'meta', 'g1'), isNull);
 
     await dao.upsertExpenseLww(
       expenseCompanion(

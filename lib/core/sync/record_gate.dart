@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart' show Value;
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 
 import '../../models/member_model.dart';
 import '../../models/record_signature.dart';
@@ -9,7 +9,9 @@ import '../database/daos/history_dao.dart' show HistorySource;
 import '../database/daos/members_dao.dart';
 import '../database/daos/signing_dao.dart';
 import '../link/group_policy.dart';
+import '../../models/group_model.dart';
 import 'ledger_payloads.dart';
+import 'meta_merge.dart';
 import 'record_signing.dart';
 import 'record_validation.dart';
 import 'record_version.dart';
@@ -119,6 +121,7 @@ class RecordGate {
     this.allowLocalClaims = false,
     this.linkPolicy,
     this.matrixPolicy,
+    this.mergeMeta,
     bool Function()? isAlive,
     this.onRefused,
     int Function()? clock,
@@ -146,6 +149,11 @@ class RecordGate {
   /// link-time history (see the class doc). Ignored when [linkPolicy] is
   /// set. Null → plain G6.
   final GroupPolicyLookup? matrixPolicy;
+
+  /// G57 (C1): writes a merged meta as this device's own version (see
+  /// [meta] and `meta_merge.dart`). Null → whole-meta LWW (the merged
+  /// fields of an older version are then left to a device that can merge).
+  final MetaMergeSigner? mergeMeta;
   final bool Function() _isAlive;
   final int Function() _clock;
 
@@ -650,6 +658,26 @@ class RecordGate {
       );
       return false;
     }
+    // G74: only the participant itself sets / changes / clears its payment
+    // details (an editor carries them over unchanged). A restore is the
+    // user's own file; a participant new to this device can't be compared.
+    if (!acceptUnsigned &&
+        current != null &&
+        m.payment != current.payment &&
+        !_ownPaymentChange(m) &&
+        // A new claim (or unclaim) clears the previous account's details.
+        !(m.payment == null && m.matrixId != current.matrixId)) {
+      await _refuse(
+        m.groupId,
+        RecordKind.member,
+        m.userId,
+        version,
+        const Verdict.reject(RejectReason.paymentNotOwn),
+        relayedBy,
+        m.sig,
+      );
+      return false;
+    }
     final row = v.accepted || viaLink
         ? memberCompanion(m)
         : memberCompanion(m).copyWith(updatedAt: Value(_clamp(m.updatedAt)));
@@ -663,9 +691,27 @@ class RecordGate {
     return true;
   }
 
+  /// G74: whether participant version [m] was written by the participant
+  /// itself — signed by the account claiming it, or (unsigned link
+  /// version) with the participant as its `by` hint.
+  static bool _ownPaymentChange(MemberModel m) {
+    final sig = m.sig;
+    if (sig != null) return m.matrixId != null && sig.user == m.matrixId;
+    return m.linkAuthor != null && m.linkAuthor == m.userId;
+  }
+
   /// A group-meta version (a `group` payload or a bootstrap's `meta`).
   /// [snapshotMembers]: the participants of the snapshot carrying it (they
   /// count for the signer rule before they are stored).
+  ///
+  /// G57 (C1): metas merge **field by field** (`meta_merge.dart`). A version
+  /// that isn't newer than the stored one is still looked at when it holds
+  /// a newer field (a concurrent edit with a lower clock); once it passes
+  /// the usual checks the merge of both is stored — the version itself when
+  /// it already holds every field of the merge (and wins whole-meta LWW),
+  /// else a new version written by this device ([mergeMeta]). Without a
+  /// merge signer (or when it declines) a winning version is stored as
+  /// before (plain LWW).
   Future<bool> meta(
     Map<String, dynamic> content, {
     required String relayedBy,
@@ -676,7 +722,10 @@ class RecordGate {
     final version = groupMetaVersion(g);
     final stored = await groups.getGroup(g.roomId);
     if (!_isAlive()) return false;
-    if (stored != null && !versionWins(version, groupMetaVersion(stored))) {
+    final wins =
+        stored == null || versionWins(version, groupMetaVersion(stored));
+    final merged = stored == null ? null : mergeGroupMeta(stored, g);
+    if (!wins && (merged == null || sameMetaFields(merged, stored))) {
       return false;
     }
     if (await _refusedExactly(g.roomId, RecordKind.meta, g.roomId, version)) {
@@ -728,22 +777,65 @@ class RecordGate {
         !_isAlive()) {
       return false;
     }
-    final row = v.accepted || viaLink
-        ? groupCompanion(g)
-        : groupCompanion(g).copyWith(updatedAt: Value(_clamp(g.updatedAt)));
-    await groups.upsertGroupLww(
-      _keepsLinkAuthor(viaLink)
-          ? row
-          : row.copyWith(linkAuthor: const Value(null)),
-      source: _historySource,
-    );
+    final asIs = wins && (merged == null || sameMetaFields(merged, g));
+    var storedMerge = false;
+    if (!asIs && merged != null) {
+      storedMerge = await _storeMerged(stored!, g, merged);
+      if (!_isAlive()) return false;
+    }
+    if (!storedMerge) {
+      if (!wins) return false;
+      final row = v.accepted || viaLink
+          ? groupCompanion(g)
+          : groupCompanion(g).copyWith(updatedAt: Value(_clamp(g.updatedAt)));
+      await groups.upsertGroupLww(
+        _keepsLinkAuthor(viaLink)
+            ? row
+            : row.copyWith(linkAuthor: const Value(null)),
+        source: _historySource,
+      );
+    }
     await _clearRefusal(g.roomId, RecordKind.meta, g.roomId, version);
     // G53: a link was opened (or replaced) — versions refused for being
     // unsigned before are acceptable now; let peers re-send them.
     final link = g.link;
     if (link != null && g.sig != null && stored?.link?.secret != link.secret) {
       if (!_isAlive()) return true;
-      await signing.clearUnsignedRefusals(g.roomId);
+      final now = await groups.getGroup(g.roomId);
+      if (!_isAlive()) return true;
+      if (now?.link?.secret == link.secret) {
+        await signing.clearUnsignedRefusals(g.roomId);
+      }
+    }
+    return true;
+  }
+
+  /// G57: stores [merged] (of [stored] and the accepted inbound [g]) as this
+  /// device's new version — clock above both. False when there is no merge
+  /// signer or it declined (the caller falls back to plain LWW).
+  Future<bool> _storeMerged(
+    GroupModel stored,
+    GroupModel g,
+    GroupModel merged,
+  ) async {
+    final sign = mergeMeta;
+    if (sign == null) return false;
+    final base = stored.updatedAt > g.updatedAt
+        ? stored.updatedAt
+        : g.updatedAt;
+    final GroupModel? signed;
+    try {
+      signed = await sign(merged.atClock(nextLwwClock(base, now: _clock())));
+    } catch (_) {
+      return false;
+    }
+    if (signed == null || !_isAlive()) return false;
+    await groups.upsertGroupLww(groupCompanion(signed), source: _historySource);
+    if (kDebugMode) {
+      debugPrint(
+        '[g57] merged meta of ${g.roomId} '
+        '(${stored.updatedAt} + ${g.updatedAt} → ${signed.updatedAt})',
+      );
     }
     return true;
   }
