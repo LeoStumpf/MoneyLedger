@@ -1,14 +1,19 @@
-/// G74: "{name} pays you {amount}" — the user's own payment details for
-/// one debt owed to them, shown **on this device** for the payer to scan:
-/// a GiroCode (EPC QR, euro + bank account; scanned by a banking app) and /
-/// or a PayPal.me link with the amount (QR + *Share link*). For another
-/// currency the bank account is shown as text (GiroCode is euro only).
-/// Nothing is sent anywhere unless the user shares the link himself.
+/// G74: the payment details of a debt's creditor for one debt — a GiroCode
+/// (EPC QR, euro + bank account; scanned by a banking app) and / or a
+/// PayPal.me link with the amount. For another currency the bank account is
+/// shown as text (GiroCode is euro only).
+///
+/// Two views: **my own** details ([PaymentRequestSheet.mine], "{name} pays
+/// you {amount}", from the settings — the payer scans my screen, *Share
+/// link*), and **someone else's** (their member record's `payment` field,
+/// synced since the G74 wire bundle — "You pay {name} …" / "{a} pays {b} …",
+/// *Copy IBAN*, *Open PayPal*). Opening the sheet sends nothing.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/platform/text_sharer.dart';
@@ -25,13 +30,18 @@ List<PaymentMethod> paymentMethodsFor(PaymentDetails details) => [
   if (details.hasPaypal) PaymentMethod.paypal,
 ];
 
-/// Opens the sheet for [debt] (owed to the user by [payerName]).
+/// Opens the sheet for [debt]: [details] are the creditor's ([payeeName]);
+/// [mine] = they are this user's own (the debt is owed to me),
+/// [payerIsMe] = I owe it.
 Future<void> showPaymentRequestSheet(
   BuildContext context, {
   required PaymentDetails details,
   required DebtEntry debt,
   required String payerName,
   required String groupName,
+  String payeeName = '',
+  bool mine = true,
+  bool payerIsMe = false,
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
@@ -40,7 +50,10 @@ Future<void> showPaymentRequestSheet(
     details: details,
     debt: debt,
     payerName: payerName,
+    payeeName: payeeName,
     groupName: groupName,
+    mine: mine,
+    payerIsMe: payerIsMe,
   ),
 );
 
@@ -51,12 +64,24 @@ class PaymentRequestSheet extends ConsumerStatefulWidget {
     required this.debt,
     required this.payerName,
     required this.groupName,
+    this.payeeName = '',
+    this.mine = true,
+    this.payerIsMe = false,
   });
 
   final PaymentDetails details;
   final DebtEntry debt;
   final String payerName;
   final String groupName;
+
+  /// The creditor's name (shown when the details aren't [mine]).
+  final String payeeName;
+
+  /// The details are this user's own (from the settings).
+  final bool mine;
+
+  /// This user is the payer (someone else's details).
+  final bool payerIsMe;
 
   @override
   ConsumerState<PaymentRequestSheet> createState() =>
@@ -93,6 +118,12 @@ class _PaymentRequestSheetState extends ConsumerState<PaymentRequestSheet> {
     final debt = widget.debt;
     final methods = paymentMethodsFor(d);
     final amount = context.money(debt.cents, debt.currency);
+    final mine = widget.mine;
+    final title = mine
+        ? l.paymentRequestTitle(widget.payerName, amount)
+        : widget.payerIsMe
+        ? l.paymentPayTitle(widget.payeeName, amount)
+        : l.paymentPaysTitle(widget.payerName, widget.payeeName, amount);
     // A QR code never wider than the sheet (360 dp, 200 % font).
     final qrSize = (MediaQuery.sizeOf(context).width - 2 * Insets.page).clamp(
       120.0,
@@ -186,12 +217,23 @@ class _PaymentRequestSheetState extends ConsumerState<PaymentRequestSheet> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: Insets.s),
-            TextButton.icon(
-              key: const Key('paymentShareLink'),
-              onPressed: () => _share(url),
-              icon: const Icon(Icons.share_outlined),
-              label: Text(l.paymentShareLink),
-            ),
+            if (mine)
+              TextButton.icon(
+                key: const Key('paymentShareLink'),
+                onPressed: () => _share(url),
+                icon: const Icon(Icons.share_outlined),
+                label: Text(l.paymentShareLink),
+              )
+            else
+              TextButton.icon(
+                key: const Key('paymentOpenPaypal'),
+                onPressed: () => launchUrl(
+                  Uri.parse(url),
+                  mode: LaunchMode.externalApplication,
+                ),
+                icon: const Icon(Icons.open_in_new),
+                label: Text(l.paymentOpenPaypal),
+              ),
           ],
         );
     }
@@ -212,7 +254,7 @@ class _PaymentRequestSheetState extends ConsumerState<PaymentRequestSheet> {
             Semantics(
               header: true,
               child: Text(
-                l.paymentRequestTitle(widget.payerName, amount),
+                title,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.titleLarge,
               ),
@@ -242,8 +284,12 @@ class _PaymentRequestSheetState extends ConsumerState<PaymentRequestSheet> {
             body,
             const SizedBox(height: Insets.s),
             Text(
-              l.paymentRequestLocalNote,
-              key: const Key('paymentRequestLocalNote'),
+              mine
+                  ? l.paymentRequestLocalNote
+                  : l.paymentSharedByNote(widget.payeeName),
+              key: Key(
+                mine ? 'paymentRequestLocalNote' : 'paymentSharedByNote',
+              ),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,

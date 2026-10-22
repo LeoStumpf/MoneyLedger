@@ -76,12 +76,14 @@ void _phone(WidgetTester tester) {
 List<dynamic> _overrides({
   PaymentDetails? details = _details,
   List<dynamic> extra = const [],
+  List<MemberModel>? members,
+  List<DebtEntry> debts = _debts,
 }) => [
   ...testOverrides(
     isLoggedIn: true,
-    members: _members,
+    members: members ?? _members,
     groups: const [_group],
-    debts: _debts,
+    debts: debts,
     paymentDetails: details,
   ),
   currentUserIdProvider.overrideWith((_) => _me),
@@ -136,6 +138,30 @@ Widget _routed(
 }
 
 const _benQr = Key('paymentQr-$_ben-$_me-EUR');
+
+/// G74 sync: Ben's own details, synced in his member record.
+const _benDetails = PaymentDetails(
+  name: 'Ben Beispiel',
+  iban: 'DE02120300000000202051',
+  paypalMe: 'benb',
+);
+
+final _membersBenPays = [
+  _member(_me, 'Anna', mxid: _me),
+  MemberModel(
+    groupId: _g,
+    userId: _ben,
+    displayName: 'Ben',
+    matrixId: _ben,
+    status: 'active',
+    updatedAt: 1,
+    payment: _benDetails,
+  ),
+  _member('p-chris', 'Chris'),
+];
+const _iOweBen = DebtEntry(from: _me, to: _ben, cents: 1200, currency: 'EUR');
+const _toBenQr = Key('paymentQr-$_me-$_ben-EUR');
+const _chrisToBenQr = Key('paymentQr-p-chris-$_ben-EUR');
 const _chrisQr = Key('paymentQr-p-chris-$_me-CHF');
 
 /// Scrolls the page's list until [key] is built and visible.
@@ -214,6 +240,7 @@ void main() {
         'DE89 3704 0044 0532 0130 01',
       );
       await tester.enterText(find.byKey(const Key('paymentBicField')), 'XX');
+      await _scrollTo(tester, const Key('paymentPaypalField'));
       await tester.enterText(
         find.byKey(const Key('paymentPaypalField')),
         'anna muster',
@@ -380,6 +407,110 @@ void main() {
       expect(find.byKey(const Key('paymentIbanText')), findsOneWidget);
     });
 
+    testWidgets('someone else\'s synced details: I pay Ben', (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(
+        _routed(
+          const BalancePage(roomId: _g),
+          _overrides(
+            details: null,
+            members: _membersBenPays,
+            debts: const [_iOweBen, ..._debts],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, _toBenQr);
+      expect(find.byTooltip(en.paymentShowDetailsOf('Ben')), findsWidgets);
+      // A debt between two others (Chris → Ben) offers them too.
+      await _scrollTo(tester, _chrisToBenQr);
+      expect(find.byKey(_chrisToBenQr), findsOneWidget);
+      // No details of mine: nothing on the debts owed to me.
+      expect(find.byKey(_benQr), findsNothing);
+
+      await _scrollTo(tester, _toBenQr);
+      await tester.tap(find.byKey(_toBenQr));
+      await tester.pumpAndSettle();
+      expect(find.text(en.paymentPayTitle('Ben', '€12.00')), findsOneWidget);
+      expect(find.byKey(const Key('paymentGiroCode')), findsOneWidget);
+      expect(find.text('Ben Beispiel'), findsOneWidget);
+      expect(find.text(en.paymentSharedByNote('Ben')), findsOneWidget);
+      expect(find.byKey(const Key('paymentRequestLocalNote')), findsNothing);
+      await tester.tap(find.text(en.paymentMethodPaypal));
+      await tester.pumpAndSettle();
+      expect(find.text('https://paypal.me/benb/12.00EUR'), findsOneWidget);
+      expect(find.byKey(const Key('paymentOpenPaypal')), findsOneWidget);
+      expect(find.byKey(const Key('paymentShareLink')), findsNothing);
+    });
+
+    testWidgets('a debt between two others: "{payer} pays {payee}"', (
+      tester,
+    ) async {
+      _phone(tester);
+      await tester.pumpWidget(
+        _routed(
+          const BalancePage(roomId: _g),
+          _overrides(details: null, members: _membersBenPays),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, _chrisToBenQr);
+      await tester.tap(find.byKey(_chrisToBenQr));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(en.paymentPaysTitle('Chris', 'Ben', '€5.00')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the payment dialog offers the recipient\'s details', (
+      tester,
+    ) async {
+      _phone(tester);
+      await tester.pumpWidget(
+        _routed(
+          const BalancePage(roomId: _g),
+          _overrides(
+            details: null,
+            members: _membersBenPays,
+            debts: const [_iOweBen],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('debtTitle-$_me-$_ben-EUR')));
+      await tester.pumpAndSettle();
+      final button = find.byKey(const Key('paymentDialogShowDetails'));
+      expect(button, findsOneWidget);
+      expect(find.text(en.paymentShowDetailsOf('Ben')), findsOneWidget);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(find.text(en.paymentPayTitle('Ben', '€12.00')), findsOneWidget);
+      // The amount follows what is typed; no amount → no button.
+      Navigator.of(
+        tester.element(find.byKey(const Key('paymentRequestSheet'))),
+      ).pop();
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('paymentAmount')), '');
+      await tester.pumpAndSettle();
+      expect(button, findsNothing);
+    });
+
+    testWidgets('the details page says link groups can read them', (
+      tester,
+    ) async {
+      _phone(tester);
+      await tester.pumpWidget(
+        _routed(
+          const PaymentDetailsPage(),
+          _overrides(),
+          locale: const Locale('de'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(de.paymentDetailsLinkWarning), findsOneWidget);
+    });
+
     for (final locale in const [Locale('en'), Locale('de')]) {
       testWidgets('360 dp, 200 % font: rows, sheet and form fit '
           '(${locale.languageCode})', (tester) async {
@@ -399,6 +530,35 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         expect(find.byKey(const Key('paymentGiroCode')), findsOneWidget);
+        await tester.tap(
+          find.text(
+            locale.languageCode == 'de'
+                ? de.paymentMethodPaypal
+                : en.paymentMethodPaypal,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+
+        // The payer's view of Ben's synced details.
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(
+          _routed(
+            const BalancePage(roomId: _g),
+            _overrides(
+              details: null,
+              members: _membersBenPays,
+              debts: const [_iOweBen],
+            ),
+            locale: locale,
+            textScale: 2,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await _scrollTo(tester, _toBenQr);
+        await tester.tap(find.byKey(_toBenQr));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
         await tester.tap(
           find.text(
             locale.languageCode == 'de'

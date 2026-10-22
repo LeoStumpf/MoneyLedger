@@ -306,9 +306,10 @@ lib/
                                #   group_reset.dart (GroupResetService), group_reset_page.dart,
                                #   restore_points.dart (daily maintenance, snapshots), snapshot_policy.dart (pure
                                #   rotation), snapshot_store*.dart (native files / none on web), restore_points_page.dart
-    payment/                   # G74 own payment details (device-local): payment_details.dart (pure: IBAN / BIC /
+    payment/                   # G74 payment details: payment_details.dart (pure: IBAN / BIC /
                                #   PayPal.me parsing, EPC GiroCode payload, PayPal.me link), _provider, _page
-                               #   (/settings/payment), payment_request_sheet.dart (balance page QR sheet)
+                               #   (/settings/payment), payment_request_sheet.dart (balance page QR sheet),
+                               #   payment_publisher.dart (my details → my participant in every group)
     receipts/                  # G78 receipt photo (Android, this device only): receipt_store*.dart (files /
                                #   none), receipt_picker.dart (image_picker seam), receipt_field.dart (form + viewer)
     devices/                   # Device list + SAS verification UI (DevicesPage, member device sheet,
@@ -2041,7 +2042,7 @@ only** (hidden on the web, desktop and in the offline demo). `lib/features/recei
   Tests: `test/features/receipts_test.dart`, `test/g78_receipt_photo_test.dart`,
   `test/features/local_mode_test.dart` (adoption moves), G71 a11y.
 
-### Payment details + GiroCode, device-local (G74)
+### Payment details + GiroCode (G74)
 
 Optional **own** bank account (account holder, IBAN, optional BIC) and
 PayPal.me name — Settings → *Payment details* (`PaymentDetailsTile` →
@@ -2049,9 +2050,10 @@ PayPal.me name — Settings → *Payment details* (`PaymentDetailsTile` →
 `lib/features/payment/`.
 - **Storage:** `AppSettings` `payment_details` (JSON, `PaymentDetails.encode`;
   `SettingsDao.watchPaymentDetailsRaw` / `setPaymentDetailsRaw` /
-  `clearPaymentDetails`) — **per ledger, device-local, never synced**, not in
-  a backup file / snapshot / CSV; `adoptLocalLedger` copies it into the
-  account (unless the account has its own). `myPaymentDetailsProvider`
+  `clearPaymentDetails`) — **per ledger, device-local** (the settings value
+  itself is never synced); `adoptLocalLedger` copies it into the account
+  (unless the account has its own). What goes to the groups: see *Synced
+  part* below. `myPaymentDetailsProvider`
   (tests: `testOverrides(paymentDetails:)`). `toString` hides the data —
   never log an IBAN.
 - **Pure** (`payment_details.dart`): `normalizeIban` / `isValidIban` (format,
@@ -2071,12 +2073,35 @@ PayPal.me name — Settings → *Payment details* (`PaymentDetailsTile` →
   non-EUR → no GiroCode, IBAN as text. Shown on **this** screen for the
   payer to scan — nothing is sent. Privacy: PRIVACY.md + `privacyPayment*`
   (pinned equal by `test/features/payment_details_test.dart`).
-- **Synced part (Leo 2026-10-22):** the wire field exists (member
-  `payment`, see "Per-field meta merge … (G74 wire)"); writing my details
-  into every group I'm active in + showing the payee's details on the
-  payer's device + the privacy texts are still to build. Tests:
-  `test/features/payment_details_test.dart`, `test/g74_payment_details_ui_test.dart`,
-  G71 guideline tests. Limits: `docs/open-points.md`.
+- **Synced part (Leo 2026-10-22):** `payment_publisher.dart`
+  (`paymentPublisherProvider`, watched by `LedgerSyncHost`; DB open +
+  settings change + members / link-channel table changes, debounced
+  `paymentPublishDebounceProvider` 2 s) writes `publishablePayment(settings)`
+  (only the usable parts — `paymentProblem` clean) into **my participant**
+  (`myParticipantIn`, active) of every group with a link channel or where
+  my MXID claims "me" — local mode's own groups get nothing — as a new LWW
+  version via `LocalRecordSigner` (signed + relayed to the active Matrix
+  members / link version `by` me → the link engine republishes;
+  `SignatureRequiredException` → skipped). Equal stored value → nothing.
+  **No fight between own devices** (settings are device-local): unless the
+  settings changed since this device last distributed them
+  (`AppSettings` `payment_published` = encode / `none`), a version written by
+  the participant itself and received (`record_history` source `inbound`) is
+  left alone; this device's own versions (creation, …), restores and other
+  members' versions (stale editors clearing it) are overwritten — the
+  re-publish. **Payer's view:** `creditorPaymentDetails(members, myId:,
+  mine:)` → the QR button on **every** debt whose creditor has details
+  (tooltip `paymentShowDetailsOf`); the sheet (`mine:` / `payerIsMe:`) is
+  titled "You pay {name} …" / "{a} pays {b} …", *Open PayPal* instead of
+  *Share link*, note `paymentSharedByNote`; the payment dialog
+  (`recordPaymentFlow`) shows *Payment details of {to}*
+  (`paymentDialogShowDetails`, needs a valid amount). The settings page says
+  link groups can read them (`paymentDetailsLinkWarning`); PRIVACY.md +
+  `privacyPaymentBody` say old copies stay in others' history / backups /
+  restore points. Tests: `test/features/payment_details_test.dart`,
+  `test/g74_payment_details_ui_test.dart`,
+  `test/integration/payment_publish_sync_test.dart`, G71 guideline tests.
+  Limits: `docs/open-points.md`.
 
 ### Per-field meta merge (G57 C1) + payment field (G74 wire), schema v19
 
@@ -2120,8 +2145,8 @@ Leo 2026-10-22 (plan.md "Leo's decisions 2026-10-22").
   non-own version may also hold **none** or a value the participant itself
   published earlier under the same claim (`_paymentCarriedOver`, history
   lookup — an editor that missed the change; refusing it diverged forever).
-  A new claim / unclaim clears it. Nothing writes
-  it yet (the distribution to my groups + UI is the next G74 step).
+  A new claim / unclaim clears it. Written by
+  `payment_publisher.dart` (see "Payment details + GiroCode (G74)").
 - **Schema v19:** `groups.field_clocks_json`, `members.payment_json` (added
   before the v12 backfill); forgets `meta` + `member` refusals (a pre-v19
   build refuses versions carrying `clocks` / `payment`).

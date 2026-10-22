@@ -1,8 +1,10 @@
 /// G74: **Settings → Payment details** — the user's own bank account
 /// (account holder, IBAN, optional BIC) and PayPal.me name. Optional,
-/// device-local (per ledger), never synced: the balance page shows them as
-/// a GiroCode / PayPal.me QR code on this device when someone owes the
-/// user money (`payment_request_sheet.dart`).
+/// stored device-local (per ledger) and written into my participant in
+/// every group I'm active in (`payment_publisher.dart`, link groups too —
+/// the page says anyone with a group's link can read them): the balance
+/// page shows them as a GiroCode / PayPal.me QR code / link
+/// (`payment_request_sheet.dart`).
 library;
 
 import 'package:flutter/material.dart';
@@ -145,6 +147,12 @@ class _PaymentDetailsFormState extends ConsumerState<PaymentDetailsForm> {
             Text(
               l.paymentDetailsIntro,
               key: const Key('paymentDetailsIntro'),
+              style: muted,
+            ),
+            const SizedBox(height: Insets.s),
+            Text(
+              l.paymentDetailsLinkWarning,
+              key: const Key('paymentDetailsLinkWarning'),
               style: muted,
             ),
             gap(),

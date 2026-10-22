@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/expenses/ledger_syncer.dart';
 import '../../features/history/restore_points.dart';
+import '../../features/payment/payment_publisher.dart';
 import '../../features/receipts/receipt_store.dart';
 import '../background/background_sync_provider.dart';
 import '../link/link_self_claim.dart';
@@ -50,6 +51,8 @@ class LedgerSyncHost extends ConsumerWidget {
     ref.watch(restorePointsMaintenanceProvider);
     // G78: photos of deleted expenses / gone groups are removed.
     ref.watch(receiptMaintenanceProvider);
+    // G74: my payment details go into every group I'm active in.
+    ref.watch(paymentPublisherProvider);
     return child;
   }
 }

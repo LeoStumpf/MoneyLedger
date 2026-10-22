@@ -329,6 +329,15 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
     appSettings,
   )..where((t) => t.key.equals(_paymentDetailsKey))).go();
 
+  static const _paymentPublishedKey = 'payment_published';
+
+  /// G74: what this device last wrote into its groups (`PaymentDetails
+  /// .encode`, or `none`) — null before the first distribution.
+  Future<String?> paymentPublishedRaw() => _getValue(_paymentPublishedKey);
+
+  Future<void> setPaymentPublishedRaw(String value) =>
+      _setValue(_paymentPublishedKey, value);
+
   // ── G53: signed self-claims after "Connect a Matrix account" ─────────────
 
   static const _linkSelfClaimPrefix = 'link_self_claim:';

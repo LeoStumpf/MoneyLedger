@@ -121,9 +121,14 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     ]);
     void openRates() => context.push(groupRatesLocation(widget.roomId));
     final nothingYet = debts.isEmpty && stats.isEmpty;
-    // G74: my own payment details (device-local) → a QR code / link on the
-    // debts owed to me.
+    // G74: my own payment details (settings) → a QR code / link on the
+    // debts owed to me; another creditor's from their member record.
     final payment = ref.watch(myPaymentDetailsProvider).value;
+    final payeeDetails = creditorPaymentDetails(
+      ref.watch(groupMembersProvider(widget.roomId)).value ?? const [],
+      myId: myId,
+      mine: payment,
+    );
 
     void record({DebtEntry? debt}) =>
         recordPaymentFlow(context, ref, widget.roomId, myId: myId, debt: debt);
@@ -297,18 +302,24 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                                       onTap: canRecord && !busy
                                           ? () => record(debt: d)
                                           : null,
+                                      paymentTooltip: d.to == myId
+                                          ? l.paymentShowDetails
+                                          : l.paymentShowDetailsOf(
+                                              nameOf(d.to),
+                                            ),
                                       onShowPaymentDetails:
-                                          d.to == myId &&
-                                              payment != null &&
-                                              !payment.isEmpty
-                                          ? () => showPaymentRequestSheet(
+                                          payeeDetails[d.to] == null
+                                          ? null
+                                          : () => showPaymentRequestSheet(
                                               context,
-                                              details: payment,
+                                              details: payeeDetails[d.to]!,
                                               debt: d,
                                               payerName: nameOf(d.from),
+                                              payeeName: nameOf(d.to),
                                               groupName: group?.name ?? '',
-                                            )
-                                          : null,
+                                              mine: d.to == myId,
+                                              payerIsMe: d.from == myId,
+                                            ),
                                     ),
                                   ],
                                 ],
@@ -511,8 +522,11 @@ class _DebtRow extends StatelessWidget {
   final bool isMine;
   final VoidCallback? onTap;
 
-  /// G74: a debt owed to me with my payment details set → the QR button.
+  /// G74: the creditor has payment details → the QR button.
   final VoidCallback? onShowPaymentDetails;
+
+  /// G74: the QR button's tooltip.
+  final String? paymentTooltip;
   const _DebtRow({
     required this.debt,
     required this.titleTemplate,
@@ -521,6 +535,7 @@ class _DebtRow extends StatelessWidget {
     required this.isMine,
     required this.onTap,
     this.onShowPaymentDetails,
+    this.paymentTooltip,
   });
 
   @override
@@ -582,7 +597,7 @@ class _DebtRow extends StatelessWidget {
             IconButton(
               key: Key('paymentQr-${debt.from}-${debt.to}-${debt.currency}'),
               icon: const Icon(Icons.qr_code_2),
-              tooltip: context.l10n.paymentShowDetails,
+              tooltip: paymentTooltip ?? context.l10n.paymentShowDetails,
               onPressed: onShowPaymentDetails,
             ),
           if (onTap != null)

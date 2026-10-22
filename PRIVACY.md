@@ -193,14 +193,19 @@ to check before you save it.
 ## Payment details
 
 You can enter your own bank account (account holder, IBAN, BIC) and PayPal.me
-name under Settings → Payment details. MoneyLedger stores them only on this
-device, for the account you use (or local mode — they move along when you
-connect a Matrix account). They are never sent to the others in your groups or
-to any server, and are not part of any backup file, restore point or CSV. They
-leave the device only as a QR code on its own screen — for someone who owes you
-money to scan — or as a PayPal.me link you choose to share. Removing them in
-the settings, deleting local data or uninstalling the app deletes them; signing
-out keeps them.
+name under Settings → Payment details. MoneyLedger stores them on this device,
+for the account you use (or local mode — they move along when you connect a
+Matrix account), and adds them to your entry in every group you are in, so that
+the others can pay you back: they get them like the rest of the group —
+end-to-end encrypted over Matrix, and for groups you share with an invite link
+in the encrypted copies on the Nostr relays, readable by anyone with that
+group's link. Groups that exist only on this device (local mode) get nothing.
+The balance page shows them as a GiroCode or a PayPal.me link with the amount —
+on your screen and on the screen of someone who owes you. Removing or changing
+them in the settings updates your groups, but earlier copies stay in the
+others' version history, backups and restore points (and on the relays until
+they expire). They are not part of a CSV. Deleting local data or uninstalling
+the app removes this device's copy; signing out keeps it.
 
 ## Deleting your data
 

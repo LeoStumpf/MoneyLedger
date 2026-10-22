@@ -3786,7 +3786,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paymentDetailsTileNone =>
-      'Optional — shown as a QR code when someone pays you back';
+      'Optional — your groups see them when they pay you back';
 
   @override
   String paymentDetailsTileIban(String last4) {
@@ -3795,7 +3795,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paymentDetailsIntro =>
-      'Optional. Stored only on this device and never sent to the others in your groups. When someone owes you money, the balance page shows a QR code for them to scan: a GiroCode for their banking app (euro only) or your PayPal.me link with the amount.';
+      'Optional. Everyone in the groups you\'re in gets them, so they can pay you back: the balance page shows a GiroCode for a banking app (euro only) or your PayPal.me link with the amount — on your phone for them to scan, and on theirs when they owe you.';
 
   @override
   String get paymentBankSection => 'Bank account (SEPA)';
@@ -3870,14 +3870,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paymentGiroCodeEuroOnly =>
-      'A GiroCode works only for euro — your bank account:';
+      'A GiroCode works only for euro — the bank account:';
 
   @override
   String get paymentCopyIban => 'Copy IBAN';
 
   @override
   String paymentPaypalQrSemantics(String amount) {
-    return 'QR code of your PayPal.me link for $amount';
+    return 'QR code of the PayPal.me link for $amount';
   }
 
   @override
@@ -3889,14 +3889,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paymentRequestLocalNote =>
-      'Shown only on this device — change it under Settings → Payment details.';
+      'Your groups see these details too — change them under Settings → Payment details.';
+
+  @override
+  String get paymentDetailsLinkWarning =>
+      'Groups you share with an invite link get them too: anyone with a group\'s link can read them. If you change or remove them later, earlier copies stay in the others\' history, backups and restore points.';
+
+  @override
+  String paymentPayTitle(String name, String amount) {
+    return 'You pay $name $amount';
+  }
+
+  @override
+  String paymentPaysTitle(String payer, String payee, String amount) {
+    return '$payer pays $payee $amount';
+  }
+
+  @override
+  String get paymentOpenPaypal => 'Open PayPal';
+
+  @override
+  String paymentSharedByNote(String name) {
+    return '$name shared these details with the group.';
+  }
+
+  @override
+  String paymentShowDetailsOf(String name) {
+    return 'Payment details of $name';
+  }
 
   @override
   String get privacyPaymentTitle => 'Payment details';
 
   @override
   String get privacyPaymentBody =>
-      'You can enter your own bank account (account holder, IBAN, BIC) and PayPal.me name under Settings → Payment details. MoneyLedger stores them only on this device, for the account you use (or local mode — they move along when you connect a Matrix account). They are never sent to the others in your groups or to any server, and are not part of any backup file, restore point or CSV. They leave the device only as a QR code on its own screen — for someone who owes you money to scan — or as a PayPal.me link you choose to share. Removing them in the settings, deleting local data or uninstalling the app deletes them; signing out keeps them.';
+      'You can enter your own bank account (account holder, IBAN, BIC) and PayPal.me name under Settings → Payment details. MoneyLedger stores them on this device, for the account you use (or local mode — they move along when you connect a Matrix account), and adds them to your entry in every group you are in, so that the others can pay you back: they get them like the rest of the group — end-to-end encrypted over Matrix, and for groups you share with an invite link in the encrypted copies on the Nostr relays, readable by anyone with that group\'s link. Groups that exist only on this device (local mode) get nothing. The balance page shows them as a GiroCode or a PayPal.me link with the amount — on your screen and on the screen of someone who owes you. Removing or changing them in the settings updates your groups, but earlier copies stay in the others\' version history, backups and restore points (and on the relays until they expire). They are not part of a CSV. Deleting local data or uninstalling the app removes this device\'s copy; signing out keeps it.';
 
   @override
   String get paymentDetailsPageTitle => 'Payment details';

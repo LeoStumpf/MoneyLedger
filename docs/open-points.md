@@ -397,16 +397,21 @@ peers'), and SAS works with other members' devices (members page). Open:
   still named `.jpg`; `Image.memory` decodes either.
 
 ### Payment details (G74) — limits
-- **Device-local only (for now)**: the own bank account / PayPal.me name
-  lives in this ledger's `AppSettings` (per account / local mode; moves along
-  with a local-mode adoption). The payee shows the QR code on *their own*
-  screen; the payer's app never learns the details. Showing them on the
-  payer's device ("when they settle with me", plan.md G74) needs the synced
-  field — decided (Leo 2026-10-22) and on the wire since schema v19, but
-  nothing writes it into groups yet (plan.md G74). A version of another
-  member may clear it or carry an older value the participant published
-  (stale editor) — the distribution step has to re-publish.
-- **Not in backups / restore points**: a new phone needs them entered again.
+- **Settings are per device**: the own bank account / PayPal.me name lives
+  in this ledger's `AppSettings` (per account / local mode; moves along with
+  a local-mode adoption) and is written into my participant of every group
+  I'm active in. Two own devices with different settings don't overwrite
+  each other — the newer explicit change wins and the other device's
+  settings page keeps showing its own value (it doesn't adopt the synced
+  one). A new phone starts with an empty settings page (the groups keep the
+  published value until it is changed there).
+- **Old copies stay** in the others' version history, backups, restore
+  points and (link groups) on the relays until they expire — removing them
+  only stops future copies (Leo 2026-10-22; PRIVACY.md says so).
+- **Link groups**: anyone with a group's link can read them (and, like
+  everything there, write a version `by` me — a forgeable hint).
+- **Old builds** refuse member versions carrying `payment` (`invalid` on a
+  pre-v19 build) — my renames etc. don't reach them until they update.
 - **GiroCode = euro only** (EPC SEPA credit transfer); other currencies get
   the IBAN as text. Banking apps outside DE / AT / NL may not scan it.
 - The EPC remittance text is the group name (≤ 140 characters, cut to the

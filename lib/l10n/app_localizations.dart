@@ -5963,7 +5963,7 @@ abstract class AppLocalizations {
   /// G74 settings tile subtitle, nothing set
   ///
   /// In en, this message translates to:
-  /// **'Optional — shown as a QR code when someone pays you back'**
+  /// **'Optional — your groups see them when they pay you back'**
   String get paymentDetailsTileNone;
 
   /// G74 settings tile subtitle: the IBAN's last four characters
@@ -5975,7 +5975,7 @@ abstract class AppLocalizations {
   /// G74 page intro
   ///
   /// In en, this message translates to:
-  /// **'Optional. Stored only on this device and never sent to the others in your groups. When someone owes you money, the balance page shows a QR code for them to scan: a GiroCode for their banking app (euro only) or your PayPal.me link with the amount.'**
+  /// **'Optional. Everyone in the groups you\'re in gets them, so they can pay you back: the balance page shows a GiroCode for a banking app (euro only) or your PayPal.me link with the amount — on your phone for them to scan, and on theirs when they owe you.'**
   String get paymentDetailsIntro;
 
   /// G74 page section
@@ -6107,7 +6107,7 @@ abstract class AppLocalizations {
   /// G74 sheet, non-euro debt
   ///
   /// In en, this message translates to:
-  /// **'A GiroCode works only for euro — your bank account:'**
+  /// **'A GiroCode works only for euro — the bank account:'**
   String get paymentGiroCodeEuroOnly;
 
   /// G74 sheet button
@@ -6119,7 +6119,7 @@ abstract class AppLocalizations {
   /// G74 screen-reader label
   ///
   /// In en, this message translates to:
-  /// **'QR code of your PayPal.me link for {amount}'**
+  /// **'QR code of the PayPal.me link for {amount}'**
   String paymentPaypalQrSemantics(String amount);
 
   /// G74 sheet hint
@@ -6137,8 +6137,44 @@ abstract class AppLocalizations {
   /// G74 sheet footnote
   ///
   /// In en, this message translates to:
-  /// **'Shown only on this device — change it under Settings → Payment details.'**
+  /// **'Your groups see these details too — change them under Settings → Payment details.'**
   String get paymentRequestLocalNote;
+
+  /// G74 settings page: link groups expose the details
+  ///
+  /// In en, this message translates to:
+  /// **'Groups you share with an invite link get them too: anyone with a group\'s link can read them. If you change or remove them later, earlier copies stay in the others\' history, backups and restore points.'**
+  String get paymentDetailsLinkWarning;
+
+  /// G74 sheet title: I owe the creditor whose details are shown
+  ///
+  /// In en, this message translates to:
+  /// **'You pay {name} {amount}'**
+  String paymentPayTitle(String name, String amount);
+
+  /// G74 sheet title: a debt between two others
+  ///
+  /// In en, this message translates to:
+  /// **'{payer} pays {payee} {amount}'**
+  String paymentPaysTitle(String payer, String payee, String amount);
+
+  /// G74 sheet button (someone else's PayPal.me link)
+  ///
+  /// In en, this message translates to:
+  /// **'Open PayPal'**
+  String get paymentOpenPaypal;
+
+  /// G74 sheet footnote (someone else's details)
+  ///
+  /// In en, this message translates to:
+  /// **'{name} shared these details with the group.'**
+  String paymentSharedByNote(String name);
+
+  /// G74 balance page debt-row button tooltip / payment dialog button (the creditor's details)
+  ///
+  /// In en, this message translates to:
+  /// **'Payment details of {name}'**
+  String paymentShowDetailsOf(String name);
 
   /// G74 privacy section title
   ///
@@ -6149,7 +6185,7 @@ abstract class AppLocalizations {
   /// G74 privacy section body (keep equal to PRIVACY.md)
   ///
   /// In en, this message translates to:
-  /// **'You can enter your own bank account (account holder, IBAN, BIC) and PayPal.me name under Settings → Payment details. MoneyLedger stores them only on this device, for the account you use (or local mode — they move along when you connect a Matrix account). They are never sent to the others in your groups or to any server, and are not part of any backup file, restore point or CSV. They leave the device only as a QR code on its own screen — for someone who owes you money to scan — or as a PayPal.me link you choose to share. Removing them in the settings, deleting local data or uninstalling the app deletes them; signing out keeps them.'**
+  /// **'You can enter your own bank account (account holder, IBAN, BIC) and PayPal.me name under Settings → Payment details. MoneyLedger stores them on this device, for the account you use (or local mode — they move along when you connect a Matrix account), and adds them to your entry in every group you are in, so that the others can pay you back: they get them like the rest of the group — end-to-end encrypted over Matrix, and for groups you share with an invite link in the encrypted copies on the Nostr relays, readable by anyone with that group\'s link. Groups that exist only on this device (local mode) get nothing. The balance page shows them as a GiroCode or a PayPal.me link with the amount — on your screen and on the screen of someone who owes you. Removing or changing them in the settings updates your groups, but earlier copies stay in the others\' version history, backups and restore points (and on the relays until they expire). They are not part of a CSV. Deleting local data or uninstalling the app removes this device\'s copy; signing out keeps it.'**
   String get privacyPaymentBody;
 
   /// G74 page title

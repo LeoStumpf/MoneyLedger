@@ -11,6 +11,8 @@ import '../expenses/record_attribution.dart';
 import '../expenses/record_actions.dart';
 import '../../core/widgets/action_error.dart';
 import '../groups/group_provider.dart';
+import '../payment/payment_details_provider.dart';
+import '../payment/payment_request_sheet.dart';
 import 'balance_calculator.dart';
 import 'record_payment_dialog.dart';
 
@@ -51,6 +53,11 @@ Future<void> recordPaymentFlow(
       : (ids.isNotEmpty ? ids.first : null);
   final defaultTo = ids.where((id) => id != defaultFrom).firstOrNull;
   final currency = debt?.currency ?? group?.currency ?? 'EUR';
+  final payeeDetails = creditorPaymentDetails(
+    members,
+    myId: myId,
+    mine: ref.read(myPaymentDetailsProvider).value,
+  );
   // G66: the group's currencies first in the picker.
   final suggested = await groupCurrencySuggestions(
     ref,
@@ -70,6 +77,18 @@ Future<void> recordPaymentFlow(
       debtCents: debt?.cents,
       currency: currency,
       suggestedCurrencies: suggested,
+      // G74: the recipient's payment details (IBAN / PayPal.me / GiroCode).
+      payeeDetails: payeeDetails,
+      onShowPaymentDetails: (dialogContext, p) => showPaymentRequestSheet(
+        dialogContext,
+        details: payeeDetails[p.to]!,
+        debt: p,
+        payerName: participants[p.from] ?? p.from,
+        payeeName: participants[p.to] ?? p.to,
+        groupName: group?.name ?? '',
+        mine: p.to == myId,
+        payerIsMe: p.from == myId,
+      ),
     ),
   );
   if (draft == null || !context.mounted) return;

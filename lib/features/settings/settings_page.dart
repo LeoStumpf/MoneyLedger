@@ -100,7 +100,7 @@ class SettingsPage extends ConsumerWidget {
               subtitle: Text(l.importCsvTileBody),
               onTap: () => importCsvWithPreview(context, ref),
             ),
-            // G74: own payment details (device-local, never synced).
+            // G74: own payment details (sent to my groups).
             SettingsSectionHeader(l.settingsSectionPayment),
             const PaymentDetailsTile(),
             SettingsSectionHeader(l.settingsSectionAbout),

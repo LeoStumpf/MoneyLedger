@@ -3824,7 +3824,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get paymentDetailsTileNone =>
-      'Optional – als QR-Code, wenn dir jemand Geld zurückzahlt';
+      'Optional – deine Gruppen sehen sie, wenn sie dir Geld zurückzahlen';
 
   @override
   String paymentDetailsTileIban(String last4) {
@@ -3833,7 +3833,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get paymentDetailsIntro =>
-      'Optional. Bleibt nur auf diesem Gerät und wird nie an die anderen in deinen Gruppen geschickt. Wenn dir jemand Geld schuldet, zeigt die Saldo-Seite einen QR-Code zum Scannen: einen GiroCode für die Banking-App (nur Euro) oder deinen PayPal.me-Link mit dem Betrag.';
+      'Optional. Alle in deinen Gruppen bekommen sie, damit sie dir Geld zurückzahlen können: Die Saldo-Seite zeigt einen GiroCode für die Banking-App (nur Euro) oder deinen PayPal.me-Link mit dem Betrag – auf deinem Handy zum Scannen und auf ihrem, wenn sie dir etwas schulden.';
 
   @override
   String get paymentBankSection => 'Bankkonto (SEPA)';
@@ -3911,14 +3911,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get paymentGiroCodeEuroOnly =>
-      'Einen GiroCode gibt es nur für Euro – dein Bankkonto:';
+      'Einen GiroCode gibt es nur für Euro – das Bankkonto:';
 
   @override
   String get paymentCopyIban => 'IBAN kopieren';
 
   @override
   String paymentPaypalQrSemantics(String amount) {
-    return 'QR-Code deines PayPal.me-Links über $amount';
+    return 'QR-Code des PayPal.me-Links über $amount';
   }
 
   @override
@@ -3930,14 +3930,41 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get paymentRequestLocalNote =>
-      'Nur auf diesem Gerät gezeigt – ändern unter Einstellungen → Zahlungsdaten.';
+      'Deine Gruppen sehen diese Daten auch – ändern unter Einstellungen → Zahlungsdaten.';
+
+  @override
+  String get paymentDetailsLinkWarning =>
+      'Auch Gruppen, die du per Einladungslink teilst, bekommen sie: Jede Person mit dem Link einer Gruppe kann sie lesen. Wenn du sie später änderst oder entfernst, bleiben frühere Kopien im Verlauf, in den Sicherungen und Wiederherstellungspunkten der anderen.';
+
+  @override
+  String paymentPayTitle(String name, String amount) {
+    return 'Du zahlst $name $amount';
+  }
+
+  @override
+  String paymentPaysTitle(String payer, String payee, String amount) {
+    return '$payer zahlt $payee $amount';
+  }
+
+  @override
+  String get paymentOpenPaypal => 'PayPal öffnen';
+
+  @override
+  String paymentSharedByNote(String name) {
+    return '$name hat diese Daten mit der Gruppe geteilt.';
+  }
+
+  @override
+  String paymentShowDetailsOf(String name) {
+    return 'Zahlungsdaten von $name';
+  }
 
   @override
   String get privacyPaymentTitle => 'Zahlungsdaten';
 
   @override
   String get privacyPaymentBody =>
-      'Unter Einstellungen → Zahlungsdaten kannst du dein eigenes Bankkonto (Name auf dem Konto, IBAN, BIC) und deinen PayPal.me-Namen eintragen. MoneyLedger speichert sie nur auf diesem Gerät, für das Konto, das du nutzt (oder den lokalen Modus – sie ziehen mit um, wenn du ein Matrix-Konto verbindest). Sie werden nie an die anderen in deinen Gruppen oder an einen Server geschickt und sind in keiner Sicherungsdatei, keinem Wiederherstellungspunkt und keiner CSV enthalten. Sie verlassen das Gerät nur als QR-Code auf seinem eigenen Bildschirm – zum Scannen für jemanden, der dir Geld schuldet – oder als PayPal.me-Link, den du selbst teilst. Wenn du sie in den Einstellungen entfernst, die lokalen Daten löschst oder die App deinstallierst, sind sie weg; beim Abmelden bleiben sie erhalten.';
+      'Unter Einstellungen → Zahlungsdaten kannst du dein eigenes Bankkonto (Name auf dem Konto, IBAN, BIC) und deinen PayPal.me-Namen eintragen. MoneyLedger speichert sie auf diesem Gerät, für das Konto, das du nutzt (oder den lokalen Modus – sie ziehen mit um, wenn du ein Matrix-Konto verbindest), und trägt sie bei dir in jeder Gruppe ein, in der du bist, damit die anderen dir Geld zurückzahlen können: Sie bekommen sie wie den Rest der Gruppe – Ende-zu-Ende-verschlüsselt über Matrix und bei Gruppen, die du per Einladungslink teilst, in den verschlüsselten Kopien auf den Nostr-Relays, lesbar für jede Person mit dem Link dieser Gruppe. Gruppen, die es nur auf diesem Gerät gibt (lokaler Modus), bekommen nichts. Die Saldo-Seite zeigt sie als GiroCode oder PayPal.me-Link mit dem Betrag – auf deinem Bildschirm und auf dem von jemandem, der dir Geld schuldet. Wenn du sie in den Einstellungen entfernst oder änderst, werden deine Gruppen aktualisiert, frühere Kopien bleiben aber im Verlauf, in den Sicherungen und Wiederherstellungspunkten der anderen (und auf den Relays, bis sie ablaufen). In einer CSV sind sie nicht enthalten. Wenn du die lokalen Daten löschst oder die App deinstallierst, ist die Kopie auf diesem Gerät weg; beim Abmelden bleibt sie erhalten.';
 
   @override
   String get paymentDetailsPageTitle => 'Zahlungsdaten';

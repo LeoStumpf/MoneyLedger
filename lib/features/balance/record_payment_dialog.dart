@@ -6,6 +6,8 @@ import '../../core/sync/record_validation.dart';
 import '../../models/expense_date.dart' show dayOf;
 import '../expenses/record_date_field.dart';
 import '../../core/widgets/currency_field.dart';
+import '../../models/payment_details.dart';
+import 'balance_calculator.dart' show DebtEntry;
 
 /// What the user confirmed in [RecordPaymentDialog].
 class PaymentDraft {
@@ -71,6 +73,15 @@ class RecordPaymentDialog extends StatefulWidget {
   /// [PaymentDeleteRequest] instead of a [PaymentDraft].
   final bool canDelete;
 
+  /// G74: participant id → payment details (`creditorPaymentDetails`) —
+  /// the selected recipient's are offered via [onShowPaymentDetails].
+  final Map<String, PaymentDetails> payeeDetails;
+
+  /// G74: opens the recipient's payment details for the typed amount
+  /// (called with the dialog's context, so the sheet opens above it).
+  final void Function(BuildContext context, DebtEntry payment)?
+  onShowPaymentDetails;
+
   const RecordPaymentDialog({
     super.key,
     required this.participants,
@@ -84,6 +95,8 @@ class RecordPaymentDialog extends StatefulWidget {
     this.footer,
     this.suggestedCurrencies = const [],
     this.canDelete = false,
+    this.payeeDetails = const {},
+    this.onShowPaymentDetails,
   });
 
   @override
@@ -280,6 +293,34 @@ class _RecordPaymentDialogState extends State<RecordPaymentDialog> {
                 l.paymentExceedsDebt(context.money(debt, widget.currency)),
                 key: const Key('paymentExceedsWarning'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            if (!widget.editing &&
+                widget.onShowPaymentDetails != null &&
+                _to != null &&
+                _from != null &&
+                _from != _to &&
+                cents != null &&
+                widget.payeeDetails[_to] != null) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  key: const Key('paymentDialogShowDetails'),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: Text(
+                    l.paymentShowDetailsOf(widget.participants[_to] ?? _to!),
+                  ),
+                  onPressed: () => widget.onShowPaymentDetails!(
+                    context,
+                    DebtEntry(
+                      from: _from!,
+                      to: _to!,
+                      cents: cents,
+                      currency: _currency,
+                    ),
+                  ),
+                ),
               ),
             ],
             if (widget.footer != null) ...[

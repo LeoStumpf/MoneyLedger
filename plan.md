@@ -1236,15 +1236,22 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       participant itself published before (stale editor; refusing it kept
       a rename / removal out for good on both sides); schema v19 (`members.payment_json`, forgets member
       refusals) — `PaymentDetails` moved to `models/payment_details.dart`
-- [ ] Synced part, rest: write my details into every group I'm active in
-      (link groups too) on save / when joining, the payer's sheet shows the
-      payee's details, settings text ("anyone with a group's link can read
-      them"), PRIVACY.md + in-app privacy (removed details stay in others'
-      history / backups / restore points)
-- [ ] Distribution must **re-publish**: when a group's stored `payment` of
-      my participant differs from my settings (a stale editor's version
-      cleared it or carried an older value — accepted since the review),
-      write my own version again (on start / after sync)
+- [x] Synced part, rest: my details are written into every group I'm active
+      in (link groups too; local mode's own groups none) on save / when
+      joining / creating (`payment_publisher.dart`), the payer's sheet shows
+      the payee's details (balance page QR button on every debt whose
+      creditor has details, "You pay {name}", *Open PayPal*; *Payment
+      details of {to}* in the payment dialog), settings text ("anyone with a
+      group's link can read them"), PRIVACY.md + in-app privacy (removed
+      details stay in others' history / backups / restore points)
+- [x] Distribution **re-publishes**: a stored `payment` of my participant
+      that differs from my settings is written again on start / after
+      member changes — except a version my own other device wrote (history
+      source `inbound`) while my settings are unchanged since the last
+      distribution (`payment_published`), so two own devices with different
+      device-local settings don't overwrite each other forever
+- [ ] Later maybe: the settings page offers the value my other device
+      published (today each device shows its own settings)
 - [ ] Device check: smoke 5.21 (banking-app scan, PayPal link, DE 360 dp)
 - [ ] Later maybe: payment details in the G69 share text (opt-in)
 
@@ -1388,7 +1395,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G72 — local notifications (on by default) — device check smoke 7.13 open
 - [x] G73 — manual exchange rates + fetch button (with G57) — device check smoke 6.7 + G57 decision open
 - [x] G75 — usability polish (review leftovers)
-- [~] G74 — payment details + GiroCode (with G57 / G73) — device-local part + synced wire field done; distribution / payer sheet / privacy texts next
+- [x] G74 — payment details + GiroCode (with G57 / G73) — synced to my groups; device check smoke 5.21 open
 - [x] G76 — multiple payers (wire: `payers` + empty `paid_by`) — device check smoke 5.22 open
 - [ ] G79 — DEV-I findings (calculator keyboard, truncations, lazy Matrix store)
 - [x] G77 — itemized split
