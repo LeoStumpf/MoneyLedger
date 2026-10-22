@@ -814,7 +814,8 @@ groups over Nostr. **No link channel → no connection, no NIP-11 request.**
   *Offline*); row mark `isLinkRecordPending` (not synced + newer than our
   last delivered snapshot); back online → unsynced groups publish at once;
   live reconnect back-off ≤ 30 s (`linkReconnectBackoffProvider`), resume →
-  `reconnectNow`. Leave / delete unpublish parts carry `left: true` →
+  `reconnectNow`; closing the pool (pause) clears offline without
+  publishing — the next pool's first connection catches up. Leave / delete unpublish parts carry `left: true` →
   receivers drop that publisher's `link_peers` row.
 - **Seams:** `openChannel` (`link_channel.dart`: drops our own claim, sets
   "me", plain link versions, fresh secret + key; refuses signed-meta groups —

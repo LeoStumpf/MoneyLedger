@@ -1043,6 +1043,58 @@ void main() {
     expect(snap['expenses'], hasLength(2));
   });
 
+  test('offline review fix (DEV-J): the pause closing the pool while offline '
+      "doesn't publish (no reconnects in the background); after resume the "
+      'first connection catches up at once', () async {
+    final a = device(
+      pauseGrace: const Duration(milliseconds: 10),
+      reconnect: const Duration(hours: 1),
+    );
+    await a.engine.ready;
+    await GroupsDao(a.db).upsertGroupLww(
+      groupCompanion(
+        const GroupModel(roomId: _g, name: 'Trip', currency: 'EUR'),
+      ),
+    );
+    await a.members.upsertMemberLww(
+      memberCompanion(
+        const MemberModel(
+          groupId: _g,
+          userId: 'p1',
+          matrixId: kLocalAccountId,
+          status: 'active',
+          updatedAt: 1,
+        ),
+      ),
+    );
+    for (final r in [_r1, _r2]) {
+      net.relay(r).offline = true;
+    }
+    await a.engine.openChannel(_g);
+    await eventually(
+      () => a.engine.statusOf(_g)?.problem == LinkSyncProblem.offline,
+    );
+    await settle();
+    final attempts = net.relay(_r1).connectAttempts;
+
+    a.engine.onAppPaused();
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    await settle();
+    expect(
+      net.relay(_r1).connectAttempts,
+      attempts,
+      reason: 'closing the paused pool must not publish / reconnect',
+    );
+
+    for (final r in [_r1, _r2]) {
+      net.relay(r).offline = false;
+    }
+    a.engine.onAppResumed();
+    await eventually(
+      () => a.engine.statusOf(_g)?.phase == LinkSyncPhase.synced,
+    );
+  });
+
   test('a relay added in the settings that missed the first publish is '
       'retried until it holds our snapshot (DEV-J) — only it', () async {
     const r3 = 'wss://relay.example.org';

@@ -209,6 +209,9 @@ class NostrRelayPool {
   bool get offline =>
       !_closed && _relays.every((r) => r.conn == null && r._failures > 0);
 
+  /// At least one relay holds an open connection.
+  bool get anyConnected => !_closed && _relays.any((r) => r.conn != null);
+
   /// Fires when a connection opens, fails or drops ([offline] may have
   /// changed). Closed with the pool.
   Stream<void> get connectionChanges => _connectionChanges.stream;

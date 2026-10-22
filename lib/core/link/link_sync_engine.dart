@@ -432,6 +432,10 @@ class LinkSyncEngine {
   /// overlays every group's status while true).
   bool _offline = false;
 
+  /// The pool was closed while [_offline]: catch up once the next pool
+  /// connects.
+  bool _catchUpOnConnect = false;
+
   /// DEV-J: relays added in [setRelays] that haven't accepted a group's
   /// snapshot yet — the group is published to them again until they do
   /// (a delivery counts once ≥ 1 relay accepted, so a slow new relay was
@@ -609,10 +613,20 @@ class LinkSyncEngine {
   /// short) and every other one re-checked.
   void _onConnectivity(NostrRelayPool pool) {
     if (!_alive || !identical(pool, _pool)) return;
+    if (!pool.offline && _catchUpOnConnect && pool.anyConnected) {
+      // The pool was closed while offline (pause): the first connection of
+      // the new one is the "back online" moment.
+      _catchUpOnConnect = false;
+      _offline = true;
+    }
     _setOffline(pool.offline);
   }
 
-  void _setOffline(bool offline) {
+  /// Review fix: [catchUp] false = the pool is being closed (pause / idle
+  /// release) — only the flag is cleared; publishing now would reopen the
+  /// connections a paused app just closed. The catch-up then runs on the
+  /// next pool's first connection ([_catchUpOnConnect]).
+  void _setOffline(bool offline, {bool catchUp = true}) {
     if (!_alive || offline == _offline) return;
     _offline = offline;
     debugPrint('[link] relays ${offline ? 'unreachable' : 'reachable again'}');
@@ -620,6 +634,10 @@ class LinkSyncEngine {
       _emit(g);
     }
     if (offline) return;
+    if (!catchUp) {
+      _catchUpOnConnect = true;
+      return;
+    }
     for (final g in [..._channels.keys]) {
       final s = _status[g];
       if (s == null || s.phase != LinkSyncPhase.synced) {
@@ -741,7 +759,7 @@ class LinkSyncEngine {
     if (_debounceTimers.isNotEmpty) return;
     final pool = _pool;
     _pool = null;
-    _setOffline(false);
+    _setOffline(false, catchUp: false);
     await pool?.close();
   }
 
@@ -753,7 +771,7 @@ class LinkSyncEngine {
     _subEvents = null;
     _pool = null;
     // No connections wanted → nothing known about reachability.
-    _setOffline(false);
+    _setOffline(false, catchUp: false);
     await events?.cancel();
     await sub?.close();
     await pool?.close();
