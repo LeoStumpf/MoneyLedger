@@ -401,8 +401,11 @@ peers'), and SAS works with other members' devices (members page). Open:
   lives in this ledger's `AppSettings` (per account / local mode; moves along
   with a local-mode adoption). The payee shows the QR code on *their own*
   screen; the payer's app never learns the details. Showing them on the
-  payer's device ("when they settle with me", plan.md G74) needs a synced
-  field — wire / privacy decisions open (plan.md G74, needs Leo).
+  payer's device ("when they settle with me", plan.md G74) needs the synced
+  field — decided (Leo 2026-10-22) and on the wire since schema v19, but
+  nothing writes it into groups yet (plan.md G74). A version of another
+  member may clear it or carry an older value the participant published
+  (stale editor) — the distribution step has to re-publish.
 - **Not in backups / restore points**: a new phone needs them entered again.
 - **GiroCode = euro only** (EPC SEPA credit transfer); other currencies get
   the IBAN as text. Banking apps outside DE / AT / NL may not scan it.

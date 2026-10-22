@@ -5,7 +5,7 @@ import '../../models/member_model.dart';
 import '../../models/record_signature.dart';
 import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
-import '../database/daos/history_dao.dart' show HistorySource;
+import '../database/daos/history_dao.dart' show HistoryDao, HistorySource;
 import '../database/daos/members_dao.dart';
 import '../database/daos/signing_dao.dart';
 import '../link/group_policy.dart';
@@ -658,15 +658,15 @@ class RecordGate {
       );
       return false;
     }
-    // G74: only the participant itself sets / changes / clears its payment
-    // details (an editor carries them over unchanged). A restore is the
-    // user's own file; a participant new to this device can't be compared.
+    // G74: only the participant itself sets / changes its payment details
+    // (an editor carries them over). A restore is the user's own file; a
+    // participant new to this device can't be compared.
     if (!acceptUnsigned &&
         current != null &&
         m.payment != current.payment &&
         !_ownPaymentChange(m) &&
-        // A new claim (or unclaim) clears the previous account's details.
-        !(m.payment == null && m.matrixId != current.matrixId)) {
+        !await _paymentCarriedOver(m)) {
+      if (!_isAlive()) return false;
       await _refuse(
         m.groupId,
         RecordKind.member,
@@ -678,6 +678,7 @@ class RecordGate {
       );
       return false;
     }
+    if (!_isAlive()) return false;
     final row = v.accepted || viaLink
         ? memberCompanion(m)
         : memberCompanion(m).copyWith(updatedAt: Value(_clamp(m.updatedAt)));
@@ -689,6 +690,29 @@ class RecordGate {
     );
     await _clearRefusal(m.groupId, RecordKind.member, m.userId, version);
     return true;
+  }
+
+  /// G74: whether another member's version [m] may hold its payment
+  /// details although they differ from the stored ones: none at all (an
+  /// editor that never got them, or a new claim / unclaim — clearing gives
+  /// nobody a way to be paid instead of the participant; its device
+  /// publishes them again), or a value the participant **itself** published
+  /// earlier (an editor that missed a later change). Refusing those would
+  /// keep the editor's version — a rename, a removal — out for good while
+  /// the editor's device holds it: the two sides would never agree.
+  Future<bool> _paymentCarriedOver(MemberModel m) async {
+    final p = m.payment;
+    if (p == null) return true;
+    final earlier = await HistoryDao(
+      members.attachedDatabase,
+    ).entriesForRecord(m.groupId, RecordKind.member, m.userId);
+    return earlier.any((e) {
+      final old = e.member;
+      return old != null &&
+          old.payment == p &&
+          old.matrixId == m.matrixId &&
+          _ownPaymentChange(old);
+    });
   }
 
   /// G74: whether participant version [m] was written by the participant

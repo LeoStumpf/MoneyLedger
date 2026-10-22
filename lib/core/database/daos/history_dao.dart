@@ -273,6 +273,24 @@ class HistoryDao extends DatabaseAccessor<AppDatabase> with _$HistoryDaoMixin {
           .get()
           .then((rows) => [for (final r in rows) ?_toEntry(r)]);
 
+  /// G74: every entry of one record ([kind] + [recordId] in [groupId]),
+  /// append order.
+  Future<List<HistoryEntry>> entriesForRecord(
+    String groupId,
+    RecordKind kind,
+    String recordId,
+  ) =>
+      (select(recordHistory)
+            ..where(
+              (t) =>
+                  t.groupId.equals(groupId) &
+                  t.kind.equals(kind.wire) &
+                  t.recordId.equals(recordId),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+          .get()
+          .then((rows) => [for (final r in rows) ?_toEntry(r)]);
+
   /// [entriesForGroup], reactively (the reset page's change list).
   Stream<List<HistoryEntry>> watchEntriesForGroup(String groupId) =>
       (select(recordHistory)

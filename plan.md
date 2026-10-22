@@ -1230,15 +1230,21 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [x] Synced part, wire: optional signed `payment` field of the member
       record (only when set; digest gossip / bootstrap / backup / history
       carry it), content rule `paymentProblem`, only the participant itself
-      may set / change / clear it (`RecordGate`, transient
-      `payment_not_own`; a new claim clears it), every member writer
-      carries it over; schema v19 (`members.payment_json`, forgets member
+      may set / change it (`RecordGate`, transient `payment_not_own`; a
+      new claim clears it), every member writer carries it over — review:
+      another member's version may also hold none or a value the
+      participant itself published before (stale editor; refusing it kept
+      a rename / removal out for good on both sides); schema v19 (`members.payment_json`, forgets member
       refusals) — `PaymentDetails` moved to `models/payment_details.dart`
 - [ ] Synced part, rest: write my details into every group I'm active in
       (link groups too) on save / when joining, the payer's sheet shows the
       payee's details, settings text ("anyone with a group's link can read
       them"), PRIVACY.md + in-app privacy (removed details stay in others'
       history / backups / restore points)
+- [ ] Distribution must **re-publish**: when a group's stored `payment` of
+      my participant differs from my settings (a stale editor's version
+      cleared it or carried an older value — accepted since the review),
+      write my own version again (on start / after sync)
 - [ ] Device check: smoke 5.21 (banking-app scan, PayPal link, DE 360 dp)
 - [ ] Later maybe: payment details in the G69 share text (opt-in)
 

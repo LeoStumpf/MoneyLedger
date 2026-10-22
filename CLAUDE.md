@@ -2114,10 +2114,13 @@ Leo 2026-10-22 (plan.md "Leo's decisions 2026-10-22").
   signed `payment: {name?, iban?, bic?, paypal_me?}` in the member payload,
   body, G27 hash and digest member gossip **only when set**; content rule
   `paymentProblem` (stored form, IBAN checksum, something usable). Only the
-  participant itself may set / change / clear it (`RecordGate.member`:
-  signed by the claiming account, or a link version `by` itself; else
-  `payment_not_own`, transient) — editors carry it over unchanged (every
-  member writer copies it), a new claim / unclaim clears it. Nothing writes
+  participant itself may set / change it (`RecordGate.member`: signed by the
+  claiming account, or a link version `by` itself; else `payment_not_own`,
+  transient) — editors carry it over (every member writer copies it); a
+  non-own version may also hold **none** or a value the participant itself
+  published earlier under the same claim (`_paymentCarriedOver`, history
+  lookup — an editor that missed the change; refusing it diverged forever).
+  A new claim / unclaim clears it. Nothing writes
   it yet (the distribution to my groups + UI is the next G74 step).
 - **Schema v19:** `groups.field_clocks_json`, `members.payment_json` (added
   before the v12 backfill); forgets `meta` + `member` refusals (a pre-v19

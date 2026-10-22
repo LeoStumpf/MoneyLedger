@@ -520,18 +520,41 @@ void main() {
         ),
         isTrue,
       );
-      // … but may not clear them …
+      // Alice changes them; an editor that missed it carries the value
+      // Alice herself published before → accepted (else the editor's
+      // version — a rename, a removal — would never get in) …
+      const newer = PaymentDetails(paypalMe: 'anna2');
       expect(
         await gate.member(
-          await signedMember(_bob, p1(at: 30, name: 'B')),
+          await signedMember(_alice, p1(at: 25, payment: newer)),
+          relayedBy: _alice,
+        ),
+        isTrue,
+      );
+      expect(
+        await gate.member(
+          await signedMember(_bob, p1(at: 30, payment: _details, name: 'B')),
+          relayedBy: _bob,
+        ),
+        isTrue,
+      );
+      // … a value Alice never published → refused …
+      expect(
+        await gate.member(
+          await signedMember(
+            _bob,
+            p1(at: 35, payment: const PaymentDetails(paypalMe: 'bob')),
+          ),
           relayedBy: _bob,
         ),
         isFalse,
       );
-      // … unless the claim changes (the details belong to the account).
+      expect(await signing.rejectedClock('g1', 'member', 'p1'), isNull);
+      // … an editor that never got any → may hold none (nobody can be paid
+      // in Alice's place that way; her device publishes them again).
       expect(
         await gate.member(
-          await signedMember(_bob, p1(at: 40, matrixId: null)),
+          await signedMember(_bob, p1(at: 40, name: 'C')),
           relayedBy: _bob,
         ),
         isTrue,
@@ -541,6 +564,17 @@ void main() {
           'g1',
         )).firstWhere((m) => m.userId == 'p1').payment,
         isNull,
+      );
+      // A value Alice published, carried under another claim → refused.
+      expect(
+        await gate.member(
+          await signedMember(
+            _bob,
+            p1(at: 50, payment: newer, matrixId: '@mallory:x.org'),
+          ),
+          relayedBy: _bob,
+        ),
+        isFalse,
       );
     });
 
