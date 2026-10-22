@@ -1,7 +1,7 @@
-# G57 — Concurrent custom-category edits (design note, open)
+# G57 — Concurrent custom-category edits (design note)
 
-Status: **proposal, needs Leo's decision** (2026-10-22). No code / wire change
-yet. Leo 2026-10-17: "later, together with the link-group wire changes" —
+Status: **decided by Leo 2026-10-22 — C1** (answers below); built in the
+wire bundle, see "As built (C1)" at the end. Leo 2026-10-17: "later, together with the link-group wire changes" —
 this note is the input for that bundle (G57 / G73 / G74 / G76).
 
 ## Problem
@@ -96,7 +96,7 @@ categories page could show them disambiguated (e.g. with the icon and
 "(2)") and offer *merge* = hide one + retag its expenses (new expense
 versions). That's a UX decision too (retagging writes many versions).
 
-## Questions for Leo
+## Questions for Leo (answered 2026-10-22)
 
 1. Fix it at all before the release, or keep A (documented limit)?
 2. If yes: C1 (per-entry clocks in the meta, merged meta re-signed by the
@@ -107,3 +107,13 @@ versions). That's a UX decision too (retagging writes many versions).
    way (per-field clocks for `link` / `locked_at`)?
 4. Duplicate names after a concurrent add: leave as is, disambiguate in the
    UI, or offer a merge?
+
+**Answers (Leo 2026-10-22):**
+1. Fix it **before the release**.
+2. **C1**: per-field clocks inside the signed group meta — name, currency,
+   each custom category, exchange rates (G73), link / `locked_at` (G53) —
+   and the merging device re-signs the merged meta.
+3. Yes — `link` / `locked_at` get their own field clock (one field: the
+   link state).
+4. Not decided separately — duplicates stay possible after a concurrent add
+   (never refused on the wire); both survive now (union by id).

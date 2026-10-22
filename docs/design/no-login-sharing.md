@@ -375,6 +375,7 @@ members.link_author  TEXT NULL
 - In a link group, *Leave* = *Delete from this device*. Our participant stays in the ledger (debts are history). There is no "X left" record.
 - **Delete local data** (local mode) does the same per link group, best-effort with a 5 s timeout, before `wipeAll()`. The confirmation lists "N shared groups — the others keep their copies".
 - **Removing a person** in a link group only marks the participant `removed`; it doesn't revoke the key. The UI says so: "They can still open the group with the link. To lock them out, create a new invite link." A **Reset invite link** action (new epoch + secret: publish under the new topic, empty the old) ships in the first version (G52, §14 Q10). The remaining people get the new link **directly** (share sheet / QR — the default); a pointer to the new topic on the old channel would be readable by the removed person too, so it is only used for one's own further devices, if at all (G52 evaluates both). **G52 step 12: no pointer at all** — a member's other phone is just another device that opens the new link; see "As built (step 12)".
+- **Leo 2026-10-22 (supersedes "no pointer"):** after a reset the resetting device posts a **header-only "this link was replaced" marker** on the **old** topic (no new secret, no content — just the flag). Leo accepts that a removed person holding the old link sees that a reset happened. A member whose app still uses the old link sees the marker and gets a hint ("This invite link was replaced — ask someone in the group for the new link"); the new link itself still travels only directly (share sheet / QR).
 
 ## 8. App integration
 
@@ -569,6 +570,12 @@ After the lock:
 
 **Reopen** = a new epoch + a new secret, so the old link is useless. The flow is the same as "Invite by link".
 
+**Leo 2026-10-22 — receiver checks (to build):**
+- **Lock eligibility:** receivers check a lock. A meta with `locked_at` is valid only if **every active participant was claimed by a Matrix account before the lock** (the participant versions a receiver holds with a clock ≤ `locked_at`); otherwise the lock is refused (a link holder with a Matrix account can't lock out the people without one).
+- **Self-claims over the link path** are checked against the homeserver's device list (`DeviceKeyDirectory`): the signing device must be a current device of the claimed MXID. Unverifiable (unknown device, lookup fails) → the claim is not trusted and nothing is replicated to that MXID.
+- **People without an account can't change the meta in mixed groups** — kept as is (signed meta only).
+- **Matrix account + link group:** a Matrix account that creates / joins a link-only group keeps it a pure link group — **no automatic claim**; *Share with an invite link* in *Create group* stays default off.
+
 **Leo's directions, both covered:** link → add Matrix → lock; Matrix → open link → lock again.
 
 ### 10.2 "Why Matrix instead of a link" (content of the G54 screen)
@@ -611,7 +618,7 @@ No other nudges.
 
 **As built (G54):**
 - **"Why Matrix?" page:** `WhyMatrixPage` (`lib/features/welcome/why_matrix_page.dart`), route `/why-matrix` (public — reachable before the welcome is done), the welcome's `WelcomeHero` / `WelcomeDots`. Pages as above; page 2 renders the §10.2 table as four topics in plain sentences ("Link: … / Matrix: …": who can read / change, removing someone, new / lost phone, who sees metadata); the "Infrastructure", "Old data" and "Size" rows are left out of the screen (kept short — the disclosure and PRIVACY.md cover relays and archives). Page 3's action follows the session (pure `whyMatrixOffer`): no account → *Connect a Matrix account* / *Not now*; signed out → *Sign in* / *Create account* / *Not now*; a Matrix account → a pointer to *Make group secure* + *Done*; from the first-use disclosure → read only (*Done*, "later in the settings"), because the disclosure sits in front of an invite / join that must not be left.
-- **Entry points** as listed, plus the no-account chip's sheet. The one-time card appears **only without an account** (local mode) — a Matrix account is in the secure mode already (§10.3 doesn't say; plan.md G54 asks Leo). Its threshold counts live expenses + payments (`GroupOverview.recordCount`) of any group with a link channel; both *Tell me more* and *Not now* set `why_matrix_hint_dismissed` (per ledger).
+- **Entry points** as listed, plus the no-account chip's sheet. The one-time card appears **only without an account** (local mode) — a Matrix account is in the secure mode already (§10.3 doesn't say; plan.md G54 asks Leo). **Leo 2026-10-22:** show it **also** to Matrix users who have link-only groups (to build). Its threshold counts live expenses + payments (`GroupOverview.recordCount`) of any group with a link channel; both *Tell me more* and *Not now* set `why_matrix_hint_dismissed` (per ledger).
 - **Welcome:** choices in the §10.3 order; *Join with an invite link* is a button to `/join` (its paste field; an opened link goes there directly) rather than an inline field. Pages 3 / 4 as above; the Matrix page's text names the homeserver metadata (the old "Who sees what").
 - **Onboarding (no account):** *No account needed* (groups you don't share stay here) · *Invite with a link* · *Keep a copy*. §8.2: the chip reads *No account*, the sheet *Without an account*; the sheet and the ready page say that after connecting an account, link groups keep their link and also sync over Matrix (G53 mixed).
 - No wire, schema or privacy change (nothing new leaves the device). Tests: `test/g54_why_matrix_test.dart`, `test/welcome_page_test.dart`, `test/g71_accessibility_test.dart`.
@@ -816,6 +823,14 @@ Each step is a commit with tests. The fakes come first.
 12. **Ask relay operators:** → **No.** Disclosure in the app + the "For relay operators" page; **condition: no grey zone** — G51 checks each relay's terms first (§9.3), a relay that excludes this use is replaced; self-hosted relay as the fallback. **Result: see §9.4** (only nos.lol + nostr.mom, one operator, are ALLOWED).
 13. **Matrix users' new groups:** → stay `matrix` groups; *Invite by link* opens a mixed channel (G53).
 14. **Expiry:** → **30 days, refreshed after 10 days of age** (changed from the proposed 60 / 20).
+
+**Decided by Leo on 2026-10-22** (plan.md "Leo's decisions 2026-10-22")
+15. **Reset marker:** a header-only "this link was replaced" marker on the old topic (§7.3).
+16. **Lock eligibility + self-claim check:** receivers check both (§10.1).
+17. **Concurrent meta edits (G57):** per-field clocks in the signed meta (C1, `docs/design/g57-category-merge.md`) — also for `link` / `locked_at`; on the link path the merged meta of a link-only group is an unsigned link version.
+18. **Payment details (G74):** an optional signed field of the member record, sent to every group I'm active in — link groups too (anyone with the link can read them).
+19. **Backup nudge for link groups:** yes, with its own text ("Anyone with the link can change or empty this group — a backup protects you").
+20. **"Why Matrix?" card:** also for Matrix users with link-only groups.
 
 ## 15. Sources
 

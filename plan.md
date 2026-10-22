@@ -633,6 +633,39 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
 - [ ] Moved to the G52 device pass: two networks, Pixel, real Chrome
       timing, E9 headless Android
 
+### Leo's decisions 2026-10-22 (binding; answers the open questions below)
+- **G57:** fix concurrent meta edits **before the release** with approach
+  **C1** (`docs/design/g57-category-merge.md`): per-field clocks inside the
+  signed group meta (name, currency, each custom category, exchange rates,
+  link / `locked_at`); the merging device re-signs the merged meta.
+- **G74:** payment details go **automatically** to every group I'm active
+  in (link groups too — the settings text says anyone with a group's link
+  can read them), as an **optional signed field** of my member record
+  (only when set, like G16 / G49); a schema step forgets refused member
+  versions; removed details stay in others' history / backups / restore
+  points (the privacy text says so); keep the wording "Name auf dem Konto".
+- **G76:** older builds refusing multi-payer expenses as "no payer" is OK.
+- **G53 lock:** receivers **check eligibility** — a lock (`locked_at`) is
+  valid only if every active participant was claimed by a Matrix account
+  before the lock; a Matrix self-claim arriving over the link path is
+  checked against the homeserver's device list (`DeviceKeyDirectory`) —
+  unverifiable → not replicated to that MXID / not trusted.
+- **G53 mixed:** people without an account can't change the meta in mixed
+  groups — keep as is.
+- **G73:** Frankfurter is OK; "settle in one currency" stays group-wide.
+- **Matrix account + link group:** stays a pure link group, **no automatic
+  claim**; *Share with an invite link* in *Create group* stays default off.
+- **G54:** the one-time "Why Matrix?" card is shown **also** to Matrix users
+  who have link-only groups.
+- **G52 step 12:** after a link reset, post a header-only "this link was
+  replaced" marker on the **old** topic (Leo accepts that removed people
+  see the reset); members who haven't switched get a hint. Design §7.3
+  updated.
+- **Backup nudge for link groups:** show it, with its own text ("Anyone
+  with the link can change or empty this group — a backup protects you" /
+  DE informal).
+- **G61:** after *Set total to the sum*, show a snackbar with the new amount.
+
 ### G52. Link groups (implementation, incl. app key) 🟠
 Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 1. Pure codec + crypto (`lib/core/link/`): link URI, HKDF (`kLinkSaltV1`), envelope (gzip + AES-GCM, AAD), sharding plan (`kLinkContentBudget` 60 000)
@@ -759,9 +792,10 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       choose "me", syncs again
 - [ ] (from step 12) Members who haven't opened the new link get **no
       hint** in their app — they just stop seeing the resetter's changes
-      (no pointer / "this link was reset" marker on the old topic: the
-      removed person could read it, §7.3). A header-only "reset" flag on
-      the old topic would be a wire change — Leo to decide whether wanted
+      — **Leo 2026-10-22: yes** — after a reset post a header-only "this
+      link was replaced" marker on the **old** topic (removed people seeing
+      the reset is accepted); members still on the old link get a hint
+      (design §7.3) — to build
 - [ ] (from step 12) Until everyone switched, a member still on the old
       link merges the old-link holders' (e.g. the removed person's)
       changes and carries them into the new link when switching — inherent
@@ -808,8 +842,9 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       is stored)
 - [ ] (step 13) Backup nudge: a joined link group counts as "exists only on
       this device" ("1 Gruppe gibt es nur auf diesem Gerät") though other
-      phones + the relays hold it — **Leo:** nudge for link groups at all
-      (anyone with the link can wipe it), and with which text?
+      phones + the relays hold it — **Leo 2026-10-22: show the nudge for
+      link groups with its own text** ("Anyone with the link can change or
+      empty this group — a backup protects you" / DE informal) — to build
 - [ ] (step 13) Restore point / backup preview of a link group shows the
       backup-file warning ("Wer die Datei hat …, wähle, wer du bist") even
       when nothing is restored (group already here) — say less there
@@ -852,23 +887,30 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       channel closed, key dropped, unsigned versions refused from then on
       (signed group meta); reopening creates a new key + link — step 4
 - [ ] Device pass: smoke §14 (with G52 step 13)
-- [ ] (G53) **Leo:** confirm the consequence of mixed groups for people
+- [x] (G53) **Leo:** confirm the consequence of mixed groups for people
       without an account (no meta / claimed-people edits); alternative would
       need a new wire rule (unsigned metas that keep `link` / `locked_at`)
+      — **Leo 2026-10-22: keep as is**
 - [ ] (G53) **Leo:** lock griefing — any link holder with a Matrix account
       can self-claim an unclaimed person (or remove the unclaimed people) and
       lock; receivers don't check eligibility (the design names no receiver
       check). Same class as "a link holder can wipe the group" (§14 risks),
       but a lock isn't undone by a G48 reset (it keeps the link state) —
-      reopening needs a Matrix member
+      reopening needs a Matrix member — **Leo 2026-10-22: receivers check
+      eligibility** — a lock (`locked_at`) is valid only if every active
+      participant was claimed by a Matrix account before the lock — to build
 - [ ] (G53) **Leo:** a fabricated self-claim on the link path (any MXID with
       a self-made device key, "unverified") is accepted like G6's unknown
       devices; Matrix members then replicate to that MXID — needs
-      cross-signing / a device-list check to close
-- [ ] (G53) **Leo:** Matrix accounts that create (*Share with an invite
+      cross-signing / a device-list check to close — **Leo 2026-10-22:
+      check it against the homeserver's device list (`DeviceKeyDirectory`)**;
+      unverifiable → not replicated to that MXID / not trusted — to build
+- [x] (G53) **Leo:** Matrix accounts that create (*Share with an invite
       link*) or join a link-only group while signed in still write it
       unsigned (G52 step 4) — the self-claim runs only after *Connect a
-      Matrix account*; should they claim (→ mixed) too?
+      Matrix account*; should they claim (→ mixed) too? — **Leo 2026-10-22:
+      no** — it stays a pure link group, no automatic claim; the *Create
+      group* switch stays default off
 - [ ] (G53) Bridging starts on a Matrix member's device without that
       user's own first-use disclosure (another member opened the link) — the
       privacy text says so; an in-app notice ("this group is also shared by
@@ -910,7 +952,8 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (G54) The one-time hint is shown **only without an account** (local
       mode) — a Matrix account that created / joined a link-only group sees
       no card (it is in the secure mode already; the ⋮ entry is there).
-      Design §10.3 doesn't say; Leo to confirm
+      — **Leo 2026-10-22: show it also to Matrix users with link-only
+      groups** — to build
 - [ ] (G54) Welcome *Join with an invite link* is a button to the join page
       (which has the paste field and is opened directly by a link) — no
       inline paste field on the choices page
@@ -936,11 +979,13 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] Concurrent category edits lose one (whole meta is LWW) — per-category
       merge if it matters; duplicate names only blocked in the dialog —
       **Leo 2026-10-17: later**, together with the link-group wire changes
-- [ ] Decide (Leo): design note `docs/design/g57-category-merge.md`
+- [x] Decide (Leo): design note `docs/design/g57-category-merge.md`
       (2026-10-22) — keep whole-meta LWW, per-category clocks in the meta,
       or categories as their own record kind; also the G53 link / lock meta
       race and duplicate names after concurrent adds — wire change, bundle
-      with G73 / G74 / G76
+      with G73 / G74 / G76 — **Leo 2026-10-22: fix before the release, C1**
+      (per-field clocks for name, currency, each category, exchange rates,
+      link / `locked_at`; the merging device re-signs the merged meta)
 - [x] Offline demo seed: add a custom category (screenshots)
 
 ### G58. Restore-point follow-ups (found in G48) 🟢
@@ -999,7 +1044,8 @@ Switching split modes or editing amounts today starts from blanks; make the
       status flips to "Ergibt den Gesamtbetrag", but the new total (15,33 €)
       is nowhere on screen
 - [ ] (G61, DEV-J) After *Set total to the sum* show the new total (status
-      line / snackbar, or scroll to the amount) — Leo to pick
+      line / snackbar, or scroll to the amount) — **Leo 2026-10-22: a
+      snackbar with the new amount** — to build
 - [x] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
 - [x] Check the new split rows at phone width (long names, Shares steppers)
 - [x] Rows with long names sharing a prefix are indistinguishable
@@ -1119,9 +1165,10 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       no key / cookies, ECB reference rates); new privacy section
       *Exchange rates*, G43 texts name it as the exception
 - [ ] Device check: smoke 6.7 (two devices, fetch only on tap, DE 360 dp)
-- [ ] Decide (Leo, with G57): rates stay whole-meta LWW (as categories) or
+- [x] Decide (Leo, with G57): rates stay whole-meta LWW (as categories) or
       join a per-field merge; settle switch per group (today) vs. a personal
-      view setting
+      view setting — **Leo 2026-10-22:** rates join the G57 C1 per-field
+      merge; Frankfurter is OK; "settle in one currency" stays group-wide
 - [ ] Later maybe: offline demo seed with a CHF/EUR group + rates (store
       screenshots); rates in the CSV export
 
@@ -1152,7 +1199,7 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       {amount}"* (GiroCode / PayPal switch, *Copy IBAN*, *Share link*), shown
       on **my** screen for the payer to scan; privacy section *Payment
       details* (PRIVACY.md + in-app)
-- [ ] **Decide (Leo) — the synced part** ("shown to others when they settle
+- [x] **Decide (Leo) — the synced part** ("shown to others when they settle
       with me"): which record carries it (signed `member` payload field vs.
       own record kind / meta), opt-in per group or every group I'm in (incl.
       invite-link groups → relays hold the IBAN encrypted under the link
@@ -1160,7 +1207,13 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       handled (old versions stay in peers' history / backups / snapshots),
       and old builds (a pre-G74 build refuses signed member versions with a
       new field → the member edit doesn't reach them; schema step forgetting
-      member refusals) — wire change, bundle with G57 / G73 / G76
+      member refusals) — wire change, bundle with G57 / G73 / G76 —
+      **Leo 2026-10-22:** automatically to every group I'm active in (link
+      groups too; the settings text says anyone with a group's link can
+      read them), an optional signed field of my member record (only when
+      set), a schema step forgets member refusals, removed details stay in
+      others' history / backups / restore points (privacy text says so),
+      wording "Name auf dem Konto" kept
 - [ ] Device check: smoke 5.21 (banking-app scan, PayPal link, DE 360 dp)
 - [ ] Later maybe: payment details in the G69 share text (opt-in)
 
@@ -1169,6 +1222,7 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [x] An expense paid by several people (`paid_by` → map of amounts) — wire
       change (signed body, G27 hash, CSV, backup, balance calc); older builds
       must not misread it → bundle with G57 / G73 / G74 wire changes
+      (**Leo 2026-10-22:** older builds refusing it as "no payer" is OK)
       → optional signed `payers: {participant: cents}` (≥ 2, each ≥ 1 cent,
       sum = amount) **plus an empty `paid_by`**: a pre-G76 build refuses the
       version as "no payer" (`invalid_record`, on the signed *and* the link
