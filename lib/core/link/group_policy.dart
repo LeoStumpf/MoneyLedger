@@ -91,11 +91,17 @@ class GroupPolicyInfo {
   /// Whether this device has a link channel of the group.
   final bool hasChannel;
 
+  /// G53 review: the Matrix ID claiming [myParticipantId] (null = nobody /
+  /// no "me") — a Matrix account whose "me" it isn't uses a mixed group
+  /// from the **link side** (joined by link) and writes link versions.
+  final String? myMatrixId;
+
   const GroupPolicyInfo(
     this.policy, {
     this.myParticipantId,
     this.lockedAt,
     this.hasChannel = false,
+    this.myMatrixId,
   });
 
   static const matrix = GroupPolicyInfo(GroupPolicy.matrix);
@@ -109,6 +115,7 @@ class GroupPolicyInfo {
 GroupPolicyInfo groupPolicyInfo({
   required LinkChannelModel? channel,
   required GroupModel? meta,
+  String? myMatrixId,
 }) {
   final policy = deriveGroupPolicy(channel: channel, meta: meta);
   return GroupPolicyInfo(
@@ -118,6 +125,7 @@ GroupPolicyInfo groupPolicyInfo({
         ? meta!.lockedAt
         : null,
     hasChannel: channel != null,
+    myMatrixId: channel?.myParticipantId == null ? null : myMatrixId,
   );
 }
 

@@ -296,15 +296,18 @@ class LocalRecordSigner {
   /// This device's signing key, or null when it can't sign (yet).
   /// [noAccount] = the transport belongs to no Matrix account at all (local
   /// mode — it never can).
-  Future<({RecordCrypto? crypto, bool noAccount})> _signer() async {
+  /// [userId] = the transport's account (null when it isn't available).
+  Future<({RecordCrypto? crypto, bool noAccount, String? userId})>
+  _signer() async {
     try {
       final t = await _transport.timeout(kSignerWaitTimeout);
       return (
         crypto: t.crypto.identity == null ? null : t.crypto,
         noAccount: !t.userId.startsWith('@'),
+        userId: t.userId,
       );
     } catch (_) {
-      return (crypto: null, noAccount: false);
+      return (crypto: null, noAccount: false, userId: null);
     }
   }
 
@@ -326,11 +329,24 @@ class LocalRecordSigner {
     }
     final s = await _signer();
     final c = s.crypto;
-    if (c == null) {
+    // G53 review: a Matrix account that uses a mixed group from the link
+    // side (joined by link — its "me" is a participant it doesn't claim)
+    // isn't a member there: peers drop versions it signs (signer rule), so
+    // it writes link versions like a device without an account.
+    final linkSide =
+        info != null &&
+        info.isMixed &&
+        info.myParticipantId != null &&
+        s.userId != null &&
+        !s.noAccount &&
+        info.myMatrixId != s.userId;
+    if (c == null || linkSide) {
       // G53: local mode in a mixed group (shared by link with Matrix
       // members) writes plain link versions — unsigned, `by` = "me" —
       // except what only a signature may change.
-      if (s.noAccount && info != null && info.policy == GroupPolicy.mixed) {
+      if ((s.noAccount || linkSide) &&
+          info != null &&
+          info.policy == GroupPolicy.mixed) {
         if (meta || claimed) throw const SignatureRequiredException();
         return linkVersion(info.myParticipantId);
       }

@@ -29,6 +29,7 @@ import 'package:money_ledger/models/link_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 import 'package:money_ledger/models/record_signature.dart';
 
+import '../../helpers/fake_ledger_network.dart';
 import '../../helpers/in_memory_database.dart';
 
 const alice = '@alice:x.org';
@@ -556,6 +557,68 @@ void main() {
         await linkGate.member(memberPayload(rogue), relayedBy: via),
         isFalse,
       );
+    });
+  });
+
+  group('LocalRecordSigner of a Matrix account (review)', () {
+    late AppDatabase db;
+    setUp(() async {
+      db = openTestDatabase();
+      final crypto = HmacKeyRegistry().deviceCrypto(alice, 'A');
+      await GroupsDao(db).upsertGroupLww(
+        groupCompanion(
+          await signGroupMeta(
+            crypto,
+            meta(link: GroupLink(epoch: 1, secret: secret1)),
+          ),
+        ),
+      );
+      await MembersDao(
+        db,
+      ).upsertMemberLww(memberCompanion(member('pa', matrixId: alice)));
+      await MembersDao(db).upsertMemberLww(memberCompanion(member('p1')));
+    });
+    tearDown(() => db.close());
+
+    test('joined a mixed group by link (its "me" is unclaimed): writes '
+        'link versions — a signed one by a non-member would be dropped by '
+        'every peer', () async {
+      await LinkDao(db).putChannel(channel('g1', me: 'p1'));
+      final signer = LocalRecordSigner(
+        Future.value(FakeMatrixNetwork().clientFor(eve)),
+        policy: LinkDao(db).policyOf,
+      );
+      final e = await signer.expense(draft(), creating: true);
+      expect(
+        (e.sig, e.origin, e.pendingSign, e.linkAuthor),
+        (null, null, false, 'p1'),
+      );
+      await expectLater(
+        signer.group(meta(updatedAt: 99, name: 'X')),
+        throwsA(isA<SignatureRequiredException>()),
+      );
+    });
+
+    test('a member whose channel "me" it claims (bridging) signs', () async {
+      await LinkDao(db).putChannel(channel('g1', me: 'pa'));
+      final signer = LocalRecordSigner(
+        Future.value(FakeMatrixNetwork().clientFor(alice)),
+        policy: LinkDao(db).policyOf,
+      );
+      final e = await signer.expense(draft(), creating: true);
+      expect(e.sig, isNotNull);
+      expect(e.linkAuthor, isNull);
+      final g = await signer.group(meta(updatedAt: 99, name: 'X'));
+      expect(g.sig, isNotNull);
+    });
+
+    test('a member that has not bridged yet (no channel) signs', () async {
+      final signer = LocalRecordSigner(
+        Future.value(FakeMatrixNetwork().clientFor(alice)),
+        policy: LinkDao(db).policyOf,
+      );
+      final e = await signer.expense(draft(), creating: true);
+      expect(e.sig, isNotNull);
     });
   });
 

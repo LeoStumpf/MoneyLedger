@@ -832,6 +832,10 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       meta carries it too now — keep both readers
 - [ ] (G53) *Connect a Matrix account* texts don't say that shared link
       groups become shared with Matrix too (mixed) — with G54's texts
+- [x] (G53 review) A Matrix account that joined a mixed group by link (its
+      "me" unclaimed) signed its writes — every peer dropped them
+      (`signer_not_member`); it now writes link versions like local mode
+      (`GroupPolicyInfo.myMatrixId`, `LocalRecordSigner`)
 
 ### G54. "Why Matrix?" info screen + welcome reorder 🟡
 - [ ] Calm info page in the welcome style ("Hey, there's another mode — also

@@ -7,6 +7,7 @@ import '../../../models/link_model.dart';
 import '../../link/group_policy.dart';
 import '../app_database.dart';
 import 'groups_dao.dart';
+import 'members_dao.dart';
 
 part 'link_dao.g.dart';
 
@@ -29,7 +30,17 @@ class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
   Future<GroupPolicyInfo> policyOf(String groupId) async {
     final channel = await getChannel(groupId);
     final meta = await GroupsDao(attachedDatabase).getGroup(groupId);
-    return groupPolicyInfo(channel: channel, meta: meta);
+    final me = channel?.myParticipantId;
+    String? myMatrixId;
+    if (me != null) {
+      final rows = await MembersDao(attachedDatabase).getMembers(groupId);
+      myMatrixId = rows.where((m) => m.userId == me).firstOrNull?.matrixId;
+    }
+    return groupPolicyInfo(
+      channel: channel,
+      meta: meta,
+      myMatrixId: myMatrixId,
+    );
   }
 
   /// Whether [groupId] is link-only here (the Matrix engines skip it).

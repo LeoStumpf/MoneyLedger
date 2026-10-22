@@ -884,7 +884,11 @@ link state (`GroupModel.nextVersion` — editor, CSV import, G48 reset).
   participant new to this device).
 - **Writers without an account** (local mode) in a mixed group write link
   versions; meta / claimed people → `SignatureRequiredException` ("Only
-  possible with a Matrix account"); in a locked group nothing.
+  possible with a Matrix account"); in a locked group nothing. **Review:**
+  a Matrix account on the **link side** of a mixed group (joined by link —
+  its channel's "me" isn't claimed by it, `GroupPolicyInfo.myMatrixId`)
+  writes link versions too (a version it signs would be dropped by every
+  peer: `signer_not_member`).
 - **Invite by link in a Matrix group** (`canOpenMixed` → disclosure →
   `confirmMixedLink` → `mixedLinkOpenerProvider` / `writeMixedLinkMeta`):
   a signed meta with a fresh secret, epoch = `lastLinkEpoch` + 1, relayed
