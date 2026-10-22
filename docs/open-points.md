@@ -215,6 +215,24 @@ peers'), and SAS works with other members' devices (members page). Open:
   Cloudflare) — only on tap, said in the dialog + privacy text. Rates are
   rounded to 10 decimals; a rate < 10⁻¹⁰ or ≥ 10⁹ can't be stored.
 
+### Several payers (G76) — limits
+- **Mixed versions:** a multi-payer expense carries the optional signed
+  `payers` map and an **empty** `paid_by`. A pre-G76 build parses no
+  `payers`, so its content rules refuse the version as "no payer"
+  (`invalid_record` — also on the unsigned link path, where a signature
+  check wouldn't catch it): it never shows one person as the payer of
+  everything, it just doesn't get that version (nor later versions that keep
+  several payers) until it is updated. The v18 migration forgets refused
+  *expense* versions, so peers re-send them after the update. A
+  single-payer expense keeps the pre-G76 shape and is accepted by every
+  build. Unreleased app → accepted.
+- **CSV into an old build:** a multi-payer row has an empty *Paid By*, so a
+  pre-G76 import aborts ("no payer") instead of guessing. The per-payer
+  amounts are trailing `Paid: <name>` columns (by display name, like the
+  shares — the same name caveats apply).
+- Payers are participants like split keys; nothing checks that a payer is
+  (still) in the group (as for the split). At most 100 payers per expense.
+
 ### Expense / payment date (G49 / G60) — limits
 - **Mixed versions:** a back-dated expense carries the optional signed
   `date` (ISO `YYYY-MM-DD`, only when it differs from the creation day). A

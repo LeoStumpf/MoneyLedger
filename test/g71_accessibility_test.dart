@@ -721,6 +721,34 @@ void main() {
     }
   });
 
+  testWidgets('G76 several payers on the expense form', (tester) async {
+    _phone(tester, height: 1600);
+    final handle = tester.ensureSemantics();
+    final db = await _seed();
+    addTearDown(db.close);
+    final net = FakeMatrixNetwork();
+    await tester.pumpWidget(
+      _routed(const AddExpensePage(roomId: _g), [
+        ...signingUiOverrides(),
+        appDatabaseProvider.overrideWithValue(db),
+        ledgerTransportProvider.overrideWith((ref) => net.clientFor(_me)),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('expenseAmount')), '10');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('expensePayer')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Several people…').last);
+    await tester.pumpAndSettle();
+    // Something left, so the "put the rest here" buttons show.
+    await tester.enterText(find.byKey(const Key('payerAmount-$_me')), '4');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('payersRemaining')), findsOneWidget);
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
   testWidgets('G78 receipt photo on the expense form', (tester) async {
     _phone(tester, height: 1600);
     final handle = tester.ensureSemantics();

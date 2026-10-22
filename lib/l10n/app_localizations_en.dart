@@ -3900,4 +3900,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paymentDetailsPageTitle => 'Payment details';
+
+  @override
+  String get payerSeveral => 'Several people…';
+
+  @override
+  String get payersHint => 'Who paid how much? Leave empty who didn\'t pay.';
+
+  @override
+  String paidByTwo(Object first, Object second) {
+    return 'Paid by $first and $second';
+  }
+
+  @override
+  String paidByMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Paid by $count people',
+    );
+    return '$_temp0';
+  }
 }

@@ -3941,4 +3941,26 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get paymentDetailsPageTitle => 'Zahlungsdaten';
+
+  @override
+  String get payerSeveral => 'Mehrere Personen …';
+
+  @override
+  String get payersHint =>
+      'Wer hat wie viel bezahlt? Wer nichts bezahlt hat, bleibt leer.';
+
+  @override
+  String paidByTwo(Object first, Object second) {
+    return 'Bezahlt von $first und $second';
+  }
+
+  @override
+  String paidByMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Bezahlt von $count Personen',
+    );
+    return '$_temp0';
+  }
 }

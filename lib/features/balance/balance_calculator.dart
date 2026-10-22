@@ -1,5 +1,6 @@
 import '../../core/sync/record_validation.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 
 /// Returns a simplified list of who owes whom and how much (in cents).
 ///
@@ -37,13 +38,22 @@ Map<String, Map<String, int>> netBalances(
     // a row could predate the check) is skipped instead of throwing.
     final splits = tryParseSplit(e.splitsJson);
     if (splits == null) continue;
+    // G76: every payer is credited what they paid, every participant
+    // debited their share (one payer: the pre-G76 math). A malformed payer
+    // map (never accepted from peers) is skipped like a malformed split.
+    // One payer is credited the split's sum (= the amount for every valid
+    // row; a legacy row whose split doesn't add up stays zero-sum).
+    final paid = e.payersJson == null
+        ? (e.paidBy.isEmpty
+              ? const <String, int>{}
+              : {e.paidBy: splits.values.fold<int>(0, (a, b) => a + b)})
+        : paidAmountsOf(e);
+    if (paid.isEmpty) continue;
     final balance = ledgerFor(e.currency);
+    for (final MapEntry(key: payer, value: cents) in paid.entries) {
+      balance[payer] = (balance[payer] ?? 0) + cents;
+    }
     for (final MapEntry(key: debtor, value: share) in splits.entries) {
-      if (debtor == e.paidBy) {
-        balance[debtor] = balance[debtor] ?? 0;
-        continue;
-      }
-      balance[e.paidBy] = (balance[e.paidBy] ?? 0) + share;
       balance[debtor] = (balance[debtor] ?? 0) - share;
     }
   }
@@ -87,12 +97,13 @@ Map<String, int> splitsOf(ExpenseModel e) =>
 ) {
   if (participant == null) return (net: 0, involved: false);
   final splits = splitsOf(e);
-  final paid = e.paidBy == participant;
+  // G76: what [participant] paid (all of it, a part, or nothing).
+  final paid = paidAmountsOf(e)[participant];
   final share = splits[participant] ?? 0;
-  if (!paid && !splits.containsKey(participant)) {
+  if (paid == null && !splits.containsKey(participant)) {
     return (net: 0, involved: false);
   }
-  return (net: (paid ? e.amountCents : 0) - share, involved: true);
+  return (net: (paid ?? 0) - share, involved: true);
 }
 
 /// Greedy debt simplification for a single currency: match the biggest creditor

@@ -32,6 +32,14 @@
 /// `Expense ID` column. A CSV without a `Type` column (written before G13) is
 /// all expenses.
 ///
+/// G76: an expense several people paid has an **empty** `Paid By` cell
+/// (a pre-G76 import then refuses the file — "no payer" — instead of
+/// misreading it); who paid how much sits in trailing `Paid: <name>`
+/// columns (one per participant, after `Created At`, decimal like the
+/// shares; a single payer's column holds the whole amount). They are only
+/// written when the group has such an expense, so other CSVs are unchanged;
+/// older parsers ignore them (after `Expense ID`).
+///
 /// Pure Dart (models + strings only) — no DB, no Flutter — so it is fully
 /// unit-testable. Participant identity travels **by display name**, not by id:
 /// the import resolves names to participants (or creates local ones).
@@ -45,6 +53,7 @@ import '../../core/sync/record_validation.dart';
 import '../../models/expense_category.dart' show normalizeNote;
 import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 
@@ -63,6 +72,9 @@ const _group = 'Group';
 const _groupId = 'Group ID';
 const _updatedAt = 'Updated At';
 const _createdAt = 'Created At';
+
+/// G76: prefix of the trailing per-payer columns (`Paid: Anna`).
+const csvPaidPrefix = 'Paid: ';
 
 String _nameOf(MemberModel m) =>
     m.displayName.isNotEmpty ? m.displayName : (m.matrixId ?? m.userId);
@@ -85,6 +97,8 @@ String buildGroupCsv(
   final colNames = cols.map(_nameOf).toList();
   final nameById = {for (final m in members) m.userId: _nameOf(m)};
   final customNames = {for (final c in group.categories) c.id: c.name};
+  // G76: per-payer columns only when some expense has several payers.
+  final payerColumns = expenses.any((e) => !e.deleted && hasSeveralPayers(e));
 
   final header = [
     _date,
@@ -102,6 +116,8 @@ String buildGroupCsv(
     _groupId,
     _updatedAt,
     _createdAt,
+    if (payerColumns)
+      for (final n in colNames) '$csvPaidPrefix$n',
   ];
 
   final rows = <List<String>>[header];
@@ -114,6 +130,12 @@ String buildGroupCsv(
       final cents = splits[m.userId];
       if (cents != null) shareByColName[_nameOf(m)] = _money(cents, e.currency);
     }
+    final paid = paidAmountsOf(e);
+    final paidByColName = {
+      for (final m in cols)
+        if (paid[m.userId] != null)
+          _nameOf(m): _money(paid[m.userId]!, e.currency),
+    };
     rows.add([
       expenseDateOf(e.displayDay),
       csvTypeExpense,
@@ -123,13 +145,16 @@ String buildGroupCsv(
       e.note ?? '',
       e.currency,
       _money(e.amountCents, e.currency),
-      nameById[e.paidBy] ?? e.paidBy,
+      // G76: empty when several paid (see the library doc).
+      hasSeveralPayers(e) ? '' : nameById[e.paidBy] ?? e.paidBy,
       for (final n in colNames) shareByColName[n] ?? '',
       e.id,
       group.name,
       group.roomId,
       '${e.updatedAt}',
       '${e.createdAt}',
+      if (payerColumns)
+        for (final n in colNames) paidByColName[n] ?? '',
     ]);
   }
   for (final s in settlements) {
@@ -152,6 +177,8 @@ String buildGroupCsv(
       group.roomId,
       '${s.updatedAt}',
       '${s.createdAt}',
+      if (payerColumns)
+        for (final _ in colNames) '',
     ]);
   }
   return rows.map(_encodeRow).join('\r\n');
@@ -167,6 +194,10 @@ class ParsedExpenseRow {
   final int amountCents;
   final String paidByName;
   final Map<String, int> sharesByName; // display name -> cents
+
+  /// G76: the `Paid: <name>` cells (display name → cents), empty without
+  /// those columns. Used when [paidByName] is empty (several payers).
+  final Map<String, int> payersByName;
 
   /// G16: category wire id / note, null when absent or empty.
   final String? category;
@@ -199,6 +230,7 @@ class ParsedExpenseRow {
     required this.amountCents,
     required this.paidByName,
     required this.sharesByName,
+    this.payersByName = const {},
     this.category,
     this.categoryName,
     this.note,
@@ -266,6 +298,13 @@ ParsedCsv parseGroupCsv(String csv) {
     }
   }
   final participantNames = [for (final c in shareCols) header[c]];
+  // G76: the per-payer columns after `Expense ID`.
+  final paidCols = <int>[
+    for (var c = (iId >= 0 ? iId + 1 : header.length); c < header.length; c++)
+      if (header[c].startsWith(csvPaidPrefix) &&
+          header[c].length > csvPaidPrefix.length)
+        c,
+  ];
 
   String? groupId;
   String? groupName;
@@ -286,6 +325,18 @@ ParsedCsv parseGroupCsv(String csv) {
         shares[header[c]] = cents;
       } else {
         problem ??= 'share "$v" of ${header[c]}';
+      }
+    }
+    final payers = <String, int>{};
+    for (final c in paidCols) {
+      final v = at(c).trim();
+      if (v.isEmpty) continue;
+      final cents = _parseMoney(v);
+      final name = header[c].substring(csvPaidPrefix.length);
+      if (cents != null) {
+        payers[name] = cents;
+      } else {
+        problem ??= 'paid "$v" of $name';
       }
     }
     final amount = _parseMoney(at(iAmt));
@@ -311,6 +362,7 @@ ParsedCsv parseGroupCsv(String csv) {
         problem: problem,
         paidByName: at(iPaid),
         sharesByName: shares,
+        payersByName: payers,
         category: at(iCat).trim().isEmpty ? null : at(iCat).trim(),
         categoryName: at(iCatName).trim().isEmpty ? null : at(iCatName).trim(),
         note: normalizeNote(at(iNote)),

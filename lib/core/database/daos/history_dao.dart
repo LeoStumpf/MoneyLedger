@@ -207,6 +207,7 @@ Future<void> backfillRecordHistory(AppDatabase db) async {
         currency: r.currency,
         paidBy: r.paidBy,
         splitsJson: r.splitsJson,
+        payersJson: r.payersJson,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
         deleted: r.deleted,

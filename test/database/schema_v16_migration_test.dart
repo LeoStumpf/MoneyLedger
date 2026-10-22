@@ -151,7 +151,8 @@ void main() {
     );
     final signing = SigningDao(db);
     expect(await signing.rejectedClock('g1', 'meta', 'g1'), isNull);
-    expect(await signing.rejectedClock('g1', 'expense', 'e9'), 80);
+    // v18 (G76, opened at the current version) forgets expense refusals.
+    expect(await signing.rejectedClock('g1', 'expense', 'e9'), isNull);
   });
 
   test('the migrated schema equals a fresh database', () async {

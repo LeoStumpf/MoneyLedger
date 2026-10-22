@@ -20,10 +20,12 @@ import '../../core/session/app_session.dart';
 import '../../core/sync/delivery_policy.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../core/sync/record_signing.dart';
+import '../../core/sync/record_validation.dart' show payersProblem;
 import '../../core/sync/sync_health.dart';
 import '../../models/expense_category.dart' show normalizeNote;
 import '../../models/expense_date.dart' show storedExpenseDate;
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart' show payerFields;
 import '../../models/member_model.dart' show nextLwwClock;
 import '../history/snapshot_store.dart';
 import '../receipts/receipt_store.dart' show receiptStoreFactoryProvider;
@@ -214,7 +216,30 @@ class ExpenseAdder extends _$ExpenseAdder {
     return result.hasError ? null : value;
   }
 
+  /// G76: the payer fields of a write — [paidBy] alone, or (when [payers]
+  /// is given) who paid how much: one person left → the single-payer shape,
+  /// several → `paid_by` '' + the map. Throws [ArgumentError] when the map
+  /// doesn't add up to [amount] (the form never lets that through).
+  static ({String paidBy, String? payersJson}) _payers(
+    String paidBy,
+    Map<String, int>? payers,
+    int amount,
+  ) {
+    if (payers == null) return (paidBy: paidBy, payersJson: null);
+    final fields = payerFields(payers);
+    final problem = fields == null
+        ? 'no payer'
+        : fields.payersJson == null
+        ? (payers[fields.paidBy] == amount ? null : 'payer amount')
+        : payersProblem('', fields.payersJson!, amount);
+    if (fields == null || problem != null) {
+      throw ArgumentError.value(payers, 'payers', problem);
+    }
+    return fields;
+  }
+
   /// G67: returns the [UndoableWrite] (undo = delete it again).
+  /// G76: [payers] (who paid how much) replaces [paidBy] when given.
   Future<UndoableWrite?> addExpense({
     required String roomId,
     required String description,
@@ -222,18 +247,21 @@ class ExpenseAdder extends _$ExpenseAdder {
     required String currency,
     required String paidBy,
     required Map<String, int> splits,
+    Map<String, int>? payers,
     String? category,
     String? note,
     DateTime? day,
   }) => _run((w) async {
     final createdAt = DateTime.now().millisecondsSinceEpoch;
+    final who = _payers(paidBy, payers, amountCents);
     final expense = ExpenseModel(
       id: const Uuid().v7(),
       roomId: roomId,
       description: description,
       amountCents: amountCents,
       currency: currency,
-      paidBy: paidBy,
+      paidBy: who.paidBy,
+      payersJson: who.payersJson,
       splitsJson: jsonEncode(splits),
       createdAt: createdAt,
       updatedAt: createdAt,
@@ -293,11 +321,13 @@ class ExpenseAdder extends _$ExpenseAdder {
     required String currency,
     required String paidBy,
     required Map<String, int> splits,
+    Map<String, int>? payers,
     required int createdAt,
     String? category,
     String? note,
     String? date,
   }) => _run((w) async {
+    final who = _payers(paidBy, payers, amountCents);
     // The creator's origin ("added by") is carried over unchanged (G6).
     final current = await w.expenses.getExpenseById(id);
     final expense = ExpenseModel(
@@ -306,7 +336,8 @@ class ExpenseAdder extends _$ExpenseAdder {
       description: description,
       amountCents: amountCents,
       currency: currency,
-      paidBy: paidBy,
+      paidBy: who.paidBy,
+      payersJson: who.payersJson,
       splitsJson: jsonEncode(splits),
       createdAt: createdAt,
       updatedAt: nextLwwClock(current?.updatedAt ?? 0),
@@ -342,6 +373,7 @@ class ExpenseAdder extends _$ExpenseAdder {
           amountCents: current.amountCents,
           currency: current.currency,
           paidBy: current.paidBy,
+          payersJson: current.payersJson,
           splitsJson: current.splitsJson,
           createdAt: current.createdAt,
           updatedAt: nextLwwClock(current.updatedAt),

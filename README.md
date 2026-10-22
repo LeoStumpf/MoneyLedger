@@ -52,6 +52,8 @@ and sees only ciphertext.
   participants; link a Matrix account to a local person at any time.
 - **Custom splits**: equal (pick who), exact amounts, shares/weights, or
   percentages — always summing to the total exactly.
+- **Several payers**: *Paid by* → *Several people…* when more than one
+  person paid (who paid how much; balances credit each payer their part).
 - **Categories + notes** on expenses (10 categories with icons, suggested
   from the description; an optional note), and **search / filter** in a
   group's list (text, category chips, "involving me").

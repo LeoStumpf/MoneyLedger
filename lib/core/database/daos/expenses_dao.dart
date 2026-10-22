@@ -203,6 +203,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
     currency: e.currency,
     paidBy: e.paidBy,
     splitsJson: e.splitsJson,
+    payersJson: e.payersJson,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
     deleted: e.deleted,
@@ -245,6 +246,7 @@ ExpensesCompanion expenseCompanion(ExpenseModel e) => ExpensesCompanion(
   currency: Value(e.currency),
   paidBy: Value(e.paidBy),
   splitsJson: Value(e.splitsJson),
+  payersJson: Value(e.payersJson),
   createdAt: Value(e.createdAt),
   updatedAt: Value(e.updatedAt),
   deleted: Value(e.deleted),
@@ -290,6 +292,7 @@ ExpenseModel _expenseFromCompanion(ExpensesCompanion c) => ExpenseModel(
   currency: _v(c.currency, 'EUR'),
   paidBy: _v(c.paidBy, ''),
   splitsJson: _v(c.splitsJson, '{}'),
+  payersJson: _v(c.payersJson, null),
   createdAt: _v(c.createdAt, 0),
   updatedAt: c.updatedAt.value,
   deleted: _v(c.deleted, false),
@@ -334,6 +337,7 @@ bool _completeExpense(ExpensesCompanion c) =>
     c.currency.present &&
     c.paidBy.present &&
     c.splitsJson.present &&
+    c.payersJson.present &&
     c.createdAt.present &&
     c.deleted.present &&
     c.category.present &&

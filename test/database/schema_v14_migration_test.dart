@@ -125,7 +125,8 @@ void main() {
 
       final signing = SigningDao(db);
       expect(await signing.rejectedClock('g1', 'settlement', 's9'), isNull);
-      expect(await signing.rejectedClock('g1', 'expense', 'e9'), 70);
+      // v18 (G76, opened at the current version) forgets expense refusals.
+      expect(await signing.rejectedClock('g1', 'expense', 'e9'), isNull);
 
       // v14 writes with a date work and round-trip.
       await dao.upsertSettlementLww(

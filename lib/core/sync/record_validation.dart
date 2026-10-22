@@ -4,6 +4,7 @@ import '../../models/exchange_rates.dart';
 import '../../models/expense_category.dart';
 import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../link/link_uri.dart' show decodeLinkSecret;
@@ -44,10 +45,16 @@ Map<String, int>? tryParseSplit(String splitsJson) {
 /// out of range, there is no payer, or the split isn't a non-empty
 /// `{participant: cents}` map summing exactly to the amount; G49: a `date`
 /// that isn't an acceptable calendar day ([recordDateProblem]; [now] is
-/// for tests).
+/// for tests); G76: several payers ([payersProblem]).
 String? expenseProblem(ExpenseModel e, {DateTime? now}) {
   if (!isValidAmountCents(e.amountCents)) return 'amount ${e.amountCents}';
-  if (e.paidBy.isEmpty) return 'no payer';
+  final payersJson = e.payersJson;
+  if (payersJson == null) {
+    if (e.paidBy.isEmpty) return 'no payer';
+  } else {
+    final problem = payersProblem(e.paidBy, payersJson, e.amountCents);
+    if (problem != null) return problem;
+  }
   if (e.currency.isEmpty) return 'no currency';
   final split = tryParseSplit(e.splitsJson);
   if (split == null || split.isEmpty) return 'malformed split';
@@ -55,6 +62,27 @@ String? expenseProblem(ExpenseModel e, {DateTime? now}) {
   if (sum != e.amountCents) return 'split sums to $sum, not ${e.amountCents}';
   final date = e.date;
   if (date != null) return recordDateProblem(date, now: now);
+  return null;
+}
+
+/// G76: why a multi-payer expense's `payers` ([payersJson]) is invalid, or
+/// null: `paid_by` must be empty (one shape per version), the map must be a
+/// `{participant: cents}` object with 2 … [kMaxPayers] entries, each at
+/// least one cent, summing exactly to [amount]. (One payer is the pre-G76
+/// shape — `paid_by` — never a one-entry map, so every version has exactly
+/// one encoding and one G27 hash.)
+String? payersProblem(String paidBy, String payersJson, int amount) {
+  if (paidBy.isNotEmpty) return 'paid_by and payers';
+  final payers = tryParsePayers(payersJson);
+  if (payers == null) return 'malformed payers';
+  if (payers.length < 2) return '${payers.length} payers';
+  if (payers.length > kMaxPayers) return '${payers.length} payers';
+  var sum = 0;
+  for (final cents in payers.values) {
+    if (!isValidAmountCents(cents)) return 'payer amount $cents';
+    sum += cents;
+  }
+  if (sum != amount) return 'payers sum to $sum, not $amount';
   return null;
 }
 

@@ -3,6 +3,7 @@ library;
 
 import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 import '../balance/balance_calculator.dart' show splitsOf;
 
 /// What the expense list currently shows: a free-text [query] (description,
@@ -78,14 +79,17 @@ bool expenseMatches(
   }
   if (f.involvingMe) {
     if (myId == null) return false;
-    if (e.paidBy != myId && !splitsOf(e).containsKey(myId)) return false;
+    if (!paidAmountsOf(e).containsKey(myId) && !splitsOf(e).containsKey(myId)) {
+      return false;
+    }
   }
   final q = _fold(f.query.trim());
   if (q.isEmpty) return true;
   return [
     e.description,
     e.note ?? '',
-    nameOf(e.paidBy),
+    // G76: every payer's name.
+    for (final payer in paidAmountsOf(e).keys) nameOf(payer),
   ].any((field) => _fold(field).contains(q));
 }
 

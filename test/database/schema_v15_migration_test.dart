@@ -146,9 +146,10 @@ void main() {
     expect(s.date, '2026-01-02');
     expect(s.deleted, isTrue);
 
-    // No refusal is forgotten by v15.
+    // No refusal is forgotten by v15 (v18 — G76, opened at the current
+    // version — forgets the expense ones).
     final signing = SigningDao(db);
-    expect(await signing.rejectedClock('g1', 'expense', 'e9'), 70);
+    expect(await signing.rejectedClock('g1', 'expense', 'e9'), isNull);
     expect(await signing.rejectedClock('g1', 'settlement', 's9'), 80);
 
     // The new columns are NULL for existing rows.

@@ -43,6 +43,7 @@ import '../local/local_mode_ui.dart' show startConnectAccount;
 import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../sync/group_sync_sheet.dart';
 import '../../core/widgets/action_error.dart';
+import 'payer_line.dart';
 
 /// G65 (U22): the group ⋮ menu — the frequent actions only (G52 step 6:
 /// *Invite with a link*, link groups / local mode only); the rest is on the
@@ -601,9 +602,7 @@ class ExpensesPage extends ConsumerWidget {
       return _ExpenseTile(
         expense: expense,
         category: resolveCategory(expense.category, customCategories),
-        payerLine: expense.paidBy == myId
-            ? l.youPaid
-            : l.paidByName(nameOf(expense.paidBy)),
+        payerLine: payerLineOf(expense, myId: myId, nameOf: nameOf, l: l),
         effect: myId == null ? null : expenseEffectFor(expense, myId),
         pending: syncStatus.isRecordPending(expense.updatedAt),
         attention: attention(expense.origin, expense.sig),

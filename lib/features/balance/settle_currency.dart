@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../core/sync/record_validation.dart';
 import '../../models/exchange_rates.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 import '../expenses/split_calculator.dart';
 
 /// G73 (U18): the ledger as the balances see it. With "settle up in
@@ -50,6 +51,9 @@ ExpenseModel _convertExpense(ExpenseModel e, ExchangeRates fx) {
   // balance math (and of JS numbers on the web) — it stays unconverted.
   if (amount > kMaxAmountCents) return e;
   final converted = distributeByWeights(amount, split);
+  // G76: several payers are re-spread the same way (sums to the amount).
+  final payers = e.payersJson == null ? null : tryParsePayers(e.payersJson!);
+  if (e.payersJson != null && payers == null) return e;
   return ExpenseModel(
     id: e.id,
     roomId: e.roomId,
@@ -58,6 +62,9 @@ ExpenseModel _convertExpense(ExpenseModel e, ExchangeRates fx) {
     currency: fx.base,
     paidBy: e.paidBy,
     splitsJson: jsonEncode(converted),
+    payersJson: payers == null
+        ? null
+        : jsonEncode(distributeByWeights(amount, payers)),
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
     deleted: e.deleted,

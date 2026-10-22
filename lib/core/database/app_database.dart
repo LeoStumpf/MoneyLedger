@@ -73,6 +73,10 @@ class Expenses extends Table {
   // ("Changed by Ben, via link"), **not** part of the signed body or the
   // G27 hash; NULL = none.
   TextColumn get linkAuthor => text().nullable()();
+  // G76: who paid how much when several people paid (JSON, the wire
+  // `payers` verbatim; `paid_by` is then ''); NULL = `paid_by` paid it
+  // all. Part of the signed content when set.
+  TextColumn get payersJson => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -428,7 +432,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -485,6 +489,15 @@ class AppDatabase extends _$AppDatabase {
         if (exchangeRatesAdded) return;
         exchangeRatesAdded = true;
         await m.addColumn(groups, groups.exchangeRatesJson);
+      }
+
+      // G76 (v18): `expenses.payers_json` — same reason (the v8 / v12
+      // backfills read the expenses table with today's columns).
+      var payersAdded = false;
+      Future<void> addPayers() async {
+        if (payersAdded) return;
+        payersAdded = true;
+        await m.addColumn(expenses, expenses.payersJson);
       }
 
       // v2 (Phase B): add the local membership table. Existing
@@ -572,6 +585,7 @@ class AppDatabase extends _$AppDatabase {
         await addExpenseDate();
         await addSettlementDate();
         await addLinkAuthors();
+        await addPayers();
         await backfillVersionHashes(this);
       }
       // v9 (G18 review): device-key attestations are scoped to the group
@@ -623,6 +637,7 @@ class AppDatabase extends _$AppDatabase {
         await addLinkAuthors();
         await addGroupLink();
         await addExchangeRates();
+        await addPayers();
         await backfillRecordHistory(this);
       }
       // v13 (G49): the optional expense date (nullable — existing expenses
@@ -682,6 +697,19 @@ class AppDatabase extends _$AppDatabase {
         if (from >= 6) {
           await customStatement(
             "DELETE FROM rejected_versions WHERE kind = 'meta'",
+          );
+        }
+      }
+      // v18 (G76 multiple payers): the expense's optional `payers` (NULL
+      // for every existing expense — signatures and hashes unchanged). A
+      // pre-G76 build refused multi-payer versions (`paid_by` empty → "no
+      // payer", `invalid_record`) — forget expense refusals so peers re-send
+      // and this build accepts them.
+      if (from < 18) {
+        await addPayers();
+        if (from >= 6) {
+          await customStatement(
+            "DELETE FROM rejected_versions WHERE kind = 'expense'",
           );
         }
       }

@@ -94,6 +94,9 @@ Map<String, Object?> expenseContent(ExpenseModel e) => {
   'currency': e.currency,
   'paid_by': e.paidBy,
   'split': _splits(e.splitsJson),
+  // G76: only when several people paid (`paid_by` is then "") — a
+  // single-payer version keeps the pre-G76 body, signature and hash.
+  if (e.payersJson != null) 'payers': _splits(e.payersJson!),
   'created_at': e.createdAt,
   'updated_at': e.updatedAt,
   'deleted': e.deleted,

@@ -14,6 +14,7 @@ import '../../core/widgets/person_avatar.dart';
 import '../../models/expense_category.dart';
 import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 import '../../models/member_model.dart';
 import '../../core/widgets/currency_field.dart';
 import 'group_currencies.dart';
@@ -22,6 +23,7 @@ import 'expense_category_ui.dart';
 import 'expenses_provider.dart';
 import 'record_date_field.dart';
 import 'split_calculator.dart' show splitEqually;
+import 'payers_editor.dart';
 import 'split_editor.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
 import 'record_attribution.dart';
@@ -100,6 +102,17 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   // null = still loading. Loaded from the local DB (roomless).
   List<MemberModel>? _members;
   String? _paidBy; // participant id of the payer
+
+  /// G76: the *Paid by* dropdown's "Several people…" entry.
+  static const _kSeveralPayers = '\u0000several';
+
+  /// G76: several people paid — [_payerAmounts] holds who paid how much
+  /// (null while a field can't be read); [_paidBy] is then unused.
+  bool _severalPayers = false;
+  bool _initialSeveral = false;
+  Map<String, int>? _payerAmounts;
+  Map<String, int>? _initialPayers;
+  bool _payersEdited = false;
   String _currency = 'EUR';
   String _initialCurrency = 'EUR'; // as loaded — stays selectable
 
@@ -140,6 +153,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         _category != initial?.category ||
         _currency != _initialCurrency ||
         _paidBy != _initialPayer ||
+        _severalPayers != _initialSeveral ||
+        _payersEdited ||
         _day != _initialDay ||
         _planUpdates > 1;
   }
@@ -299,14 +314,31 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         if (m.isActive) m.userId,
     };
     // G75: a duplicate keeps its payer while they are still in the group.
-    final copiedPayer = copy != null && activeIds.contains(copy.paidBy)
+    final copiedPayer =
+        copy != null &&
+            copy.paidBy.isNotEmpty &&
+            activeIds.contains(copy.paidBy)
         ? copy.paidBy
         : null;
+    final editedPayer = widget.initial?.paidBy;
     final defaultPayer =
-        widget.initial?.paidBy ??
+        (editedPayer != null && editedPayer.isNotEmpty ? editedPayer : null) ??
         copiedPayer ??
         self?.userId ??
         (members.isNotEmpty ? members.first.userId : null);
+    // G76: several payers — the edited expense's, or a duplicate's while
+    // every payer is still in the group.
+    final source = widget.initial ?? copy;
+    final sourcePayers = source != null && hasSeveralPayers(source)
+        ? paidAmountsOf(source)
+        : null;
+    final initialPayers =
+        sourcePayers != null &&
+            sourcePayers.isNotEmpty &&
+            (widget.initial != null ||
+                sourcePayers.keys.every(activeIds.contains))
+        ? sourcePayers
+        : null;
     final copySplit = copy == null
         ? null
         : duplicateSplit(copy, activeIds, step: currencyStep(currency));
@@ -326,6 +358,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         _suggestedCurrencies = suggested;
         _paidBy = defaultPayer;
         _initialPayer = defaultPayer;
+        _severalPayers = initialPayers != null;
+        _initialSeveral = _severalPayers;
+        _initialPayers = initialPayers;
+        _payerAmounts = initialPayers;
         _customCategories = group?.categories ?? const [];
         if (!_receiptChanged) _receipt = receipt;
       });
@@ -384,7 +420,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final paidBy = _paidBy;
     final amountCents = _amountCents;
     final result = _plan?.resolve(amountCents);
-    if (paidBy == null || result == null || !result.isValid) return;
+    if (result == null || !result.isValid) return;
+    // G76: several payers replace the single one.
+    final payers = _severalPayers ? _payerAmounts : null;
+    if (_severalPayers ? !_payersValid : paidBy == null) return;
 
     // U11: an untouched split of an unchanged amount is saved exactly as it
     // was stored (same people, cents and key order) — re-resolving it could
@@ -444,8 +483,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             description: _descCtrl.text.trim(),
             amountCents: amountCents,
             currency: _currency,
-            paidBy: paidBy,
+            paidBy: paidBy ?? '',
             splits: splits,
+            payers: payers,
             createdAt: initial.createdAt,
             category: _category,
             note: _noteCtrl.text,
@@ -462,8 +502,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             description: _descCtrl.text.trim(),
             amountCents: amountCents,
             currency: _currency,
-            paidBy: paidBy,
+            paidBy: paidBy ?? '',
             splits: splits,
+            payers: payers,
             category: _category,
             note: _noteCtrl.text,
             day: _day,
@@ -501,6 +542,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     }
   }
 
+  /// G76: the typed payer amounts are readable, someone paid, and they add
+  /// up to the amount.
+  bool get _payersValid {
+    final amounts = _payerAmounts;
+    if (amounts == null) return false;
+    final total = _amountCents;
+    final sum = amounts.values.fold<int>(0, (a, b) => a + b);
+    return total > 0 && sum == total && amounts.values.any((c) => c > 0);
+  }
+
   /// G67 (U13): *Delete* from the edit form — the same confirmation and
   /// "Deleted · Undo" as the list's ⋮ → *Delete*; leaves the form.
   Future<void> _delete() async {
@@ -534,7 +585,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         members != null &&
         !adderState.isLoading &&
         members.isNotEmpty &&
-        (_plan?.resolve(_amountCents).isValid ?? false);
+        (_plan?.resolve(_amountCents).isValid ?? false) &&
+        (!_severalPayers || _payersValid);
 
     // G56: ← / system back on a changed form asks before throwing it away.
     _wasDirty = _dirty;
@@ -699,7 +751,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               const SizedBox(height: Insets.l),
                               DropdownButtonFormField<String>(
                                 key: const Key('expensePayer'),
-                                initialValue: _paidBy,
+                                initialValue: _severalPayers
+                                    ? _kSeveralPayers
+                                    : _paidBy,
                                 isExpanded: true,
                                 decoration: InputDecoration(
                                   labelText: l.paidByLabel,
@@ -739,9 +793,53 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                         ],
                                       ),
                                     ),
+                                  // G76: several people paid.
+                                  if (members.length > 1)
+                                    DropdownMenuItem(
+                                      key: const Key('payerSeveral'),
+                                      value: _kSeveralPayers,
+                                      child: Row(
+                                        children: [
+                                          const SizedBox(
+                                            width: 26,
+                                            child: Icon(
+                                              Icons.group_outlined,
+                                              size: 22,
+                                            ),
+                                          ),
+                                          const SizedBox(width: Insets.m),
+                                          Expanded(
+                                            child: Text(
+                                              l.payerSeveral,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                 ],
-                                onChanged: (v) => setState(() => _paidBy = v),
+                                onChanged: (v) => setState(() {
+                                  if (v == _kSeveralPayers) {
+                                    _severalPayers = true;
+                                  } else {
+                                    _severalPayers = false;
+                                    _paidBy = v;
+                                  }
+                                }),
                               ),
+                              if (_severalPayers) ...[
+                                const SizedBox(height: Insets.s),
+                                PayersEditor(
+                                  members: members,
+                                  totalCents: _amountCents,
+                                  currency: _currency,
+                                  initial: _initialPayers,
+                                  onChanged: (amounts) => setState(() {
+                                    _payerAmounts = amounts;
+                                    _payersEdited = true;
+                                  }),
+                                ),
+                              ],
                               const SizedBox(height: Insets.l),
                               RecordDateField(
                                 day: _day,
@@ -908,7 +1006,9 @@ List<MemberModel> editorParticipants({
   ExpenseModel? initial,
 }) {
   final referenced = <String>{
-    if (initial != null) initial.paidBy,
+    if (initial != null && initial.paidBy.isNotEmpty) initial.paidBy,
+    // G76: everyone who paid part of it.
+    if (initial != null) ...paidAmountsOf(initial).keys,
     if (initial != null) ...?tryParseSplit(initial.splitsJson)?.keys,
   };
   final active = [

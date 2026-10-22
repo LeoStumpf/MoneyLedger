@@ -944,6 +944,17 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _payersJsonMeta = const VerificationMeta(
+    'payersJson',
+  );
+  @override
+  late final GeneratedColumn<String> payersJson = GeneratedColumn<String>(
+    'payers_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -965,6 +976,7 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     expenseDate,
     versionHash,
     linkAuthor,
+    payersJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1123,6 +1135,12 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         linkAuthor.isAcceptableOrUnknown(data['link_author']!, _linkAuthorMeta),
       );
     }
+    if (data.containsKey('payers_json')) {
+      context.handle(
+        _payersJsonMeta,
+        payersJson.isAcceptableOrUnknown(data['payers_json']!, _payersJsonMeta),
+      );
+    }
     return context;
   }
 
@@ -1208,6 +1226,10 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
         DriftSqlType.string,
         data['${effectivePrefix}link_author'],
       ),
+      payersJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payers_json'],
+      ),
     );
   }
 
@@ -1237,6 +1259,7 @@ class Expense extends DataClass implements Insertable<Expense> {
   final String? expenseDate;
   final String? versionHash;
   final String? linkAuthor;
+  final String? payersJson;
   const Expense({
     required this.id,
     required this.roomId,
@@ -1257,6 +1280,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     this.expenseDate,
     this.versionHash,
     this.linkAuthor,
+    this.payersJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1296,6 +1320,9 @@ class Expense extends DataClass implements Insertable<Expense> {
     if (!nullToAbsent || linkAuthor != null) {
       map['link_author'] = Variable<String>(linkAuthor);
     }
+    if (!nullToAbsent || payersJson != null) {
+      map['payers_json'] = Variable<String>(payersJson);
+    }
     return map;
   }
 
@@ -1332,6 +1359,9 @@ class Expense extends DataClass implements Insertable<Expense> {
       linkAuthor: linkAuthor == null && nullToAbsent
           ? const Value.absent()
           : Value(linkAuthor),
+      payersJson: payersJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(payersJson),
     );
   }
 
@@ -1360,6 +1390,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       expenseDate: serializer.fromJson<String?>(json['expenseDate']),
       versionHash: serializer.fromJson<String?>(json['versionHash']),
       linkAuthor: serializer.fromJson<String?>(json['linkAuthor']),
+      payersJson: serializer.fromJson<String?>(json['payersJson']),
     );
   }
   @override
@@ -1385,6 +1416,7 @@ class Expense extends DataClass implements Insertable<Expense> {
       'expenseDate': serializer.toJson<String?>(expenseDate),
       'versionHash': serializer.toJson<String?>(versionHash),
       'linkAuthor': serializer.toJson<String?>(linkAuthor),
+      'payersJson': serializer.toJson<String?>(payersJson),
     };
   }
 
@@ -1408,6 +1440,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     Value<String?> expenseDate = const Value.absent(),
     Value<String?> versionHash = const Value.absent(),
     Value<String?> linkAuthor = const Value.absent(),
+    Value<String?> payersJson = const Value.absent(),
   }) => Expense(
     id: id ?? this.id,
     roomId: roomId ?? this.roomId,
@@ -1430,6 +1463,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     expenseDate: expenseDate.present ? expenseDate.value : this.expenseDate,
     versionHash: versionHash.present ? versionHash.value : this.versionHash,
     linkAuthor: linkAuthor.present ? linkAuthor.value : this.linkAuthor,
+    payersJson: payersJson.present ? payersJson.value : this.payersJson,
   );
   Expense copyWithCompanion(ExpensesCompanion data) {
     return Expense(
@@ -1468,6 +1502,9 @@ class Expense extends DataClass implements Insertable<Expense> {
       linkAuthor: data.linkAuthor.present
           ? data.linkAuthor.value
           : this.linkAuthor,
+      payersJson: data.payersJson.present
+          ? data.payersJson.value
+          : this.payersJson,
     );
   }
 
@@ -1492,7 +1529,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           ..write('note: $note, ')
           ..write('expenseDate: $expenseDate, ')
           ..write('versionHash: $versionHash, ')
-          ..write('linkAuthor: $linkAuthor')
+          ..write('linkAuthor: $linkAuthor, ')
+          ..write('payersJson: $payersJson')
           ..write(')'))
         .toString();
   }
@@ -1518,6 +1556,7 @@ class Expense extends DataClass implements Insertable<Expense> {
     expenseDate,
     versionHash,
     linkAuthor,
+    payersJson,
   );
   @override
   bool operator ==(Object other) =>
@@ -1541,7 +1580,8 @@ class Expense extends DataClass implements Insertable<Expense> {
           other.note == this.note &&
           other.expenseDate == this.expenseDate &&
           other.versionHash == this.versionHash &&
-          other.linkAuthor == this.linkAuthor);
+          other.linkAuthor == this.linkAuthor &&
+          other.payersJson == this.payersJson);
 }
 
 class ExpensesCompanion extends UpdateCompanion<Expense> {
@@ -1564,6 +1604,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   final Value<String?> expenseDate;
   final Value<String?> versionHash;
   final Value<String?> linkAuthor;
+  final Value<String?> payersJson;
   final Value<int> rowid;
   const ExpensesCompanion({
     this.id = const Value.absent(),
@@ -1585,6 +1626,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.expenseDate = const Value.absent(),
     this.versionHash = const Value.absent(),
     this.linkAuthor = const Value.absent(),
+    this.payersJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ExpensesCompanion.insert({
@@ -1607,6 +1649,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     this.expenseDate = const Value.absent(),
     this.versionHash = const Value.absent(),
     this.linkAuthor = const Value.absent(),
+    this.payersJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        roomId = Value(roomId),
@@ -1636,6 +1679,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Expression<String>? expenseDate,
     Expression<String>? versionHash,
     Expression<String>? linkAuthor,
+    Expression<String>? payersJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1658,6 +1702,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       if (expenseDate != null) 'expense_date': expenseDate,
       if (versionHash != null) 'version_hash': versionHash,
       if (linkAuthor != null) 'link_author': linkAuthor,
+      if (payersJson != null) 'payers_json': payersJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1682,6 +1727,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     Value<String?>? expenseDate,
     Value<String?>? versionHash,
     Value<String?>? linkAuthor,
+    Value<String?>? payersJson,
     Value<int>? rowid,
   }) {
     return ExpensesCompanion(
@@ -1704,6 +1750,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
       expenseDate: expenseDate ?? this.expenseDate,
       versionHash: versionHash ?? this.versionHash,
       linkAuthor: linkAuthor ?? this.linkAuthor,
+      payersJson: payersJson ?? this.payersJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1768,6 +1815,9 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
     if (linkAuthor.present) {
       map['link_author'] = Variable<String>(linkAuthor.value);
     }
+    if (payersJson.present) {
+      map['payers_json'] = Variable<String>(payersJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1796,6 +1846,7 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
           ..write('expenseDate: $expenseDate, ')
           ..write('versionHash: $versionHash, ')
           ..write('linkAuthor: $linkAuthor, ')
+          ..write('payersJson: $payersJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7010,6 +7061,7 @@ typedef $$ExpensesTableCreateCompanionBuilder =
       Value<String?> expenseDate,
       Value<String?> versionHash,
       Value<String?> linkAuthor,
+      Value<String?> payersJson,
       Value<int> rowid,
     });
 typedef $$ExpensesTableUpdateCompanionBuilder =
@@ -7033,6 +7085,7 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
       Value<String?> expenseDate,
       Value<String?> versionHash,
       Value<String?> linkAuthor,
+      Value<String?> payersJson,
       Value<int> rowid,
     });
 
@@ -7137,6 +7190,11 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<String> get linkAuthor => $composableBuilder(
     column: $table.linkAuthor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payersJson => $composableBuilder(
+    column: $table.payersJson,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -7244,6 +7302,11 @@ class $$ExpensesTableOrderingComposer
     column: $table.linkAuthor,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get payersJson => $composableBuilder(
+    column: $table.payersJson,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ExpensesTableAnnotationComposer
@@ -7327,6 +7390,11 @@ class $$ExpensesTableAnnotationComposer
     column: $table.linkAuthor,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get payersJson => $composableBuilder(
+    column: $table.payersJson,
+    builder: (column) => column,
+  );
 }
 
 class $$ExpensesTableTableManager
@@ -7376,6 +7444,7 @@ class $$ExpensesTableTableManager
                 Value<String?> expenseDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
                 Value<String?> linkAuthor = const Value.absent(),
+                Value<String?> payersJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion(
                 id: id,
@@ -7397,6 +7466,7 @@ class $$ExpensesTableTableManager
                 expenseDate: expenseDate,
                 versionHash: versionHash,
                 linkAuthor: linkAuthor,
+                payersJson: payersJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7420,6 +7490,7 @@ class $$ExpensesTableTableManager
                 Value<String?> expenseDate = const Value.absent(),
                 Value<String?> versionHash = const Value.absent(),
                 Value<String?> linkAuthor = const Value.absent(),
+                Value<String?> payersJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion.insert(
                 id: id,
@@ -7441,6 +7512,7 @@ class $$ExpensesTableTableManager
                 expenseDate: expenseDate,
                 versionHash: versionHash,
                 linkAuthor: linkAuthor,
+                payersJson: payersJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -14,6 +14,7 @@ import '../../core/sync/record_signing.dart';
 import '../../core/sync/record_validation.dart';
 import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../expenses/expenses_provider.dart';
@@ -79,6 +80,9 @@ String csvParticipantLabel(MemberModel m) =>
 Set<String> _referencedNames(ParsedCsv parsed) => {
   ...parsed.participantNames,
   for (final r in parsed.rows) r.paidByName,
+  // G76: the payers of a multi-payer row (its `Paid By` is empty).
+  for (final r in parsed.rows)
+    if (r.paidByName.trim().isEmpty) ...r.payersByName.keys,
 };
 
 /// G47: the custom categories to define for an import of [parsed] into a
@@ -392,13 +396,35 @@ class CsvImporter extends _$CsvImporter {
         for (final e in row.sharesByName.entries)
           if (pidByName[e.key] != null) pidByName[e.key]!: e.value,
       };
+      // G76: an empty `Paid By` + `Paid: <name>` cells = several payers.
+      var paidBy = payer;
+      String? payersJson;
+      if (row.paidByName.trim().isEmpty && row.payersByName.isNotEmpty) {
+        final payers = <String, int>{
+          for (final e in row.payersByName.entries)
+            if (pidByName[e.key] != null) pidByName[e.key]!: e.value,
+        };
+        final sum = payers.values.fold<int>(0, (a, b) => a + b);
+        if (sum != row.amountCents) {
+          throw CsvImportException(
+            i + 2,
+            'payers sum to $sum, not ${row.amountCents}',
+          );
+        }
+        final fields = payerFields(payers);
+        if (fields != null) {
+          paidBy = fields.paidBy;
+          payersJson = fields.payersJson;
+        }
+      }
       final draft = ExpenseModel(
         id: id,
         roomId: groupId,
         description: row.description,
         amountCents: row.amountCents,
         currency: row.currency,
-        paidBy: payer,
+        paidBy: paidBy,
+        payersJson: payersJson,
         splitsJson: jsonEncode(splits),
         createdAt: createdAt,
         updatedAt: updatedAt,

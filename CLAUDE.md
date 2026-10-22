@@ -1878,6 +1878,51 @@ like a pre-G49 one, so older builds accept it.
   `schema_v14_migration_test.dart`,
   `test/integration/settlement_date_sync_test.dart`.
 
+### Several payers (G76)
+
+An expense can be paid by **several people** (Leo 2026-10-17).
+- **Wire / signed content:** optional `payers: {participantId: cents}` on
+  the expense payload, in the signed body and the G27 hash **only when
+  set**, and then `paid_by` is **`""`** — on purpose: a pre-G76 build parses
+  no `payers`, so its content rules refuse the version as "no payer"
+  (`invalid_record`, before any signature check — also on the unsigned link
+  path) instead of showing one person as the payer of everything. One payer
+  = the pre-G76 shape (`paid_by`, no `payers`; golden hash pinned in
+  `test/core/expense_payers_wire_test.dart`); every version has exactly one
+  encoding (`payerFields`: zeros dropped, one left → plain `paid_by`).
+- **Content rule** (`expenseProblem` → `payersProblem`): `paid_by` empty,
+  2 … `kMaxPayers` (100) entries, each ≥ 1 cent, summing to the amount.
+- **Model / storage:** `ExpenseModel.payersJson` (the wire map verbatim,
+  like `splitsJson`); schema **v18** `expenses.payers_json` (nullable; added
+  before the v8 / v12 backfills like v13's column); the v17 → v18 step
+  forgets refused **expense** versions. Helpers in `models/expense_payers.dart`
+  (`paidAmountsOf` — `{paidBy: amount}` for one payer —, `hasSeveralPayers`,
+  `payerFields`). Every reader of `paidBy` goes through them: balances
+  (each payer credited what they paid; one payer: the split's sum, as
+  before), `expenseEffectFor`, the G69 overview, G73 conversion (payers
+  re-spread like the split), search / *Involving me*, the payer line
+  (`payer_line.dart`: "Paid by Anna and Ben" / "you and Ben" / "Paid by 3
+  people"), the read-only details (G67, `detailsPayers`).
+- **Form:** *Paid by* → *Several people…* (`payerSeveral`, only with ≥ 2
+  people) → `PayersEditor` (`payers_editor.dart`): one amount per person
+  (`payerAmount-<id>`, blank = didn't pay), live "X left" / "X too much"
+  (`payersRemaining`), ⊕ *Put the rest here* (`payersRest-<id>`); *Add* /
+  *Save* only when they add up. `ExpenseAdder.addExpense` / `updateExpense
+  (payers:)` (throws `ArgumentError` on a map that doesn't add up). Edit
+  reopens the editor prefilled; picking one person again stores the plain
+  shape. A duplicate (G75) keeps the payers while all are still in the group.
+- **CSV:** a multi-payer row has an **empty `Paid By`** (a pre-G76 import
+  aborts, "no payer") + trailing `Paid: <name>` columns after `Created At`
+  (`csvPaidPrefix`; written only when the group has such an expense; a
+  single payer's column = the whole amount). Bootstrap / JSON backup / G48
+  history + reset carry `payers` automatically (`expensePayload`).
+- Tests: `test/core/expense_payers_wire_test.dart`,
+  `test/features/g76_multi_payer_test.dart`, `schema_v18_migration_test.dart`,
+  `test/integration/multi_payer_sync_test.dart`,
+  `test/g76_multi_payer_form_test.dart` (incl. 360 dp / 200 % EN + DE),
+  `csv_import_test.dart` (G76 group), G71 guideline test. Limits:
+  `docs/open-points.md`. Smoke 5.22.
+
 ### Receipt photo, this device only (G78)
 
 Leo 2026-10-17: a photo attached to an expense, **stored only on this
@@ -2659,7 +2704,7 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 }
 ```
 
-`paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs. `category` (a G16 wire id) and `note` are **optional** — omitted when unset, signed and hashed only when present (see "Categories, notes, search, archive (G16)"). So is `date` (G49): the ISO calendar day the expense happened, present only when it differs from `created_at`'s day (see "Expense date (G49)").
+`paid_by` and the `split` keys are **participant ids** (see Participant identity above), not necessarily MXIDs. `category` (a G16 wire id) and `note` are **optional** — omitted when unset, signed and hashed only when present (see "Categories, notes, search, archive (G16)"). So is `date` (G49): the ISO calendar day the expense happened, present only when it differs from `created_at`'s day (see "Expense date (G49)"). G76: `payers` (`{participantId: cents}`, optional) — only when several people paid, and then `paid_by` is `""` (see "Several payers (G76)").
 
 **`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "date"?, "origin", "sig" }` (`from`/`to` are participant ids; `date` — G60, optional ISO `YYYY-MM-DD`, only when the payment is back-dated, signed and hashed only when present, exactly like the expense `date`).
 

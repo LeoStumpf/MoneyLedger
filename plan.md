@@ -1093,9 +1093,19 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 
 
 ### G76. Multiple payers per expense (Leo 2026-10-17) 🟢
-- [ ] An expense paid by several people (`paid_by` → map of amounts) — wire
+- [x] An expense paid by several people (`paid_by` → map of amounts) — wire
       change (signed body, G27 hash, CSV, backup, balance calc); older builds
       must not misread it → bundle with G57 / G73 / G74 wire changes
+      → optional signed `payers: {participant: cents}` (≥ 2, each ≥ 1 cent,
+      sum = amount) **plus an empty `paid_by`**: a pre-G76 build refuses the
+      version as "no payer" (`invalid_record`, on the signed *and* the link
+      path) instead of reading one person as the payer; single payer = the
+      pre-G76 shape (hash unchanged). Schema v18 `expenses.payers_json`,
+      forgets expense refusals. Form: *Paid by* → *Several people…*; CSV:
+      empty *Paid By* + trailing *Paid: <name>* columns (only when used)
+- [ ] Device check: smoke 5.22 (two devices, DE 360 dp / 200 %)
+- [ ] Later maybe: "split the payment equally among the payers" shortcut;
+      several payers in the offline demo seed (store screenshots)
 
 ### G77. Itemized split (Leo 2026-10-17) 🟢
 - [x] Split a receipt item by item (items → people, shared items, rest
@@ -1221,7 +1231,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G73 — manual exchange rates + fetch button (with G57) — device check smoke 6.7 + G57 decision open
 - [x] G75 — usability polish (review leftovers)
 - [~] G74 — payment details + GiroCode (with G57 / G73) — device-local part done; synced part needs Leo (wire / privacy)
-- [ ] G76 — multiple payers (wire, with G57 / G73 / G74)
+- [x] G76 — multiple payers (wire: `payers` + empty `paid_by`) — device check smoke 5.22 open
 - [ ] G79 — DEV-I findings (calculator keyboard, truncations, lazy Matrix store)
 - [x] G77 — itemized split
 - [x] G78 — receipt photo, this device only

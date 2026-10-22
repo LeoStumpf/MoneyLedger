@@ -31,6 +31,8 @@ Map<String, dynamic> expensePayload(ExpenseModel e) => {
   'currency': e.currency,
   'paid_by': e.paidBy,
   'split': jsonDecode(e.splitsJson),
+  // G76: optional — only when several people paid (`paid_by` is then "").
+  if (e.payersJson != null) 'payers': jsonDecode(e.payersJson!),
   'created_at': e.createdAt,
   'updated_at': e.updatedAt,
   'deleted': e.deleted,
@@ -276,6 +278,11 @@ ExpenseModel? expenseFromPayload(Map<String, dynamic> c) {
     currency: c['currency'] as String? ?? 'EUR',
     paidBy: c['paid_by'] as String? ?? '',
     splitsJson: jsonEncode(c['split'] ?? {}),
+    // G76 (optional; kept verbatim like the split — a malformed map is
+    // refused by the content rules, never rewritten: it is signed).
+    payersJson: c.containsKey('payers') && c['payers'] != null
+        ? jsonEncode(c['payers'])
+        : null,
     createdAt: createdAt,
     updatedAt: c['updated_at'] as int? ?? createdAt,
     deleted: c['deleted'] as bool? ?? false,

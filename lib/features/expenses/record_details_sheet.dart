@@ -9,6 +9,7 @@ import '../../core/widgets/person_avatar.dart';
 import '../../models/expense_category.dart';
 import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 import '../../models/member_model.dart' show localpartOf;
 import 'expense_category_ui.dart';
 import 'record_attribution.dart';
@@ -174,7 +175,19 @@ class _ExpenseDetails extends StatelessWidget {
             fontFeatures: kTabularFigures,
           ),
         ),
-        Text(l.paidByName(_nameOf(names, expense.paidBy))),
+        if (hasSeveralPayers(expense))
+          // G76: several payers — who paid how much, like the split.
+          _Field(
+            label: l.paidByLabel,
+            child: _PeopleAmounts(
+              key: const Key('detailsPayers'),
+              amounts: paidAmountsOf(expense),
+              names: names,
+              currency: expense.currency,
+            ),
+          )
+        else
+          Text(l.paidByName(_nameOf(names, expense.paidBy))),
         _Field(
           label: l.detailsDateHeading,
           child: Text(
@@ -188,35 +201,10 @@ class _ExpenseDetails extends StatelessWidget {
           ),
         _Field(
           label: l.detailsSplitHeading,
-          child: Column(
-            children: [
-              for (final share in _split.entries)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      PersonAvatar(
-                        id: share.key,
-                        name: _nameOf(names, share.key),
-                        size: 28,
-                      ),
-                      const SizedBox(width: Insets.m),
-                      Expanded(
-                        child: Text(
-                          _nameOf(names, share.key),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: Insets.s),
-                      Text(
-                        context.money(share.value, expense.currency),
-                        style: const TextStyle(fontFeatures: kTabularFigures),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+          child: _PeopleAmounts(
+            amounts: _split,
+            names: names,
+            currency: expense.currency,
           ),
         ),
         if (note != null)
@@ -238,6 +226,52 @@ class _ExpenseDetails extends StatelessWidget {
       ],
     );
   }
+}
+
+/// One row per person: avatar, name, amount (the split; G76 the payers).
+class _PeopleAmounts extends StatelessWidget {
+  const _PeopleAmounts({
+    super.key,
+    required this.amounts,
+    required this.names,
+    required this.currency,
+  });
+
+  final Map<String, int> amounts;
+  final Map<String, String> names;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (final share in amounts.entries)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              PersonAvatar(
+                id: share.key,
+                name: _nameOf(names, share.key),
+                size: 28,
+              ),
+              const SizedBox(width: Insets.m),
+              Expanded(
+                child: Text(
+                  _nameOf(names, share.key),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: Insets.s),
+              Text(
+                context.money(share.value, currency),
+                style: const TextStyle(fontFeatures: kTabularFigures),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
 }
 
 class _SettlementDetails extends StatelessWidget {

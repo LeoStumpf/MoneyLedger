@@ -1009,5 +1009,9 @@
   "paymentRequestLocalNote": "Nur auf diesem Gerät gezeigt – ändern unter Einstellungen → Zahlungsdaten.",
   "privacyPaymentTitle": "Zahlungsdaten",
   "privacyPaymentBody": "Unter Einstellungen → Zahlungsdaten kannst du dein eigenes Bankkonto (Name auf dem Konto, IBAN, BIC) und deinen PayPal.me-Namen eintragen. MoneyLedger speichert sie nur auf diesem Gerät, für das Konto, das du nutzt (oder den lokalen Modus – sie ziehen mit um, wenn du ein Matrix-Konto verbindest). Sie werden nie an die anderen in deinen Gruppen oder an einen Server geschickt und sind in keiner Sicherungsdatei, keinem Wiederherstellungspunkt und keiner CSV enthalten. Sie verlassen das Gerät nur als QR-Code auf seinem eigenen Bildschirm – zum Scannen für jemanden, der dir Geld schuldet – oder als PayPal.me-Link, den du selbst teilst. Wenn du sie in den Einstellungen entfernst, die lokalen Daten löschst oder die App deinstallierst, sind sie weg; beim Abmelden bleiben sie erhalten.",
-  "paymentDetailsPageTitle": "Zahlungsdaten"
+  "paymentDetailsPageTitle": "Zahlungsdaten",
+  "payerSeveral": "Mehrere Personen …",
+  "payersHint": "Wer hat wie viel bezahlt? Wer nichts bezahlt hat, bleibt leer.",
+  "paidByTwo": "Bezahlt von {first} und {second}",
+  "paidByMany": "{count, plural, other{Bezahlt von {count} Personen}}"
 }

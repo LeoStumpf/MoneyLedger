@@ -4128,5 +4128,30 @@
   "paymentDetailsPageTitle": "Payment details",
   "@paymentDetailsPageTitle": {
     "description": "G74 page title"
+  },
+  "payerSeveral": "Several people…",
+  "@payerSeveral": {
+    "description": "G76: Paid-by dropdown entry — several people paid this expense"
+  },
+  "payersHint": "Who paid how much? Leave empty who didn't pay.",
+  "@payersHint": {
+    "description": "G76: hint above the per-person paid amounts"
+  },
+  "paidByTwo": "Paid by {first} and {second}",
+  "@paidByTwo": {
+    "description": "G76: ledger row payer line of an expense two people paid ('you' via recordYou)",
+    "placeholders": {
+      "first": {},
+      "second": {}
+    }
+  },
+  "paidByMany": "{count, plural, other{Paid by {count} people}}",
+  "@paidByMany": {
+    "description": "G76: ledger row payer line of an expense three or more people paid",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

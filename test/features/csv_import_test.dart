@@ -13,6 +13,7 @@ import 'package:money_ledger/features/backup/ledger_csv.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/models/expense_category.dart';
 import 'package:money_ledger/models/expense_model.dart';
+import 'package:money_ledger/models/expense_payers.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
@@ -580,6 +581,52 @@ void main() {
       ]).replaceFirst('2025-10-01,Payment', '1999-01-01,Payment');
       await expectLater(import(csv), throwsA(isA<CsvImportException>()));
       expect(await c.read(expensesDaoProvider).getSettlementById('s1'), isNull);
+    });
+  });
+
+  group('G76 several payers', () {
+    ExpenseModel twoPayers() => ExpenseModel(
+      id: 'e1',
+      roomId: 'g1',
+      description: 'Dinner',
+      amountCents: 4200,
+      currency: 'EUR',
+      paidBy: '',
+      payersJson: jsonEncode({'pa': 3000, 'pb': 1200}),
+      splitsJson: jsonEncode({'pa': 2100, 'pb': 2100}),
+      createdAt: 1760000000000,
+      updatedAt: 1000,
+    );
+
+    test('round trip: the payers come back by name', () async {
+      final csv = buildGroupCsv(grp, members, [twoPayers()]);
+      expect(await import(csv), 1);
+      final e = (await c.read(expensesDaoProvider).getExpenseById('e1'))!;
+      expect(e.paidBy, '');
+      expect(paidAmountsOf(e).values.toList()..sort(), [1200, 3000]);
+      final byName = {
+        for (final m in await c.read(membersDaoProvider).getMembers('g1'))
+          m.displayName: m.userId,
+      };
+      expect(paidAmountsOf(e), {byName['Alex']: 3000, byName['Sam']: 1200});
+    });
+
+    test('payers that do not add up abort the import', () async {
+      final csv = buildGroupCsv(grp, members, [
+        twoPayers(),
+      ]).replaceFirst('30.00', '31.00');
+      await expectLater(import(csv), throwsA(isA<CsvImportException>()));
+    });
+
+    test('an empty Paid By without payer columns (what a pre-G76 import '
+        'sees) is refused, never read as someone paying', () async {
+      final lines = buildGroupCsv(grp, members, [twoPayers()]).split('\r\n');
+      final header = _row(lines.first);
+      final cut = header.indexOf('Created At') + 1;
+      final csv = [
+        for (final l in lines) _row(l).take(cut).join(','),
+      ].join('\r\n');
+      await expectLater(import(csv), throwsA(isA<CsvImportException>()));
     });
   });
 }

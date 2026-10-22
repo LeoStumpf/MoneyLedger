@@ -723,6 +723,7 @@ Future<void> _seedHistory(
           currency: first.currency.value,
           paidBy: first.paidBy.value,
           splitsJson: first.splitsJson.value,
+          payersJson: first.payersJson.present ? first.payersJson.value : null,
           createdAt: e.createdAt,
           updatedAt: e.createdAt,
           category: e.category,

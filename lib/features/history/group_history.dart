@@ -630,6 +630,7 @@ ExpenseModel resetExpenseVersion(
   currency: content.currency,
   paidBy: content.paidBy,
   splitsJson: content.splitsJson,
+  payersJson: content.payersJson,
   createdAt: origin.createdAt,
   updatedAt: clock,
   deleted: deleted,

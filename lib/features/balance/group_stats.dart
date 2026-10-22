@@ -6,6 +6,7 @@ library;
 import '../../core/sync/record_validation.dart';
 import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
+import '../../models/expense_payers.dart';
 
 /// What one participant paid and consumed in one currency (cents).
 class PersonStat {
@@ -85,7 +86,8 @@ List<CurrencyStats> groupStats(
     totals[c] = (totals[c] ?? 0) + e.amountCents;
     counts[c] = (counts[c] ?? 0) + 1;
     final p = paid.putIfAbsent(c, () => {});
-    p[e.paidBy] = (p[e.paidBy] ?? 0) + e.amountCents;
+    // G76: each payer's part (one payer: the whole amount).
+    paidAmountsOf(e).forEach((id, cents) => p[id] = (p[id] ?? 0) + cents);
     final s = share.putIfAbsent(c, () => {});
     split.forEach((id, cents) => s[id] = (s[id] ?? 0) + cents);
     final category = resolveCategory(e.category, customCategories);

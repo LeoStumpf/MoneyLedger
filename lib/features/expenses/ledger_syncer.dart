@@ -503,6 +503,9 @@ class LedgerSyncer {
         currency: Value(content['currency'] as String? ?? 'EUR'),
         paidBy: Value(content['paid_by'] as String? ?? ''),
         splitsJson: Value(jsonEncode(content['split'] ?? {})),
+        payersJson: Value(
+          content['payers'] == null ? null : jsonEncode(content['payers']),
+        ),
         createdAt: Value(createdAt),
         updatedAt: Value(
           clampInboundClock(content['updated_at'] as int? ?? createdAt),

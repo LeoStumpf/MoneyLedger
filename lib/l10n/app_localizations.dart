@@ -6157,6 +6157,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Payment details'**
   String get paymentDetailsPageTitle;
+
+  /// G76: Paid-by dropdown entry — several people paid this expense
+  ///
+  /// In en, this message translates to:
+  /// **'Several people…'**
+  String get payerSeveral;
+
+  /// G76: hint above the per-person paid amounts
+  ///
+  /// In en, this message translates to:
+  /// **'Who paid how much? Leave empty who didn\'t pay.'**
+  String get payersHint;
+
+  /// G76: ledger row payer line of an expense two people paid ('you' via recordYou)
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by {first} and {second}'**
+  String paidByTwo(Object first, Object second);
+
+  /// G76: ledger row payer line of an expense three or more people paid
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, other{Paid by {count} people}}'**
+  String paidByMany(int count);
 }
 
 class _AppLocalizationsDelegate

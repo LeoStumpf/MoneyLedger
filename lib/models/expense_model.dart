@@ -7,8 +7,18 @@ class ExpenseModel {
   final String description;
   final int amountCents;
   final String currency;
+
+  /// The participant who paid the whole amount; `''` when several people
+  /// paid ([payersJson] is set — G76).
   final String paidBy;
   final String splitsJson;
+
+  /// G76: who paid how much when **several** people paid — a JSON
+  /// `{participantId: cents}` map (the wire `payers` verbatim), summing to
+  /// the amount, ≥ 2 entries; [paidBy] is then `''` (so a pre-G76 build
+  /// refuses the version as "no payer" instead of misreading it). Null =
+  /// [paidBy] paid everything (the pre-G76 shape). See `expense_payers.dart`.
+  final String? payersJson;
   final int createdAt;
   final int updatedAt; // ms epoch, LWW clock
   final bool deleted; // tombstone — kept forever, hidden from the UI
@@ -60,6 +70,7 @@ class ExpenseModel {
     required this.currency,
     required this.paidBy,
     required this.splitsJson,
+    this.payersJson,
     required this.createdAt,
     this.updatedAt = 0,
     this.deleted = false,
@@ -89,6 +100,7 @@ class ExpenseModel {
     currency: currency,
     paidBy: paidBy,
     splitsJson: splitsJson,
+    payersJson: payersJson,
     createdAt: createdAt,
     updatedAt: updatedAt,
     deleted: deleted,
@@ -114,6 +126,7 @@ class ExpenseModel {
     currency: currency,
     paidBy: paidBy,
     splitsJson: splitsJson,
+    payersJson: payersJson,
     createdAt: createdAt,
     updatedAt: updatedAt,
     deleted: deleted,
