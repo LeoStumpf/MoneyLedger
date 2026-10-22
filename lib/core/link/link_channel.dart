@@ -35,6 +35,7 @@ import '../database/daos/groups_dao.dart';
 import '../database/daos/history_dao.dart';
 import '../database/daos/link_dao.dart';
 import '../database/daos/members_dao.dart';
+import '../database/daos/settings_dao.dart';
 import 'link_keys.dart';
 import 'link_uri.dart';
 import 'nostr/nostr_event.dart';
@@ -357,6 +358,9 @@ Future<LinkChannelModel> replaceLinkChannel(
     );
     await link.deletePeers(groupId);
     await link.putChannel(next);
+    // G52 step 12 follow-up: a "link replaced" notice of the old link is
+    // done with — this device is on the new one now.
+    await SettingsDao(db).clearLinkReplaced(groupId);
     return next;
   });
 }

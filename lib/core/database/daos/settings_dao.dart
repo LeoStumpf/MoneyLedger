@@ -362,4 +362,26 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
   Future<void> clearLinkSelfClaimPending(String groupId) => (delete(
     appSettings,
   )..where((t) => t.key.equals('$_linkSelfClaimPrefix$groupId'))).go();
+
+  // ── G52 step 12 follow-up: "this link was replaced" ──────────────────────
+
+  static const linkReplacedPrefix = 'link_replaced:';
+
+  /// The stored `LinkReplacedNotice` of [groupId] (encoded), or null.
+  Future<String?> linkReplacedRaw(String groupId) =>
+      _getValue('$linkReplacedPrefix$groupId');
+
+  Stream<String?> watchLinkReplacedRaw(String groupId) =>
+      (select(appSettings)
+            ..where((t) => t.key.equals('$linkReplacedPrefix$groupId')))
+          .watchSingleOrNull()
+          .map((row) => row?.value);
+
+  Future<void> setLinkReplacedRaw(String groupId, String value) =>
+      _setValue('$linkReplacedPrefix$groupId', value);
+
+  /// The channel of [groupId] was replaced or dropped — the notice is moot.
+  Future<void> clearLinkReplaced(String groupId) => (delete(
+    appSettings,
+  )..where((t) => t.key.equals('$linkReplacedPrefix$groupId'))).go();
 }

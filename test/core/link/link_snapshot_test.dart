@@ -276,6 +276,18 @@ void main() {
       expect((h.group, h.me, h.app, h.part, h.parts), ('g', null, null, 1, 2));
     });
 
+    test('G52 step 12 follow-up: `replaced` is read only when true', () {
+      expect(parseLinkSnapshotHeader(ok()).replaced, isFalse);
+      expect(
+        parseLinkSnapshotHeader({...ok(), 'replaced': 'yes'}).replaced,
+        isFalse,
+      );
+      expect(
+        parseLinkSnapshotHeader({...ok(), 'replaced': true}).replaced,
+        isTrue,
+      );
+    });
+
     test('errors', () {
       expect(
         () =>
@@ -305,6 +317,55 @@ void main() {
           reason: '$bad',
         );
       }
+    });
+  });
+
+  group('G52 step 12 follow-up: "link replaced" marker', () {
+    test('header only — no meta, no records, no device keys; `replaced`', () {
+      final m = buildLinkReplacedPart(group: 'g', me: 'p1', app: '1.0');
+      expect(m, {
+        'format': 'moneyledger-link',
+        'v': 1,
+        'group': 'g',
+        'me': 'p1',
+        'part': 0,
+        'parts': 1,
+        'app': '1.0',
+        'replaced': true,
+        'members': <Object?>[],
+        'expenses': <Object?>[],
+        'settlements': <Object?>[],
+      });
+      final h = parseLinkSnapshotHeader(m);
+      expect((h.group, h.me, h.part, h.replaced), ('g', 'p1', 0, true));
+      final p3 = parseLinkSnapshotHeader(
+        buildLinkReplacedPart(group: 'g', me: 'p1', app: '1.0', index: 3),
+      );
+      expect((p3.part, p3.retired, p3.replaced), (3, true, true));
+      expect(
+        () => buildLinkReplacedPart(group: 'g', me: '', app: '', index: 8),
+        throwsRangeError,
+      );
+    });
+
+    test('normal / retired / lock parts carry no `replaced` key (old '
+        'headers unchanged)', () {
+      final b = {
+        'group': 'g',
+        'meta': <String, dynamic>{'group': 'g'},
+      };
+      expect(
+        buildLinkSnapshotPart(b, me: 'p', app: 'a'),
+        isNot(contains('replaced')),
+      );
+      expect(
+        buildRetiredLinkPart(b, me: 'p', app: 'a', index: 1, parts: 1),
+        isNot(contains('replaced')),
+      );
+      expect(
+        buildLinkLockPart(b, me: 'p', app: 'a'),
+        isNot(contains('replaced')),
+      );
     });
   });
 }

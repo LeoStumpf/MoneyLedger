@@ -99,6 +99,7 @@ import 'link_channel.dart';
 import 'link_envelope.dart';
 import 'link_keys.dart';
 import 'link_relay_policy.dart';
+import 'link_replaced.dart';
 import 'link_snapshot.dart';
 import 'link_uri.dart';
 import 'nostr/nip09.dart';
@@ -1007,6 +1008,13 @@ class LinkSyncEngine {
       );
       return false;
     }
+    // G52 step 12 follow-up (§7.3): the publisher left this topic for a new
+    // link — nothing to merge; note it for the group page's hint and forget
+    // the publisher (its old key never publishes here again).
+    if (header.replaced) {
+      await _noteReplaced(group, ch.model, event, header.me);
+      return false;
+    }
     final gate = await _gateFor();
     if (gate == null || !_alive) return false;
     final signers = _signerUsers(content);
@@ -1054,6 +1062,31 @@ class LinkSyncEngine {
     }
     if (_mergeFailed.remove(group)) _schedulePublish(group);
     return true;
+  }
+
+  Future<void> _noteReplaced(
+    String group,
+    LinkChannelModel channel,
+    NostrEvent event,
+    String? by,
+  ) async {
+    await _db.transaction(() async {
+      final existing = LinkReplacedNotice.decode(
+        await _settings.linkReplacedRaw(group),
+      );
+      final next = nextLinkReplacedNotice(
+        existing,
+        epoch: channel.epoch,
+        eventId: event.id,
+        createdAt: event.createdAt,
+        by: by,
+      );
+      if (next != null) {
+        debugPrint('[link] $group: the invite link was replaced');
+        await _settings.setLinkReplacedRaw(group, next.encode());
+      }
+      await _link.deletePeer(group, event.pubkey);
+    });
   }
 
   static Set<String> _signerUsers(Map<String, dynamic> content) {
@@ -1639,10 +1672,17 @@ class LinkSyncEngine {
   /// G53 [lock]: the group was just locked by this device — part 0 becomes
   /// the final `locked: true` event ([buildLinkLockPart]) and stays until
   /// it expires (a day); only the other parts are deleted.
+  ///
+  /// G52 step 12 follow-up [replaced] (reset / switch, §7.3): every part
+  /// becomes the header-only "this link was replaced" marker
+  /// ([buildLinkReplacedPart] — no meta, members or records, so it never
+  /// carries a new secret); part 0 stays for [kLinkExpiry] so members still
+  /// on this link see it, the other parts are deleted.
   Future<bool> unpublish(
     String groupId, {
     Duration timeout = const Duration(seconds: 5),
     bool lock = false,
+    bool replaced = false,
   }) => _track(() async {
     // G52 step 10: right after start the channels may not be loaded yet.
     if (_started) await ready;
@@ -1671,11 +1711,40 @@ class LinkSyncEngine {
       for (var i = 0; i < used; i++) linkPartTopic(route.keys.topic, i),
     ];
     final expiry = _nowSec + kLinkRetiredExpiry.inSeconds;
+    if (replaced) {
+      for (var i = 0; i < used; i++) {
+        final part = buildLinkReplacedPart(
+          group: groupId,
+          me: me,
+          app: app,
+          index: i,
+        );
+        final content = await _seal(route, i, packLinkSnapshot(part));
+        final createdAt = await _link.nextCreatedAt(groupId, _nowSec);
+        if (createdAt == null || !_alive) return false;
+        final event = signNostrEvent(
+          privateKey: ch.nostrPriv,
+          kind: kLinkEventKind,
+          tags: [
+            ['d', dTags[i]],
+            [
+              'expiration',
+              '${i == 0 ? _nowSec + kLinkExpiry.inSeconds : expiry}',
+            ],
+            ['alt', kLinkAltText],
+          ],
+          content: content,
+          createdAt: createdAt,
+        );
+        await _ensurePool().publish(event, only: targets, timeout: timeout);
+        if (!_alive) return false;
+      }
+    }
     // G53: when the stored meta already names a **new** link (a reset /
     // a Matrix device following one), its header-only parts would hand the
     // new secret to the old link's holders — then only the NIP-09 deletion
     // is sent.
-    if (bootstrap != null && !_namesOtherLink(bootstrap, ch.secret)) {
+    else if (bootstrap != null && !_namesOtherLink(bootstrap, ch.secret)) {
       final empty = {
         ...bootstrap,
         'expenses': const <Object?>[],
@@ -1705,8 +1774,9 @@ class LinkSyncEngine {
         if (!_alive) return false;
       }
     }
-    // A lock keeps its final event (part 0) until it expires.
-    final deleted = lock ? dTags.sublist(1) : dTags;
+    // A lock keeps its final event (part 0) until it expires, a reset its
+    // "replaced" marker.
+    final deleted = lock || replaced ? dTags.sublist(1) : dTags;
     if (deleted.isEmpty) return true;
     final createdAt = await _link.nextCreatedAt(groupId, _nowSec);
     if (createdAt == null || !_alive) return false;
@@ -1732,8 +1802,10 @@ class LinkSyncEngine {
   /// expires), then the channel is replaced ([replaceLinkChannel]: a new
   /// random secret, the next epoch, a fresh Nostr key, "me" kept, the old
   /// peers forgotten) and the group is published under the new topic right
-  /// away. Nothing is posted on the old topic that points to the new one —
-  /// the removed person could read it; the new link is shared directly.
+  /// away. Nothing on the old topic points to the new one (the removed
+  /// person could read it; the new link is shared directly) — only the
+  /// header-only "this link was replaced" marker (Leo 2026-10-22, §7.3), so
+  /// members still on the old link get a hint to ask for the new one.
   /// Returns the new channel (its link is what the invite sheet shows).
   Future<LinkChannelModel> resetLink(String groupId) =>
       _replaceLink(groupId, null);
@@ -1782,6 +1854,7 @@ class LinkSyncEngine {
       try {
         await unpublish(
           groupId,
+          replaced: true,
         ).timeout(kLinkUnpublishMaxWait, onTimeout: () => false);
       } catch (e) {
         if (_alive) debugPrint('[link] unpublish of $groupId failed: $e');

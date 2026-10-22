@@ -340,6 +340,84 @@ void main() {
       expect(find.byKey(const Key('joinLinkSwitch')), findsNothing);
     });
 
+    group('G52 step 12 follow-up: a replaced link', () {
+      const replaced = LinkGroupPreview(
+        groupId: 'g1',
+        name: 'Trip',
+        people: [LinkJoinPerson(id: 'p2', name: 'Ben', usedElsewhere: false)],
+        replaced: true,
+      );
+      for (final (name, locale) in [
+        ('English', const Locale('en')),
+        ('German', const Locale('de')),
+      ]) {
+        final l = locale.languageCode == 'de' ? de : en;
+        void phone(WidgetTester tester) {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = const Size(360, 740);
+          tester.platformDispatcher.textScaleFactorTestValue = 2;
+          addTearDown(tester.view.reset);
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        }
+
+        Future<void> start(WidgetTester tester, _Fakes f) async {
+          await tester.pumpWidget(
+            _app(f, session: AppSessionKind.local, locale: locale),
+          );
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(const Key('joinLinkStart')));
+          await tester.tap(find.byKey(const Key('joinLinkStart')));
+          await tester.pumpAndSettle();
+        }
+
+        testWidgets('$name: the picker warns (still joinable)', (tester) async {
+          phone(tester);
+          final f = _Fakes()
+            ..answer = () => const LinkJoinLookup(preview: replaced);
+          await start(tester, f);
+          expect(find.text(l.joinLinkPickReplaced), findsOneWidget);
+          expect(find.byKey(const Key('joinLinkPerson-p2')), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+
+        testWidgets('$name: the switch page warns it is probably the old '
+            'link', (tester) async {
+          phone(tester);
+          final f = _Fakes()
+            ..answer = () => const LinkJoinLookup(
+              preview: replaced,
+              blocker: LinkJoinError.otherLink,
+            );
+          await start(tester, f);
+          await tester.ensureVisible(
+            find.byKey(const Key('joinLinkSwitchReplaced')),
+          );
+          expect(find.text(l.joinLinkSwitchReplaced), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+
+        testWidgets('$name: only markers → "this link was replaced", no '
+            'picker', (tester) async {
+          phone(tester);
+          final f = _Fakes()
+            ..answer = () => const LinkJoinLookup(
+              preview: LinkGroupPreview(
+                groupId: 'g1',
+                name: null,
+                people: [],
+                replaced: true,
+                onlyReplaced: true,
+              ),
+            );
+          await start(tester, f);
+          expect(find.byKey(const Key('joinLinkReplaced')), findsOneWidget);
+          expect(find.text(l.joinLinkReplacedTitle), findsOneWidget);
+          expect(find.byKey(const Key('joinLinkPicker')), findsNothing);
+          expect(tester.takeException(), isNull);
+        });
+      }
+    });
+
     group('G52 step 12: shared with another link → switch', () {
       _Fakes other() => _Fakes()
         ..answer = () => const LinkJoinLookup(

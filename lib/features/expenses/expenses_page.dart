@@ -39,6 +39,7 @@ import 'record_details_sheet.dart';
 import '../../core/link/link_sync_engine.dart' show linkClockProvider;
 import '../link/link_invite.dart';
 import '../link/link_join.dart' show chooseLinkParticipant;
+import '../link/link_replaced_banner.dart';
 import '../local/local_mode_ui.dart' show startConnectAccount;
 import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../sync/group_sync_sheet.dart';
@@ -360,6 +361,14 @@ class ExpensesPage extends ConsumerWidget {
                 ),
                 canFilterMe: meAsync.value != null,
               ),
+            ),
+          // G52 step 12 follow-up: someone replaced the invite link this
+          // device still uses.
+          if (linkGroup && !removed)
+            LinkReplacedBanner(
+              groupId: roomId,
+              me: meAsync.value?.userId,
+              names: names,
             ),
           if (needsClaim)
             MaterialBanner(

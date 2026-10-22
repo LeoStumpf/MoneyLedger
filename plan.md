@@ -790,12 +790,26 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 10) Device pass: delete a link group on one phone (the
       other keeps it, our events gone from nos.lol), restore the backup,
       choose "me", syncs again
-- [ ] (from step 12) Members who haven't opened the new link get **no
+- [x] (from step 12) Members who haven't opened the new link get **no
       hint** in their app — they just stop seeing the resetter's changes
       — **Leo 2026-10-22: yes** — after a reset post a header-only "this
       link was replaced" marker on the **old** topic (removed people seeing
       the reset is accepted); members still on the old link get a hint
-      (design §7.3) — to build
+      (design §7.3) — **done:** `buildLinkReplacedPart` (`replaced: true`,
+      no meta / members / records) on every part at reset / switch /
+      bridge-replace (part 0 kept 30 d); receivers store a device-local
+      `link_replaced:<group>` notice + drop that peer; group-page
+      `LinkReplacedBanner` (named / unknown / own other device, *Dismiss*);
+      join page notes `replaced` / `onlyReplaced`; design doc "As built
+      (G52 step 12 follow-up)"
+- [ ] (from the step 12 marker) An older build reads a marker as an empty
+      snapshot: it lists the publisher as a peer with an empty digest, and
+      a joiner that finds **only** markers creates a nameless group — fine
+      while old builds aren't released
+- [ ] (from the step 12 marker) Device pass: reset on one phone → the
+      other phone still on the old link shows the banner; after opening
+      the new link it is gone; opening the old link on a third device says
+      "This invite link was replaced"
 - [ ] (from step 12) Until everyone switched, a member still on the old
       link merges the old-link holders' (e.g. the removed person's)
       changes and carries them into the new link when switching — inherent

@@ -435,6 +435,10 @@ class AppDatabase extends _$AppDatabase {
     // G52: and its link channel (incl. the secret + Nostr key) and peers.
     await (delete(linkChannels)..where((t) => t.groupId.equals(groupId))).go();
     await (delete(linkPeers)..where((t) => t.groupId.equals(groupId))).go();
+    // G52 step 12 follow-up: and its "link replaced" notice.
+    await (delete(
+      appSettings,
+    )..where((t) => t.key.equals('link_replaced:$groupId'))).go();
   });
 
   @override

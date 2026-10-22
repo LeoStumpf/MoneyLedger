@@ -4,6 +4,11 @@
 /// old link no longer sees the changes; another member opening the new link
 /// switches its channel (old copy unpublished, "me" kept, no picker) and
 /// syncs with the resetter again.
+///
+/// Step 12 follow-up (Leo 2026-10-22, §7.3): the old copy is replaced by a
+/// header-only "this link was replaced" marker (part 0 stays, nothing else
+/// of ours); a member still on the old link gets the notice, and loses it
+/// once it switched.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +20,12 @@ import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/database/daos/link_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/link/link_channel.dart';
-import 'package:money_ledger/core/link/link_envelope.dart' show kLinkEventKind;
+import 'package:money_ledger/core/database/daos/settings_dao.dart';
+import 'package:money_ledger/core/link/link_envelope.dart'
+    show kLinkEventKind, openLinkContent;
+import 'package:money_ledger/core/link/link_keys.dart';
+import 'package:money_ledger/core/link/link_replaced.dart';
+import 'package:money_ledger/core/link/link_snapshot.dart';
 import 'package:money_ledger/core/link/link_sync_engine.dart';
 import 'package:money_ledger/core/link/link_uri.dart';
 import 'package:money_ledger/core/link/nostr/nip11.dart';
@@ -229,6 +239,36 @@ void main() {
         ),
       );
 
+  /// What [pubkey] left on the old topic of [secret]: every event must be
+  /// a header-only marker (no meta, members, records or device keys).
+  Future<List<Map<String, dynamic>>> markersOf(
+    String relay,
+    String pubkey,
+    String secret,
+  ) async {
+    final keys = await deriveLinkKeys(decodeLinkSecret(secret));
+    final out = <Map<String, dynamic>>[];
+    for (final e in linkEvents(relay, pubkey)) {
+      final content = await openLinkContent(
+        e.content,
+        keys.encKey,
+        d: e.dTag,
+        pubkey: e.pubkey,
+      );
+      expect(parseLinkSnapshotHeader(content).replaced, isTrue);
+      expect(content, isNot(contains('meta')));
+      expect(content, isNot(contains('device_keys')));
+      for (final k in ['members', 'expenses', 'settlements']) {
+        expect(content[k], isEmpty, reason: k);
+      }
+      out.add(content);
+    }
+    return out;
+  }
+
+  Future<LinkReplacedNotice?> notice(AppDatabase db) async =>
+      LinkReplacedNotice.decode(await SettingsDao(db).linkReplacedRaw(_g));
+
   Future<Set<String>> expenseIds(AppDatabase db) async => {
     for (final e in await ExpensesDao(db).getAllExpensesForGroup(_g)) e.id,
   };
@@ -251,12 +291,33 @@ void main() {
     expect((await LinkDao(s.aDb).getChannel(_g))!.secret, fresh.secret);
     final newPub = nostrPublicKey(fresh.nostrPriv);
     for (final r in [_r1, _r2]) {
-      expect(linkEvents(r, oldPub), isEmpty, reason: '$r: old copy gone');
+      // Only the part-0 marker is left of the old copy.
+      final markers = await markersOf(r, oldPub, old.secret);
+      expect(
+        markers.map((m) => (m['part'], m['me'])),
+        [(0, 'p1')],
+        reason: '$r: old copy replaced by the marker',
+      );
       expect(linkEvents(r, newPub), isNotEmpty, reason: '$r: new topic');
     }
     // The old link's publishers are forgotten (they come back once they
     // switched, with their new keys).
     expect(await LinkDao(s.aDb).getPeers(_g), isEmpty);
+    expect(await notice(s.aDb), isNull, reason: 'A itself is on the new link');
+    // B and C, still on the old link, got the marker: a notice naming Anna
+    // on their current channel, and A's old key is no peer any more.
+    for (final db in [s.bDb, s.cDb]) {
+      final ch = (await LinkDao(db).getChannel(_g))!;
+      final n = await notice(db);
+      expect((n?.by, n?.epoch, n?.dismissed), ('p1', ch.epoch, false));
+      expect(visibleLinkReplacedNotice(n, ch), isNotNull);
+      expect(
+        (await LinkDao(db).getPeers(_g)).map((p) => p.pubkey),
+        isNot(contains(oldPub)),
+      );
+    }
+    // The marker merges nothing: the group is unchanged on C.
+    expect((await GroupsDao(s.cDb).getGroup(_g))!.name, 'Trip');
 
     // A's new expense never reaches C, who only has the old link.
     await addExpense(s.aDb, 'e2');
@@ -294,9 +355,22 @@ void main() {
     final bOldPub = nostrPublicKey(bOld.nostrPriv);
     final bNewPub = nostrPublicKey(bNew.nostrPriv);
     for (final r in [_r1, _r2]) {
-      expect(linkEvents(r, bOldPub), isEmpty, reason: r);
+      expect((await markersOf(r, bOldPub, bOld.secret)).map((m) => m['me']), [
+        'p2',
+      ], reason: r);
       expect(linkEvents(r, bNewPub), isNotEmpty, reason: r);
     }
+    // B switched: its notice is gone.
+    expect(await notice(s.bDb), isNull);
+    // C dismisses the banner; B's later marker doesn't bring it back.
+    final cNotice = (await notice(s.cDb))!;
+    expect(cNotice.dismissed, isFalse);
+    await SettingsDao(
+      s.cDb,
+    ).setLinkReplacedRaw(_g, cNotice.asDismissed.encode());
+    await s.c.read(linkSyncEngineProvider).refresh(groupId: _g);
+    await settle();
+    expect((await notice(s.cDb))!.dismissed, isTrue);
 
     // B and A sync on the new link; A sees B as Ben again.
     await addExpense(s.bDb, 'b1');
@@ -334,7 +408,11 @@ void main() {
     final fresh = await s.a.read(linkSyncEngineProvider).resetLink(_g);
     await settle();
     for (final r in [_r1, _r2]) {
-      expect(linkEvents(r, oldPub), isEmpty, reason: '$r: old copy gone');
+      expect(
+        (await markersOf(r, oldPub, old.secret)).map((m) => m['part']),
+        [0],
+        reason: '$r: only the marker is left of the old copy',
+      );
       expect(
         linkEvents(r, nostrPublicKey(fresh.nostrPriv)),
         isNotEmpty,
@@ -361,6 +439,32 @@ void main() {
       expect((await LinkDao(s.aDb).getChannel(_g))!.secret, fresh.secret);
     },
   );
+
+  test('step 12 follow-up: once everyone switched, the old link shows '
+      '"replaced" on the join page; a link with a marker beside a copy '
+      'says so too', () async {
+    final s = await sharedGroup();
+    final fresh = await s.a.read(linkSyncEngineProvider).resetLink(_g);
+    await settle();
+    // B is still on the old link: its copy + A's marker.
+    final probe = device();
+    final mixed = (await lookUpLinkGroup(probe.c, s.invite))!;
+    expect((mixed.preview.replaced, mixed.preview.onlyReplaced), (true, false));
+    expect(mixed.preview.name, 'Trip');
+    final newInvite = parseLinkUri(
+      buildLinkUri(decodeLinkSecret(fresh.secret), name: 'Trip'),
+    );
+    for (final m in [s.b, s.c]) {
+      await switchLinkGroup(m, newInvite, _g);
+      await settle();
+    }
+    final only = (await lookUpLinkGroup(probe.c, s.invite))!;
+    expect((only.preview.groupId, only.preview.onlyReplaced), (_g, true));
+    expect(only.preview.people, isEmpty);
+    // The new link has no marker.
+    final current = (await lookUpLinkGroup(probe.c, newInvite))!;
+    expect(current.preview.replaced, isFalse);
+  });
 
   test('switching to the link the device already has changes nothing; '
       'no channel → refused', () async {

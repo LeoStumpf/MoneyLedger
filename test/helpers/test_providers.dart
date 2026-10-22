@@ -2,6 +2,8 @@
 /// compile issue that occurs when the matrix SDK is pulled in on native platforms.
 library;
 
+import 'package:money_ledger/core/link/link_replaced.dart';
+import 'package:money_ledger/features/link/link_replaced_banner.dart';
 import 'package:money_ledger/features/link/link_join.dart';
 import 'package:money_ledger/features/welcome/why_matrix_hint.dart';
 import 'package:money_ledger/features/payment/payment_details.dart';
@@ -91,6 +93,8 @@ Widget testRouterApp(Widget page, {List overrides = const [], Locale? locale}) {
 /// Parameters control the fake data each page sees.
 List<dynamic> testOverrides({
   bool isLoggedIn = false,
+  // G52 step 12 follow-up: the group page's "link replaced" notice.
+  LinkReplacedNotice? linkReplaced,
   LoginFlowsResult? loginFlows,
   bool loginFlowsLoading = false,
   List<ExpenseModel> expenses = const [],
@@ -157,7 +161,7 @@ List<dynamic> testOverrides({
   joinLinkStreamProvider.overrideWith(
     (_) => const Stream<JoinLinkEvent>.empty(),
   ),
-  ...signingUiOverrides(archives: archives),
+  ...signingUiOverrides(archives: archives, linkReplaced: linkReplaced),
   // G52 step 9: the default relays, no relay state (the link sync engine
   // never starts in widget tests).
   linkRelaysViewProvider.overrideWith(
@@ -199,7 +203,11 @@ List<dynamic> testOverrides({
 List<dynamic> signingUiOverrides({
   List<KnownKey> keys = const [],
   Map<String, GroupArchive> archives = const {},
+  LinkReplacedNotice? linkReplaced,
 }) => [
+  // G52 step 12 follow-up: the group page's "link replaced" notice (an
+  // `AppSettings` watch stream otherwise).
+  linkReplacedNoticeProvider.overrideWith((_, _) => Stream.value(linkReplaced)),
   knownDeviceKeysProvider.overrideWith((_) => Stream.value(keys)),
   rejectedVersionProvider.overrideWith((_, _) => Stream.value(null)),
   trustedDevicesProvider.overrideWith((_) => Stream.value(const {})),

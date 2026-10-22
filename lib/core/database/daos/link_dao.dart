@@ -8,6 +8,7 @@ import '../../link/group_policy.dart';
 import '../app_database.dart';
 import 'groups_dao.dart';
 import 'members_dao.dart';
+import 'settings_dao.dart';
 
 part 'link_dao.g.dart';
 
@@ -133,6 +134,7 @@ class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
   Future<void> deleteChannel(String groupId) => transaction(() async {
     await (delete(linkChannels)..where((t) => t.groupId.equals(groupId))).go();
     await (delete(linkPeers)..where((t) => t.groupId.equals(groupId))).go();
+    await SettingsDao(attachedDatabase).clearLinkReplaced(groupId);
   });
 
   // --- peers ----------------------------------------------------------------
@@ -141,6 +143,12 @@ class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
   /// link was reset — they published under the old topic).
   Future<void> deletePeers(String groupId) =>
       (delete(linkPeers)..where((t) => t.groupId.equals(groupId))).go();
+
+  /// Forgets one publisher of [groupId] (G52 step 12 follow-up: it posted
+  /// the "link replaced" marker — it left this topic).
+  Future<void> deletePeer(String groupId, String pubkey) => (delete(
+    linkPeers,
+  )..where((t) => t.groupId.equals(groupId) & t.pubkey.equals(pubkey))).go();
 
   SimpleSelectStatement<$LinkPeersTable, LinkPeer> _peers(String groupId) =>
       select(linkPeers)

@@ -707,16 +707,32 @@ leave, bounded by `kLinkUnpublishMaxWait`), then `replaceLinkChannel`
 Nostr key**, "me" kept, publish state reset, the old `link_peers` dropped →
 published under the new topic at once; the sheet shows the new link +
 `linkInviteAfterReset` ("send it to everyone"). **No pointer on the old topic**
-(the removed person could read it). Other members **switch** by opening the new
+(the removed person could read it) — only the **"link replaced" marker**
+(Leo 2026-10-22): `unpublish(replaced: true)` (reset, switch, bridge-replace)
+overwrites every used part with `buildLinkReplacedPart` (link header +
+`replaced: true`, **no** meta / members / records / device keys; part 0 kept
+30 d, the rest NIP-09-deleted). Receivers (`LinkSyncEngine._handle`, before
+the gate): pure `nextLinkReplacedNotice` → `AppSettings`
+`link_replaced:<group>` (`LinkReplacedNotice`: channel epoch, event, `by` =
+header `me`, dismissed), the publisher's `link_peers` row dropped; cleared by
+`replaceLinkChannel` / `deleteChannel` / `purgeGroup`. Group page:
+`LinkReplacedBanner` (`linkReplacedNoticeProvider`, only on the current
+channel; texts named / unknown / "on another device" of mine; *Dismiss*
+sticks per channel; widget tests: `testOverrides(linkReplaced:)`). Join look-up:
+markers are skipped for the preview (`LinkGroupPreview.replaced` → note on
+picker / switch page; `onlyReplaced` → `joinLinkReplaced` state). An older
+build reads a marker as an empty snapshot (legacy meta `updated_at` 0 → no-op).
+A hint only — anyone with the link can post one. Other members **switch** by opening the new
 link: the join look-up's `LinkJoinError.otherLink` now shows *Switch to this
 link?* (`joinLinkSwitch`, `linkSwitchActionProvider` → `switchLinkGroup` →
 `LinkSyncEngine.switchLink`: same unpublish + replace with the link's secret,
 "me" kept, no picker, then a full fetch). `joinLinkChannel` still refuses
 another secret. Until everyone switched, members still on the old link carry
 old-link writes over (whole-snapshot LWW). Removing a person in a link group
-shows `removeMemberLinkNote`. No wire / schema change. Tests:
-`test/integration/link_reset_test.dart`, `test/g52_link_reset_ui_test.dart`,
-`link_channel_test.dart`, `g52_link_join_test.dart`.
+shows `removeMemberLinkNote`. No schema change (the marker: additive header
+flag). Tests: `test/integration/link_reset_test.dart`,
+`test/g52_link_reset_ui_test.dart`, `test/g52_link_replaced_ui_test.dart`,
+`link_channel_test.dart`, `link_replaced_test.dart`, `g52_link_join_test.dart`.
 
 ### Invite by link (G52 step 6)
 

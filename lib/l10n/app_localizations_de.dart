@@ -4076,4 +4076,32 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String linkReplacedBanner(String name) {
+    return '$name hat den Einladungslink dieser Gruppe ersetzt. Frag jemanden aus der Gruppe nach dem neuen Link und öffne ihn hier – bis dahin bekommst du die Änderungen von $name nicht.';
+  }
+
+  @override
+  String get linkReplacedBannerNoName =>
+      'Der Einladungslink dieser Gruppe wurde ersetzt. Frag jemanden aus der Gruppe nach dem neuen Link und öffne ihn hier – bis dahin verpasst du vielleicht Änderungen.';
+
+  @override
+  String get linkReplacedBannerMe =>
+      'Du hast den Einladungslink dieser Gruppe auf einem anderen Gerät ersetzt. Öffne den neuen Link auch hier, damit weiter synchronisiert wird.';
+
+  @override
+  String get joinLinkReplacedTitle => 'Dieser Einladungslink wurde ersetzt';
+
+  @override
+  String get joinLinkReplacedBody =>
+      'Die Gruppe hat einen neuen Einladungslink. Bitte jemanden aus der Gruppe, ihn dir zu schicken.';
+
+  @override
+  String get joinLinkPickReplaced =>
+      'Jemand hat diesen Einladungslink ersetzt – du bekommst vielleicht nur eine alte Kopie. Frag lieber jemanden aus der Gruppe nach dem neuen Link.';
+
+  @override
+  String get joinLinkSwitchReplaced =>
+      'Dieser Link wurde durch einen neueren ersetzt – wahrscheinlich ist es der alte. Behalte lieber deinen jetzigen Link.';
 }

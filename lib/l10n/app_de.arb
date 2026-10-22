@@ -1035,5 +1035,12 @@
   "notifyPaymentEdited": "{name} hat eine Zahlung geändert: {from} → {to}",
   "notifyPaymentDeleted": "{name} hat eine Zahlung gelöscht: {from} → {to}",
   "notifySeveralChanges": "{count, plural, =1{1 Änderung von {names}} other{{count} Änderungen von {names}}}",
-  "notifyAddedToGroup": "{count, plural, =0{Du wurdest zu dieser Gruppe hinzugefügt.} =1{Du wurdest zu dieser Gruppe hinzugefügt – 1 Eintrag.} other{Du wurdest zu dieser Gruppe hinzugefügt – {count} Einträge.}}"
+  "notifyAddedToGroup": "{count, plural, =0{Du wurdest zu dieser Gruppe hinzugefügt.} =1{Du wurdest zu dieser Gruppe hinzugefügt – 1 Eintrag.} other{Du wurdest zu dieser Gruppe hinzugefügt – {count} Einträge.}}",
+  "linkReplacedBanner": "{name} hat den Einladungslink dieser Gruppe ersetzt. Frag jemanden aus der Gruppe nach dem neuen Link und öffne ihn hier – bis dahin bekommst du die Änderungen von {name} nicht.",
+  "linkReplacedBannerNoName": "Der Einladungslink dieser Gruppe wurde ersetzt. Frag jemanden aus der Gruppe nach dem neuen Link und öffne ihn hier – bis dahin verpasst du vielleicht Änderungen.",
+  "linkReplacedBannerMe": "Du hast den Einladungslink dieser Gruppe auf einem anderen Gerät ersetzt. Öffne den neuen Link auch hier, damit weiter synchronisiert wird.",
+  "joinLinkReplacedTitle": "Dieser Einladungslink wurde ersetzt",
+  "joinLinkReplacedBody": "Die Gruppe hat einen neuen Einladungslink. Bitte jemanden aus der Gruppe, ihn dir zu schicken.",
+  "joinLinkPickReplaced": "Jemand hat diesen Einladungslink ersetzt – du bekommst vielleicht nur eine alte Kopie. Frag lieber jemanden aus der Gruppe nach dem neuen Link.",
+  "joinLinkSwitchReplaced": "Dieser Link wurde durch einen neueren ersetzt – wahrscheinlich ist es der alte. Behalte lieber deinen jetzigen Link."
 }

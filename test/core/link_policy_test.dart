@@ -13,6 +13,7 @@ import 'package:money_ledger/core/database/daos/link_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
 import 'package:money_ledger/core/link/group_policy.dart';
+import 'package:money_ledger/core/link/link_snapshot.dart';
 import 'package:money_ledger/core/matrix/hmac_record_crypto.dart';
 import 'package:money_ledger/core/session/app_session.dart';
 import 'package:money_ledger/core/session/local_adoption.dart';
@@ -207,6 +208,23 @@ void main() {
         history.where((h) => h.recordId == 'e1').single.source,
         HistorySource.inbound,
       );
+    });
+
+    test('G52 step 12 follow-up: a build without the marker path reads a '
+        '"link replaced" marker as an empty snapshot — nothing changes, '
+        'nothing is refused', () async {
+      final before = (await groups.getGroup('g1'))!;
+      await linkGate.snapshot(
+        buildLinkReplacedPart(group: 'g1', me: 'p1', app: 'old'),
+        relayedBy: via,
+        trustAttestations: false,
+      );
+      final after = (await groups.getGroup('g1'))!;
+      expect(after.name, before.name);
+      expect(after.currency, before.currency);
+      expect(after.updatedAt, before.updatedAt);
+      expect(await members.getMembers('g1'), hasLength(1));
+      expect(await signing.rejectedForGroup('g1'), isEmpty);
     });
 
     test('the Matrix path refuses the same unsigned version even in a '

@@ -178,6 +178,37 @@ Map<String, dynamic> buildLinkLockPart(
   'locked': true,
 };
 
+/// G52 step 12 follow-up (§7.3, Leo 2026-10-22): the **"this link was
+/// replaced" marker** a device posts on the **old** topic when it leaves it
+/// for a new link (reset or switch) — part [index] (every part it used, so
+/// no peer row of the old key survives; part 0 stays for the usual 30 days),
+/// **header only**: no meta, no members, no records, no `device_keys` (the
+/// meta of a mixed group may name the new secret) — just the link header
+/// with `replaced: true`. `me` names the publisher's participant (a hint:
+/// "Anna replaced the link"). An older build reads it as an empty snapshot
+/// (its legacy meta has `updated_at` 0 → never newer than the stored one).
+Map<String, dynamic> buildLinkReplacedPart({
+  required String group,
+  required String me,
+  required String app,
+  int index = 0,
+}) {
+  RangeError.checkValueInInterval(index, 0, kLinkMaxParts - 1, 'index');
+  return {
+    'format': kLinkSnapshotFormat,
+    'v': kLinkSnapshotVersion,
+    'group': group,
+    'me': me,
+    'part': index,
+    'parts': 1,
+    'app': app,
+    'replaced': true,
+    'members': const <Object?>[],
+    'expenses': const <Object?>[],
+    'settlements': const <Object?>[],
+  };
+}
+
 /// The part indices to retire when a snapshot goes from [previousParts] to
 /// [parts] parts (empty when it grows or stays).
 List<int> retiredLinkParts(int previousParts, int parts) => [
@@ -262,6 +293,11 @@ class LinkSnapshotHeader {
   /// hint, never trusted on its own).
   final bool locked;
 
+  /// G52 step 12 follow-up: the publisher left this topic for a new link
+  /// ([buildLinkReplacedPart]) — a hint only (anyone holding the link can
+  /// post one); the event carries nothing to merge.
+  final bool replaced;
+
   const LinkSnapshotHeader({
     required this.group,
     required this.me,
@@ -269,6 +305,7 @@ class LinkSnapshotHeader {
     required this.parts,
     required this.app,
     this.locked = false,
+    this.replaced = false,
   });
 
   /// A header-only part overwriting a part no longer in use.
@@ -311,6 +348,7 @@ LinkSnapshotHeader parseLinkSnapshotHeader(Map<String, dynamic> json) {
     parts: parts,
     app: app is String ? app : null,
     locked: json['locked'] == true,
+    replaced: json['replaced'] == true,
   );
 }
 

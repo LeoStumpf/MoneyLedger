@@ -520,6 +520,15 @@ class _JoinLinkPageState extends ConsumerState<JoinLinkPage> {
       context.go('/groups/${found.preview.groupId}/expenses');
       return;
     }
+    // G52 step 12 follow-up: only "this link was replaced" markers — the
+    // group moved to a new link.
+    if (found.preview.onlyReplaced) {
+      setState(() {
+        _lookup = found;
+        _step = _Step.notFound;
+      });
+      return;
+    }
     setState(() {
       _lookup = found;
       _step = switch (found!.blocker) {
@@ -735,11 +744,12 @@ class _JoinLinkPageState extends ConsumerState<JoinLinkPage> {
           title: l.joinLinkSearching,
         );
       case _Step.notFound:
+        final replaced = _lookup?.preview.onlyReplaced ?? false;
         return EmptyState(
-          key: const Key('joinLinkNotFound'),
-          icon: Icons.cloud_off_outlined,
-          title: l.joinLinkNotFoundTitle,
-          body: l.joinLinkNotFoundBody,
+          key: Key(replaced ? 'joinLinkReplaced' : 'joinLinkNotFound'),
+          icon: replaced ? Icons.link_off : Icons.cloud_off_outlined,
+          title: replaced ? l.joinLinkReplacedTitle : l.joinLinkNotFoundTitle,
+          body: replaced ? l.joinLinkReplacedBody : l.joinLinkNotFoundBody,
           actions: [
             FilledButton(
               key: const Key('joinLinkRetry'),
@@ -783,6 +793,17 @@ class _JoinLinkPageState extends ConsumerState<JoinLinkPage> {
               textAlign: TextAlign.center,
               style: _muted(context),
             ),
+            if (_lookup?.preview.replaced ?? false) ...[
+              const SizedBox(height: Insets.m),
+              Text(
+                l.joinLinkSwitchReplaced,
+                key: const Key('joinLinkSwitchReplaced'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ],
             const SizedBox(height: Insets.xl),
             FilledButton(
               key: const Key('joinLinkSwitchConfirm'),
@@ -881,6 +902,20 @@ class _JoinLinkPageState extends ConsumerState<JoinLinkPage> {
                       ),
                     ),
                   ),
+                  if (preview.replaced)
+                    Padding(
+                      key: const Key('joinLinkPickReplaced'),
+                      padding: const EdgeInsets.fromLTRB(
+                        Insets.xl,
+                        Insets.m,
+                        Insets.xl,
+                        0,
+                      ),
+                      child: Text(
+                        l.joinLinkPickReplaced,
+                        style: _muted(context),
+                      ),
+                    ),
                   const SizedBox(height: Insets.m),
                   for (final p in preview.people)
                     option(

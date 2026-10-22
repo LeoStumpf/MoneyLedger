@@ -6313,6 +6313,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{You were added to this group.} =1{You were added to this group — 1 entry.} other{You were added to this group — {count} entries.}}'**
   String notifyAddedToGroup(int count);
+
+  /// G52 step 12 follow-up: group page banner — a 'link replaced' marker from {name} arrived on the link this device still uses.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} replaced this group\'s invite link. Ask someone in the group for the new link and open it here — until then you won\'t get {name}\'s changes.'**
+  String linkReplacedBanner(String name);
+
+  /// G52 step 12 follow-up: as linkReplacedBanner, publisher unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'This group\'s invite link was replaced. Ask someone in the group for the new link and open it here — until then you may miss changes.'**
+  String get linkReplacedBannerNoName;
+
+  /// G52 step 12 follow-up: the marker names this device's own person (another phone of the user reset or switched).
+  ///
+  /// In en, this message translates to:
+  /// **'You replaced this group\'s invite link on another device. Open the new link here too to keep syncing.'**
+  String get linkReplacedBannerMe;
+
+  /// G52 step 12 follow-up: join page — only 'link replaced' markers found.
+  ///
+  /// In en, this message translates to:
+  /// **'This invite link was replaced'**
+  String get joinLinkReplacedTitle;
+
+  /// G52 step 12 follow-up: body of joinLinkReplacedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The group moved to a new invite link. Ask someone in the group to send it to you.'**
+  String get joinLinkReplacedBody;
+
+  /// G52 step 12 follow-up: note on the join picker when the link has a 'replaced' marker.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone replaced this invite link — you may only get an old copy. Better ask someone in the group for the new link.'**
+  String get joinLinkPickReplaced;
+
+  /// G52 step 12 follow-up: note on 'Switch to this link?' when the opened link has a 'replaced' marker.
+  ///
+  /// In en, this message translates to:
+  /// **'This link was replaced by a newer one — it is probably the old link. Better keep your current link.'**
+  String get joinLinkSwitchReplaced;
 }
 
 class _AppLocalizationsDelegate

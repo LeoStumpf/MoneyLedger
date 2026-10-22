@@ -61,10 +61,19 @@ class LinkGroupPreview {
   /// Active participants without a Matrix claim, sorted by name.
   final List<LinkJoinPerson> people;
 
+  /// G52 step 12 follow-up: someone left this link for a new one (a
+  /// "this link was replaced" marker, §7.3) — it is probably an old link.
+  final bool replaced;
+
+  /// Only markers were found: the group isn't on this link any more.
+  final bool onlyReplaced;
+
   const LinkGroupPreview({
     required this.groupId,
     required this.name,
     required this.people,
+    this.replaced = false,
+    this.onlyReplaced = false,
   });
 }
 
@@ -78,13 +87,32 @@ typedef OpenedLinkPart = ({
 /// Pure: the preview of [parts] (any order), or null when there is none.
 LinkGroupPreview? linkGroupPreviewFrom(List<OpenedLinkPart> parts) {
   if (parts.isEmpty) return null;
-  final newest = parts.reduce((a, b) => b.createdAt > a.createdAt ? b : a);
+  OpenedLinkPart newestOf(Iterable<OpenedLinkPart> ps) =>
+      ps.reduce((a, b) => b.createdAt > a.createdAt ? b : a);
+  // G52 step 12 follow-up: markers carry nothing but the flag.
+  final content = [
+    for (final p in parts)
+      if (!p.header.replaced) p,
+  ];
+  if (content.isEmpty) {
+    return LinkGroupPreview(
+      groupId: newestOf(parts).header.group,
+      name: null,
+      people: const [],
+      replaced: true,
+      onlyReplaced: true,
+    );
+  }
+  final newest = newestOf(content);
   final groupId = newest.header.group;
+  final replaced = parts.any(
+    (p) => p.header.replaced && p.header.group == groupId,
+  );
   String? name;
   var metaAt = -1;
   final people = <String, MemberModel>{};
   final used = <String>{};
-  for (final p in parts) {
+  for (final p in content) {
     if (p.header.group != groupId) continue;
     final me = p.header.me;
     if (me != null) used.add(me);
@@ -126,7 +154,12 @@ LinkGroupPreview? linkGroupPreviewFrom(List<OpenedLinkPart> parts) {
           usedElsewhere: used.contains(m.userId),
         ),
   ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-  return LinkGroupPreview(groupId: groupId, name: name, people: list);
+  return LinkGroupPreview(
+    groupId: groupId,
+    name: name,
+    people: list,
+    replaced: replaced,
+  );
 }
 
 /// Fetches and opens the events of the link with [secret] through [pool]
