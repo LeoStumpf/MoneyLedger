@@ -92,6 +92,7 @@ import '../session/local_transport.dart';
 import '../sync/ledger_payloads.dart';
 import '../sync/meta_merge.dart';
 import '../sync/record_gate.dart';
+import '../sync/record_validation.dart' show isValidMxid;
 import '../sync/record_verifier.dart';
 import '../sync/sync_health.dart' show kSyncFailureThreshold;
 import 'link_channel.dart';
@@ -1015,12 +1016,17 @@ class LinkSyncEngine {
     }
     try {
       await _db.transaction(() async {
+        final unverifiable = gate.unverifiableClaims;
         await gate.snapshot(
           content,
           relayedBy: 'nostr:${event.pubkey}',
           trustAttestations: false,
         );
         if (!_alive) return;
+        // G53 hardening: a claim whose device list couldn't be read was
+        // dropped — leave the event unprocessed so the next fetch merges it
+        // again (everything else in it is idempotent).
+        if (gate.unverifiableClaims != unverifiable) return;
         await _link.recordPeerEvent(
           groupId: group,
           pubkey: event.pubkey,
@@ -1072,26 +1078,37 @@ class LinkSyncEngine {
   /// are verified with the ledger transport's crypto — or, while that isn't
   /// available, local verification (`LocalOnlyTransport`: Ed25519, no
   /// device directory).
+  ///
+  /// G53 hardening: on a Matrix account the gate checks Matrix-ID claims
+  /// against the homeserver's device list (`verifyClaimDevices`); while the
+  /// transport isn't there the list counts as unreachable (claims are
+  /// dropped transiently) and that gate isn't kept — the next event tries
+  /// the transport again.
   Future<RecordGate?> _gateFor() async {
     final have = _gate;
     if (have != null) return have;
+    final matrixAccount = isValidMxid(_identity);
     LedgerTransport transport;
+    var fellBack = false;
     try {
       transport = await _ref
           .read(ledgerTransportProvider.future)
           .timeout(kLinkTransportWait);
     } catch (_) {
       transport = LocalOnlyTransport('');
+      fellBack = true;
     }
     if (!_alive) return null;
     final verifier = RecordVerifier(
       crypto: transport.crypto,
-      directory: transport.deviceKeys,
+      directory: fellBack && matrixAccount
+          ? const _UnreachableDirectory()
+          : transport.deviceKeys,
       signing: _signing,
       clock: _clock,
     );
     _verifier = verifier;
-    return _gate ??= RecordGate(
+    final gate = RecordGate(
       verifier: verifier,
       signing: _signing,
       groups: _groups,
@@ -1105,9 +1122,12 @@ class LinkSyncEngine {
         members: _members,
         policy: _link.policyOf,
       ),
+      verifyClaimDevices: matrixAccount,
       isAlive: () => _alive,
       clock: _clock,
     );
+    if (fellBack && matrixAccount) return gate;
+    return _gate ??= gate;
   }
 
   /// §4.3 full fetch: every stored event of [groupId]'s topics (all link
@@ -1973,4 +1993,14 @@ class LinkSyncEngine {
   /// The status of every link group (tests / settings).
   @visibleForTesting
   Map<String, LinkGroupSyncStatus> get statuses => Map.unmodifiable(_status);
+}
+
+/// G53 hardening: the device list of a Matrix account whose transport
+/// isn't available yet — every lookup fails (claims can't be verified).
+class _UnreachableDirectory implements DeviceKeyDirectory {
+  const _UnreachableDirectory();
+
+  @override
+  Future<Map<String, Map<String, String>>> currentDevices(Set<String> users) =>
+      Future.error(StateError('Matrix transport not available'));
 }

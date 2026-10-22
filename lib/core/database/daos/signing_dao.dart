@@ -303,6 +303,13 @@ class SigningDao extends DatabaseAccessor<AppDatabase> with _$SigningDaoMixin {
           ))
           .go();
 
+  /// G53 hardening: forgets every refusal of [groupId] for [reason] (wire
+  /// value) — e.g. `lock_not_eligible` once a participant version arrived
+  /// that may make the refused lock valid; peers then re-send it once.
+  Future<void> clearRefusalsFor(String groupId, String reason) => (delete(
+    rejectedVersions,
+  )..where((t) => t.groupId.equals(groupId) & t.reason.equals(reason))).go();
+
   /// Forgets the refusals of one record up to (and including) [version] — a
   /// restore the user started stored that version after all (G18 review).
   Future<void> clearRejectedUpTo(

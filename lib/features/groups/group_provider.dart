@@ -1153,7 +1153,13 @@ final groupLockerProvider = Provider<GroupLocker>(
     }
     final blockers = lockBlockers(people);
     if (blockers.isNotEmpty) throw LockNotEligibleException(blockers);
-    final at = nextLwwClock(meta.updatedAt);
+    // G53 hardening: receivers judge the lock by the participant versions
+    // stamped at or before `locked_at` — stamp it after every participant
+    // version this device holds (a claim from a device whose clock runs
+    // ahead must count as "before the lock").
+    final at = nextLwwClock(
+      people.fold(meta.updatedAt, (t, p) => p.updatedAt > t ? p.updatedAt : t),
+    );
     final signed = await w.signer.group(
       meta.nextVersion(updatedAt: at, link: null, lockedAt: at),
     );

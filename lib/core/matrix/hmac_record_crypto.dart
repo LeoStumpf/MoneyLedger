@@ -22,6 +22,10 @@ class HmacKeyRegistry implements DeviceKeyDirectory {
   final Map<String, Map<String, String>> _directory = {};
   final Map<String, HmacRecordCrypto> _cryptoByDevice = {};
 
+  /// When true, the device list can't be read (homeserver unreachable):
+  /// [currentDevices] throws.
+  bool unreachable = false;
+
   /// The signer for [device] of [user], registered in the directory (created
   /// on first use; the same instance afterwards).
   HmacRecordCrypto deviceCrypto(String user, String device) =>
@@ -69,11 +73,13 @@ class HmacKeyRegistry implements DeviceKeyDirectory {
   @override
   Future<Map<String, Map<String, String>>> currentDevices(
     Set<String> users,
-  ) async => {
-    for (final u in users)
-      if (_directory[u] case final devices? when devices.isNotEmpty)
-        u: Map.of(devices),
-  };
+  ) async => unreachable
+      ? throw StateError('homeserver unreachable')
+      : {
+          for (final u in users)
+            if (_directory[u] case final devices? when devices.isNotEmpty)
+              u: Map.of(devices),
+        };
 }
 
 /// One fake device's signer (see [HmacKeyRegistry]).

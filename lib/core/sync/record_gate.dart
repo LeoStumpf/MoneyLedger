@@ -9,6 +9,7 @@ import '../database/daos/history_dao.dart' show HistoryDao, HistorySource;
 import '../database/daos/members_dao.dart';
 import '../database/daos/signing_dao.dart';
 import '../link/group_policy.dart';
+import '../link/lock_eligibility.dart';
 import '../../models/group_model.dart';
 import 'ledger_payloads.dart';
 import 'meta_merge.dart';
@@ -110,6 +111,29 @@ import 'record_verifier.dart';
 ///   (`invalid_record`): the link state only exists signed.
 /// * a meta that opens a link (a new `link` secret) forgets the group's
 ///   earlier `unsigned` refusals, so peers re-send those versions.
+///
+/// **G53 hardening** (Leo 2026-10-22):
+/// * **lock eligibility** — a new lock (`isNewLock`) is refused
+///   (`lock_not_eligible`, recorded) when a participant active at
+///   `locked_at` wasn't claimed by a Matrix account then
+///   (`lockEligibilityBlockers` over the stored participants + their
+///   version history; for a group new to this device, the snapshot's signed
+///   participants). Not for a restore (the user's own file). A snapshot
+///   carrying a new lock for a known group applies its participants
+///   **first**, so claims that came with it count. Storing any participant
+///   version forgets the group's `lock_not_eligible` refusals (the claim /
+///   removal that makes the lock valid may have been late) — peers re-send
+///   it once.
+/// * **claims over the link path** ([verifyClaimDevices], a Matrix device):
+///   a signed participant version that sets a Matrix ID new to this device
+///   is accepted only if its signing device is on the homeserver's list of
+///   the signer's account with that key ([RecordVerifier.deviceListed]):
+///   not listed → refused (`claim_device_not_listed`, recorded); can't tell
+///   → dropped (`claim_unverifiable`, transient, counted in
+///   [unverifiableClaims] so the link engine looks at the event again).
+///   The claim isn't stored, so nothing is replicated to that account.
+///   Snapshot participants whose claim isn't trusted that way don't count
+///   for the signer / claim rules either.
 class RecordGate {
   RecordGate({
     required this.verifier,
@@ -122,6 +146,7 @@ class RecordGate {
     this.linkPolicy,
     this.matrixPolicy,
     this.mergeMeta,
+    this.verifyClaimDevices = false,
     bool Function()? isAlive,
     this.onRefused,
     int Function()? clock,
@@ -154,6 +179,17 @@ class RecordGate {
   /// [meta] and `meta_merge.dart`). Null → whole-meta LWW (the merged
   /// fields of an older version are then left to a device that can merge).
   final MetaMergeSigner? mergeMeta;
+
+  /// G53 hardening: check Matrix-ID claims on the link path against the
+  /// homeserver's device list (see the class doc). Only a device signed in
+  /// with Matrix can; local mode can't (and replicates to nobody).
+  final bool verifyClaimDevices;
+
+  /// How many claims were dropped because the device list couldn't be read
+  /// (G53 hardening) — the link engine compares it before / after a merge
+  /// and then doesn't mark the event processed.
+  int get unverifiableClaims => _unverifiableClaims;
+  int _unverifiableClaims = 0;
   final bool Function() _isAlive;
   final int Function() _clock;
 
@@ -658,6 +694,27 @@ class RecordGate {
       );
       return false;
     }
+    if (_checksClaim(m, current)) {
+      final listed = await verifier.deviceListed(m.sig!);
+      if (!_isAlive()) return false;
+      if (listed != true) {
+        if (listed == null) _unverifiableClaims++;
+        await _refuse(
+          m.groupId,
+          RecordKind.member,
+          m.userId,
+          version,
+          Verdict.reject(
+            listed == null
+                ? RejectReason.claimUnverifiable
+                : RejectReason.claimDeviceNotListed,
+          ),
+          relayedBy,
+          m.sig,
+        );
+        return false;
+      }
+    }
     // G74: only the participant itself sets / changes its payment details
     // (an editor carries them over). A restore is the user's own file; a
     // participant new to this device can't be compared.
@@ -689,7 +746,83 @@ class RecordGate {
       source: _historySource,
     );
     await _clearRefusal(m.groupId, RecordKind.member, m.userId, version);
+    if (_isAlive()) {
+      await signing.clearRefusalsFor(
+        m.groupId,
+        RejectReason.lockNotEligible.wire,
+      );
+    }
     return true;
+  }
+
+  /// G53 hardening: whether participant version [m] ([current] = stored)
+  /// is a link-path claim whose signing device must be checked — signed,
+  /// setting a Matrix ID this device doesn't hold for it yet.
+  bool _checksClaim(MemberModel m, MemberModel? current) =>
+      _linkPath &&
+      verifyClaimDevices &&
+      m.sig != null &&
+      m.matrixId != null &&
+      m.matrixId != current?.matrixId;
+
+  /// G53 hardening: [ms] (a snapshot's participants, used by the signer /
+  /// claim rules before they are stored) without the claims this device
+  /// doesn't trust — on the link path of a Matrix device, a claim new to
+  /// this device counts only with a valid signature by a listed device.
+  Future<List<MemberModel>> _trustedSnapshotMembers(
+    String group,
+    List<MemberModel> ms,
+  ) async {
+    if (!_linkPath || !verifyClaimDevices) return ms;
+    final stored = {
+      for (final m in await members.getMembers(group)) m.userId: m,
+    };
+    final out = <MemberModel>[];
+    for (final m in ms) {
+      if (!_isAlive()) return out;
+      final have = stored[m.userId];
+      if (!_checksClaim(m, have)) {
+        // An unsigned claim new to this device is refused anyway.
+        if (m.matrixId == null ||
+            m.sig != null ||
+            have?.matrixId == m.matrixId) {
+          out.add(m);
+        }
+        continue;
+      }
+      if ((await verifier.member(m)).accepted &&
+          await verifier.deviceListed(m.sig!) == true) {
+        out.add(m);
+      }
+    }
+    return out;
+  }
+
+  /// G53 hardening: the participants keeping lock [g] from being valid
+  /// (`lockEligibilityBlockers`): judged by the stored participants and
+  /// their version history — or, for a group new to this device, by the
+  /// snapshot's signed participants [extra].
+  Future<List<MemberModel>> _lockBlockers(
+    GroupModel g,
+    GroupModel? stored,
+    Iterable<MemberModel> extra,
+  ) async {
+    final List<MemberModel> versions;
+    if (stored == null) {
+      versions = [
+        for (final m in extra)
+          if (m.sig != null || m.matrixId == null) m,
+      ];
+    } else {
+      final history = await HistoryDao(
+        members.attachedDatabase,
+      ).entriesForGroupKind(g.roomId, RecordKind.member);
+      versions = [
+        ...await members.getMembers(g.roomId),
+        for (final e in history) ?e.member,
+      ];
+    }
+    return lockEligibilityBlockers(g.lockedAt!, versions);
   }
 
   /// G74: whether another member's version [m] may hold its payment
@@ -801,6 +934,25 @@ class RecordGate {
         !_isAlive()) {
       return false;
     }
+    if (!acceptUnsigned && isNewLock(g, stored)) {
+      final blockers = await _lockBlockers(g, stored, snapshotMembers);
+      if (!_isAlive()) return false;
+      if (blockers.isNotEmpty) {
+        await _refuse(
+          g.roomId,
+          RecordKind.meta,
+          g.roomId,
+          version,
+          const Verdict.reject(RejectReason.lockNotEligible),
+          relayedBy,
+          g.sig,
+          detail:
+              'not claimed by a Matrix account at the lock: '
+              '${blockers.map((m) => m.userId).join(', ')}',
+        );
+        return false;
+      }
+    }
     final asIs = wins && (merged == null || sameMetaFields(merged, g));
     var storedMerge = false;
     if (!asIs && merged != null) {
@@ -906,16 +1058,43 @@ class RecordGate {
       );
       if (!_isAlive()) return;
     }
-    final snapshotMembers = [for (final m in s.members) ?memberFromPayload(m)];
-    await meta(s.meta, relayedBy: relayedBy, snapshotMembers: snapshotMembers);
+    final snapshotMembers = await _trustedSnapshotMembers(s.groupId, [
+      for (final m in s.members) ?memberFromPayload(m),
+    ]);
     if (!_isAlive()) return;
-    if (await groups.getGroup(s.groupId) == null) {
-      debugPrint('[g6] dropped snapshot of ${s.groupId}: group meta refused');
-      return;
+    // G53 hardening: a new lock of a known group is judged after the
+    // snapshot's participants are in (a claim may come with the lock).
+    final storedMeta = await groups.getGroup(s.groupId);
+    final inboundMeta = groupMetaFromPayload(s.meta);
+    final lockLast =
+        storedMeta != null &&
+        inboundMeta != null &&
+        !acceptUnsigned &&
+        isNewLock(inboundMeta, storedMeta);
+    if (!_isAlive()) return;
+    if (!lockLast) {
+      await meta(
+        s.meta,
+        relayedBy: relayedBy,
+        snapshotMembers: snapshotMembers,
+      );
+      if (!_isAlive()) return;
+      if (await groups.getGroup(s.groupId) == null) {
+        debugPrint('[g6] dropped snapshot of ${s.groupId}: group meta refused');
+        return;
+      }
     }
     for (final m in s.members) {
       if (!_isAlive()) return;
       await member(m, relayedBy: relayedBy, snapshotMembers: snapshotMembers);
+    }
+    if (lockLast) {
+      if (!_isAlive()) return;
+      await meta(
+        s.meta,
+        relayedBy: relayedBy,
+        snapshotMembers: snapshotMembers,
+      );
     }
     for (final e in s.expenses) {
       if (!_isAlive()) return;

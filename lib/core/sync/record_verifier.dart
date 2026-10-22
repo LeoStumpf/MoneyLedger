@@ -38,7 +38,26 @@ enum RejectReason {
   /// participant's own version that set them may simply not have arrived
   /// yet (an editor carries them over unchanged).
   paymentNotOwn('payment_not_own', recorded: false),
-  futureClock('future_clock', recorded: false);
+  futureClock('future_clock', recorded: false),
+
+  /// G53 hardening: a signed Matrix-ID claim arriving over the **link
+  /// path** whose signing device the homeserver doesn't list for that
+  /// account (a fabricated device / key, or one that signed out before this
+  /// device saw it) — the claim isn't trusted, nothing is replicated to it.
+  claimDeviceNotListed('claim_device_not_listed'),
+
+  /// G53 hardening: like [claimDeviceNotListed], but the device list
+  /// couldn't be read (homeserver unreachable, no device of the account at
+  /// all, no Matrix client yet). Not recorded: looked at again later.
+  claimUnverifiable('claim_unverifiable', recorded: false),
+
+  /// G53 hardening (§10.1, Leo 2026-10-22): a lock (a signed meta without
+  /// `link`, with `locked_at`) while some participant that was active at
+  /// `locked_at` wasn't claimed by a Matrix account then. Recorded; cleared
+  /// whenever a participant version of the group is stored (the claim or
+  /// removal that makes it valid may just have been late), so peers re-send
+  /// it once.
+  lockNotEligible('lock_not_eligible');
 
   const RejectReason(this.wire, {this.recorded = true});
   final String wire;
@@ -199,6 +218,20 @@ class RecordVerifier {
       return false;
     }
     return pins.any((p) => p.isServer);
+  }
+
+  /// G53 hardening: whether [s]'s device is on the homeserver's device list
+  /// of its account with exactly that key — now, or pinned first-hand
+  /// earlier (a device that signed out since was real). Null = can't tell:
+  /// the lookup failed, or the server lists no device of the account at all
+  /// (unknown account, federation failure). Uses the [prefetch] /
+  /// [refreshInterval] cache like the verification itself.
+  Future<bool?> deviceListed(RecordSignature s) async {
+    final pins = await signing.keysFor(s.user, s.device);
+    if (pins.any((p) => p.isServer && p.key == s.key)) return true;
+    final devices = await _currentDevices(s.user);
+    if (devices == null || devices.isEmpty) return null;
+    return devices[s.device] == s.key;
   }
 
   /// Looks up the current devices of all [users] in one homeserver call (and

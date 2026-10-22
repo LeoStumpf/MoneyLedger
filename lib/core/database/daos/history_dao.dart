@@ -273,6 +273,18 @@ class HistoryDao extends DatabaseAccessor<AppDatabase> with _$HistoryDaoMixin {
           .get()
           .then((rows) => [for (final r in rows) ?_toEntry(r)]);
 
+  /// G53 hardening: every entry of [kind] in [groupId], append order (the
+  /// participant versions a lock's eligibility is judged by).
+  Future<List<HistoryEntry>> entriesForGroupKind(
+    String groupId,
+    RecordKind kind,
+  ) =>
+      (select(recordHistory)
+            ..where((t) => t.groupId.equals(groupId) & t.kind.equals(kind.wire))
+            ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+          .get()
+          .then((rows) => [for (final r in rows) ?_toEntry(r)]);
+
   /// G74: every entry of one record ([kind] + [recordId] in [groupId]),
   /// append order.
   Future<List<HistoryEntry>> entriesForRecord(

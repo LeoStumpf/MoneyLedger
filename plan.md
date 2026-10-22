@@ -891,20 +891,29 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       without an account (no meta / claimed-people edits); alternative would
       need a new wire rule (unsigned metas that keep `link` / `locked_at`)
       — **Leo 2026-10-22: keep as is**
-- [ ] (G53) **Leo:** lock griefing — any link holder with a Matrix account
+- [x] (G53) **Leo:** lock griefing — any link holder with a Matrix account
       can self-claim an unclaimed person (or remove the unclaimed people) and
       lock; receivers don't check eligibility (the design names no receiver
       check). Same class as "a link holder can wipe the group" (§14 risks),
       but a lock isn't undone by a G48 reset (it keeps the link state) —
       reopening needs a Matrix member — **Leo 2026-10-22: receivers check
       eligibility** — a lock (`locked_at`) is valid only if every active
-      participant was claimed by a Matrix account before the lock — to build
-- [ ] (G53) **Leo:** a fabricated self-claim on the link path (any MXID with
+      participant was claimed by a Matrix account before the lock — **built
+      (G53 hardening)**: `RecordGate` refuses an ineligible new lock
+      (`lock_not_eligible`, recorded; cleared when a participant version
+      arrives), `lock_eligibility.dart`; the locker stamps `locked_at` after
+      every participant version; design doc "As built (G53 hardening)"
+- [x] (G53) **Leo:** a fabricated self-claim on the link path (any MXID with
       a self-made device key, "unverified") is accepted like G6's unknown
       devices; Matrix members then replicate to that MXID — needs
       cross-signing / a device-list check to close — **Leo 2026-10-22:
       check it against the homeserver's device list (`DeviceKeyDirectory`)**;
-      unverifiable → not replicated to that MXID / not trusted — to build
+      unverifiable → not replicated to that MXID / not trusted — **built
+      (G53 hardening)**: on a Matrix device's link path a new claim needs
+      its signing device on the signer's homeserver list
+      (`claim_device_not_listed` recorded / `claim_unverifiable` transient,
+      the link event is then merged again on the next fetch); tests
+      `g53_hardening_gate_test.dart`, `g53_griefing_test.dart`
 - [x] (G53) **Leo:** Matrix accounts that create (*Share with an invite
       link*) or join a link-only group while signed in still write it
       unsigned (G52 step 4) — the self-claim runs only after *Connect a
@@ -931,6 +940,27 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       done: the no-account sheet + the Why Matrix ready page say link
       groups keep their link and also sync over Matrix (the login page's
       connect subtitle is unchanged)
+- [ ] (G53 hardening) **Leo:** any Matrix member can still remove the
+      people without an account (or assign their slot to a Matrix ID — an
+      "invite") and then lock: the lock is eligible then, it's the same
+      steps as a legitimate lock (remove the link-only person, lock). Close
+      it only with a new rule (e.g. removals / re-claims of unclaimed people
+      in a mixed group only by link, or a lock only after N days without
+      such changes) — or accept it (removals are visible, a G48 reset
+      doesn't bring people back though)
+- [ ] (G53 hardening) Devices **without** an account can't read device
+      lists: a fabricated claim (also of that device's own "me") and a lock
+      built on fabricated claims are still accepted there — the group can
+      turn read-only on a no-account phone; the Matrix devices refuse both
+- [ ] (G53 hardening) A claim signed by a device that signed out before
+      this Matrix device first saw it (a late joiner of a mixed group by
+      link) isn't trusted on the link path (`claim_device_not_listed`); the
+      participant stays unclaimed there
+- [ ] (G53 hardening) A lock concurrent with a newly added person without
+      an account (stamped before the lock, unseen by the locker): the
+      locker's device keeps its lock, the others refuse it ("agree to
+      disagree", no loop); a refused lock that becomes valid later is only
+      re-sent over Matrix (digest), not by already merged link events
 - [x] (G53 review) A Matrix account that joined a mixed group by link (its
       "me" unclaimed) signed its writes — every peer dropped them
       (`signer_not_member`); it now writes link versions like local mode

@@ -683,6 +683,18 @@ meta only in `linkOnly`; the Matrix path drops `by`. G40 adoption copies
 `link_channels` / `link_peers` and keeps a link-only group unclaimed and
 unsigned. Design doc §6.4 "As built"; tests `test/core/link_policy_test.dart`,
 `test/integration/link_group_matrix_skip_test.dart`.
+**G53 hardening (receiver checks):** a new lock (signed meta, no `link`,
+new `locked_at` — `lock_eligibility.dart`) is refused (`lock_not_eligible`,
+recorded; cleared whenever a participant version is stored) unless every
+participant active at `locked_at` (newest version ≤ it: stored + G48
+history) was claimed by a valid MXID; a snapshot with a new lock applies its
+participants first; the locker stamps `locked_at` after every participant
+version. On a Matrix device's link path (`RecordGate(verifyClaimDevices:)`)
+a new Matrix-ID claim needs its signing device on the homeserver list
+(`RecordVerifier.deviceListed`): not listed → `claim_device_not_listed`
+(recorded), can't tell → `claim_unverifiable` (transient; the link event
+stays unprocessed). Tests `g53_hardening_gate_test.dart`,
+`test/integration/g53_griefing_test.dart`.
 
 ### Reset invite link (G52 step 12)
 
