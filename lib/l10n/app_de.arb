@@ -939,7 +939,7 @@
   "whyMatrixPhoneMatrix": "anmelden – deine Gruppen kommen von deinen anderen Geräten oder den anderen in der Gruppe zurück.",
   "whyMatrixServersTitle": "Wer was sieht",
   "whyMatrixServersLink": "öffentliche Relays von Freiwilligen sehen deine IP-Adresse, wann du synchronisierst und ungefähr, wie groß die Gruppe ist.",
-  "whyMatrixServersMatrix": "nur die Homeserver, die ihr wählt, sehen, wer mit wem Nachrichten austauscht – nie den Inhalt.",
+  "whyMatrixServersMatrix": "nur die Homeserver der Personen in der Gruppe (jede Person wählt ihren eigenen) sehen, wer mit wem Nachrichten austauscht – nie den Inhalt.",
   "whyMatrixReadyTitle": "Wenn du so weit bist",
   "whyMatrixReadyConnectBody": "Leg ein kostenloses Konto an, z. B. bei matrix.org, und verbinde es. Deine Gruppen kommen mit; per Link geteilte Gruppen behalten ihren Link und werden zusätzlich über Matrix synchronisiert.",
   "whyMatrixReadySignInBody": "Leg ein kostenloses Konto an, z. B. bei matrix.org, und melde dich an – oder starte ohne Konto und verbinde später eins.",

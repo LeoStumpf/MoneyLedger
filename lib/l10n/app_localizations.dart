@@ -5735,7 +5735,7 @@ abstract class AppLocalizations {
   /// G54 comparison: Matrix side
   ///
   /// In en, this message translates to:
-  /// **'only the homeservers you choose see who exchanges messages with whom — never the content.'**
+  /// **'only the homeservers of the people in the group (each picks their own) see who exchanges messages with whom — never the content.'**
   String get whyMatrixServersMatrix;
 
   /// G54 Why Matrix page 3 title

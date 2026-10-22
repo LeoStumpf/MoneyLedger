@@ -3629,7 +3629,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get whyMatrixServersMatrix =>
-      'only the homeservers you choose see who exchanges messages with whom — never the content.';
+      'only the homeservers of the people in the group (each picks their own) see who exchanges messages with whom — never the content.';
 
   @override
   String get whyMatrixReadyTitle => 'Ready when you are';

@@ -3742,7 +3742,7 @@
   "@whyMatrixServersLink": {
     "description": "G54 comparison: link side"
   },
-  "whyMatrixServersMatrix": "only the homeservers you choose see who exchanges messages with whom — never the content.",
+  "whyMatrixServersMatrix": "only the homeservers of the people in the group (each picks their own) see who exchanges messages with whom — never the content.",
   "@whyMatrixServersMatrix": {
     "description": "G54 comparison: Matrix side"
   },

@@ -3667,7 +3667,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get whyMatrixServersMatrix =>
-      'nur die Homeserver, die ihr wählt, sehen, wer mit wem Nachrichten austauscht – nie den Inhalt.';
+      'nur die Homeserver der Personen in der Gruppe (jede Person wählt ihren eigenen) sehen, wer mit wem Nachrichten austauscht – nie den Inhalt.';
 
   @override
   String get whyMatrixReadyTitle => 'Wenn du so weit bist';
