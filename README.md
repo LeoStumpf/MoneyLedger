@@ -71,8 +71,9 @@ and sees only ciphertext.
 - **Archive** settled groups on this device (⋮ → *Archive group*, or the group settings): they move
   into a collapsed *Archived* section and come back by themselves when
   something new is added.
-- **Full backup / restore**: *Settings* (gear) → *Back up all groups* writes one
-  JSON file with every group (participants, expenses, payments, deletions);
+- **Full backup / restore**: *Settings* (gear) → *Backup & restore* → *Back up
+  all groups* writes one JSON file with every group (participants, expenses,
+  payments, deletions);
   *Restore from backup* previews and merges it back (idempotent, newer entries
   win). Your data lives only on your devices — the groups page nudges you when
   a group exists nowhere else (not even on another device of yours) and you
