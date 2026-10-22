@@ -91,6 +91,13 @@ class LinkPeerModel {
   /// Digest of its snapshot as last merged (null = unknown).
   final String? snapshotDigest;
 
+  /// G53 round 3 (decision 6): when this device learned that the publisher
+  /// deleted its copy of the group (ms epoch); null = it still has it.
+  final int? leftAt;
+
+  /// Whether the publisher deleted its copy of the group.
+  bool get left => leftAt != null;
+
   const LinkPeerModel({
     required this.groupId,
     required this.pubkey,
@@ -99,5 +106,6 @@ class LinkPeerModel {
     this.lastCreatedAt = 0,
     this.lastSeenAt = 0,
     this.snapshotDigest,
+    this.leftAt,
   });
 }

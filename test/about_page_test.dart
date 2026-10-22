@@ -165,4 +165,30 @@ void main() {
       );
     }
   });
+
+  test('privacy texts name the backup path "Settings → Backup & restore" '
+      'and PRIVACY.md says the same (G53 round 3, decision 8)', () {
+    String norm(String s) => s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final privacy = norm(File('PRIVACY.md').readAsStringSync());
+    Map<String, Object?> arb(String f) =>
+        jsonDecode(File('lib/l10n/$f.arb').readAsStringSync())
+            as Map<String, Object?>;
+    final enArb = arb('app_en');
+    final deArb = arb('app_de');
+    for (final key in ['privacyBackupBody', 'privacyCsvBody']) {
+      final enText = enArb[key]! as String;
+      final deText = deArb[key]! as String;
+      expect(privacy, contains(norm(enText)), reason: key);
+      expect(enText, contains('Settings → ${enArb['settingsSectionBackup']}'));
+      expect(
+        deText,
+        contains('Einstellungen → ${deArb['settingsSectionBackup']}'),
+      );
+      expect(enText, isNot(contains('Settings → Back up all groups')));
+      expect(deText, isNot(contains('Einstellungen → Alle Gruppen sichern')));
+    }
+    expect(privacy, isNot(contains('Settings → Back up all groups')));
+    expect(en.privacyBackupBody, enArb['privacyBackupBody']);
+    expect(de.privacyBackupBody, deArb['privacyBackupBody']);
+  });
 }

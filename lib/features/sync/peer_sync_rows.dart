@@ -4,6 +4,8 @@
 /// the sheet is `group_sync_sheet.dart`.
 library;
 
+import 'dart:math' as math;
+
 import '../../core/sync/record_validation.dart' show isValidMxid;
 import '../../core/sync/sync_health.dart';
 import '../../models/link_model.dart';
@@ -28,6 +30,11 @@ enum PeerSyncKind {
   /// Link: their phone last published at [PeerSyncRow.at] — whether that
   /// covers our change can't be told (§5.3).
   published,
+
+  /// Link: every device of this person seen here deleted its copy of the
+  /// group ([PeerSyncRow.at] = when this device learned it) — G53 round 3,
+  /// decision 6.
+  deletedGroup,
 }
 
 class PeerSyncRow {
@@ -42,7 +49,8 @@ class PeerSyncRow {
 
   final PeerSyncKind kind;
 
-  /// ms epoch: last proof (Matrix) / last publish (link).
+  /// ms epoch: last proof (Matrix) / last publish (link) / when the
+  /// deletion was learned ([PeerSyncKind.deletedGroup]).
   final int? at;
 
   /// Link: how many devices (publishers) of this person were seen.
@@ -127,7 +135,10 @@ int localOnlyPeople(List<MemberModel> members) =>
 /// publisher naming nobody in [members] gets an unnamed row. "Has
 /// everything" when a single-part publisher's snapshot digest equals
 /// [ourDigest] (our delivered snapshot — null while ours isn't on the
-/// relays) and we publish one part too ([ourParts]). Our own other devices
+/// relays) and we publish one part too ([ourParts]). A person whose every
+/// publisher deleted its copy ([LinkPeerModel.left]) gets a "deleted the
+/// group" row (G53 round 3); otherwise the deleted ones are left out. Our
+/// own other devices
 /// ([myParticipantId]) come last; the rest by name (unnamed last).
 List<PeerSyncRow> linkPeerRows({
   required List<LinkPeerModel> peers,
@@ -149,11 +160,30 @@ List<PeerSyncRow> linkPeerRows({
       p.eventIds.keys.every((part) => part == 0);
   final rows = <PeerSyncRow>[];
   for (final e in grouped.entries) {
-    final list = e.value;
+    final member = byId[e.key];
+    // G53 round 3 (decision 6): devices that deleted their copy only count
+    // while no other device of the person still has it.
+    final kept = [
+      for (final p in e.value)
+        if (!p.left) p,
+    ];
+    if (kept.isEmpty) {
+      rows.add(
+        PeerSyncRow(
+          participantId: member?.userId,
+          name: member?.label,
+          isSelf: myParticipantId != null && e.key == myParticipantId,
+          kind: PeerSyncKind.deletedGroup,
+          at: e.value.map((p) => p.leftAt!).reduce(math.max),
+          devices: e.value.length,
+        ),
+      );
+      continue;
+    }
+    final list = kept;
     final newest = list.reduce(
       (a, b) => b.lastCreatedAt > a.lastCreatedAt ? b : a,
     );
-    final member = byId[e.key];
     rows.add(
       PeerSyncRow(
         participantId: member?.userId,

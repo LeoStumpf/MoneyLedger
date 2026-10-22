@@ -97,6 +97,7 @@ void main() {
       int at = 100,
       String? digest,
       Map<int, String> parts = const {0: 'e'},
+      int? leftAt,
     }) => LinkPeerModel(
       groupId: 'g',
       pubkey: pub,
@@ -104,6 +105,7 @@ void main() {
       lastCreatedAt: at,
       snapshotDigest: digest,
       eventIds: parts,
+      leftAt: leftAt,
     );
 
     test('grouped by participant (newest publish, device count); same '
@@ -167,6 +169,34 @@ void main() {
         PeerSyncKind.published,
       );
     });
+
+    test(
+      'a person whose every device deleted its copy: "deleted the '
+      'group" (G53 round 3, decision 6); a device that still has it wins',
+      () {
+        final rows = linkPeerRows(
+          peers: [
+            peer('a', 'p2', at: 100, leftAt: 5000),
+            peer('b', 'p2', at: 300, leftAt: 7000),
+            peer('c', 'p3', at: 200, leftAt: 9000, digest: 'D'),
+            peer('d', 'p3', at: 50, digest: 'D'),
+            peer('e', 'p1', at: 60, leftAt: 4000),
+          ],
+          members: members,
+          myParticipantId: 'p1',
+          ourDigest: 'D',
+          ourParts: 1,
+        );
+        expect(
+          [for (final r in rows) (r.name, r.kind, r.at, r.devices, r.isSelf)],
+          [
+            ('Ben', PeerSyncKind.deletedGroup, 7000, 2, false),
+            ('Cleo', PeerSyncKind.upToDate, 50000, 1, false),
+            ('Anna', PeerSyncKind.deletedGroup, 4000, 1, true),
+          ],
+        );
+      },
+    );
   });
 
   group('relay settings (G52 step 9)', () {

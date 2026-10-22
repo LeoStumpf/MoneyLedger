@@ -1148,11 +1148,21 @@ class LinkSyncEngine {
       return false;
     }
     // DEV-J: the publisher deleted its copy (leave / delete, §7.3) — it
-    // isn't a peer that "updated just now"; forget it (its events are being
-    // deleted). Only its own row: the event is bound to its key.
+    // isn't a peer that "updated just now". G53 round 3 (Leo 2026-10-22,
+    // decision 6): its row is kept, marked left — the sync sheet says
+    // "Deleted the group" (its events are being deleted, so the flag is
+    // stored). Only its own row: the event is bound to its key.
     if (header.left) {
       debugPrint('[link] $group: a peer removed its copy');
-      await _link.deletePeer(group, event.pubkey);
+      await _link.markPeerLeft(
+        groupId: group,
+        pubkey: event.pubkey,
+        part: route.part,
+        eventId: event.id,
+        createdAt: event.createdAt,
+        seenAt: _clock(),
+        me: header.me,
+      );
       return false;
     }
     final gate = await _gateFor();

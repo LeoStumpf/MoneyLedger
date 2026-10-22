@@ -923,14 +923,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyCsvBody =>
-      'Beim Export einer Gruppe entsteht eine CSV-Datei mit ihren Ausgaben, Zahlungen, den Namen der Personen und den Beträgen; eine Sicherung („Alle Gruppen sichern“ oder eine Gruppe über ihr Menü) schreibt eine JSON-Datei mit den Gruppen, inklusive der Matrix-IDs der Personen und gelöschter Einträge – und bei Gruppen, die du mit einem Einladungslink teilst, deren Einladungsschlüssel: Wer die Datei hat, kann diese Gruppen lesen und ändern. Beides passiert nur, wenn du es auslöst. Wohin die Datei geht, entscheidest du. Eine CSV ist immer reiner Text; eine Sicherung ebenfalls, außer du legst eine Passphrase fest – dann wird sie auf deinem Gerät verschlüsselt (Argon2id + AES-256-GCM) und lässt sich nur mit dieser Passphrase wiederherstellen, die MoneyLedger weder speichert noch irgendwohin sendet. MoneyLedger hat danach keinen Einblick mehr in die Datei. Beim Import oder Wiederherstellen wird nur die Datei gelesen, die du auswählst.';
+      'Beim Export einer Gruppe entsteht eine CSV-Datei mit ihren Ausgaben, Zahlungen, den Namen der Personen und den Beträgen; eine Sicherung („Alle Gruppen sichern“ unter Einstellungen → Sichern & Wiederherstellen oder eine Gruppe über ihre Gruppeneinstellungen) schreibt eine JSON-Datei mit den Gruppen, inklusive der Matrix-IDs der Personen und gelöschter Einträge – und bei Gruppen, die du mit einem Einladungslink teilst, deren Einladungsschlüssel: Wer die Datei hat, kann diese Gruppen lesen und ändern. Beides passiert nur, wenn du es auslöst. Wohin die Datei geht, entscheidest du. Eine CSV ist immer reiner Text; eine Sicherung ebenfalls, außer du legst eine Passphrase fest – dann wird sie auf deinem Gerät verschlüsselt (Argon2id + AES-256-GCM) und lässt sich nur mit dieser Passphrase wiederherstellen, die MoneyLedger weder speichert noch irgendwohin sendet. MoneyLedger hat danach keinen Einblick mehr in die Datei. Beim Import oder Wiederherstellen wird nur die Datei gelesen, die du auswählst.';
 
   @override
   String get privacyBackupTitle => 'Gerätesicherungen';
 
   @override
   String get privacyBackupBody =>
-      'MoneyLedger nimmt nicht an der automatischen App-Sicherung und Geräteübertragung von Android teil. Dein Kassenbuch und deine Matrix-Sitzung (inklusive ihrer Schlüssel) werden von Android nie in eine Google-Sicherung oder auf ein anderes Telefon kopiert. Auf einem neuen Gerät meldest du dich an und deine Gruppen werden von deinen anderen Geräten und den anderen Personen in deinen Gruppen wiederhergestellt; für Gruppen, die nur du nutzt, ist eine Sicherungsdatei (Einstellungen → Alle Gruppen sichern) deine eigene Offline-Kopie.';
+      'MoneyLedger nimmt nicht an der automatischen App-Sicherung und Geräteübertragung von Android teil. Dein Kassenbuch und deine Matrix-Sitzung (inklusive ihrer Schlüssel) werden von Android nie in eine Google-Sicherung oder auf ein anderes Telefon kopiert. Auf einem neuen Gerät meldest du dich an und deine Gruppen werden von deinen anderen Geräten und den anderen Personen in deinen Gruppen wiederhergestellt; für Gruppen, die nur du nutzt, ist eine Sicherungsdatei (Einstellungen → Sichern & Wiederherstellen) deine eigene Offline-Kopie.';
 
   @override
   String get privacyDeleteTitle => 'Deine Daten löschen';
@@ -3189,6 +3189,14 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String peerPublishedAt(String ago) {
     return 'Letzte Aktualisierung $ago';
+  }
+
+  @override
+  String get peerDeletedGroup => 'Hat die Gruppe gelöscht';
+
+  @override
+  String peerDeletedGroupAt(String ago) {
+    return 'Hat die Gruppe gelöscht – $ago';
   }
 
   @override

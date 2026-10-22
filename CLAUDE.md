@@ -831,7 +831,10 @@ groups over Nostr. **No link channel → no connection, no NIP-11 request.**
   live reconnect back-off ≤ 30 s (`linkReconnectBackoffProvider`), resume →
   `reconnectNow`; closing the pool (pause) clears offline without
   publishing — the next pool's first connection catches up. Leave / delete unpublish parts carry `left: true` →
-  receivers drop that publisher's `link_peers` row.
+  receivers keep that publisher's `link_peers` row marked left (G53 round
+  3, decision 6: schema **v20** `left_at`, `LinkDao.markPeerLeft`; only a
+  newer ordinary event of it clears the flag) → sync sheet "Deleted the
+  group".
 - **Seams:** `openChannel` (`link_channel.dart`: drops our own claim, sets
   "me", plain link versions, fresh secret + key; refuses signed-meta groups —
   G53), `refresh(groupId:)` (join / pull / background), `publishAll()`,
@@ -911,7 +914,9 @@ unsigned). Tests: `test/g52_link_join_test.dart`,
   devices last; a hint when people have no account); link: pure
   `linkPeerRows` from `link_peers` grouped by `me` ("has everything" when a
   one-part publisher's digest equals our delivered one, else "last update
-  {ago}", device count, unknown person) + *Relays* entry. *Sync now*
+  {ago}", device count, unknown person; G53 round 3: a person whose every
+  publisher deleted its copy → `PeerSyncKind.deletedGroup` "Deleted the
+  group {ago}", else the deleted ones are left out) + *Relays* entry. *Sync now*
   (`groupSyncNowProvider`): Matrix `SyncEngine.syncGroupNow` (digest now),
   link `LinkSyncEngine.syncNow` (full fetch, then publish at once, retry
   back-off cut short). Replaces the old failing-only health sheet / *Retry

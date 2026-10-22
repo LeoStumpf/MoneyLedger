@@ -469,6 +469,8 @@ class _PeerTile extends StatelessWidget {
       PeerSyncKind.published => l.peerPublishedAt(
         at != null ? agoText(l, at) : '—',
       ),
+      PeerSyncKind.deletedGroup =>
+        at != null ? l.peerDeletedGroupAt(agoText(l, at)) : l.peerDeletedGroup,
     };
     final (icon, color) = switch (row.kind) {
       PeerSyncKind.upToDate => (
@@ -479,6 +481,10 @@ class _PeerTile extends StatelessWidget {
       PeerSyncKind.unverified => (Icons.error_outline, theme.colorScheme.error),
       PeerSyncKind.waiting || PeerSyncKind.published => (
         Icons.schedule,
+        theme.colorScheme.onSurfaceVariant,
+      ),
+      PeerSyncKind.deletedGroup => (
+        Icons.delete_outline,
         theme.colorScheme.onSurfaceVariant,
       ),
     };

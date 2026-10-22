@@ -131,8 +131,8 @@ then asked for that group.
 ## Export, backup and import
 
 Exporting a group writes a CSV file with its expenses, payments, the
-people's names and the amounts; a backup ("Back up all groups" in
-Settings, or one group from its menu) writes one JSON file with the groups,
+people's names and the amounts; a backup ("Back up all groups" under
+Settings → Backup & restore, or one group from its group settings) writes one JSON file with the groups,
 including the people's Matrix IDs and deleted entries — and, for groups you
 share with an invite link, their invite key: anyone with the file can read
 and change those groups. Both happen only
@@ -149,8 +149,8 @@ MoneyLedger opts out of Android's automatic app backup and device-to-device
 transfer. Your ledger and your Matrix session (including its encryption keys)
 are never copied into a Google backup or onto another phone by Android. On a
 new device, sign in and your groups are restored from your other devices and
-the other people in your groups; for groups only you use, a backup file (Settings → Back up
-all groups) is your own offline copy.
+the other people in your groups; for groups only you use, a backup file (Settings → Backup &
+restore) is your own offline copy.
 
 ## Restore points on this device
 

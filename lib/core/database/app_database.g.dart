@@ -6343,6 +6343,15 @@ class $LinkPeersTable extends LinkPeers
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _leftAtMeta = const VerificationMeta('leftAt');
+  @override
+  late final GeneratedColumn<int> leftAt = GeneratedColumn<int>(
+    'left_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     groupId,
@@ -6352,6 +6361,7 @@ class $LinkPeersTable extends LinkPeers
     lastCreatedAt,
     lastSeenAt,
     snapshotDigest,
+    leftAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6420,6 +6430,12 @@ class $LinkPeersTable extends LinkPeers
         ),
       );
     }
+    if (data.containsKey('left_at')) {
+      context.handle(
+        _leftAtMeta,
+        leftAt.isAcceptableOrUnknown(data['left_at']!, _leftAtMeta),
+      );
+    }
     return context;
   }
 
@@ -6457,6 +6473,10 @@ class $LinkPeersTable extends LinkPeers
         DriftSqlType.string,
         data['${effectivePrefix}snapshot_digest'],
       ),
+      leftAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}left_at'],
+      ),
     );
   }
 
@@ -6492,6 +6512,13 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
   /// Digest of the publisher's snapshot as last merged (to compare with
   /// ours: "Ben has everything", §5.3); NULL = unknown.
   final String? snapshotDigest;
+
+  /// G53 round 3 (Leo 2026-10-22, decision 6): when this device learned
+  /// that the publisher deleted its copy of the group (its "left" header
+  /// parts, ms epoch, our clock); NULL = still has it. The row is kept so
+  /// the sync sheet says "Deleted the group" instead of dropping the
+  /// person; a newer ordinary event of that publisher clears it.
+  final int? leftAt;
   const LinkPeer({
     required this.groupId,
     required this.pubkey,
@@ -6500,6 +6527,7 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
     required this.lastCreatedAt,
     required this.lastSeenAt,
     this.snapshotDigest,
+    this.leftAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6515,6 +6543,9 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
     if (!nullToAbsent || snapshotDigest != null) {
       map['snapshot_digest'] = Variable<String>(snapshotDigest);
     }
+    if (!nullToAbsent || leftAt != null) {
+      map['left_at'] = Variable<int>(leftAt);
+    }
     return map;
   }
 
@@ -6529,6 +6560,9 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
       snapshotDigest: snapshotDigest == null && nullToAbsent
           ? const Value.absent()
           : Value(snapshotDigest),
+      leftAt: leftAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(leftAt),
     );
   }
 
@@ -6545,6 +6579,7 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
       lastCreatedAt: serializer.fromJson<int>(json['lastCreatedAt']),
       lastSeenAt: serializer.fromJson<int>(json['lastSeenAt']),
       snapshotDigest: serializer.fromJson<String?>(json['snapshotDigest']),
+      leftAt: serializer.fromJson<int?>(json['leftAt']),
     );
   }
   @override
@@ -6558,6 +6593,7 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
       'lastCreatedAt': serializer.toJson<int>(lastCreatedAt),
       'lastSeenAt': serializer.toJson<int>(lastSeenAt),
       'snapshotDigest': serializer.toJson<String?>(snapshotDigest),
+      'leftAt': serializer.toJson<int?>(leftAt),
     };
   }
 
@@ -6569,6 +6605,7 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
     int? lastCreatedAt,
     int? lastSeenAt,
     Value<String?> snapshotDigest = const Value.absent(),
+    Value<int?> leftAt = const Value.absent(),
   }) => LinkPeer(
     groupId: groupId ?? this.groupId,
     pubkey: pubkey ?? this.pubkey,
@@ -6579,6 +6616,7 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
     snapshotDigest: snapshotDigest.present
         ? snapshotDigest.value
         : this.snapshotDigest,
+    leftAt: leftAt.present ? leftAt.value : this.leftAt,
   );
   LinkPeer copyWithCompanion(LinkPeersCompanion data) {
     return LinkPeer(
@@ -6597,6 +6635,7 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
       snapshotDigest: data.snapshotDigest.present
           ? data.snapshotDigest.value
           : this.snapshotDigest,
+      leftAt: data.leftAt.present ? data.leftAt.value : this.leftAt,
     );
   }
 
@@ -6609,7 +6648,8 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
           ..write('eventIdsJson: $eventIdsJson, ')
           ..write('lastCreatedAt: $lastCreatedAt, ')
           ..write('lastSeenAt: $lastSeenAt, ')
-          ..write('snapshotDigest: $snapshotDigest')
+          ..write('snapshotDigest: $snapshotDigest, ')
+          ..write('leftAt: $leftAt')
           ..write(')'))
         .toString();
   }
@@ -6623,6 +6663,7 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
     lastCreatedAt,
     lastSeenAt,
     snapshotDigest,
+    leftAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -6634,7 +6675,8 @@ class LinkPeer extends DataClass implements Insertable<LinkPeer> {
           other.eventIdsJson == this.eventIdsJson &&
           other.lastCreatedAt == this.lastCreatedAt &&
           other.lastSeenAt == this.lastSeenAt &&
-          other.snapshotDigest == this.snapshotDigest);
+          other.snapshotDigest == this.snapshotDigest &&
+          other.leftAt == this.leftAt);
 }
 
 class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
@@ -6645,6 +6687,7 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
   final Value<int> lastCreatedAt;
   final Value<int> lastSeenAt;
   final Value<String?> snapshotDigest;
+  final Value<int?> leftAt;
   final Value<int> rowid;
   const LinkPeersCompanion({
     this.groupId = const Value.absent(),
@@ -6654,6 +6697,7 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
     this.lastCreatedAt = const Value.absent(),
     this.lastSeenAt = const Value.absent(),
     this.snapshotDigest = const Value.absent(),
+    this.leftAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LinkPeersCompanion.insert({
@@ -6664,6 +6708,7 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
     this.lastCreatedAt = const Value.absent(),
     this.lastSeenAt = const Value.absent(),
     this.snapshotDigest = const Value.absent(),
+    this.leftAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : groupId = Value(groupId),
        pubkey = Value(pubkey);
@@ -6675,6 +6720,7 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
     Expression<int>? lastCreatedAt,
     Expression<int>? lastSeenAt,
     Expression<String>? snapshotDigest,
+    Expression<int>? leftAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6685,6 +6731,7 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
       if (lastCreatedAt != null) 'last_created_at': lastCreatedAt,
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (snapshotDigest != null) 'snapshot_digest': snapshotDigest,
+      if (leftAt != null) 'left_at': leftAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6697,6 +6744,7 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
     Value<int>? lastCreatedAt,
     Value<int>? lastSeenAt,
     Value<String?>? snapshotDigest,
+    Value<int?>? leftAt,
     Value<int>? rowid,
   }) {
     return LinkPeersCompanion(
@@ -6707,6 +6755,7 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
       lastCreatedAt: lastCreatedAt ?? this.lastCreatedAt,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       snapshotDigest: snapshotDigest ?? this.snapshotDigest,
+      leftAt: leftAt ?? this.leftAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6735,6 +6784,9 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
     if (snapshotDigest.present) {
       map['snapshot_digest'] = Variable<String>(snapshotDigest.value);
     }
+    if (leftAt.present) {
+      map['left_at'] = Variable<int>(leftAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6751,6 +6803,7 @@ class LinkPeersCompanion extends UpdateCompanion<LinkPeer> {
           ..write('lastCreatedAt: $lastCreatedAt, ')
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('snapshotDigest: $snapshotDigest, ')
+          ..write('leftAt: $leftAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9919,6 +9972,7 @@ typedef $$LinkPeersTableCreateCompanionBuilder =
       Value<int> lastCreatedAt,
       Value<int> lastSeenAt,
       Value<String?> snapshotDigest,
+      Value<int?> leftAt,
       Value<int> rowid,
     });
 typedef $$LinkPeersTableUpdateCompanionBuilder =
@@ -9930,6 +9984,7 @@ typedef $$LinkPeersTableUpdateCompanionBuilder =
       Value<int> lastCreatedAt,
       Value<int> lastSeenAt,
       Value<String?> snapshotDigest,
+      Value<int?> leftAt,
       Value<int> rowid,
     });
 
@@ -9974,6 +10029,11 @@ class $$LinkPeersTableFilterComposer
 
   ColumnFilters<String> get snapshotDigest => $composableBuilder(
     column: $table.snapshotDigest,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get leftAt => $composableBuilder(
+    column: $table.leftAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10021,6 +10081,11 @@ class $$LinkPeersTableOrderingComposer
     column: $table.snapshotDigest,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get leftAt => $composableBuilder(
+    column: $table.leftAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LinkPeersTableAnnotationComposer
@@ -10060,6 +10125,9 @@ class $$LinkPeersTableAnnotationComposer
     column: $table.snapshotDigest,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get leftAt =>
+      $composableBuilder(column: $table.leftAt, builder: (column) => column);
 }
 
 class $$LinkPeersTableTableManager
@@ -10097,6 +10165,7 @@ class $$LinkPeersTableTableManager
                 Value<int> lastCreatedAt = const Value.absent(),
                 Value<int> lastSeenAt = const Value.absent(),
                 Value<String?> snapshotDigest = const Value.absent(),
+                Value<int?> leftAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LinkPeersCompanion(
                 groupId: groupId,
@@ -10106,6 +10175,7 @@ class $$LinkPeersTableTableManager
                 lastCreatedAt: lastCreatedAt,
                 lastSeenAt: lastSeenAt,
                 snapshotDigest: snapshotDigest,
+                leftAt: leftAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -10117,6 +10187,7 @@ class $$LinkPeersTableTableManager
                 Value<int> lastCreatedAt = const Value.absent(),
                 Value<int> lastSeenAt = const Value.absent(),
                 Value<String?> snapshotDigest = const Value.absent(),
+                Value<int?> leftAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LinkPeersCompanion.insert(
                 groupId: groupId,
@@ -10126,6 +10197,7 @@ class $$LinkPeersTableTableManager
                 lastCreatedAt: lastCreatedAt,
                 lastSeenAt: lastSeenAt,
                 snapshotDigest: snapshotDigest,
+                leftAt: leftAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

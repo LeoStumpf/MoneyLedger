@@ -555,9 +555,9 @@
   "privacyBackgroundTitle": "Background sync on Android",
   "privacyBackgroundBody": "On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and, for groups you share with an invite link, the same encrypted copies on the Nostr relays (also without an account). When it finds expenses or payments that someone else added, changed or deleted, it shows a notification with the group's name, who did it, the description and the amount (on by default; Settings → Sync → Notifications). These notifications are made on the device itself — no push service, no Google or Firebase, nothing is sent for them — and on the lock screen they follow Android's setting for sensitive content. With a Matrix account you can turn background sync off in Settings; without one it runs only while you have a group shared with an invite link. The web version syncs only while its tab is open and shows no notifications.",
   "privacyCsvTitle": "Export, backup and import",
-  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, payments, the people's names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people's Matrix IDs and deleted entries — and, for groups you share with an invite link, their invite key: anyone with the file can read and change those groups. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.",
+  "privacyCsvBody": "Exporting a group writes a CSV file with its expenses, payments, the people's names and the amounts; a backup (\"Back up all groups\" under Settings → Backup & restore, or one group from its group settings) writes one JSON file with the groups, including the people's Matrix IDs and deleted entries — and, for groups you share with an invite link, their invite key: anyone with the file can read and change those groups. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.",
   "privacyBackupTitle": "Device backups",
-  "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other people in your groups; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.",
+  "privacyBackupBody": "MoneyLedger opts out of Android's automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other people in your groups; for groups only you use, a backup file (Settings → Backup & restore) is your own offline copy.",
   "privacyDeleteTitle": "Deleting your data",
   "privacyDeleteBody": "• Leave or delete a group (group settings): it and all its records are removed from this device (the daily restore points keep it for about five weeks — see above). When you leave, the others in the group are told that you left.\n• Signing out keeps this account's ledger on the device, so it is back when you sign in again.\n• In local mode, Settings → Delete local data removes every local group from this device and ends local mode.\n• Uninstalling the app (or clearing its storage) removes everything it stored on the device.\n• Copies on other people's devices are theirs: they keep the group's history, including your expenses in it.\n• Your Matrix account can be deactivated through your homeserver.",
   "privacyContactTitle": "Contact",
@@ -3169,6 +3169,19 @@
   "peerPublishedAt": "Last update {ago}",
   "@peerPublishedAt": {
     "description": "G52 step 9: a person's sync row in a link group (their phone's last publish)",
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "peerDeletedGroup": "Deleted the group",
+  "@peerDeletedGroup": {
+    "description": "G53 round 3 (decision 6): a person's sync row in a link group — their device deleted its copy of the group (time unknown)"
+  },
+  "peerDeletedGroupAt": "Deleted the group {ago}",
+  "@peerDeletedGroupAt": {
+    "description": "G53 round 3 (decision 6): a person's sync row in a link group — their device deleted its copy of the group; ago = when this device learned it, e.g. '3 min ago'",
     "placeholders": {
       "ago": {
         "type": "String"

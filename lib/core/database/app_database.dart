@@ -226,6 +226,13 @@ class LinkPeers extends Table {
   /// ours: "Ben has everything", §5.3); NULL = unknown.
   TextColumn get snapshotDigest => text().nullable()();
 
+  /// G53 round 3 (Leo 2026-10-22, decision 6): when this device learned
+  /// that the publisher deleted its copy of the group (its "left" header
+  /// parts, ms epoch, our clock); NULL = still has it. The row is kept so
+  /// the sync sheet says "Deleted the group" instead of dropping the
+  /// person; a newer ordinary event of that publisher clears it.
+  IntColumn get leftAt => integer().nullable()();
+
   @override
   Set<Column> get primaryKey => {groupId, pubkey};
 }
@@ -446,7 +453,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -753,6 +760,13 @@ class AppDatabase extends _$AppDatabase {
             "DELETE FROM rejected_versions WHERE kind IN ('meta', 'member')",
           );
         }
+      }
+      // v20 (G53 round 3, decision 6): `link_peers.left_at` — a publisher
+      // that deleted its copy stays in the sync sheet as "Deleted the
+      // group" (NULL for every existing row). A DB older than v15 created
+      // `link_peers` in today's shape already.
+      if (from < 20 && from >= 15) {
+        await m.addColumn(linkPeers, linkPeers.leftAt);
       }
     },
     beforeOpen: (_) async {

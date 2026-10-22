@@ -1595,7 +1595,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyCsvBody.
   ///
   /// In en, this message translates to:
-  /// **'Exporting a group writes a CSV file with its expenses, payments, the people\'s names and the amounts; a backup (\"Back up all groups\", or one group from its menu) writes one JSON file with the groups, including the people\'s Matrix IDs and deleted entries — and, for groups you share with an invite link, their invite key: anyone with the file can read and change those groups. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.'**
+  /// **'Exporting a group writes a CSV file with its expenses, payments, the people\'s names and the amounts; a backup (\"Back up all groups\" under Settings → Backup & restore, or one group from its group settings) writes one JSON file with the groups, including the people\'s Matrix IDs and deleted entries — and, for groups you share with an invite link, their invite key: anyone with the file can read and change those groups. Both happen only when you ask for it. Where the file goes is your choice. A CSV is always plain text; a backup is plain text too unless you set a passphrase — then it is encrypted on your device (Argon2id + AES-256-GCM) and can only be restored with that passphrase, which MoneyLedger never stores or sends anywhere. MoneyLedger has no visibility into the file afterwards. Importing or restoring reads only the file you pick.'**
   String get privacyCsvBody;
 
   /// No description provided for @privacyBackupTitle.
@@ -1607,7 +1607,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyBackupBody.
   ///
   /// In en, this message translates to:
-  /// **'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other people in your groups; for groups only you use, a backup file (Settings → Back up all groups) is your own offline copy.'**
+  /// **'MoneyLedger opts out of Android\'s automatic app backup and device-to-device transfer. Your ledger and your Matrix session (including its encryption keys) are never copied into a Google backup or onto another phone by Android. On a new device, sign in and your groups are restored from your other devices and the other people in your groups; for groups only you use, a backup file (Settings → Backup & restore) is your own offline copy.'**
   String get privacyBackupBody;
 
   /// No description provided for @privacyDeleteTitle.
@@ -4999,6 +4999,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last update {ago}'**
   String peerPublishedAt(String ago);
+
+  /// G53 round 3 (decision 6): a person's sync row in a link group — their device deleted its copy of the group (time unknown)
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted the group'**
+  String get peerDeletedGroup;
+
+  /// G53 round 3 (decision 6): a person's sync row in a link group — their device deleted its copy of the group; ago = when this device learned it, e.g. '3 min ago'
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted the group {ago}'**
+  String peerDeletedGroupAt(String ago);
 
   /// G52 step 9: how many devices of a person published
   ///

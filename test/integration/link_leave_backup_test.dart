@@ -31,8 +31,10 @@ import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/link/link_invite.dart';
 import 'package:money_ledger/features/link/link_join.dart';
+import 'package:money_ledger/features/sync/peer_sync_rows.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
+import 'package:money_ledger/models/link_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
 import '../helpers/fake_relay_network.dart';
@@ -244,11 +246,39 @@ void main() {
         (await ExpensesDao(s.bDb).getAllExpensesForGroup(_g)).single.id,
         'e1',
       );
-      // DEV-J: B saw A's "left" header parts — A is no longer listed as a
-      // peer that "updated just now" in B's sync sheet.
+      // DEV-J + G53 round 3 (decision 6): B saw A's "left" header parts —
+      // A isn't a peer that "updated just now", it stays in B's sync sheet
+      // as "Deleted the group" (stored: A's events are gone from the
+      // relays).
+      final leftPeer = (await LinkDao(
+        s.bDb,
+      ).getPeers(_g)).singleWhere((p) => p.pubkey == aPub);
+      expect(leftPeer.left, isTrue);
+      expect(leftPeer.me, 'p1');
+      expect(leftPeer.snapshotDigest, isNull);
+      List<PeerSyncRow> bRows(List<LinkPeerModel> peers, List<MemberModel> m) =>
+          linkPeerRows(
+            peers: peers,
+            members: m,
+            myParticipantId: 'p2',
+            ourDigest: null,
+            ourParts: 1,
+          );
+      final bMembers = await MembersDao(s.bDb).getMembers(_g);
+      final deletedRow = bRows(
+        await LinkDao(s.bDb).getPeers(_g),
+        bMembers,
+      ).singleWhere((r) => r.participantId == 'p1');
+      expect(deletedRow.kind, PeerSyncKind.deletedGroup);
+      expect(deletedRow.at, leftPeer.leftAt);
+      // A later fetch (the relays no longer serve A's events) keeps it.
+      await s.b.read(linkSyncEngineProvider).syncNow(_g);
+      await settle();
       expect(
-        (await LinkDao(s.bDb).getPeers(_g)).map((p) => p.pubkey),
-        isNot(contains(aPub)),
+        (await LinkDao(
+          s.bDb,
+        ).getPeers(_g)).singleWhere((p) => p.pubkey == aPub).left,
+        isTrue,
       );
 
       // Restore on A: the preview counts the link group; the channel comes
@@ -288,6 +318,14 @@ void main() {
       }
       final peers = await LinkDao(s.bDb).getPeers(_g);
       expect(peers.where((p) => p.pubkey == newPub).map((p) => p.me), ['p1']);
+      // Anna is back with a new device: her row is an ordinary one again
+      // (the deleted copy no longer counts — G53 round 3).
+      final annaRow = bRows(
+        peers,
+        await MembersDao(s.bDb).getMembers(_g),
+      ).singleWhere((r) => r.participantId == 'p1');
+      expect(annaRow.kind, isNot(PeerSyncKind.deletedGroup));
+      expect(annaRow.devices, 1);
     },
   );
 

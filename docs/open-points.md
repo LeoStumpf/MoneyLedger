@@ -492,6 +492,13 @@ peers'), and SAS works with other members' devices (members page). Open:
   person's first entry may be gone; a lock re-judged that much later could
   then ignore someone who was there before it (only for a lock refused for
   90+ days).
+- **"Deleted the group" in the sync sheet** (round 3, decision 6) is a
+  hint, bound to the publisher's own Nostr key: it only says that device
+  removed its copy (leave / delete). A device that deleted its copy while
+  offline and never reached the relays, or whose "left" parts no relay
+  kept, keeps showing its last update instead. The row stays until the
+  person publishes again from that device (a restore gets a new key → a
+  new row; the old one is then left out).
 - **Devices without an account** still can't read device lists: a
   fabricated self-claim (and a lock built on it) is accepted there; the
   round-3 self-claim-only rule applies there too (no claims for others).

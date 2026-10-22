@@ -130,7 +130,12 @@ void main() {
   });
 
   group('link group: the link status + peers sheet (G52 step 9)', () {
-    final members = [_m('p1', 'Anna'), _m('p2', 'Ben'), _m('p3', 'Cleo')];
+    final members = [
+      _m('p1', 'Anna'),
+      _m('p2', 'Ben'),
+      _m('p3', 'Cleo'),
+      _m('p4', 'Dora'),
+    ];
     final channel = LinkChannelModel(
       groupId: _g,
       epoch: 1,
@@ -157,6 +162,15 @@ void main() {
         lastCreatedAt: _minsAgo(30) ~/ 1000,
         snapshotDigest: 'old',
         eventIds: const {0: 'y'},
+      ),
+      // G53 round 3 (decision 6): Dora deleted her copy 10 min ago.
+      LinkPeerModel(
+        groupId: _g,
+        pubkey: 'c',
+        me: 'p4',
+        lastCreatedAt: _minsAgo(12) ~/ 1000,
+        eventIds: const {0: 'z'},
+        leftAt: _minsAgo(10),
       ),
     ];
 
@@ -228,6 +242,23 @@ void main() {
           find.text(l.peerPublishedAt(l.agoMinutes(30))),
           findsOneWidget,
           reason: 'Cleo',
+        );
+        await _show(
+          tester,
+          find.byKey(const Key('peerSync-p4')),
+          list: const Key('groupSyncSheet'),
+        );
+        expect(
+          find.text(l.peerDeletedGroupAt(l.agoMinutes(10))),
+          findsOneWidget,
+          reason: 'Dora',
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('peerSync-p4')),
+            matching: find.byIcon(Icons.delete_outline),
+          ),
+          findsOneWidget,
         );
         final now = find.byKey(const Key('groupSyncNow'));
         await _show(tester, now, list: const Key('groupSyncSheet'));

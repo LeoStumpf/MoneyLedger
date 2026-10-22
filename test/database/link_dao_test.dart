@@ -331,6 +331,104 @@ void main() {
       );
       expect(await dao.isProcessed('g1', 'aa', 0, 'e'), isTrue);
     });
+
+    test('markPeerLeft keeps the row marked left (G53 round 3, decision '
+        '6); only a newer ordinary event brings it back', () async {
+      await dao.recordPeerEvent(
+        groupId: 'g1',
+        pubkey: 'aa',
+        part: 0,
+        eventId: 'e1',
+        createdAt: 10,
+        seenAt: 1000,
+        me: 'p1',
+        snapshotDigest: 'D',
+      );
+      await dao.markPeerLeft(
+        groupId: 'g1',
+        pubkey: 'aa',
+        part: 0,
+        eventId: 'left0',
+        createdAt: 20,
+        seenAt: 2000,
+        me: 'p1',
+      );
+      var p = (await dao.getPeers('g1')).single;
+      expect(p.left, isTrue);
+      expect(p.leftAt, 2000);
+      expect(p.me, 'p1');
+      expect(p.snapshotDigest, isNull);
+      expect(p.lastCreatedAt, 20);
+      expect(await dao.isProcessed('g1', 'aa', 0, 'left0'), isTrue);
+
+      // The marker of another part: still the first time it was learned.
+      await dao.markPeerLeft(
+        groupId: 'g1',
+        pubkey: 'aa',
+        part: 1,
+        eventId: 'left1',
+        createdAt: 21,
+        seenAt: 3000,
+      );
+      p = (await dao.getPeers('g1')).single;
+      expect(p.leftAt, 2000);
+      expect(p.me, 'p1');
+
+      // An older part a stale relay still serves: recorded, still left.
+      await dao.recordPeerEvent(
+        groupId: 'g1',
+        pubkey: 'aa',
+        part: 2,
+        eventId: 'old2',
+        createdAt: 15,
+        seenAt: 4000,
+        me: 'p1',
+        snapshotDigest: 'old',
+      );
+      p = (await dao.getPeers('g1')).single;
+      expect(p.left, isTrue);
+      expect(p.snapshotDigest, isNull);
+
+      // A newer ordinary event: the publisher has the group again.
+      await dao.recordPeerEvent(
+        groupId: 'g1',
+        pubkey: 'aa',
+        part: 0,
+        eventId: 'e3',
+        createdAt: 30,
+        seenAt: 5000,
+        me: 'p1',
+        snapshotDigest: 'D3',
+      );
+      p = (await dao.getPeers('g1')).single;
+      expect(p.left, isFalse);
+      expect(p.snapshotDigest, 'D3');
+
+      // A late, older "left" marker doesn't make it left again.
+      await dao.markPeerLeft(
+        groupId: 'g1',
+        pubkey: 'aa',
+        part: 1,
+        eventId: 'left1b',
+        createdAt: 25,
+        seenAt: 6000,
+      );
+      expect((await dao.getPeers('g1')).single.left, isFalse);
+    });
+
+    test('markPeerLeft for an unknown publisher creates a left row', () async {
+      await dao.markPeerLeft(
+        groupId: 'g1',
+        pubkey: 'bb',
+        part: 0,
+        eventId: 'l',
+        createdAt: 5,
+        seenAt: 700,
+        me: 'p2',
+      );
+      final p = (await dao.getPeers('g1')).single;
+      expect((p.pubkey, p.me, p.leftAt, p.lastSeenAt), ('bb', 'p2', 700, 700));
+    });
   });
 
   group('purge / wipe', () {

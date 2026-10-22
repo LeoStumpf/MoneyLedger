@@ -199,6 +199,11 @@ class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
         : _decodeEventIds(row.eventIdsJson);
     ids[part] = eventId;
     final newest = row == null || createdAt >= row.lastCreatedAt;
+    // G53 round 3 (decision 6): only an event **newer** than the "left"
+    // marker brings a publisher back — an older part a relay still serves
+    // (it missed the deletion) doesn't.
+    final back = row?.leftAt != null && createdAt > row!.lastCreatedAt;
+    final take = row?.leftAt == null ? newest : back;
     await into(linkPeers).insertOnConflictUpdate(
       LinkPeersCompanion(
         groupId: Value(groupId),
@@ -206,8 +211,51 @@ class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
         eventIdsJson: Value(_encodeEventIds(ids)),
         lastCreatedAt: Value(math.max(createdAt, row?.lastCreatedAt ?? 0)),
         lastSeenAt: Value(math.max(seenAt, row?.lastSeenAt ?? 0)),
-        me: newest ? Value(me) : const Value.absent(),
-        snapshotDigest: newest ? Value(snapshotDigest) : const Value.absent(),
+        me: take ? Value(me) : const Value.absent(),
+        snapshotDigest: take ? Value(snapshotDigest) : const Value.absent(),
+        leftAt: back ? const Value(null) : const Value.absent(),
+      ),
+    );
+  });
+
+  /// G53 round 3 (Leo 2026-10-22, decision 6): [pubkey] published its
+  /// "left" header part [part] ([eventId], Nostr [createdAt] in seconds) —
+  /// it deleted its copy of [groupId]. The row is **kept** (created if
+  /// unknown) and marked left at [seenAt] (ms epoch, our clock; the first
+  /// time only), so the sync sheet says "Deleted the group"; the event is
+  /// recorded like any other (skipped before decrypting next time). [me]
+  /// is taken when the marker is the publisher's newest event; its
+  /// snapshot digest is forgotten (it holds nothing any more).
+  Future<void> markPeerLeft({
+    required String groupId,
+    required String pubkey,
+    required int part,
+    required String eventId,
+    required int createdAt,
+    required int seenAt,
+    String? me,
+  }) => transaction(() async {
+    final row = await _peer(groupId, pubkey);
+    final ids = row == null
+        ? <int, String>{}
+        : _decodeEventIds(row.eventIdsJson);
+    ids[part] = eventId;
+    final newest = row == null || createdAt >= row.lastCreatedAt;
+    // An older marker than an ordinary event already seen (a publisher
+    // that came back) doesn't make it "left" again.
+    final left = row?.leftAt != null || newest;
+    await into(linkPeers).insertOnConflictUpdate(
+      LinkPeersCompanion(
+        groupId: Value(groupId),
+        pubkey: Value(pubkey),
+        eventIdsJson: Value(_encodeEventIds(ids)),
+        lastCreatedAt: Value(math.max(createdAt, row?.lastCreatedAt ?? 0)),
+        lastSeenAt: Value(math.max(seenAt, row?.lastSeenAt ?? 0)),
+        me: newest && me != null ? Value(me) : const Value.absent(),
+        snapshotDigest: left ? const Value(null) : const Value.absent(),
+        leftAt: left && row?.leftAt == null
+            ? Value(seenAt)
+            : const Value.absent(),
       ),
     );
   });
@@ -260,6 +308,7 @@ class LinkDao extends DatabaseAccessor<AppDatabase> with _$LinkDaoMixin {
     lastCreatedAt: r.lastCreatedAt,
     lastSeenAt: r.lastSeenAt,
     snapshotDigest: r.snapshotDigest,
+    leftAt: r.leftAt,
   );
 
   /// Parses the per-part event id map; anything malformed reads as empty

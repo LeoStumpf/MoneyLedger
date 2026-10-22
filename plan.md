@@ -685,13 +685,21 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
    earlier own value (as built) — OK, documented (open-points.md)
 5. [x] **Relay reconnect cap 30 s** while the app is open — OK, design doc
    §4.3 updated
-6. [ ] Someone deleting their copy of a link group stays in the others'
-   sync sheet as "deleted the group" (stored flag; EN + DE) — separate task
+6. [x] Someone deleting their copy of a link group stays in the others'
+   sync sheet as "deleted the group" (stored flag; EN + DE) — **built**
+   (schema v20 `link_peers.left_at`, `LinkDao.markPeerLeft`,
+   `PeerSyncKind.deletedGroup`, `peerDeletedGroup(At)`; a newer ordinary
+   event of that publisher clears it, an older part a stale relay still
+   serves doesn't; another device of the person that still has the group
+   wins the row)
 7. [x] **Notification switch** shows off while Android doesn't allow
    notifications — OK, documented (open-points.md G72)
-8. [ ] PRIVACY.md + in-app privacy text: "Settings → Back up all groups" →
+8. [x] PRIVACY.md + in-app privacy text: "Settings → Back up all groups" →
    "Settings → Backup & restore" (DE likewise; both identical, test) —
-   separate task
+   **done** (`privacyBackupBody` + `privacyCsvBody`: "Back up all groups"
+   under Settings → Backup & restore, one group from its group settings;
+   DE *Einstellungen → Sichern & Wiederherstellen*; pinned in
+   `test/about_page_test.dart`)
 9. [x] **G57 limits** OK: no-account devices in mixed groups can't write a
    merged meta; a restore never merges — documented (open-points.md)
 
