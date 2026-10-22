@@ -111,7 +111,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   bool _severalPayers = false;
   bool _initialSeveral = false;
   Map<String, int>? _payerAmounts;
-  Map<String, int>? _initialPayers;
+
+  /// What the payers editor starts with when it (re)opens: the edited /
+  /// duplicated payers, then the last readable amounts typed — so switching
+  /// to one payer and back shows exactly what [_payerAmounts] holds.
+  Map<String, int>? _payersDraft;
   bool _payersEdited = false;
   String _currency = 'EUR';
   String _initialCurrency = 'EUR'; // as loaded — stays selectable
@@ -360,7 +364,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         _initialPayer = defaultPayer;
         _severalPayers = initialPayers != null;
         _initialSeveral = _severalPayers;
-        _initialPayers = initialPayers;
+        _payersDraft = initialPayers;
         _payerAmounts = initialPayers;
         _customCategories = group?.categories ?? const [];
         if (!_receiptChanged) _receipt = receipt;
@@ -820,6 +824,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                 ],
                                 onChanged: (v) => setState(() {
                                   if (v == _kSeveralPayers) {
+                                    // The editor reopens with what the
+                                    // form holds (never stale amounts
+                                    // behind blank fields).
+                                    if (!_severalPayers) {
+                                      _payersDraft =
+                                          _payerAmounts ?? _payersDraft;
+                                      _payerAmounts = _payersDraft;
+                                    }
                                     _severalPayers = true;
                                   } else {
                                     _severalPayers = false;
@@ -833,7 +845,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                   members: members,
                                   totalCents: _amountCents,
                                   currency: _currency,
-                                  initial: _initialPayers,
+                                  initial: _payersDraft,
                                   onChanged: (amounts) => setState(() {
                                     _payerAmounts = amounts;
                                     _payersEdited = true;

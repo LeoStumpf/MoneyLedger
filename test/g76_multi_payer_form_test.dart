@@ -179,6 +179,46 @@ void main() {
     expect(c['payers'], {_alice: 6000, _bob: 3000});
   });
 
+  testWidgets('one payer and back: the editor shows what will be saved', (
+    tester,
+  ) async {
+    final db = await _seed();
+    addTearDown(db.close);
+    final received = await pumpPage(tester, db);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Description'),
+      'Dinner',
+    );
+    await tester.enterText(find.byKey(const Key('expenseAmount')), '90');
+    await tester.pumpAndSettle();
+    await chooseSeveral(tester, 'Several people…');
+    await enter(tester, const Key('payerAmount-$_alice'), '60');
+    await enter(tester, const Key('payerAmount-$_bob'), '30');
+    expect(canSubmit(tester), isTrue);
+
+    await chooseSeveral(tester, 'Bob');
+    expect(find.byKey(const Key('payersEditor')), findsNothing);
+    await chooseSeveral(tester, 'Several people…');
+    // Reopened with the typed amounts — not blank fields over a valid,
+    // hidden map.
+    String text(String id) => tester
+        .widget<TextField>(find.byKey(Key('payerAmount-$id')))
+        .controller!
+        .text;
+    expect(text(_alice), '60.00');
+    expect(text(_bob), '30.00');
+    expect(canSubmit(tester), isTrue);
+
+    await enter(tester, const Key('payerAmount-$_bob'), '20');
+    await enter(tester, const Key('payerAmount-$_carl'), '10');
+    await save(tester);
+    expect(received.single.content['payers'], {
+      _alice: 6000,
+      _bob: 2000,
+      _carl: 1000,
+    });
+  });
+
   testWidgets('one person typed with the whole amount = a plain payer', (
     tester,
   ) async {
