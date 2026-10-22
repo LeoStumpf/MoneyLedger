@@ -269,6 +269,50 @@ level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
 
+**2026-10-22 (DEV-J, G52 step 13 link pass)** · `5c1bb63` + DEV-J fixes ·
+debug build on two `test-atd` emulators (5554 = A "Anna", creator, local
+mode; 5556 = B, fresh install, joined as "Ben"; DE, 360 dp), the web
+release build (`--no-web-resources-cdn`) served on 127.0.0.1 in headless
+Chrome (EN) as "Clara"; real relays nos.lol + nostr.mom, both emulators on
+this laptop's network. **The Pixel was not attached** (no second network /
+real camera). **13.1** disclosure (nos.lol + nostr.mom, one operator, IP,
+Settings → Relays) → sheet with QR / *Link teilen* / *Kopieren*. **13.2**
+the https link opens the browser (debug signature, and
+`leostumpf.github.io/moneyledger/join` is a 404 — landing site not live);
+`moneyledger://join#…` opens the join page. **13.3** "Wer bist du …?" with
+Anna *Schon auf einem anderen Handy gewählt*; a fresh install starts local
+mode, onboarding, then the Android 13+ notification prompt (also on A once
+the group was shared). **13.4** add / edit / delete both ways ≈ 5 s (incl.
+UI polling); sync sheet *Hat alles* on both, *Jetzt synchronisieren* →
+"Relays abgefragt.". **13.5** B offline (`svc wifi/data disable`): *Sync
+now* → "Die Relays sind nicht erreichbar."; back online both sides caught
+up after ≈ 60 s without a resume. **13.6** headless WorkManager round on B
+(app killed): `[bg] round done … link: true (1/2 merged), notified: 1`,
+notification "Ferienhaus — Anna hat Eis eingetragen · 7,50 €", later "3
+Änderungen von Anna" (expense, delete, payment) (7.13 partly). **13.7**
+relay.damus.io added ("Noch nicht genutzt"), removed; the last relay can't
+be removed, *Standard-Relays verwenden* restores both. **13.8** *Link
+zurücksetzen* → new link; B on the old link didn't get A's new expense;
+opening the new link → „… auf diesen Link umstellen?“ → *Diesen Link
+nutzen* → everything arrives (third device not run). **13.9** B deletes →
+`[link] … unpublished before the purge: true`, A keeps the group; B rejoins
+with the link (backup restore not run — the ATD image has no file
+picker). **13.10** web: `#/join?v=1&k=…` → disclosure → picker (Anna + Ben
+"Already picked on another phone") → join → onboarding → group; the server
+log shows no request with the secret; only `wss://nos.lol`,
+`wss://nostr.mom` + their NIP-11 `https://` fetches leave the origin;
+web → app and app → web expenses arrive. **G58** headless round
+`snapshot: true` + `files/snapshots/money_ledger_local/2026-10-22.json`.
+**G61** *Gesamtbetrag auf die Summe setzen* with the amount scrolled off:
+status "Ergibt den Gesamtbetrag", the new total isn't visible (follow-up).
+**200 %** (B): join page, picker, group page, sync + invite sheets fit.
+**Found + fixed:** link groups showed "Du bist nicht dabei" on the group
+card / *Dein Saldo* / totals; *Exactly this state* missing for link groups;
+local-mode delete text "von diesem Gerät" in a link group; *Ohne Konto
+starten* created `money_ledger_matrix.sqlite` (plan G52 step 13). Not run:
+Pixel / two networks, App Link, TalkBack (§11), §14, §15 beyond the
+welcome order, 13.11, 13.12.
+
 **2026-10-17 (DEV-I, G63–G78 device pass)** · `d45b1ad` + DEV-I fixes ·
 debug builds under a temporary id `io.github.leostumpf.moneyledger.devi`
 (Leo's release install untouched; uninstalled afterwards): offline demo on

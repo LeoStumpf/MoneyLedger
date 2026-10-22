@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/router.dart' show kLocalSetupLocation;
 import '../../core/session/device_prefs.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
@@ -106,8 +107,16 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     }
   }
 
-  /// One of the three choices: remember the welcome, then go on.
+  /// One of the three choices: remember the welcome, then go on. *Start
+  /// without an account* doesn't: the local setup page stores it together
+  /// with the name (`startLocalProfile`) — a seen welcome without a local
+  /// profile would build the Matrix client (and create its SDK store) while
+  /// the name is still being typed (G79).
   Future<void> _choose(String location) async {
+    if (location == kLocalSetupLocation) {
+      context.go(location);
+      return;
+    }
     final errors = ActionErrors.of(context);
     try {
       await ref.read(devicePrefsProvider.notifier).markWelcomeSeen();
@@ -397,7 +406,7 @@ class _ChoicesPage extends StatelessWidget {
               style: FilledButton.styleFrom(minimumSize: big),
               icon: const Icon(Icons.arrow_forward),
               label: Text(l.welcomeUseLocal),
-              onPressed: () => onChoose('/local-setup'),
+              onPressed: () => onChoose(kLocalSetupLocation),
             ),
             const SizedBox(height: Insets.s),
             Text(

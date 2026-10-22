@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/large_text.dart';
 import '../../core/l10n/l10n.dart';
-import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../../core/sync/record_validation.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/content_width.dart';
@@ -561,8 +560,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   Future<void> _delete() async {
     final initial = widget.initial;
     if (initial == null) return;
-    final local = ref.read(localModeActiveProvider);
-    if (!await confirmDeleteExpense(context, initial, localOnly: local) ||
+    final local = await deletesOnlyHere(ref, initial.roomId);
+    if (!mounted ||
+        !await confirmDeleteExpense(context, initial, localOnly: local) ||
         !mounted) {
       return;
     }

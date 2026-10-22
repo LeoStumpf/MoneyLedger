@@ -113,9 +113,11 @@ void main() {
       expect(store.values, isEmpty, reason: 'not seen until a choice');
     });
 
-    testWidgets('"Start without an account" marks the welcome seen', (
-      tester,
-    ) async {
+    // G52 step 13 device pass: marking it seen here built the Matrix client
+    // (and its SDK store) while the name was typed — the local setup stores
+    // it together with the local profile (`startLocalProfile`).
+    testWidgets('"Start without an account" opens the local setup without '
+        'marking the welcome seen yet', (tester) async {
       final store = InMemoryDevicePrefsStore();
       await tester.pumpWidget(_welcomeApp(store));
       await tester.pumpAndSettle();
@@ -126,7 +128,7 @@ void main() {
       await tester.tap(find.byKey(const Key('welcomeUseLocal')));
       await tester.pumpAndSettle();
       expect(find.text('page:/local-setup'), findsOneWidget);
-      expect(store.values['welcome_seen'], '1');
+      expect(store.values['welcome_seen'], isNull);
     });
 
     for (final (key, page) in [

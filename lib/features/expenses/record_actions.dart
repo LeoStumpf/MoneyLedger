@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/database/daos/link_dao.dart' show LinkDao;
 import '../../core/l10n/l10n.dart';
 import '../../core/session/app_session.dart' show localModeActiveProvider;
 import '../../core/sync/record_signing.dart' show RecordKind;
@@ -82,6 +83,30 @@ class UndoSnack {
     } catch (e) {
       _errors.show(e);
     }
+  }
+}
+
+/// G75: a delete only affects this device — local mode, and (G52) the
+/// group isn't shared by link (there the delete reaches everyone with the
+/// link).
+Future<bool> deletesOnlyHere(WidgetRef ref, String groupId) =>
+    deleteStaysOnDevice(
+      localMode: ref.read(localModeActiveProvider),
+      link: ref.read(linkDaoProvider),
+      groupId: groupId,
+    );
+
+/// [deletesOnlyHere] without a `WidgetRef` (tests).
+Future<bool> deleteStaysOnDevice({
+  required bool localMode,
+  required LinkDao link,
+  required String groupId,
+}) async {
+  if (!localMode) return false;
+  try {
+    return await link.getChannel(groupId) == null;
+  } catch (_) {
+    return true;
   }
 }
 
@@ -182,13 +207,12 @@ Future<bool> deleteExpenseFlow(
   ExpenseModel expense, {
   bool skipConfirm = false,
 }) async {
-  if (!skipConfirm &&
-      !await confirmDeleteExpense(
-        context,
-        expense,
-        localOnly: ref.read(localModeActiveProvider),
-      )) {
-    return false;
+  if (!skipConfirm) {
+    final localOnly = await deletesOnlyHere(ref, expense.roomId);
+    if (!context.mounted ||
+        !await confirmDeleteExpense(context, expense, localOnly: localOnly)) {
+      return false;
+    }
   }
   if (!context.mounted) return false;
   final snack = UndoSnack.of(context, ref);
@@ -215,15 +239,18 @@ Future<bool> deleteSettlementFlow(
   required String toName,
   bool skipConfirm = false,
 }) async {
-  if (!skipConfirm &&
-      !await confirmDeleteSettlement(
-        context,
-        settlement,
-        fromName: fromName,
-        toName: toName,
-        localOnly: ref.read(localModeActiveProvider),
-      )) {
-    return false;
+  if (!skipConfirm) {
+    final localOnly = await deletesOnlyHere(ref, settlement.roomId);
+    if (!context.mounted ||
+        !await confirmDeleteSettlement(
+          context,
+          settlement,
+          fromName: fromName,
+          toName: toName,
+          localOnly: localOnly,
+        )) {
+      return false;
+    }
   }
   if (!context.mounted) return false;
   final snack = UndoSnack.of(context, ref);

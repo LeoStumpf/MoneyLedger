@@ -268,7 +268,7 @@ final class CurrentParticipantProvider
 }
 
 String _$currentParticipantHash() =>
-    r'844ec065e8f58506634f28d7bc7d0aa6efdaa0f2';
+    r'f0a5d1ed2a184eafad3857b6753e5b8936ea6237';
 
 /// The participant in [groupId] that this device's account has claimed, if any
 /// — i.e. "who am I in this group". Its `userId` is the participant id to use

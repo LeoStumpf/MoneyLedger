@@ -3,14 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/database/daos/expenses_dao.dart';
 import '../../core/database/daos/groups_dao.dart';
 import '../../core/database/daos/history_dao.dart';
+import '../../core/database/daos/link_dao.dart';
 import '../../core/matrix/ledger_transport.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
-import '../../models/member_model.dart' show claimedBy;
 import '../backup/ledger_backup.dart' show LedgerBackup;
 import '../expenses/expenses_provider.dart';
+import '../groups/group_provider.dart' show myParticipantIn;
 import 'group_history.dart';
 
 /// More reset writes than this are not relayed one by one: the group is
@@ -67,9 +68,10 @@ class GroupResetService {
   /// [group] (a backup group payload) to that content — or null when it
   /// can't be reset here: the group isn't stored on this device (the normal
   /// restore brings it back), or [me] (this device's account, `local:self`
-  /// in local mode) isn't an **active** participant of it (removed →
-  /// read-only history, G26; never part of it → not ours to rewrite).
-  /// Participants are never part of a plan.
+  /// in local mode; in a link group the channel's participant) isn't an
+  /// **active** participant of it (removed → read-only history, G26; never
+  /// part of it → not ours to rewrite). Participants are never part of a
+  /// plan.
   Future<GroupResetPlan?> planToSnapshot(
     Map<String, dynamic> group, {
     required String me,
@@ -77,7 +79,13 @@ class GroupResetService {
     final gid = group['group'] as String;
     final meta = await groups.getGroup(gid);
     if (meta == null || !_alive) return null;
-    final self = claimedBy(await write.members.getMembers(gid), me);
+    // G52: in a link group "me" is the channel's participant.
+    final self = await myParticipantIn(
+      write.members,
+      LinkDao(write.db),
+      gid,
+      me,
+    );
     if (self == null || !self.isActive || !_alive) return null;
     final entries = await history.entriesForGroup(gid);
     final expenses = await _expenses.getAllExpensesForGroup(gid);

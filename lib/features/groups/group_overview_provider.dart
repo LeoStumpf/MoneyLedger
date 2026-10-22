@@ -57,7 +57,11 @@ GroupOverview groupOverview(Ref ref, String groupId) {
   final settlements =
       ref.watch(settlementsForRoomProvider(groupId)).value ??
       const <SettlementModel>[];
-  final me = claimedBy(all, ref.watch(currentUserIdProvider));
+  // G52: a link group's "me" is the channel's participant (nobody is
+  // claimed by this device there) — as [currentParticipantProvider] says.
+  final me =
+      claimedBy(all, ref.watch(currentUserIdProvider)) ??
+      ref.watch(currentParticipantProvider(groupId)).value;
   int? last;
   for (final t in [
     for (final e in expenses) e.createdAt,

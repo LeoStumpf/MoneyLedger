@@ -790,6 +790,8 @@ Each step is a commit with tests. The fakes come first.
 1. `WhyMatrixPage` (3 pages, EN+DE) + entry points + the one-time hint.
 2. Welcome choices + pages reordered, paste-link choice, onboarding texts; router tests; screenshots updated.
 
+**Device pass (G52 step 13, partial — DEV-J 2026-10-22):** two emulators + the web build (headless Chrome) against nos.lol / nostr.mom — create, invite, join, edits both ways (~5 s), offline catch-up (~60 s after reconnect), headless round with `link: true` + notification, relays page, reset + switch, delete → unpublish, browser WebSockets; `docs/smoke-test.md` "Last run". Fixed then: "me" in a link group for the group card / balance summary and G58's exact-state plan (`myParticipantIn`), the local-mode delete text, and the Matrix store created by *Start without an account*. Still open: Pixel on a second network, App Link (landing site not live), TalkBack; follow-ups in plan.md G52.
+
 ## 14. Risks and open questions for Leo
 
 **Risks**

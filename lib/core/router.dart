@@ -66,7 +66,8 @@ const _signedOutEntryPages = {kWelcomeLocation, kLocalSetupLocation};
 /// Pure redirect rule (unit-tested).
 ///
 /// * [AppSessionKind.loading] (device preferences not read yet) → splash.
-/// * Signed out: welcome not seen → the welcome (public pages allowed);
+/// * Signed out: welcome not seen → the welcome (public pages and the
+///   local setup allowed);
 ///   seen → login / register / welcome / local setup / public pages, else
 ///   [landing] (login; the welcome after *Delete local data*, G46).
 /// * Local mode with "Connect a Matrix account" in progress ([connecting]) →
@@ -102,7 +103,10 @@ String? routerRedirect({
         case WelcomeStatus.unknown:
           return location == kSplashLocation ? null : kSplashLocation;
         case WelcomeStatus.notSeen:
-          return location == kWelcomeLocation || public
+          // G79: the local setup marks the welcome seen with the name.
+          return location == kWelcomeLocation ||
+                  location == kLocalSetupLocation ||
+                  public
               ? null
               : kWelcomeLocation;
         case WelcomeStatus.seen:

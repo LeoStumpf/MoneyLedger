@@ -182,8 +182,9 @@ void main() {
         expect(redirect(false, loc, welcome: notSeen), isNull, reason: loc);
       }
     });
-    test('local setup needs the welcome first', () {
-      expect(redirect(false, '/local-setup', welcome: notSeen), '/welcome');
+    test('local setup is reachable from the welcome before it is stored '
+        '(the setup stores it with the name — no Matrix client meanwhile)', () {
+      expect(redirect(false, '/local-setup', welcome: notSeen), isNull);
     });
     test('an unknown welcome flag shows the splash', () {
       expect(

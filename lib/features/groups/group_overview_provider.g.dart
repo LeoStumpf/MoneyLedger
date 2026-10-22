@@ -70,7 +70,7 @@ final class GroupOverviewProvider
   }
 }
 
-String _$groupOverviewHash() => r'48836315088fed4230cae4df2d46e12f973afa20';
+String _$groupOverviewHash() => r'39f860742884627da4612bc4882e05bcb8e38bc3';
 
 /// [GroupOverview] of [groupId], recomputed from the Drift streams.
 

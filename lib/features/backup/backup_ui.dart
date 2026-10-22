@@ -19,6 +19,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/session/app_session.dart' show localModeActiveProvider;
+import '../../core/database/daos/link_dao.dart' show LinkDao;
 import '../expenses/expenses_provider.dart' show linkDaoProvider;
 import '../groups/group_provider.dart';
 import '../history/group_history.dart' show GroupResetPlan;
@@ -488,7 +489,14 @@ Future<void> restoreFullBackup(BuildContext context, WidgetRef ref) async {
 /// this account is an active member of is reset to the snapshot's content
 /// ([GroupResetService.resetGroupsToSnapshot]).
 class BackupRestorer {
-  BackupRestorer._(this.service, this.engine, this.me, this.reset, this.shared);
+  BackupRestorer._(
+    this.service,
+    this.engine,
+    this.me,
+    this.reset,
+    this.shared,
+    this.link,
+  );
 
   factory BackupRestorer.of(WidgetRef ref, {bool exactState = false}) =>
       BackupRestorer._(
@@ -497,6 +505,7 @@ class BackupRestorer {
         ref.read(currentUserIdProvider),
         exactState ? ref.read(groupResetServiceProvider) : null,
         !ref.read(localModeActiveProvider),
+        ref.read(linkDaoProvider),
       );
 
   final BackupService service;
@@ -506,8 +515,13 @@ class BackupRestorer {
   /// G58: set when *Exactly this state* is offered.
   final GroupResetService? reset;
 
-  /// Peers receive an exact-state reset (false in local mode).
+  /// Peers receive an exact-state reset (false in local mode — except for
+  /// a link group, see [previewAndRestore]).
   final bool shared;
+
+  /// G52: a link group's reset reaches the others by link, also in local
+  /// mode.
+  final LinkDao link;
 
   /// Shows the preview of [backup]; on confirm restores it. Returns whether
   /// something was restored. Errors propagate (the caller shows them).
@@ -529,6 +543,11 @@ class BackupRestorer {
         if (plan != null) exactPlans[g.summary.groupId] = plan;
       }
     }
+    var exactShared = shared;
+    for (final id in exactPlans?.keys ?? const <String>[]) {
+      if (exactShared) break;
+      exactShared = await link.getChannel(id) != null;
+    }
     if (!context.mounted) return false;
     var exact = false;
     final ok = await showDialog<bool>(
@@ -537,7 +556,7 @@ class BackupRestorer {
         preview: preview,
         encrypted: encrypted,
         exactPlans: exactPlans,
-        exactShared: shared,
+        exactShared: exactShared,
         onExactChanged: (v) => exact = v,
       ),
     );

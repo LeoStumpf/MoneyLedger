@@ -649,7 +649,14 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 10. Leave / delete unpublish; backup carries the secret (+ warning) — `linkUnpublisherProvider` before `GroupExiter`'s purge + *Delete local data*; backup entry `link: {epoch, secret}` (`BackupLink`), restore → `reopenLinkChannel` + "Which person are you?" banner (`chooseLinkParticipant`); design doc §13 "As built (step 10)"
 - [x] 11. Docs, THIRD_PARTY_NOTICES (bip340, pointycastle, web_socket_channel, archive, posix), landing repo `LeoStumpf.github.io` (multi-app; assetlinks with the **upload-key** fingerprint for now — Leo 2026-10-17: Play App Signing not set up yet, add its fingerprint once enrolled), demo seed — README / CLAUDE.md / smoke-test §13 / THIRD_PARTY_NOTICES; landing repo prepared + committed **locally** at `~/git/LeoStumpf.github.io` (no GitHub repo yet, see below); demo *Climbing gym* link group (engine off); design doc §13 "As built (step 11)"
 - [x] 12. Reset invite link — `LinkSyncEngine.resetLink` / `switchLink`, `replaceLinkChannel` (`link_channel.dart`); invite sheet + group settings *Reset invite link*, join page "Switch to this link?" for a group held with another link, removal hint in link groups; design doc §13 "As built (step 12)"
-- [ ] 13. Device pass (Pixel + emulator + web)
+- [ ] 13. Device pass (Pixel + emulator + web) — **2026-10-22 (DEV-J):**
+      two `test-atd` emulators + the web build in headless Chrome against
+      the real relays (smoke §13 "Last run"): create → invite → join
+      (picker) → add / edit / delete both ways (~5 s), offline catch-up,
+      headless background round (`link: true`, notification), relays page,
+      reset link + switch, delete → unpublish, web join + edits both ways.
+      **Open:** the Pixel was not attached (no second network), App Link
+      verification (landing site not live), TalkBack, §14 / §15
 - [x] (from step 5) **Creating a link group while signed in:** a Matrix
       device signs every write, so a group it created has a signed meta and
       `openLinkChannel` refuses it (`signedGroup` — it would turn `mixed`,
@@ -783,6 +790,48 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       `demoOverrides` now uses `OfflineRelayConnector` (every connect fails).
       Left: in the demo *Sync now* on the link group says "no relay
       answered" (no relay is ever asked) — acceptable for a demo
+- [x] (step 13) The group card / *Your balance* / groups-page totals said
+      "You're not involved" in every link group (creator and joiners) —
+      `groupOverviewProvider` only looked for a participant claimed by this
+      device; now falls back to the channel's participant
+      (`myParticipantIn`, shared with `currentParticipantProvider`)
+- [x] (step 13) *Exactly this state* (G58) was never offered for link
+      groups (`planToSnapshot` used the same claimed-only lookup); the
+      warning now says "for everyone" for a link group in local mode too
+- [x] (step 13) Local mode: deleting an expense / payment in a link group
+      said "will be deleted from this device" — it reaches everyone with
+      the link (`deletesOnlyHere`)
+- [x] (step 13) *Start without an account* on the welcome marked it seen
+      before the name was entered → the Matrix client was built and
+      `money_ledger_matrix.sqlite` created (G79); the local setup now
+      stores it with the profile (`/local-setup` allowed before the welcome
+      is stored)
+- [ ] (step 13) Backup nudge: a joined link group counts as "exists only on
+      this device" ("1 Gruppe gibt es nur auf diesem Gerät") though other
+      phones + the relays hold it — **Leo:** nudge for link groups at all
+      (anyone with the link can wipe it), and with which text?
+- [ ] (step 13) Restore point / backup preview of a link group shows the
+      backup-file warning ("Wer die Datei hat …, wähle, wer du bist") even
+      when nothing is restored (group already here) — say less there
+- [ ] (step 13) Reset page: link-group batches by others have no author
+      line ("von Ben") — the history has the `by` participant
+- [ ] (step 13) Offline: the cloud stays "Über die Relays synchronisiert"
+      and the sheet "liegen auf den Relays (gerade eben)" while *Sync now*
+      says the relays are unreachable; an expense added offline shows no
+      "not synced yet" mark. Reconnect caught up after ~60 s (no resume)
+- [ ] (step 13) A peer that deleted the group (unpublished) shows as
+      "Letzte Aktualisierung gerade eben" in the sync sheet — could say it
+      removed its copy
+- [ ] (step 13) Adding a relay doesn't publish to it until the next change
+      ("Noch nicht genutzt"; relay.damus.io)
+- [ ] (step 13) Web, local mode: the web limits notice drops the "syncs
+      only while the tab is open" part, which applies to link groups; the
+      web onboarding's "Keep a copy" says "Nobody else has a copy … Settings
+      → Back up all groups" right after joining a shared group (path is
+      Settings → Backup & restore since G70)
+- [ ] (step 13) Notifications: one *Don't allow* already turns the switch
+      into "blocked … allow them in Android's app settings" (smoke 7.13
+      expects that after two denials) — check on a real device
 
 ### G53. Mixed groups + "lock group" 🟡
 - [x] Review (from G52 step 4): any link holder with a Matrix device can push a
@@ -896,7 +945,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 
 ### G58. Restore-point follow-ups (found in G48) 🟢
 - [x] Snapshots also from Android background rounds (today: app start only)
-- [ ] Device check: `[bg] round done: … snapshot: true` + new file in `snapshots/`
+- [x] Device check: `[bg] round done: … snapshot: true` + new file in `snapshots/` — DEV-J 2026-10-22 (emulator, headless round: `snapshot: true`, `2026-10-22.json` rewritten at 07:16)
 - [x] Offline demo seed: back-fill history so the reset page isn't empty
 - [x] Snapshot restore **"exactly this state"** as an option (Leo
       2026-10-17: yes) — per group a reset to the snapshot's content (new
@@ -904,7 +953,11 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       newer changes of others are overwritten
 - [ ] Device check: restore points with *Exactly this state* on, German, phone
       width (per-group count line wraps); snackbar wording counts groups +
-      versions together
+      versions together — DEV-J: the switch was missing for a link group
+      (fixed, see G52 step 13); German check still open
+- [ ] (G58, DEV-J) `snapshot_checked_day` is set on a start with no group
+      yet — a group created later that day gets its first restore point the
+      next day
 - [x] Decide: encrypt snapshot files — **no** (Leo 2026-10-17; private app
       dir like the DB, Android backup off)
 - [x] Concurrent resets by two members converge per record (mix) — **LWW as
@@ -941,8 +994,12 @@ Switching split modes or editing amounts today starts from blanks; make the
 - [x] A clearly visible **live** "X left / X too much" next to *Distribute*
 - [x] Shares mode: a **"Fine-tune as amounts"** action that switches to Exact
       (the existing conversion), e.g. 4:1 → 4/5 amounts to adjust
-- [ ] Device check: *Set total to the sum* while the amount field is scrolled
-      off-screen (feedback visible enough?)
+- [x] Device check: *Set total to the sum* while the amount field is scrolled
+      off-screen (feedback visible enough?) — DEV-J (emulator, DE): the
+      status flips to "Ergibt den Gesamtbetrag", but the new total (15,33 €)
+      is nowhere on screen
+- [ ] (G61, DEV-J) After *Set total to the sum* show the new total (status
+      line / snackbar, or scroll to the amount) — Leo to pick
 - [x] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
 - [x] Check the new split rows at phone width (long names, Shares steppers)
 - [x] Rows with long names sharing a prefix are indistinguishable
@@ -1006,7 +1063,9 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       `GroupSyncSheet` (`lib/features/sync/`), `SyncEngine.syncGroupNow`,
       `LinkSyncEngine.syncNow`
 - [ ] Device check with the G52 step 13 pass (sheet on two devices, *Sync
-      now* answers, TalkBack)
+      now* answers, TalkBack) — DEV-J: sheet on both emulators ("Hat
+      alles", *Jetzt synchronisieren* → "Relays abgefragt." / offline "Die
+      Relays sind nicht erreichbar."), 200 % font scrolls; TalkBack open
 
 ### G69. Share + overview (U17, U20, U19) 🟡
 - [x] "Who pays whom" as share text, group list sorted by activity, simple

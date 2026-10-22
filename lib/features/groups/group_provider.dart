@@ -73,8 +73,24 @@ String currentUserId(Ref ref) =>
 Future<MemberModel?> currentParticipant(Ref ref, String groupId) async {
   final myId = ref.watch(currentUserIdProvider);
   ref.watch(groupMembersProvider(groupId));
-  final members = ref.watch(membersDaoProvider);
-  final link = ref.watch(linkDaoProvider);
+  return myParticipantIn(
+    ref.watch(membersDaoProvider),
+    ref.watch(linkDaoProvider),
+    groupId,
+    myId,
+  );
+}
+
+/// "Who am I in [groupId]" as [currentParticipantProvider] resolves it, for
+/// code outside a provider (G58 exact-state reset): the participant claimed
+/// by [myId] (MXID or `local:self`), else — in a link group — the channel's
+/// `my_participant_id` when that participant is active.
+Future<MemberModel?> myParticipantIn(
+  MembersDao members,
+  LinkDao link,
+  String groupId,
+  String myId,
+) async {
   if (myId.isNotEmpty) {
     final claimed = await members.memberByMatrixId(groupId, myId);
     if (claimed != null) return claimed;

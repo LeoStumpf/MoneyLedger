@@ -459,6 +459,8 @@ Material icons in a soft circle with three satellite icons (`WelcomeHero`;
 page dots `WelcomeDots`, excluded from semantics — the page label + Back /
 Next are the accessible way). Any
 choice sets the **device-wide** flag `welcome_seen` in `DevicePrefs`
+(*Use without an account* only together with the name, `startLocalProfile` —
+no Matrix client meanwhile; `/local-setup` is allowed before it)
 (`lib/core/session/device_prefs.dart`): a tiny JSON map that works with no
 ledger DB open — native `device_prefs.json` in the app support dir (temp file +
 rename), web one `localStorage` entry (`device_prefs_store_{io,web}.dart`,
@@ -668,7 +670,10 @@ policy:)` stores local writes unsigned + not `pendingSign` + no `origin`,
 `linkAuthor` (`by`, unsigned / unhashed display hint, `link_author` column)
 = `my_participant_id`, so nothing is relayed; Matrix claims / invites throw
 `LinkOnlyGroupException`; `currentParticipant` falls back to the channel's
-`my_participant_id` (active). `RecordGate(linkPolicy:)` = the link path:
+`my_participant_id` (active) — `myParticipantIn`, also used by
+`groupOverviewProvider` (card / *Your balance* / totals) and G58's
+`planToSnapshot`; a local-mode delete in a link group isn't "from this
+device" (`deletesOnlyHere`, DEV-J). `RecordGate(linkPolicy:)` = the link path:
 unsigned accepted in `linkOnly` / `mixed` (stored without `origin`), signed
 verified, content / wrong-group / future-clock / refused-version rules kept,
 Matrix-ID claims refused in `linkOnly` (unsigned ones in `mixed`), unsigned
