@@ -71,11 +71,18 @@ enum GroupPolicy {
 GroupPolicy deriveGroupPolicy({
   required LinkChannelModel? channel,
   required GroupModel? meta,
+}) => deriveGroupPolicyFor(hasChannel: channel != null, meta: meta);
+
+/// [deriveGroupPolicy] when only whether this device has a channel for the
+/// group is known (e.g. a set of channel group ids).
+GroupPolicy deriveGroupPolicyFor({
+  required bool hasChannel,
+  required GroupModel? meta,
 }) {
   if (meta != null && meta.sig != null) {
     return meta.link != null ? GroupPolicy.mixed : GroupPolicy.matrix;
   }
-  return channel == null ? GroupPolicy.matrix : GroupPolicy.linkOnly;
+  return hasChannel ? GroupPolicy.linkOnly : GroupPolicy.matrix;
 }
 
 /// A group's policy plus who this device is in it on the link path

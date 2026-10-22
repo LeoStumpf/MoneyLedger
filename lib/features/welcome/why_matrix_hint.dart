@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/link/group_policy.dart';
 import '../../core/session/app_session.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/action_error.dart';
 import '../expenses/expenses_provider.dart' show linkDaoProvider;
+import '../groups/group_provider.dart' show ledgerGroupsProvider;
 import '../groups/group_overview_provider.dart';
 import '../onboarding/onboarding_provider.dart' show settingsDaoProvider;
 import 'why_matrix_page.dart';
@@ -16,17 +18,17 @@ import 'why_matrix_page.dart';
 const kWhyMatrixHintMinRecords = 10;
 
 /// Pure: whether the groups page shows the one-time "Why Matrix?" hint —
-/// only without an account ([noAccount], local mode: a Matrix user is in
-/// the secure mode already), only while not dismissed (`false`; null =
-/// still loading → hidden) and only once a link group is really in use.
+/// only while not dismissed (`false`; null = still loading → hidden) and
+/// only once a **link-only** group is really in use
+/// ([linkOnlyGroupRecordCounts]). Without an account and (Leo 2026-10-22)
+/// with a Matrix account alike: a Matrix user's link-only group is not in
+/// the secure mode either (a mixed or locked group doesn't count).
 bool shouldShowWhyMatrixHint({
-  required bool noAccount,
   required bool? dismissed,
-  required Iterable<int> linkGroupRecordCounts,
+  required Iterable<int> linkOnlyGroupRecordCounts,
 }) =>
-    noAccount &&
     dismissed == false &&
-    linkGroupRecordCounts.any((n) => n >= kWhyMatrixHintMinRecords);
+    linkOnlyGroupRecordCounts.any((n) => n >= kWhyMatrixHintMinRecords);
 
 /// The `why_matrix_hint_dismissed` setting (G54).
 final whyMatrixHintDismissedProvider = StreamProvider.autoDispose<bool>(
@@ -43,16 +45,24 @@ final linkGroupIdsProvider = StreamProvider.autoDispose<Set<String>>(
 
 /// Whether the groups page shows the hint now ([shouldShowWhyMatrixHint]).
 final whyMatrixHintProvider = Provider.autoDispose<bool>((ref) {
-  // A Matrix account never reads the streams below.
-  if (!ref.watch(localModeActiveProvider)) return false;
+  // Cheapest first: a ledger without an unsigned meta (e.g. a Matrix
+  // account's own groups) has no link-only group — no further reads.
+  final groups = [
+    for (final g in ref.watch(ledgerGroupsProvider).value ?? const [])
+      if (g.sig == null) g,
+  ];
+  if (groups.isEmpty) return false;
+  final ids = ref.watch(linkGroupIdsProvider).value ?? const <String>{};
+  if (ids.isEmpty) return false;
   final dismissed = ref.watch(whyMatrixHintDismissedProvider).value;
   if (dismissed != false) return false;
-  final ids = ref.watch(linkGroupIdsProvider).value ?? const <String>{};
   return shouldShowWhyMatrixHint(
-    noAccount: true,
     dismissed: dismissed,
-    linkGroupRecordCounts: [
-      for (final id in ids) ref.watch(groupOverviewProvider(id)).recordCount,
+    linkOnlyGroupRecordCounts: [
+      for (final g in groups)
+        if (deriveGroupPolicyFor(hasChannel: ids.contains(g.roomId), meta: g) ==
+            GroupPolicy.linkOnly)
+          ref.watch(groupOverviewProvider(g.roomId)).recordCount,
     ],
   );
 });
@@ -111,7 +121,9 @@ class WhyMatrixHintCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: Insets.xs),
                       Text(
-                        l.whyMatrixHintBody,
+                        ref.watch(localModeActiveProvider)
+                            ? l.whyMatrixHintBody
+                            : l.whyMatrixHintBodyMatrix,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),

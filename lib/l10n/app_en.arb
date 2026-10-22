@@ -250,6 +250,15 @@
   "@splitSetTotalToSum": {
     "description": "Split editor action (Exact): the entered amounts exceed the expense amount — set the expense amount to their sum"
   },
+  "splitTotalSetTo": "Total set to {amount}",
+  "@splitTotalSetTo": {
+    "description": "G61 snackbar after Set total to the sum: the new expense amount",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "splitFineTuneAsAmounts": "Fine-tune as amounts",
   "@splitFineTuneAsAmounts": {
     "description": "Split editor action (Shares): switch to exact amounts prefilled from the shares, to adjust them"
@@ -822,6 +831,15 @@
   "backupNudgeTitle": "Back up your groups",
   "backupNudgeBody": "{count, plural, =1{1 group exists only on this device. If you lose it, the group is gone — save a backup file.} other{{count} groups exist only on this device. If you lose it, they are gone — save a backup file.}}",
   "@backupNudgeBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backupNudgeLinkBody": "{count, plural, =1{Anyone with the link can change or empty your link group — a backup protects you.} other{Anyone with the link can change or empty your {count} link groups — a backup protects you.}}",
+  "@backupNudgeLinkBody": {
+    "description": "Backup nudge for groups shared by link (Leo 2026-10-22)",
     "placeholders": {
       "count": {
         "type": "int"
@@ -3777,6 +3795,10 @@
   "whyMatrixHintBody": "Your link group is in full use. With a free Matrix account, only the people you added can see a group, and every change is signed.",
   "@whyMatrixHintBody": {
     "description": "G54 one-time groups-page hint body"
+  },
+  "whyMatrixHintBodyMatrix": "Your link group is in full use. Anyone with its link can see and change it. Groups you create with your Matrix account are seen only by the people you added, and every change is signed.",
+  "@whyMatrixHintBodyMatrix": {
+    "description": "G54 one-time groups-page hint body for a Matrix account that has a link-only group (Leo 2026-10-22)"
   },
   "whyMatrixHintMore": "Tell me more",
   "@whyMatrixHintMore": {

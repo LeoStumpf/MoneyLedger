@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/features/welcome/why_matrix_hint.dart'
+    show linkGroupIdsProvider;
 import 'package:money_ledger/core/sync/self_recovery.dart';
 import 'package:money_ledger/core/sync/sync_health.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
@@ -210,6 +212,8 @@ void main() {
           const GroupsPage(),
           overrides: [
             isLoggedInProvider.overrideWith((ref) => true),
+            // G54: no link groups (no drift stream in widget tests).
+            linkGroupIdsProvider.overrideWith((_) => Stream.value(const {})),
             ledgerGroupsProvider.overrideWith(
               (_) => Stream.value(const [
                 GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),

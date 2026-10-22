@@ -5,6 +5,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/features/welcome/why_matrix_hint.dart'
+    show linkGroupIdsProvider;
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_page.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
@@ -245,6 +247,8 @@ void main() {
           const GroupsPage(),
           overrides: [
             isLoggedInProvider.overrideWith((ref) => true),
+            // G54: no link groups (no drift stream in widget tests).
+            linkGroupIdsProvider.overrideWith((_) => Stream.value(const {})),
             ...signingUiOverrides(
               archives: {
                 'g2': const GroupArchive(archivedAt: 1, fingerprint: 'fp'),

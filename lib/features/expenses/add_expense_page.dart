@@ -23,6 +23,7 @@ import 'expenses_provider.dart';
 import 'record_date_field.dart';
 import 'split_calculator.dart' show splitEqually;
 import 'payers_editor.dart';
+import 'item_split_page.dart' show showTotalSetSnack;
 import 'split_editor.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
 import 'record_attribution.dart';
@@ -64,6 +65,8 @@ class AddExpensePage extends ConsumerStatefulWidget {
 
 class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   final _formKey = GlobalKey<FormState>();
+  // G61: the snackbar after "Set total to the sum" floats above this bar.
+  final _submitBarKey = GlobalKey();
   final _descCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
@@ -884,14 +887,30 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                   _plan = p;
                                   _planUpdates++;
                                 }),
-                                // G61: "Set total to the sum".
-                                onSetTotal: (cents) => setState(
-                                  () => _amountCtrl.text = formatAmountInput(
+                                // G61: "Set total to the sum" (also from
+                                // the item split page) — the amount field
+                                // may be scrolled off-screen, so a snackbar
+                                // names the new amount (Leo 2026-10-22).
+                                onSetTotal: (cents) {
+                                  setState(
+                                    () => _amountCtrl.text = formatAmountInput(
+                                      cents,
+                                      context.localeName,
+                                      currency: _currency,
+                                    ),
+                                  );
+                                  showTotalSetSnack(
+                                    context,
                                     cents,
-                                    context.localeName,
-                                    currency: _currency,
-                                  ),
-                                ),
+                                    _currency,
+                                    bottomClearance:
+                                        _submitBarKey
+                                            .currentContext
+                                            ?.size
+                                            ?.height ??
+                                        0,
+                                  );
+                                },
                               ),
                               const SizedBox(height: Insets.xl),
                               // G16: optional free-text note.
@@ -942,6 +961,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     ),
                   ),
                   Material(
+                    key: _submitBarKey,
                     color: theme.colorScheme.surface,
                     elevation: 3,
                     child: SafeArea(

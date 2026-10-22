@@ -393,11 +393,11 @@ class _GroupsBody extends ConsumerWidget {
           children: [
             ContentWidth(child: _TotalsCard(totals: totals)),
             const SizedBox(height: Insets.l),
-            if (nudge > 0) ...[
-              ContentWidth(child: BackupNudgeCard(count: nudge)),
+            if (nudge.show) ...[
+              ContentWidth(child: BackupNudgeCard(counts: nudge)),
               const SizedBox(height: Insets.m),
             ],
-            // G54: once, after a link group is really in use (no account).
+            // G54: once, after a link-only group is really in use.
             if (ref.watch(whyMatrixHintProvider)) ...[
               const ContentWidth(child: WhyMatrixHintCard()),
               const SizedBox(height: Insets.m),

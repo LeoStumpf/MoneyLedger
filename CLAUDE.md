@@ -509,12 +509,16 @@ welcome's Matrix page (`welcomeWhyMatrix`, also in *How it works*), the
 link disclosure (`linkDisclosureWhyMatrix`, pushed with `Navigator`), the
 no-account sheet (`localSheetWhyMatrix`) and **once** a dismissible groups-page
 card (`WhyMatrixHintCard`, `why_matrix_hint.dart`): pure
-`shouldShowWhyMatrixHint` — **no account only** (local mode), not dismissed
+`shouldShowWhyMatrixHint` — not dismissed
 (`AppSettings` `why_matrix_hint_dismissed`, per ledger,
 `SettingsDao.watchWhyMatrixHintDismissed` / `dismissWhyMatrixHint`) and a
-link group (`linkGroupIdsProvider`) with ≥ `kWhyMatrixHintMinRecords` (10)
-live records (`GroupOverview.recordCount`); *Tell me more* and *Not now*
-both dismiss it for good. Widget tests: `testOverrides(linkGroupIds:,
+**link-only** group (`linkGroupIdsProvider` + unsigned meta,
+`deriveGroupPolicyFor`; mixed / locked don't count) with ≥
+`kWhyMatrixHintMinRecords` (10) live records (`GroupOverview.recordCount`)
+— without an account **and** (Leo 2026-10-22) with a Matrix account, which
+gets its own body (`whyMatrixHintBodyMatrix`: anyone with the link can see /
+change it; groups you create with Matrix are private); *Tell me more* and
+*Not now* both dismiss it for good. Widget tests: `testOverrides(linkGroupIds:,
 whyMatrixHintDismissed:)`. The local-mode chip reads **"No account"** /
 *Kein Konto* (§8.2; text scale capped at 1.3 in the app bar, the groups
 title drops the logo when narrow). Tests: `test/g54_why_matrix_test.dart`
@@ -1588,7 +1592,13 @@ state (newest `PeerSyncStates.lastInSyncAt` for our own MXID —
 `SyncStatesDao.watchLatestInSyncWith`; a matching digest from another own
 device sets it). `ownDeviceProtectionProvider` is null while loading (nudge
 hidden); the device list failing (offline) counts as "no verified device".
-Widget tests: `testOverrides` sets it to false.
+Widget tests: `testOverrides` sets it to false. **Link groups (Leo
+2026-10-22):** groups shared by an open link (`linkSharedGroups`: a channel
++ unsigned meta, or a signed meta with `link`) count **whoever else holds a
+copy** (another member's or our own other device's copy would be emptied
+just the same) and get their own sentence (`backupNudgeLinkBody`: "Anyone
+with the link can change or empty …"); the provider returns
+`BackupNudgeCounts(onlyHere, link)` — the card shows one or both texts.
 
 **Files:** `backup_files.dart` (`saveTextFile` / `pickTextFile`,
 `LedgerFileKind.csv|backup`) — native: file_picker save dialog (returns null
@@ -2482,7 +2492,11 @@ change.** Only the add/edit form changed.
     the editor calls `SplitEditor.onSetTotal(cents)` (only offered when the
     callback is given and the sum is 1 … `kMaxAmountCents`);
     `AddExpensePage` writes it into its amount field via
-    `formatAmountInput` (locale format), so the split adds up.
+    `formatAmountInput` (locale format), so the split adds up, and (Leo
+    2026-10-22) names it in a snackbar (`showTotalSetSnack`,
+    `totalSetSnack`: "Total set to €13.50" — the amount field may be
+    scrolled off) floating above its *Add* bar (`bottomClearance`); the item
+    page shows the same snackbar on its own *Set total to the sum*.
   - **Shares:** −/+ steppers per row (min 0, − disabled at 0). **Fine-tune
     as amounts** (`splitFineTune`, shown with an amount and ≥ 1 share):
     switches to Exact via the normal complete-split conversion, forced even

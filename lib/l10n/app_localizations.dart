@@ -692,6 +692,12 @@ abstract class AppLocalizations {
   /// **'Set total to the sum'**
   String get splitSetTotalToSum;
 
+  /// G61 snackbar after Set total to the sum: the new expense amount
+  ///
+  /// In en, this message translates to:
+  /// **'Total set to {amount}'**
+  String splitTotalSetTo(String amount);
+
   /// Split editor action (Shares): switch to exact amounts prefilled from the shares, to adjust them
   ///
   /// In en, this message translates to:
@@ -2101,6 +2107,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 group exists only on this device. If you lose it, the group is gone — save a backup file.} other{{count} groups exist only on this device. If you lose it, they are gone — save a backup file.}}'**
   String backupNudgeBody(int count);
+
+  /// Backup nudge for groups shared by link (Leo 2026-10-22)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Anyone with the link can change or empty your link group — a backup protects you.} other{Anyone with the link can change or empty your {count} link groups — a backup protects you.}}'**
+  String backupNudgeLinkBody(int count);
 
   /// No description provided for @backupNudgeLater.
   ///
@@ -5785,6 +5797,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your link group is in full use. With a free Matrix account, only the people you added can see a group, and every change is signed.'**
   String get whyMatrixHintBody;
+
+  /// G54 one-time groups-page hint body for a Matrix account that has a link-only group (Leo 2026-10-22)
+  ///
+  /// In en, this message translates to:
+  /// **'Your link group is in full use. Anyone with its link can see and change it. Groups you create with your Matrix account are seen only by the people you added, and every change is signed.'**
+  String get whyMatrixHintBodyMatrix;
 
   /// G54 groups-page hint: open the Why Matrix page
   ///

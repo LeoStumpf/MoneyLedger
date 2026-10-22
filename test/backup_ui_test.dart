@@ -24,6 +24,8 @@ import 'package:money_ledger/features/history/restore_points.dart'
     show snapshotsSupportedProvider;
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
+import 'package:money_ledger/features/welcome/why_matrix_hint.dart'
+    show linkGroupIdsProvider, whyMatrixHintDismissedProvider;
 
 import 'helpers/l10n.dart';
 import 'helpers/test_providers.dart';
@@ -349,9 +351,16 @@ void main() {
       snoozedTo = [];
     });
 
-    List<dynamic> overrides(List<MemberModel> members, {int? lastBackupAt}) => [
+    List<dynamic> overrides(
+      List<MemberModel> members, {
+      int? lastBackupAt,
+      Set<String> links = const {},
+      List<GroupModel> groups = const [group],
+    }) => [
       isLoggedInProvider.overrideWith((ref) => true),
-      ledgerGroupsProvider.overrideWith((_) => Stream.value(const [group])),
+      ledgerGroupsProvider.overrideWith((_) => Stream.value(groups)),
+      linkGroupIdsProvider.overrideWith((_) => Stream.value(links)),
+      whyMatrixHintDismissedProvider.overrideWith((_) => Stream.value(true)),
       allMembersProvider.overrideWith((_) => Stream.value(members)),
       // The group card's overview reads these (G17).
       groupMembersProvider.overrideWith((ref, g) => Stream.value(members)),
@@ -451,6 +460,116 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Solo'), findsOneWidget);
+      expect(find.byKey(const Key('backupNudge')), findsNothing);
+    });
+  });
+
+  // Leo 2026-10-22: link groups get their own nudge text — anyone with the
+  // link can change or empty them, whoever else holds a copy.
+  group('backup nudge for link groups', () {
+    const bo = MemberModel(
+      groupId: 'g1',
+      userId: '@bo:x',
+      displayName: 'Bo',
+      matrixId: '@bo:x',
+      status: 'active',
+      updatedAt: 1,
+    );
+    const me = MemberModel(
+      groupId: 'g1',
+      userId: '@me:x',
+      displayName: 'Me',
+      matrixId: '@me:x',
+      status: 'active',
+      updatedAt: 1,
+    );
+    const linkGroup = GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR');
+    const solo = GroupModel(roomId: 'g2', name: 'Solo', currency: 'EUR');
+    const soloMe = MemberModel(
+      groupId: 'g2',
+      userId: '@me:x',
+      displayName: 'Me',
+      matrixId: '@me:x',
+      status: 'active',
+      updatedAt: 1,
+    );
+
+    List<dynamic> overrides(
+      List<GroupModel> groups,
+      List<MemberModel> members, {
+      bool ownDevice = false,
+      int? lastBackupAt,
+    }) => [
+      isLoggedInProvider.overrideWith((ref) => true),
+      ledgerGroupsProvider.overrideWith((_) => Stream.value(groups)),
+      linkGroupIdsProvider.overrideWith((_) => Stream.value(const {'g1'})),
+      whyMatrixHintDismissedProvider.overrideWith((_) => Stream.value(true)),
+      allMembersProvider.overrideWith((_) => Stream.value(members)),
+      groupMembersProvider.overrideWith(
+        (ref, g) => Stream.value([
+          for (final m in members)
+            if (m.groupId == g) m,
+        ]),
+      ),
+      expensesForRoomProvider.overrideWith((ref, g) => Stream.value([])),
+      settlementsForRoomProvider.overrideWith((ref, g) => Stream.value([])),
+      currentUserIdProvider.overrideWith((_) => '@me:x'),
+      ownDeviceProtectionProvider.overrideWith((_) => ownDevice),
+      groupArchivesProvider.overrideWith((_) => Stream.value(const {})),
+      lastBackupAtProvider.overrideWith((_) => Stream.value(lastBackupAt)),
+      backupNudgeSnoozedUntilProvider.overrideWith((_) => Stream.value(null)),
+    ];
+
+    for (final locale in [const Locale('en'), const Locale('de')]) {
+      final l = locale.languageCode == 'de' ? de : en;
+      testWidgets('${locale.languageCode}: a link group with another member '
+          'and a second own device still gets the link text', (tester) async {
+        await tester.pumpWidget(
+          testApp(
+            const GroupsPage(),
+            locale: locale,
+            overrides: overrides(
+              const [linkGroup],
+              const [me, bo],
+              ownDevice: true,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('backupNudge')), findsOneWidget);
+        expect(find.text(l.backupNudgeLinkBody(1)), findsOneWidget);
+        expect(find.byKey(const Key('backupNudgeOnlyHere')), findsNothing);
+      });
+
+      testWidgets('${locale.languageCode}: link + solo group — both texts', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          testApp(
+            const GroupsPage(),
+            locale: locale,
+            overrides: overrides(const [linkGroup, solo], const [me, soloMe]),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text(l.backupNudgeBody(1)), findsOneWidget);
+        expect(find.text(l.backupNudgeLinkBody(1)), findsOneWidget);
+      });
+    }
+
+    testWidgets('hidden after a recent backup', (tester) async {
+      await tester.pumpWidget(
+        testApp(
+          const GroupsPage(),
+          overrides: overrides(
+            const [linkGroup],
+            const [me],
+            lastBackupAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Trip'), findsOneWidget);
       expect(find.byKey(const Key('backupNudge')), findsNothing);
     });
   });

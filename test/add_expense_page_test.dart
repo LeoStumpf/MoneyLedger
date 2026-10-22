@@ -268,6 +268,26 @@ void main() {
       await tester.tap(setTotal);
       await tester.pumpAndSettle();
       expect(tester.widget<TextFormField>(amount).controller!.text, '13,50');
+      expect(
+        find.text('Gesamtbetrag auf 13,50\u00a0CHF gesetzt'),
+        findsOneWidget,
+      );
+      // G61: it floats above the Add bar, so Add stays tappable.
+      expect(
+        tester
+            .getRect(
+              find
+                  .descendant(
+                    of: find.byKey(const Key('totalSetSnack')),
+                    matching: find.byType(Material),
+                  )
+                  .first,
+            )
+            .bottom,
+        lessThanOrEqualTo(
+          tester.getRect(find.byKey(const Key('submitExpense'))).top,
+        ),
+      );
       expect(find.text('Ergibt den Gesamtbetrag'), findsOneWidget);
       expect(setTotal, findsNothing);
       expect(add().onPressed, isNotNull);

@@ -179,6 +179,7 @@ void main() {
 
     await tapKey(tester, 'itemsSetTotal');
     expect(find.text('Total: €12.00'), findsOneWidget);
+    expect(find.text('Total set to €12.00'), findsOneWidget);
     await tapKey(tester, 'itemsApply');
     expect(total.value, 1200);
     expect(plan!.exact, {'a': 400, 'b': 400, 'c': 400});
@@ -368,6 +369,61 @@ void main() {
       // 12 → 1412 (+212), 5 → 588 (+88).
       expect(stored.single.splitsJson, '{"$alice":1412,"$bob":588}');
       expect(received.single.content['split'], {alice: 1412, bob: 588});
+    });
+
+    testWidgets('G61: a new total from the items is named in a snackbar '
+        'above the Add bar (Leo 2026-10-22)', (tester) async {
+      final db = await seed();
+      addTearDown(db.close);
+      final net = FakeMatrixNetwork();
+      await tester.pumpWidget(
+        testRouterApp(
+          const AddExpensePage(roomId: 'g1'),
+          overrides: [
+            ...signingUiOverrides(),
+            appDatabaseProvider.overrideWith((ref) => db),
+            ledgerTransportProvider.overrideWith((ref) => net.clientFor(alice)),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Dinner',
+      );
+      await tester.enterText(find.byKey(const Key('expenseAmount')), '10');
+      await tester.pumpAndSettle();
+      await tapKey(tester, 'splitItemize');
+      await enter(tester, 'itemAmount-0', '15');
+      await tapKey(tester, 'itemsSetTotal');
+      expect(find.text('Total set to €15.00'), findsOneWidget);
+      await tapKey(tester, 'itemsApply');
+      expect(find.byType(ItemSplitPage), findsNothing);
+      expect(
+        tester
+            .widget<TextFormField>(find.byKey(const Key('expenseAmount')))
+            .controller!
+            .text,
+        '15.00',
+      );
+      expect(find.text('Total set to €15.00'), findsOneWidget);
+      // The snackbar floats above the Add bar — Add stays tappable.
+      final snack = tester.getRect(
+        find
+            .descendant(
+              of: find.byKey(const Key('totalSetSnack')),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      final add = tester.getRect(find.byKey(const Key('submitExpense')));
+      expect(snack.bottom, lessThanOrEqualTo(add.top));
+      await tester.tap(find.byKey(const Key('submitExpense')));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+      final stored = await ExpensesDao(db).getExpensesForRoom('g1');
+      expect(stored.single.amountCents, 1500);
     });
   });
 }

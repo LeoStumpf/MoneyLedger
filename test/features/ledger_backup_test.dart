@@ -9,6 +9,7 @@ import 'package:money_ledger/features/backup/ledger_backup.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
+import 'package:money_ledger/models/record_signature.dart';
 
 void main() {
   const g1 = GroupModel(
@@ -324,6 +325,40 @@ void main() {
         myMxid: '@me:x',
       );
       expect(u.map((g) => g.roomId), ['s', 'l', 'r']);
+    });
+
+    test('link-shared = a channel and an unsigned meta, or a signed meta '
+        'with an open link (Leo 2026-10-22)', () {
+      const sig = RecordSignature(
+        user: '@me:x',
+        device: 'D',
+        key: 'k',
+        sig: 's',
+      );
+      const linkOnly = GroupModel(roomId: 'a', name: 'A', currency: 'EUR');
+      const mixed = GroupModel(
+        roomId: 'b',
+        name: 'B',
+        currency: 'EUR',
+        link: GroupLink(epoch: 1, secret: 'x'),
+        sig: sig,
+      );
+      const locked = GroupModel(
+        roomId: 'c',
+        name: 'C',
+        currency: 'EUR',
+        lockedAt: 1,
+        sig: sig,
+      );
+      const local = GroupModel(roomId: 'd', name: 'D', currency: 'EUR');
+      final l = linkSharedGroups(
+        groups: [linkOnly, mixed, locked, local],
+        channelGroupIds: {'a', 'b', 'c'},
+      );
+      expect(l.map((g) => g.roomId), ['a', 'b']);
+      expect(const BackupNudgeCounts().show, isFalse);
+      expect(const BackupNudgeCounts(link: 1).show, isTrue);
+      expect(const BackupNudgeCounts(onlyHere: 2).show, isTrue);
     });
 
     const day = 24 * 60 * 60 * 1000;

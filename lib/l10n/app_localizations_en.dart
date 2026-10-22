@@ -380,6 +380,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splitSetTotalToSum => 'Set total to the sum';
 
   @override
+  String splitTotalSetTo(String amount) {
+    return 'Total set to $amount';
+  }
+
+  @override
   String get splitFineTuneAsAmounts => 'Fine-tune as amounts';
 
   @override
@@ -1284,6 +1289,19 @@ class AppLocalizationsEn extends AppLocalizations {
           '$count groups exist only on this device. If you lose it, they are gone — save a backup file.',
       one:
           '1 group exists only on this device. If you lose it, the group is gone — save a backup file.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String backupNudgeLinkBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Anyone with the link can change or empty your $count link groups — a backup protects you.',
+      one:
+          'Anyone with the link can change or empty your link group — a backup protects you.',
     );
     return '$_temp0';
   }
@@ -3659,6 +3677,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get whyMatrixHintBody =>
       'Your link group is in full use. With a free Matrix account, only the people you added can see a group, and every change is signed.';
+
+  @override
+  String get whyMatrixHintBodyMatrix =>
+      'Your link group is in full use. Anyone with its link can see and change it. Groups you create with your Matrix account are seen only by the people you added, and every change is signed.';
 
   @override
   String get whyMatrixHintMore => 'Tell me more';

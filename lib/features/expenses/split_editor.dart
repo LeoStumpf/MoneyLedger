@@ -924,7 +924,8 @@ class _SplitEditorState extends State<SplitEditor> {
   }
 
   /// *Set total to the sum* — when [SplitEditor.onSetTotal] is given and the
-  /// Exact rows sum to a storable amount other than the total.
+  /// Exact rows sum to a storable amount other than the total. (The page
+  /// owning the amount field says the new amount — G61, Leo 2026-10-22.)
   Widget? _setTotalButton() {
     final setTotal = widget.onSetTotal;
     if (setTotal == null) return null;

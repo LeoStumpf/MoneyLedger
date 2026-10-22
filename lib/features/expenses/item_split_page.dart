@@ -26,6 +26,40 @@ class ItemSplitDraft {
   ItemRestMode restMode = ItemRestMode.proportional;
 }
 
+/// G61 (Leo 2026-10-22): after *Set total to the sum* the new amount may be
+/// scrolled off-screen — say it in a snackbar ("Total set to €15.33").
+/// [bottomClearance]: the height of an action bar inside the page body the
+/// (floating) snackbar must not cover (a `bottomNavigationBar` is cleared
+/// by the scaffold itself).
+void showTotalSetSnack(
+  BuildContext context,
+  int cents,
+  String currency, {
+  double bottomClearance = 0,
+}) {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  if (messenger == null) return;
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        key: const Key('totalSetSnack'),
+        behavior: bottomClearance > 0 ? SnackBarBehavior.floating : null,
+        margin: bottomClearance > 0
+            ? EdgeInsets.fromLTRB(
+                Insets.page,
+                Insets.xs,
+                Insets.page,
+                Insets.m + bottomClearance,
+              )
+            : null,
+        content: Text(
+          context.l10n.splitTotalSetTo(context.money(cents, currency)),
+        ),
+      ),
+    );
+}
+
 /// What *Use this split* returns: the receipt [total] (changed when the user
 /// chose *Set total to the sum*) and the Exact [split] summing to it.
 class ItemizedSplit {
@@ -398,7 +432,10 @@ class _ItemSplitPageState extends State<ItemSplitPage> {
     Widget? setTotal() => widget.canSetTotal && isValidAmountCents(sum)
         ? TextButton(
             key: const Key('itemsSetTotal'),
-            onPressed: () => setState(() => _total = sum),
+            onPressed: () {
+              setState(() => _total = sum);
+              showTotalSetSnack(context, sum, widget.currency);
+            },
             child: Text(l.splitSetTotalToSum),
           )
         : null;

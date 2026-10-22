@@ -31,6 +31,8 @@ import 'package:money_ledger/core/sync/ledger_sync_host.dart';
 import 'package:money_ledger/core/sync/sync_engine.dart';
 import 'package:money_ledger/features/auth/auth_provider.dart';
 import 'package:money_ledger/features/backup/backup_providers.dart';
+import 'package:money_ledger/features/backup/ledger_backup.dart'
+    show BackupNudgeCounts;
 import 'package:money_ledger/features/devices/device_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/expenses/ledger_syncer.dart';
@@ -275,10 +277,13 @@ void main() {
         c.listen(ledgerGroupsProvider, (_, _) {});
         c.listen(ownDeviceProtectionProvider, (_, _) {});
         await settle(c);
-        for (var i = 0; i < 20 && c.read(backupNudgeProvider) == 0; i++) {
+        for (var i = 0; i < 20 && !c.read(backupNudgeProvider).show; i++) {
           await Future<void>.delayed(const Duration(milliseconds: 5));
         }
-        expect(c.read(backupNudgeProvider), 1);
+        expect(
+          c.read(backupNudgeProvider),
+          const BackupNudgeCounts(onlyHere: 1),
+        );
       },
     );
 

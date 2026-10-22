@@ -854,11 +854,15 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       `money_ledger_matrix.sqlite` created (G79); the local setup now
       stores it with the profile (`/local-setup` allowed before the welcome
       is stored)
-- [ ] (step 13) Backup nudge: a joined link group counts as "exists only on
+- [x] (step 13) Backup nudge: a joined link group counts as "exists only on
       this device" ("1 Gruppe gibt es nur auf diesem Gerät") though other
       phones + the relays hold it — **Leo 2026-10-22: show the nudge for
       link groups with its own text** ("Anyone with the link can change or
-      empty this group — a backup protects you" / DE informal) — to build
+      empty this group — a backup protects you" / DE informal) — **done**:
+      `linkSharedGroups` (link-only or mixed) count whoever else holds a
+      copy (a second own device / another member doesn't protect against
+      someone emptying it), own sentence `backupNudgeLinkBody`; the other
+      groups keep the "only on this device" text
 - [ ] (step 13) Restore point / backup preview of a link group shows the
       backup-file warning ("Wer die Datei hat …, wähle, wer du bist") even
       when nothing is restored (group already here) — say less there
@@ -993,11 +997,12 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       "What is Matrix" + "Who sees what" merged); onboarding "Invite with a
       link" replaces "Share later"; chip *No account*
 - [ ] Device pass: smoke §15 (with G52 step 13)
-- [ ] (G54) The one-time hint is shown **only without an account** (local
+- [x] (G54) The one-time hint is shown **only without an account** (local
       mode) — a Matrix account that created / joined a link-only group sees
       no card (it is in the secure mode already; the ⋮ entry is there).
       — **Leo 2026-10-22: show it also to Matrix users with link-only
-      groups** — to build
+      groups** — **done**: counts link-only groups (unsigned meta + channel;
+      mixed / locked don't), Matrix accounts get `whyMatrixHintBodyMatrix`
 - [ ] (G54) Welcome *Join with an invite link* is a button to the join page
       (which has the paste field and is opened directly by a link) — no
       inline paste field on the choices page
@@ -1100,9 +1105,11 @@ Switching split modes or editing amounts today starts from blanks; make the
       off-screen (feedback visible enough?) — DEV-J (emulator, DE): the
       status flips to "Ergibt den Gesamtbetrag", but the new total (15,33 €)
       is nowhere on screen
-- [ ] (G61, DEV-J) After *Set total to the sum* show the new total (status
+- [x] (G61, DEV-J) After *Set total to the sum* show the new total (status
       line / snackbar, or scroll to the amount) — **Leo 2026-10-22: a
-      snackbar with the new amount** — to build
+      snackbar with the new amount** — **done**: "Total set to …"
+      (`showTotalSetSnack`) from the expense form (editor + item apply;
+      floats above the *Add* bar) and the item page
 - [x] Shares from very uneven amounts give big numbers (333/667) — round to nicer?
 - [x] Check the new split rows at phone width (long names, Shares steppers)
 - [x] Rows with long names sharing a prefix are indistinguishable
@@ -1424,7 +1431,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel) — done 2026-10-17: all pass; found G62
 - [ ] G58 — restore-point follow-ups (found in G48)
 - [x] G60 — expense-date follow-ups (found in G49)
-- [ ] G61 — split follow-ups (found in G59)
+- [x] G61 — split follow-ups (found in G59)
 - [~] G57 — custom-category follow-ups (found in G47) — C1 merge built (wire bundle, v19); device check open
 - [x] G56 — UX follow-ups (found in G46)
 - [x] G63 — correctness + texts before release (usability review U11 …)

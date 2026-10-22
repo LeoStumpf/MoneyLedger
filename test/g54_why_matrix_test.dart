@@ -21,6 +21,7 @@ import 'package:money_ledger/features/welcome/why_matrix_page.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
+import 'package:money_ledger/models/record_signature.dart';
 
 import 'helpers/l10n.dart';
 import 'helpers/test_providers.dart';
@@ -138,23 +139,18 @@ void main() {
       );
     });
 
-    test('the hint: no account, not dismissed, a link group with ≥ 10 '
-        'records', () {
-      bool show({
-        bool noAccount = true,
-        bool? dismissed = false,
-        List<int> counts = const [3, 10],
-      }) => shouldShowWhyMatrixHint(
-        noAccount: noAccount,
-        dismissed: dismissed,
-        linkGroupRecordCounts: counts,
-      );
+    test('the hint: not dismissed, a link-only group with ≥ 10 records '
+        '(with or without an account)', () {
+      bool show({bool? dismissed = false, List<int> counts = const [3, 10]}) =>
+          shouldShowWhyMatrixHint(
+            dismissed: dismissed,
+            linkOnlyGroupRecordCounts: counts,
+          );
       expect(show(), isTrue);
       expect(show(counts: const [9, 2]), isFalse);
       expect(show(counts: const []), isFalse);
       expect(show(dismissed: true), isFalse);
       expect(show(dismissed: null), isFalse, reason: 'still loading');
-      expect(show(noAccount: false), isFalse);
     });
   });
 
@@ -381,12 +377,13 @@ void main() {
       bool dismissed = false,
       String? localProfile = 'Anna',
       Set<String> links = const {_g},
+      GroupModel group = _group,
       void Function()? onDismiss,
     }) => [
       ...testOverrides(
         localProfile: localProfile,
         isLoggedIn: localProfile == null,
-        groups: const [_group],
+        groups: [group],
         members: const [_me],
         expenses: _expenses(records),
         linkGroupIds: links,
@@ -421,11 +418,75 @@ void main() {
       expect(dismissed, 1);
     });
 
+    testWidgets('no account: the "free Matrix account" text', (tester) async {
+      await tester.pumpWidget(_app('/groups', overrides: overrides()));
+      await tester.pumpAndSettle();
+      expect(find.text(en.whyMatrixHintBody), findsOneWidget);
+      expect(find.text(en.whyMatrixHintBodyMatrix), findsNothing);
+    });
+
+    // Leo 2026-10-22: a Matrix account's link-only group isn't in the
+    // secure mode either — the card shows, with its own text.
+    for (final locale in [const Locale('en'), const Locale('de')]) {
+      final l = locale.languageCode == 'de' ? de : en;
+      testWidgets('${locale.languageCode}: a Matrix account with a '
+          'link-only group sees it too', (tester) async {
+        await tester.pumpWidget(
+          _app(
+            '/groups',
+            locale: locale,
+            overrides: overrides(localProfile: null),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('whyMatrixHint')), findsOneWidget);
+        expect(find.text(l.whyMatrixHintBodyMatrix), findsOneWidget);
+        expect(find.text(l.whyMatrixHintBody), findsNothing);
+      });
+    }
+
+    const signed = RecordSignature(
+      user: '@anna:x',
+      device: 'D',
+      key: 'k',
+      sig: 's',
+    );
     for (final (name, o) in [
       ('9 records', overrides(records: 9)),
       ('dismissed', overrides(dismissed: true)),
       ('not a link group', overrides(links: const {})),
-      ('a Matrix account', overrides(localProfile: null)),
+      (
+        'a Matrix account without a link group',
+        overrides(localProfile: null, links: const {}),
+      ),
+      (
+        'a mixed group (signed meta with a link)',
+        overrides(
+          localProfile: null,
+          group: const GroupModel(
+            roomId: _g,
+            name: 'Trip',
+            currency: 'EUR',
+            updatedAt: 1,
+            link: GroupLink(epoch: 1, secret: 'x'),
+            sig: signed,
+          ),
+        ),
+      ),
+      (
+        'a locked group (signed meta, no link)',
+        overrides(
+          localProfile: null,
+          group: const GroupModel(
+            roomId: _g,
+            name: 'Trip',
+            currency: 'EUR',
+            updatedAt: 1,
+            lockedAt: 1,
+            sig: signed,
+          ),
+        ),
+      ),
     ]) {
       testWidgets('hidden: $name', (tester) async {
         await tester.pumpWidget(_app('/groups', overrides: o));

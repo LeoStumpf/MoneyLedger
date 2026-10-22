@@ -1099,11 +1099,11 @@ class CsvImportPreviewDialog extends StatelessWidget {
 // ── nudge card ───────────────────────────────────────────────────────────────
 
 /// Groups-page card shown while [backupNudgeProvider] reports groups only this
-/// device could restore and no recent backup. "Later" snoozes it for
+/// device could restore or groups shared by link, and no recent backup. "Later" snoozes it for
 /// [kBackupNudgeInterval] (device-local, per account).
 class BackupNudgeCard extends ConsumerWidget {
-  final int count;
-  const BackupNudgeCard({super.key, required this.count});
+  final BackupNudgeCounts counts;
+  const BackupNudgeCard({super.key, required this.counts});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1140,12 +1140,25 @@ class BackupNudgeCard extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: Insets.xs),
-                      Text(
-                        l.backupNudgeBody(count),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSecondaryContainer,
+                      if (counts.onlyHere > 0)
+                        Text(
+                          l.backupNudgeBody(counts.onlyHere),
+                          key: const Key('backupNudgeOnlyHere'),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSecondaryContainer,
+                          ),
                         ),
-                      ),
+                      if (counts.onlyHere > 0 && counts.link > 0)
+                        const SizedBox(height: Insets.xs),
+                      // Leo 2026-10-22: link groups get their own text.
+                      if (counts.link > 0)
+                        Text(
+                          l.backupNudgeLinkBody(counts.link),
+                          key: const Key('backupNudgeLink'),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSecondaryContainer,
+                          ),
+                        ),
                     ],
                   ),
                 ),

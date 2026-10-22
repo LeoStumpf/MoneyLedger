@@ -27,6 +27,7 @@ library;
 
 import 'dart:convert';
 
+import '../../core/link/group_policy.dart';
 import '../../core/sync/ledger_payloads.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
@@ -345,6 +346,49 @@ List<GroupModel> unprotectedGroups({
     for (final g in groups)
       if (!protectedIds.contains(g.roomId)) g,
   ];
+}
+
+/// Leo 2026-10-22: the groups shared by an open link (link-only or mixed —
+/// a locked group no longer is) — anyone with the link can change or empty
+/// them, so the nudge counts them whoever else holds a copy (another
+/// member's or our own other device's copy would be emptied just the same).
+/// [channelGroupIds]: the groups this device has a link channel for.
+List<GroupModel> linkSharedGroups({
+  required List<GroupModel> groups,
+  required Set<String> channelGroupIds,
+}) => [
+  for (final g in groups)
+    if (deriveGroupPolicyFor(
+          hasChannel: channelGroupIds.contains(g.roomId),
+          meta: g,
+        ) !=
+        GroupPolicy.matrix)
+      g,
+];
+
+/// What the backup nudge says: [onlyHere] groups nobody else could restore
+/// ([unprotectedGroups], not shared by link) and [link] groups shared by
+/// link ([linkSharedGroups]). Both 0 = no nudge.
+class BackupNudgeCounts {
+  final int onlyHere;
+  final int link;
+  const BackupNudgeCounts({this.onlyHere = 0, this.link = 0});
+
+  static const none = BackupNudgeCounts();
+
+  bool get show => onlyHere > 0 || link > 0;
+
+  @override
+  bool operator ==(Object other) =>
+      other is BackupNudgeCounts &&
+      other.onlyHere == onlyHere &&
+      other.link == link;
+
+  @override
+  int get hashCode => Object.hash(onlyHere, link);
+
+  @override
+  String toString() => 'BackupNudgeCounts(onlyHere: $onlyHere, link: $link)';
 }
 
 /// How recently another device of our own account must have proven it holds
