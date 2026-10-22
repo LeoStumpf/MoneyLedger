@@ -179,6 +179,7 @@ peers'), and SAS works with other members' devices (members page). Open:
   the same time (or one renaming the group while another adds a category)
   → the newer meta version wins and the other change is lost (the loser sees
   it vanish). A per-category CRDT / merge would fix it; rare in practice.
+  Options + questions: `docs/design/g57-category-merge.md` (G57, open).
 - **No delete** — only *hide* (old expenses stay labelled). An expense whose
   `c:` id the group doesn't define (e.g. a CSV from another group without a
   name column, or the definition lost to the LWW case above) shows as

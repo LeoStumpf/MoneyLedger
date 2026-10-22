@@ -887,6 +887,11 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] Concurrent category edits lose one (whole meta is LWW) — per-category
       merge if it matters; duplicate names only blocked in the dialog —
       **Leo 2026-10-17: later**, together with the link-group wire changes
+- [ ] Decide (Leo): design note `docs/design/g57-category-merge.md`
+      (2026-10-22) — keep whole-meta LWW, per-category clocks in the meta,
+      or categories as their own record kind; also the G53 link / lock meta
+      race and duplicate names after concurrent adds — wire change, bundle
+      with G73 / G74 / G76
 - [x] Offline demo seed: add a custom category (screenshots)
 
 ### G58. Restore-point follow-ups (found in G48) 🟢
