@@ -42,6 +42,8 @@ import 'package:money_ledger/features/link/relay_settings_page.dart';
 import 'package:money_ledger/features/sync/group_sync_sheet.dart';
 import 'package:money_ledger/features/receipts/receipt_store.dart';
 import 'package:money_ledger/features/settings/settings_page.dart';
+import 'package:money_ledger/features/welcome/welcome_page.dart';
+import 'package:money_ledger/features/welcome/why_matrix_page.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
@@ -456,6 +458,41 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('groupSyncNow')), findsOneWidget);
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  // G54: the "Why Matrix?" pages (first and last, no account).
+  for (final last in [false, true]) {
+    testWidgets('G54 Why Matrix (${last ? 'ready' : 'links are easy'})', (
+      tester,
+    ) async {
+      _phone(tester);
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _routed(const WhyMatrixPage(), testOverrides(localProfile: 'Anna')),
+      );
+      await tester.pumpAndSettle();
+      if (last) {
+        for (var i = 0; i < 2; i++) {
+          await tester.tap(find.byKey(const Key('whyMatrixNext')));
+          await tester.pumpAndSettle();
+        }
+        expect(find.byKey(const Key('whyMatrixConnect')), findsOneWidget);
+      }
+      await _expectGuidelines(tester);
+      handle.dispose();
+    });
+  }
+
+  testWidgets('G54 welcome choices', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(const WelcomePage(startAtChoices: true), testOverrides()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('welcomeChoices')), findsOneWidget);
     await _expectGuidelines(tester);
     handle.dispose();
   });

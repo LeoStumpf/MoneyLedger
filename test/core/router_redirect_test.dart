@@ -177,6 +177,7 @@ void main() {
         '/about',
         '/about/privacy',
         '/how-it-works',
+        '/why-matrix', // G54
       ]) {
         expect(redirect(false, loc, welcome: notSeen), isNull, reason: loc);
       }
@@ -262,8 +263,10 @@ void main() {
         '/splash',
       );
     });
-    test('"How it works" stays reachable', () {
+    test('"How it works" and "Why Matrix?" stay reachable', () {
       expect(redirect(false, '/how-it-works', session: local), isNull);
+      expect(redirect(false, '/why-matrix', session: local), isNull);
+      expect(redirect(true, '/why-matrix'), isNull);
     });
     test('connecting: only login / register / public pages', () {
       expect(

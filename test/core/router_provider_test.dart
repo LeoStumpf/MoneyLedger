@@ -296,7 +296,7 @@ void main() {
       expect(location(router), '/welcome');
       expect(find.text('Share expenses, fairly'), findsOneWidget);
 
-      // The welcome's "Use without an account".
+      // The welcome's "Start without an account".
       await tester.runAsync(
         () => c.read(devicePrefsProvider.notifier).markWelcomeSeen(),
       );
@@ -314,7 +314,7 @@ void main() {
       flags.of(kLocalAccountId).add(false);
       await flush(tester);
       expect(location(router), '/onboarding');
-      expect(find.text('Everything stays on this device'), findsOneWidget);
+      expect(find.text('No account needed'), findsOneWidget);
 
       flags.of(kLocalAccountId).add(true);
       await flush(tester);

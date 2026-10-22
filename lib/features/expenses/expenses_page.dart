@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../welcome/why_matrix_page.dart' show kWhyMatrixLocation;
 import '../../core/widgets/large_text.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/widgets/text_prompt_dialog.dart';
@@ -46,7 +47,7 @@ import '../../core/widgets/action_error.dart';
 /// G65 (U22): the group ⋮ menu — the frequent actions only (G52 step 6:
 /// *Invite with a link*, link groups / local mode only); the rest is on the
 /// group settings page.
-enum _GroupMenuAction { inviteLink, addMember, archive, settings }
+enum _GroupMenuAction { inviteLink, addMember, archive, whyMatrix, settings }
 
 /// G56: groups whose "just you so far" card was dismissed — for this app
 /// session only (it comes back on the next start while still true).
@@ -214,6 +215,9 @@ class ExpensesPage extends ConsumerWidget {
                       archived: archived,
                       unsettled: overview.myBalance.isNotEmpty,
                     ),
+                    _GroupMenuAction.whyMatrix => context.push(
+                      kWhyMatrixLocation,
+                    ),
                     _GroupMenuAction.settings => context.push(
                       groupSettingsLocation(roomId),
                     ),
@@ -254,6 +258,18 @@ class ExpensesPage extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
+                    // G54 (design doc §10.3): the calm "Why Matrix?" page
+                    // in groups shared by link.
+                    if (linkGroup)
+                      PopupMenuItem(
+                        value: _GroupMenuAction.whyMatrix,
+                        child: ListTile(
+                          key: const Key('whyMatrixMenuItem'),
+                          leading: const Icon(Icons.verified_user_outlined),
+                          title: Text(l.whyMatrixTitle),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
                     PopupMenuItem(
                       value: _GroupMenuAction.settings,
                       child: ListTile(

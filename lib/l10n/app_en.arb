@@ -1479,18 +1479,6 @@
   "@welcomeMatrixTitle": {
     "description": "G39 welcome page 3 title; also the login page link"
   },
-  "welcomeMatrixBody": "Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other people in your groups — that is why you sign in.",
-  "@welcomeMatrixBody": {
-    "description": "G39 welcome page 3 body"
-  },
-  "welcomePrivacyTitle": "Who sees what",
-  "@welcomePrivacyTitle": {
-    "description": "G39 welcome page 4 title"
-  },
-  "welcomePrivacyMembers": "Everyone in a group gets that group's expenses and payments on their devices — end-to-end encrypted.",
-  "@welcomePrivacyMembers": {
-    "description": "G39 welcome page 4, point 1"
-  },
   "welcomePrivacyServer": "Homeservers only relay encrypted messages: they see which accounts exchange them and when, never the content, and keep nothing once it is delivered.",
   "@welcomePrivacyServer": {
     "description": "G39 welcome page 4, point 2"
@@ -1503,7 +1491,7 @@
   "@welcomeStartTitle": {
     "description": "G39 welcome: choices page title"
   },
-  "welcomeStartBody": "With a Matrix account you can share groups with others and sync your devices. Without one, everything stays on this device.",
+  "welcomeStartBody": "Start right away — no account needed. Share a group with an invite link whenever you like.",
   "@welcomeStartBody": {
     "description": "G39 welcome: choices page body"
   },
@@ -1515,11 +1503,11 @@
   "@welcomeCreateAccount": {
     "description": "G39 welcome choice"
   },
-  "welcomeUseLocal": "Use without an account",
+  "welcomeUseLocal": "Start without an account",
   "@welcomeUseLocal": {
     "description": "G39/G40 welcome choice + login page link + local setup title"
   },
-  "welcomeUseLocalHint": "You can connect a Matrix account later — your groups come along.",
+  "welcomeUseLocalHint": "Groups you don't share stay on this device. You can connect a Matrix account later — your groups come along.",
   "@welcomeUseLocalHint": {
     "description": "G39 welcome: hint under the local choice"
   },
@@ -1527,7 +1515,7 @@
   "@howItWorksTitle": {
     "description": "G39: About tile + title of the welcome pages read again"
   },
-  "localSetupStaysHere": "Your groups and expenses stay on this device only — nothing is sent anywhere.",
+  "localSetupStaysHere": "Groups you don't share stay on this device only — nothing is sent anywhere.",
   "@localSetupStaysHere": {
     "description": "G40 local setup point"
   },
@@ -1539,7 +1527,7 @@
   "@localSetupBackup": {
     "description": "G40 local setup point"
   },
-  "localSetupConnectLater": "You can connect a Matrix account later to share your groups.",
+  "localSetupConnectLater": "Share a group with an invite link — the others join without an account. You can connect a Matrix account (secure mode) later.",
   "@localSetupConnectLater": {
     "description": "G40 local setup point"
   },
@@ -1566,11 +1554,11 @@
   "@localSetupStart": {
     "description": "G40 local setup: start button"
   },
-  "localModeChip": "Local only",
+  "localModeChip": "No account",
   "@localModeChip": {
     "description": "G40: groups app bar indicator"
   },
-  "localModeSheetTitle": "Local mode",
+  "localModeSheetTitle": "Without an account",
   "@localModeSheetTitle": {
     "description": "G40: explanation sheet / settings section title"
   },
@@ -1582,7 +1570,7 @@
   "@localModeBackupHint": {
     "description": "G40 explanation sheet"
   },
-  "localModeConnectHint": "Connect a Matrix account to share groups with others and sync your devices. Your local groups move into that account.",
+  "localModeConnectHint": "Connect a Matrix account (secure mode) to sync your devices and invite people by their Matrix ID. Your groups move into that account; groups you share by link keep their link and also sync over Matrix.",
   "@localModeConnectHint": {
     "description": "G40 explanation sheet"
   },
@@ -1642,7 +1630,7 @@
   "@localModeYouSubtitle": {
     "description": "G40 members page: own participant in local mode"
   },
-  "localModeMembersHint": "Local mode: people are added by name. Connect a Matrix account (Settings) to invite them.",
+  "localModeMembersHint": "No account: people are added by name. Invite them with a link from the group's menu, or connect a Matrix account (Settings).",
   "@localModeMembersHint": {
     "description": "G40 members page hint"
   },
@@ -1664,7 +1652,7 @@
   "@onboardingReadyBody": {
     "description": "Onboarding subtitle (Matrix)"
   },
-  "onboardingReadyLocalBody": "A few things worth knowing about local mode.",
+  "onboardingReadyLocalBody": "A few things worth knowing before you start.",
   "@onboardingReadyLocalBody": {
     "description": "Onboarding subtitle (local mode)"
   },
@@ -1676,24 +1664,16 @@
   "@onboardingBackgroundBody": {
     "description": "Onboarding card (Matrix)"
   },
-  "onboardingLocalOnlyTitle": "Everything stays on this device",
+  "onboardingLocalOnlyTitle": "No account needed",
   "@onboardingLocalOnlyTitle": {
     "description": "Onboarding card (local mode)"
   },
-  "onboardingLocalOnlyBody": "No account, no sync: create groups and add the other people by name. The \"Local only\" chip on the groups page explains it again.",
+  "onboardingLocalOnlyBody": "Create groups and add the other people by name. Groups you don't share stay on this device only.",
   "@onboardingLocalOnlyBody": {
     "description": "Onboarding card (local mode)"
   },
   "onboardingBackupLocalBody": "Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.",
   "@onboardingBackupLocalBody": {
-    "description": "Onboarding card (local mode)"
-  },
-  "onboardingConnectLaterTitle": "Share later",
-  "@onboardingConnectLaterTitle": {
-    "description": "Onboarding card (local mode)"
-  },
-  "onboardingConnectLaterBody": "Settings → Connect a Matrix account moves your groups into an account, so you can invite others and sync your devices.",
-  "@onboardingConnectLaterBody": {
     "description": "Onboarding card (local mode)"
   },
   "privacyLocalTitle": "Local mode (without an account)",
@@ -3649,5 +3629,175 @@
   "secureOnlyBanner": "This group is now secure-only — sign in with Matrix to keep using it.",
   "@secureOnlyBanner": {
     "description": "G53: banner on a device without a Matrix participant in a locked group (read-only)"
+  },
+  "onboardingInviteLinkTitle": "Invite with a link",
+  "@onboardingInviteLinkTitle": {
+    "description": "G54 local-mode onboarding card title (replaces \"Share later\")"
+  },
+  "onboardingInviteLinkBody": "In a group, tap ⋮ → Invite with a link: the others open it and pick their name — no account needed. Anyone with the link can see and change the group.",
+  "@onboardingInviteLinkBody": {
+    "description": "G54 local-mode onboarding card body"
+  },
+  "welcomeLinkTitle": "Share a group with a link",
+  "@welcomeLinkTitle": {
+    "description": "G54 welcome page 3 title"
+  },
+  "welcomeLinkBody": "Send the others an invite link — by messenger, e-mail or as a QR code. They open it, pick their name, and everyone sees the same expenses. Nobody needs an account.",
+  "@welcomeLinkBody": {
+    "description": "G54 welcome page 3 body"
+  },
+  "welcomeLinkEncrypted": "The group syncs encrypted through public Nostr relays — only people with the link can read it.",
+  "@welcomeLinkEncrypted": {
+    "description": "G54 welcome page 3 point"
+  },
+  "welcomeLinkRelays": "The relays see your IP address and when you sync, never the content.",
+  "@welcomeLinkRelays": {
+    "description": "G54 welcome page 3 point"
+  },
+  "welcomeLinkAnyone": "Anyone with the link can see and change the group — share it only with the people in it.",
+  "@welcomeLinkAnyone": {
+    "description": "G54 welcome page 3 point"
+  },
+  "welcomeSecureTitle": "Want more security? Matrix",
+  "@welcomeSecureTitle": {
+    "description": "G54 welcome page 4 title"
+  },
+  "welcomeSecureBody": "Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. Signed in, MoneyLedger syncs your groups end-to-end encrypted with the people you added — the secure mode.",
+  "@welcomeSecureBody": {
+    "description": "G54 welcome page 4 body"
+  },
+  "welcomeSecureMembers": "Only the people you added get a group — every change is signed by the device that made it.",
+  "@welcomeSecureMembers": {
+    "description": "G54 welcome page 4 point"
+  },
+  "welcomeSecureHeading": "Secure mode",
+  "@welcomeSecureHeading": {
+    "description": "G54 welcome choices: heading above the Matrix sign-in buttons"
+  },
+  "welcomeSecureHint": "With a free Matrix account: only people you added, signed changes, your groups on every device.",
+  "@welcomeSecureHint": {
+    "description": "G54 welcome choices: line under the secure-mode heading"
+  },
+  "whyMatrixTitle": "Why Matrix?",
+  "@whyMatrixTitle": {
+    "description": "G54 \"Why Matrix?\" page title, menu item and links"
+  },
+  "whyMatrixEasyTitle": "Links are easy",
+  "@whyMatrixEasyTitle": {
+    "description": "G54 Why Matrix page 1 title"
+  },
+  "whyMatrixEasyBody": "A link is the quickest way to share a group: send it, the others pick their name, done. No account, no sign-up — that's why it's the default, and for a trip or a dinner it's often all you need.",
+  "@whyMatrixEasyBody": {
+    "description": "G54 Why Matrix page 1 body"
+  },
+  "whyMatrixCompareTitle": "There's another mode",
+  "@whyMatrixCompareTitle": {
+    "description": "G54 Why Matrix page 2 title"
+  },
+  "whyMatrixCompareBody": "Matrix is free too, and it works even better — you just sign in. What changes:",
+  "@whyMatrixCompareBody": {
+    "description": "G54 Why Matrix page 2 intro"
+  },
+  "whyMatrixWhoTitle": "Who can see and change a group",
+  "@whyMatrixWhoTitle": {
+    "description": "G54 comparison topic"
+  },
+  "whyMatrixWhoLink": "anyone who has the link, also when it's forwarded.",
+  "@whyMatrixWhoLink": {
+    "description": "G54 comparison: link side (after \"Link:\")"
+  },
+  "whyMatrixWhoMatrix": "only the people you added; every change is signed by the device that made it.",
+  "@whyMatrixWhoMatrix": {
+    "description": "G54 comparison: Matrix side (after \"Matrix:\")"
+  },
+  "whyMatrixRemoveTitle": "Removing someone",
+  "@whyMatrixRemoveTitle": {
+    "description": "G54 comparison topic"
+  },
+  "whyMatrixRemoveLink": "they keep access until you reset the link and send the new one to everyone else.",
+  "@whyMatrixRemoveLink": {
+    "description": "G54 comparison: link side"
+  },
+  "whyMatrixRemoveMatrix": "it sticks — their changes are ignored from then on.",
+  "@whyMatrixRemoveMatrix": {
+    "description": "G54 comparison: Matrix side"
+  },
+  "whyMatrixPhoneTitle": "New or lost phone",
+  "@whyMatrixPhoneTitle": {
+    "description": "G54 comparison topic"
+  },
+  "whyMatrixPhoneLink": "you need the link (or a backup) again.",
+  "@whyMatrixPhoneLink": {
+    "description": "G54 comparison: link side"
+  },
+  "whyMatrixPhoneMatrix": "sign in, and your groups come back from your other devices or the others in the group.",
+  "@whyMatrixPhoneMatrix": {
+    "description": "G54 comparison: Matrix side"
+  },
+  "whyMatrixServersTitle": "Who sees what",
+  "@whyMatrixServersTitle": {
+    "description": "G54 comparison topic"
+  },
+  "whyMatrixServersLink": "public relays run by volunteers see your IP address, when you sync and roughly how big the group is.",
+  "@whyMatrixServersLink": {
+    "description": "G54 comparison: link side"
+  },
+  "whyMatrixServersMatrix": "only the homeservers you choose see who exchanges messages with whom — never the content.",
+  "@whyMatrixServersMatrix": {
+    "description": "G54 comparison: Matrix side"
+  },
+  "whyMatrixReadyTitle": "Ready when you are",
+  "@whyMatrixReadyTitle": {
+    "description": "G54 Why Matrix page 3 title"
+  },
+  "whyMatrixReadyConnectBody": "Create a free account, e.g. at matrix.org, and connect it. Your groups come along; groups you share by link keep their link and also sync over Matrix.",
+  "@whyMatrixReadyConnectBody": {
+    "description": "G54 Why Matrix page 3, no account"
+  },
+  "whyMatrixReadySignInBody": "Create a free account, e.g. at matrix.org, and sign in — or start without an account and connect one any time later.",
+  "@whyMatrixReadySignInBody": {
+    "description": "G54 Why Matrix page 3, signed out"
+  },
+  "whyMatrixReadySignedInBody": "You're already signed in with Matrix. Groups you create are Matrix groups. In a group that is also shared by link, Make group secure (group settings) closes the link once everyone in it is on Matrix.",
+  "@whyMatrixReadySignedInBody": {
+    "description": "G54 Why Matrix page 3, Matrix account"
+  },
+  "whyMatrixReadyLaterBody": "Matrix is free. You can connect an account any time later in the settings — your groups come along.",
+  "@whyMatrixReadyLaterBody": {
+    "description": "G54 Why Matrix page 3, read only (from the link disclosure)"
+  },
+  "whyMatrixNotNow": "Not now",
+  "@whyMatrixNotNow": {
+    "description": "G54 Why Matrix: close without connecting; groups-page hint: dismiss"
+  },
+  "whyMatrixHintTitle": "There's also a secure mode",
+  "@whyMatrixHintTitle": {
+    "description": "G54 one-time groups-page hint title"
+  },
+  "whyMatrixHintBody": "Your link group is in full use. With a free Matrix account, only the people you added can see a group, and every change is signed.",
+  "@whyMatrixHintBody": {
+    "description": "G54 one-time groups-page hint body"
+  },
+  "whyMatrixHintMore": "Tell me more",
+  "@whyMatrixHintMore": {
+    "description": "G54 groups-page hint: open the Why Matrix page"
+  },
+  "whyMatrixWithLink": "Link: {text}",
+  "@whyMatrixWithLink": {
+    "description": "G54 comparison line, link side",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "whyMatrixWithMatrix": "Matrix: {text}",
+  "@whyMatrixWithMatrix": {
+    "description": "G54 comparison line, Matrix side",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
   }
 }

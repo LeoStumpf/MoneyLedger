@@ -2894,24 +2894,6 @@ abstract class AppLocalizations {
   /// **'What is Matrix?'**
   String get welcomeMatrixTitle;
 
-  /// G39 welcome page 3 body
-  ///
-  /// In en, this message translates to:
-  /// **'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other people in your groups — that is why you sign in.'**
-  String get welcomeMatrixBody;
-
-  /// G39 welcome page 4 title
-  ///
-  /// In en, this message translates to:
-  /// **'Who sees what'**
-  String get welcomePrivacyTitle;
-
-  /// G39 welcome page 4, point 1
-  ///
-  /// In en, this message translates to:
-  /// **'Everyone in a group gets that group\'s expenses and payments on their devices — end-to-end encrypted.'**
-  String get welcomePrivacyMembers;
-
   /// G39 welcome page 4, point 2
   ///
   /// In en, this message translates to:
@@ -2933,7 +2915,7 @@ abstract class AppLocalizations {
   /// G39 welcome: choices page body
   ///
   /// In en, this message translates to:
-  /// **'With a Matrix account you can share groups with others and sync your devices. Without one, everything stays on this device.'**
+  /// **'Start right away — no account needed. Share a group with an invite link whenever you like.'**
   String get welcomeStartBody;
 
   /// G39 welcome choice
@@ -2951,13 +2933,13 @@ abstract class AppLocalizations {
   /// G39/G40 welcome choice + login page link + local setup title
   ///
   /// In en, this message translates to:
-  /// **'Use without an account'**
+  /// **'Start without an account'**
   String get welcomeUseLocal;
 
   /// G39 welcome: hint under the local choice
   ///
   /// In en, this message translates to:
-  /// **'You can connect a Matrix account later — your groups come along.'**
+  /// **'Groups you don\'t share stay on this device. You can connect a Matrix account later — your groups come along.'**
   String get welcomeUseLocalHint;
 
   /// G39: About tile + title of the welcome pages read again
@@ -2969,7 +2951,7 @@ abstract class AppLocalizations {
   /// G40 local setup point
   ///
   /// In en, this message translates to:
-  /// **'Your groups and expenses stay on this device only — nothing is sent anywhere.'**
+  /// **'Groups you don\'t share stay on this device only — nothing is sent anywhere.'**
   String get localSetupStaysHere;
 
   /// G40 local setup point
@@ -2987,7 +2969,7 @@ abstract class AppLocalizations {
   /// G40 local setup point
   ///
   /// In en, this message translates to:
-  /// **'You can connect a Matrix account later to share your groups.'**
+  /// **'Share a group with an invite link — the others join without an account. You can connect a Matrix account (secure mode) later.'**
   String get localSetupConnectLater;
 
   /// G40 local setup: the local ledger was adopted into an account earlier
@@ -3023,13 +3005,13 @@ abstract class AppLocalizations {
   /// G40: groups app bar indicator
   ///
   /// In en, this message translates to:
-  /// **'Local only'**
+  /// **'No account'**
   String get localModeChip;
 
   /// G40: explanation sheet / settings section title
   ///
   /// In en, this message translates to:
-  /// **'Local mode'**
+  /// **'Without an account'**
   String get localModeSheetTitle;
 
   /// G40 explanation sheet
@@ -3047,7 +3029,7 @@ abstract class AppLocalizations {
   /// G40 explanation sheet
   ///
   /// In en, this message translates to:
-  /// **'Connect a Matrix account to share groups with others and sync your devices. Your local groups move into that account.'**
+  /// **'Connect a Matrix account (secure mode) to sync your devices and invite people by their Matrix ID. Your groups move into that account; groups you share by link keep their link and also sync over Matrix.'**
   String get localModeConnectHint;
 
   /// G40 settings section subtitle
@@ -3125,7 +3107,7 @@ abstract class AppLocalizations {
   /// G40 members page hint
   ///
   /// In en, this message translates to:
-  /// **'Local mode: people are added by name. Connect a Matrix account (Settings) to invite them.'**
+  /// **'No account: people are added by name. Invite them with a link from the group\'s menu, or connect a Matrix account (Settings).'**
   String get localModeMembersHint;
 
   /// G40 groups page banner after connecting
@@ -3149,7 +3131,7 @@ abstract class AppLocalizations {
   /// Onboarding subtitle (local mode)
   ///
   /// In en, this message translates to:
-  /// **'A few things worth knowing about local mode.'**
+  /// **'A few things worth knowing before you start.'**
   String get onboardingReadyLocalBody;
 
   /// Onboarding card (Matrix)
@@ -3167,13 +3149,13 @@ abstract class AppLocalizations {
   /// Onboarding card (local mode)
   ///
   /// In en, this message translates to:
-  /// **'Everything stays on this device'**
+  /// **'No account needed'**
   String get onboardingLocalOnlyTitle;
 
   /// Onboarding card (local mode)
   ///
   /// In en, this message translates to:
-  /// **'No account, no sync: create groups and add the other people by name. The \"Local only\" chip on the groups page explains it again.'**
+  /// **'Create groups and add the other people by name. Groups you don\'t share stay on this device only.'**
   String get onboardingLocalOnlyBody;
 
   /// Onboarding card (local mode)
@@ -3181,18 +3163,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.'**
   String get onboardingBackupLocalBody;
-
-  /// Onboarding card (local mode)
-  ///
-  /// In en, this message translates to:
-  /// **'Share later'**
-  String get onboardingConnectLaterTitle;
-
-  /// Onboarding card (local mode)
-  ///
-  /// In en, this message translates to:
-  /// **'Settings → Connect a Matrix account moves your groups into an account, so you can invite others and sync your devices.'**
-  String get onboardingConnectLaterBody;
 
   /// Privacy policy section title (G40)
   ///
@@ -5593,6 +5563,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This group is now secure-only — sign in with Matrix to keep using it.'**
   String get secureOnlyBanner;
+
+  /// G54 local-mode onboarding card title (replaces "Share later")
+  ///
+  /// In en, this message translates to:
+  /// **'Invite with a link'**
+  String get onboardingInviteLinkTitle;
+
+  /// G54 local-mode onboarding card body
+  ///
+  /// In en, this message translates to:
+  /// **'In a group, tap ⋮ → Invite with a link: the others open it and pick their name — no account needed. Anyone with the link can see and change the group.'**
+  String get onboardingInviteLinkBody;
+
+  /// G54 welcome page 3 title
+  ///
+  /// In en, this message translates to:
+  /// **'Share a group with a link'**
+  String get welcomeLinkTitle;
+
+  /// G54 welcome page 3 body
+  ///
+  /// In en, this message translates to:
+  /// **'Send the others an invite link — by messenger, e-mail or as a QR code. They open it, pick their name, and everyone sees the same expenses. Nobody needs an account.'**
+  String get welcomeLinkBody;
+
+  /// G54 welcome page 3 point
+  ///
+  /// In en, this message translates to:
+  /// **'The group syncs encrypted through public Nostr relays — only people with the link can read it.'**
+  String get welcomeLinkEncrypted;
+
+  /// G54 welcome page 3 point
+  ///
+  /// In en, this message translates to:
+  /// **'The relays see your IP address and when you sync, never the content.'**
+  String get welcomeLinkRelays;
+
+  /// G54 welcome page 3 point
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with the link can see and change the group — share it only with the people in it.'**
+  String get welcomeLinkAnyone;
+
+  /// G54 welcome page 4 title
+  ///
+  /// In en, this message translates to:
+  /// **'Want more security? Matrix'**
+  String get welcomeSecureTitle;
+
+  /// G54 welcome page 4 body
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. Signed in, MoneyLedger syncs your groups end-to-end encrypted with the people you added — the secure mode.'**
+  String get welcomeSecureBody;
+
+  /// G54 welcome page 4 point
+  ///
+  /// In en, this message translates to:
+  /// **'Only the people you added get a group — every change is signed by the device that made it.'**
+  String get welcomeSecureMembers;
+
+  /// G54 welcome choices: heading above the Matrix sign-in buttons
+  ///
+  /// In en, this message translates to:
+  /// **'Secure mode'**
+  String get welcomeSecureHeading;
+
+  /// G54 welcome choices: line under the secure-mode heading
+  ///
+  /// In en, this message translates to:
+  /// **'With a free Matrix account: only people you added, signed changes, your groups on every device.'**
+  String get welcomeSecureHint;
+
+  /// G54 "Why Matrix?" page title, menu item and links
+  ///
+  /// In en, this message translates to:
+  /// **'Why Matrix?'**
+  String get whyMatrixTitle;
+
+  /// G54 Why Matrix page 1 title
+  ///
+  /// In en, this message translates to:
+  /// **'Links are easy'**
+  String get whyMatrixEasyTitle;
+
+  /// G54 Why Matrix page 1 body
+  ///
+  /// In en, this message translates to:
+  /// **'A link is the quickest way to share a group: send it, the others pick their name, done. No account, no sign-up — that\'s why it\'s the default, and for a trip or a dinner it\'s often all you need.'**
+  String get whyMatrixEasyBody;
+
+  /// G54 Why Matrix page 2 title
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s another mode'**
+  String get whyMatrixCompareTitle;
+
+  /// G54 Why Matrix page 2 intro
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix is free too, and it works even better — you just sign in. What changes:'**
+  String get whyMatrixCompareBody;
+
+  /// G54 comparison topic
+  ///
+  /// In en, this message translates to:
+  /// **'Who can see and change a group'**
+  String get whyMatrixWhoTitle;
+
+  /// G54 comparison: link side (after "Link:")
+  ///
+  /// In en, this message translates to:
+  /// **'anyone who has the link, also when it\'s forwarded.'**
+  String get whyMatrixWhoLink;
+
+  /// G54 comparison: Matrix side (after "Matrix:")
+  ///
+  /// In en, this message translates to:
+  /// **'only the people you added; every change is signed by the device that made it.'**
+  String get whyMatrixWhoMatrix;
+
+  /// G54 comparison topic
+  ///
+  /// In en, this message translates to:
+  /// **'Removing someone'**
+  String get whyMatrixRemoveTitle;
+
+  /// G54 comparison: link side
+  ///
+  /// In en, this message translates to:
+  /// **'they keep access until you reset the link and send the new one to everyone else.'**
+  String get whyMatrixRemoveLink;
+
+  /// G54 comparison: Matrix side
+  ///
+  /// In en, this message translates to:
+  /// **'it sticks — their changes are ignored from then on.'**
+  String get whyMatrixRemoveMatrix;
+
+  /// G54 comparison topic
+  ///
+  /// In en, this message translates to:
+  /// **'New or lost phone'**
+  String get whyMatrixPhoneTitle;
+
+  /// G54 comparison: link side
+  ///
+  /// In en, this message translates to:
+  /// **'you need the link (or a backup) again.'**
+  String get whyMatrixPhoneLink;
+
+  /// G54 comparison: Matrix side
+  ///
+  /// In en, this message translates to:
+  /// **'sign in, and your groups come back from your other devices or the others in the group.'**
+  String get whyMatrixPhoneMatrix;
+
+  /// G54 comparison topic
+  ///
+  /// In en, this message translates to:
+  /// **'Who sees what'**
+  String get whyMatrixServersTitle;
+
+  /// G54 comparison: link side
+  ///
+  /// In en, this message translates to:
+  /// **'public relays run by volunteers see your IP address, when you sync and roughly how big the group is.'**
+  String get whyMatrixServersLink;
+
+  /// G54 comparison: Matrix side
+  ///
+  /// In en, this message translates to:
+  /// **'only the homeservers you choose see who exchanges messages with whom — never the content.'**
+  String get whyMatrixServersMatrix;
+
+  /// G54 Why Matrix page 3 title
+  ///
+  /// In en, this message translates to:
+  /// **'Ready when you are'**
+  String get whyMatrixReadyTitle;
+
+  /// G54 Why Matrix page 3, no account
+  ///
+  /// In en, this message translates to:
+  /// **'Create a free account, e.g. at matrix.org, and connect it. Your groups come along; groups you share by link keep their link and also sync over Matrix.'**
+  String get whyMatrixReadyConnectBody;
+
+  /// G54 Why Matrix page 3, signed out
+  ///
+  /// In en, this message translates to:
+  /// **'Create a free account, e.g. at matrix.org, and sign in — or start without an account and connect one any time later.'**
+  String get whyMatrixReadySignInBody;
+
+  /// G54 Why Matrix page 3, Matrix account
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re already signed in with Matrix. Groups you create are Matrix groups. In a group that is also shared by link, Make group secure (group settings) closes the link once everyone in it is on Matrix.'**
+  String get whyMatrixReadySignedInBody;
+
+  /// G54 Why Matrix page 3, read only (from the link disclosure)
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix is free. You can connect an account any time later in the settings — your groups come along.'**
+  String get whyMatrixReadyLaterBody;
+
+  /// G54 Why Matrix: close without connecting; groups-page hint: dismiss
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get whyMatrixNotNow;
+
+  /// G54 one-time groups-page hint title
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s also a secure mode'**
+  String get whyMatrixHintTitle;
+
+  /// G54 one-time groups-page hint body
+  ///
+  /// In en, this message translates to:
+  /// **'Your link group is in full use. With a free Matrix account, only the people you added can see a group, and every change is signed.'**
+  String get whyMatrixHintBody;
+
+  /// G54 groups-page hint: open the Why Matrix page
+  ///
+  /// In en, this message translates to:
+  /// **'Tell me more'**
+  String get whyMatrixHintMore;
+
+  /// G54 comparison line, link side
+  ///
+  /// In en, this message translates to:
+  /// **'Link: {text}'**
+  String whyMatrixWithLink(String text);
+
+  /// G54 comparison line, Matrix side
+  ///
+  /// In en, this message translates to:
+  /// **'Matrix: {text}'**
+  String whyMatrixWithMatrix(String text);
 }
 
 class _AppLocalizationsDelegate

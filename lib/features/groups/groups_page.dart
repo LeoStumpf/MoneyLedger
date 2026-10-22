@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../welcome/why_matrix_hint.dart';
 import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/demo/demo_mode.dart' show kOfflineDemo;
@@ -38,21 +39,27 @@ class GroupsPage extends ConsumerWidget {
     ref.watch(profileNameRefreshProvider);
     final groupsAsync = ref.watch(ledgerGroupsProvider);
     final l = context.l10n;
-    // G40: no account — a "Local only" indicator (G65: account, devices and
+    // G40: no account — a "No account" indicator (G54: was "Local only") (G65: account, devices and
     // sign-out / delete local data live on the settings page).
     final local = ref.watch(localModeActiveProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const BrandLogo(size: 30),
-            const SizedBox(width: Insets.m),
-            Flexible(
-              child: Text(l.groupsTitle, overflow: TextOverflow.ellipsis),
-            ),
-          ],
+        // G54: the logo gives way when the title has little room (200 %
+        // font next to the "No account" chip).
+        title: LayoutBuilder(
+          builder: (context, c) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (c.maxWidth >= 120) ...[
+                const BrandLogo(size: 30),
+                const SizedBox(width: Insets.m),
+              ],
+              Flexible(
+                child: Text(l.groupsTitle, overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
         ),
         // G65 (U21): only the settings and, in local mode, the mode chip
         // stay up here — CSV import and sign-out moved to the settings page.
@@ -385,6 +392,11 @@ class _GroupsBody extends ConsumerWidget {
             const SizedBox(height: Insets.l),
             if (nudge > 0) ...[
               ContentWidth(child: BackupNudgeCard(count: nudge)),
+              const SizedBox(height: Insets.m),
+            ],
+            // G54: once, after a link group is really in use (no account).
+            if (ref.watch(whyMatrixHintProvider)) ...[
+              const ContentWidth(child: WhyMatrixHintCard()),
               const SizedBox(height: Insets.m),
             ],
             for (final (group, overview) in active)

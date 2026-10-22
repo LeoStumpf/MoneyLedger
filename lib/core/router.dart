@@ -9,6 +9,7 @@ import '../features/backup/backup_restore_page.dart';
 import '../features/link/link_join.dart';
 import '../features/local/local_setup_page.dart';
 import '../features/welcome/welcome_page.dart';
+import '../features/welcome/why_matrix_page.dart';
 import 'session/app_session.dart';
 import '../models/expense_model.dart';
 import 'error_page.dart';
@@ -35,9 +36,14 @@ part 'router.g.dart';
 const _authPages = {'/login', '/register'};
 
 /// Informational pages reachable signed in **and** signed out (About +
-/// privacy policy, G12; "How MoneyLedger works", G39) — never redirected away
-/// from once onboarding is done.
-const _publicPages = {'/about', '/about/privacy', kHowItWorksLocation};
+/// privacy policy, G12; "How MoneyLedger works", G39; "Why Matrix?", G54) —
+/// never redirected away from once onboarding is done.
+const _publicPages = {
+  '/about',
+  '/about/privacy',
+  kHowItWorksLocation,
+  kWhyMatrixLocation,
+};
 
 /// Neutral loading route shown while the device preferences or the
 /// per-account onboarding flag are still unknown (G25).
@@ -180,6 +186,11 @@ GoRouter router(Ref ref) {
           revisit: true,
           initialTopic: WelcomeTopic.fromName(s.uri.queryParameters['topic']),
         ),
+      ),
+      // G54: the calm "Why Matrix?" page (public).
+      GoRoute(
+        path: kWhyMatrixLocation,
+        builder: (_, _) => const WhyMatrixPage(),
       ),
       // G52 step 7: an invite link (`?v=1&k=…&n=…` — the link's fragment;
       // the web's hash URL strategy delivers it like this) or the paste field.

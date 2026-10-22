@@ -291,7 +291,8 @@ lib/
       csv_export.dart          # DB → CSV seam (buildGroupCsvForExport) + csvFileName
       csv_import.dart          # CsvImporter: preview + LWW merge-by-id back into Drift; resolveCsvNames
       backup_files.dart        # file_picker glue (save dialog / browser download + pick)
-    welcome/                   # G39 WelcomePage: first-open explanation + 3 choices; revisit = "How it works"
+    welcome/                   # G39 WelcomePage: first-open explanation + choices; revisit = "How it works"
+                               #   G54 why_matrix_page.dart (/why-matrix) + why_matrix_hint.dart (one-time card)
     local/                     # G40 LocalSetupPage (name), local_mode_ui.dart (chip, sheet, settings, delete)
     onboarding/                # Post-login / local-start intro (OnboardingPage) + onboarding_seen flag
     history/                   # G48 restore points: group_history.dart (pure: change batches + reset plan),
@@ -438,12 +439,16 @@ and re-checked on later starts. The per-account DB is marked
 A first-time user sees the **welcome before anything else** (`WelcomePage`,
 `/welcome`): four swipeable explanation pages — what MoneyLedger does
 (Splitwise/Tricount-style), free + open source (AGPL, repo link) with no
-MoneyLedger server, what Matrix is and why one signs in (identity + E2EE relay),
-who sees what (members get the group's records E2EE; homeservers see
-ciphertext + who talks to whom; nothing else) — then three choices: **Sign in
-with Matrix** (`/login`), **Create a Matrix account** (`/register`), **Use
-without an account** (`/local-setup`, G40). Illustrations: `BrandLogo` /
-Material icons in a soft circle with three satellite icons (`_Hero`). Any
+MoneyLedger server, **G54:** *Share a group with a link* (relays, encrypted,
+anyone with the link) and *Want more security? Matrix* (what Matrix is, who
+sees what, *Why Matrix?* button) — then the choices in G54 order: **Start
+without an account** (primary, `/local-setup`, G40), **Join with an invite
+link** (`/join`), and under a *Secure mode* heading **Sign in with Matrix**
+(`/login`) / **Create a Matrix account** (`/register`). Illustrations:
+`BrandLogo` /
+Material icons in a soft circle with three satellite icons (`WelcomeHero`;
+page dots `WelcomeDots`, excluded from semantics — the page label + Back /
+Next are the accessible way). Any
 choice sets the **device-wide** flag `welcome_seen` in `DevicePrefs`
 (`lib/core/session/device_prefs.dart`): a tiny JSON map that works with no
 ledger DB open — native `device_prefs.json` in the app support dir (temp file +
@@ -467,7 +472,40 @@ seen → the client is built then (the login page still sends nothing until
 the user acts, G43). Tests: `test/core/lazy_matrix_client_test.dart`. The
 post-login **onboarding** (per ledger DB, unchanged
 gate) is slimmed to what's new: Matrix → invite people, background sync, keep
-a copy; local mode → everything stays here, keep a copy, share later.
+a copy; no account → groups you don't share stay here, invite with a link
+(G54, replaces "share later"), keep a copy.
+
+### "Why Matrix?" (G54)
+
+A calm info page in the welcome style (design doc §10.2 / §10.3), no nag:
+`WhyMatrixPage` (`features/welcome/why_matrix_page.dart`,
+`kWhyMatrixLocation` = `/why-matrix`, a **public** page in `routerRedirect`).
+Three swipe pages: *Links are easy* · *There's another mode* (four topics in
+plain sentences, "Link: … / Matrix: …": who can see / change, removing
+someone, new or lost phone, who sees what) · *Ready when you are* — the
+action from the pure `whyMatrixOffer(session, infoOnly:)`: no account →
+*Connect a Matrix account* (`startConnectAccount`, then `go('/login')` — the
+page is public, so the router keeps it) / *Not now*; signed out → *Sign in*
+/ *Create account* (marks the welcome seen) / *Not now*; Matrix → a hint
+(groups shared by link: *Make group secure*) + *Done*; `infoOnly` (from the
+link disclosure, which sits in front of an invite / join) → "later in the
+settings" + *Done*. The ready text says link groups keep their link and
+also sync over Matrix after connecting (G53 mixed). Entry points: group ⋮
+*Why Matrix?* in a group with an open link (`whyMatrixMenuItem`), the
+welcome's Matrix page (`welcomeWhyMatrix`, also in *How it works*), the
+link disclosure (`linkDisclosureWhyMatrix`, pushed with `Navigator`), the
+no-account sheet (`localSheetWhyMatrix`) and **once** a dismissible groups-page
+card (`WhyMatrixHintCard`, `why_matrix_hint.dart`): pure
+`shouldShowWhyMatrixHint` — **no account only** (local mode), not dismissed
+(`AppSettings` `why_matrix_hint_dismissed`, per ledger,
+`SettingsDao.watchWhyMatrixHintDismissed` / `dismissWhyMatrixHint`) and a
+link group (`linkGroupIdsProvider`) with ≥ `kWhyMatrixHintMinRecords` (10)
+live records (`GroupOverview.recordCount`); *Tell me more* and *Not now*
+both dismiss it for good. Widget tests: `testOverrides(linkGroupIds:,
+whyMatrixHintDismissed:)`. The local-mode chip reads **"No account"** /
+*Kein Konto* (§8.2; text scale capped at 1.3 in the app bar, the groups
+title drops the logo when narrow). Tests: `test/g54_why_matrix_test.dart`
+(EN + DE, 360 dp / 200 %), `welcome_page_test.dart`, G71 guidelines.
 
 ### Local mode (G40)
 
@@ -499,8 +537,9 @@ local profile is active (`localModeActiveProvider`, `app_session.dart`):
 - **Signing:** nothing can be signed → every local write is stored
   `pendingSign` immediately (`LocalRecordSigner` sees no identity); the
   attribution footer is hidden in local mode.
-- **UI:** groups app bar shows the **"Local only" chip** (`LocalModeChip` →
-  sheet: nothing leaves the device, back up, connect an account) next to the
+- **UI:** groups app bar shows the **"No account" chip** (G54, was "Local
+  only"; `LocalModeChip` → sheet: unshared groups never leave the device,
+  back up, connect an account, *Why Matrix?*) next to the
   settings gear; the settings page's *Account* section is
   `LocalModeSettingsSection` (name, *Connect a Matrix account*, *Delete local
   data*) instead of the Matrix account + *Sign out*, and it has no *Sync &

@@ -13,8 +13,8 @@ import 'onboarding_provider.dart';
 /// One-time intro after the first sign-in (per account) / the first start of
 /// local mode (G25, G40). The app itself was explained by the welcome before
 /// login (G39), so this only covers what is new now: inviting people,
-/// background sync and keeping a copy — or, in local mode, what "local"
-/// means. "Get started" marks it seen and routes to the groups list.
+/// background sync and keeping a copy — or, without an account (G40), what
+/// stays on the device, inviting with a link (G54) and keeping a copy. "Get started" marks it seen and routes to the groups list.
 class OnboardingPage extends ConsumerWidget {
   const OnboardingPage({super.key});
 
@@ -28,15 +28,12 @@ class OnboardingPage extends ConsumerWidget {
             l.onboardingLocalOnlyTitle,
             l.onboardingLocalOnlyBody,
           ),
+          // G54 (design doc §10.3): a link is the default way to share.
+          (Icons.link, l.onboardingInviteLinkTitle, l.onboardingInviteLinkBody),
           (
             Icons.backup_outlined,
             l.onboardingBackupTitle,
             l.onboardingBackupLocalBody,
-          ),
-          (
-            Icons.link,
-            l.onboardingConnectLaterTitle,
-            l.onboardingConnectLaterBody,
           ),
         ]
       : [

@@ -77,15 +77,18 @@ void main() {
       expect(find.text('Free, open source, no server'), findsOneWidget);
       expect(find.textContaining('AGPL-3.0-or-later'), findsOneWidget);
       expect(find.byKey(const Key('welcomeSourceLink')), findsOneWidget);
+      // G54: link groups first, Matrix as the secure mode.
       await tester.tap(find.byKey(const Key('welcomeNext')));
       await tester.pumpAndSettle();
-      expect(find.text('What is Matrix?'), findsOneWidget);
+      expect(find.text('Share a group with a link'), findsOneWidget);
+      expect(find.textContaining('Nostr relays'), findsOneWidget);
+      expect(find.textContaining('Anyone with the link'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('welcomeNext')));
+      await tester.pumpAndSettle();
+      expect(find.text('Want more security? Matrix'), findsOneWidget);
       expect(find.textContaining('matrix.org'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('welcomeNext')));
-      await tester.pumpAndSettle();
-      expect(find.text('Who sees what'), findsOneWidget);
-      expect(find.textContaining('end-to-end encrypted'), findsOneWidget);
-      expect(find.textContaining('never the content'), findsOneWidget);
+      expect(find.textContaining('Homeservers only relay'), findsOneWidget);
+      expect(find.byKey(const Key('welcomeWhyMatrix')), findsOneWidget);
       await tester.tap(find.byKey(const Key('welcomeNext')));
       await tester.pumpAndSettle();
 
@@ -93,11 +96,24 @@ void main() {
       expect(find.byKey(const Key('welcomeSignIn')), findsOneWidget);
       expect(find.byKey(const Key('welcomeCreateAccount')), findsOneWidget);
       expect(find.byKey(const Key('welcomeUseLocal')), findsOneWidget);
+      expect(find.byKey(const Key('welcomeJoinLink')), findsOneWidget);
+      expect(find.text('Secure mode'), findsOneWidget);
+      // G54 order: no account, invite link, then the secure mode.
+      final y = [
+        for (final k in [
+          'welcomeUseLocal',
+          'welcomeJoinLink',
+          'welcomeSignIn',
+          'welcomeCreateAccount',
+        ])
+          tester.getTopLeft(find.byKey(Key(k))).dy,
+      ];
+      expect(y, orderedEquals([...y]..sort()));
       expect(find.byKey(const Key('welcomeNext')), findsNothing);
       expect(store.values, isEmpty, reason: 'not seen until a choice');
     });
 
-    testWidgets('"Use without an account" marks the welcome seen', (
+    testWidgets('"Start without an account" marks the welcome seen', (
       tester,
     ) async {
       final store = InMemoryDevicePrefsStore();
@@ -123,6 +139,8 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('welcomeSkip')));
         await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(Key(key)));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(Key(key)));
         await tester.pumpAndSettle();
         expect(find.text('page:$page'), findsOneWidget);
@@ -141,7 +159,8 @@ void main() {
       expect(find.text('Wie möchtest du starten?'), findsOneWidget);
       expect(find.text('Mit Matrix anmelden'), findsOneWidget);
       expect(find.text('Matrix-Konto erstellen'), findsOneWidget);
-      expect(find.text('Ohne Konto nutzen'), findsOneWidget);
+      expect(find.text('Ohne Konto starten'), findsOneWidget);
+      expect(find.text('Sicherer Modus'), findsOneWidget);
     });
   });
 
@@ -155,10 +174,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('How MoneyLedger works'), findsOneWidget);
-    expect(find.text('What is Matrix?'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('welcomeNext')));
-    await tester.pumpAndSettle();
-    expect(find.text('Who sees what'), findsOneWidget);
+    // G54: the Matrix page is the last one now.
+    expect(find.text('Want more security? Matrix'), findsOneWidget);
     expect(find.byKey(const Key('welcomeChoices')), findsNothing);
     // The last page closes the pages again.
     await tester.tap(find.text('Done'));
@@ -211,7 +228,7 @@ void main() {
   });
 
   group('local mode indicator (G40)', () {
-    testWidgets('groups page: "Local only" chip, no devices / sign-out', (
+    testWidgets('groups page: "No account" chip, no devices / sign-out', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -224,7 +241,7 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const Key('localModeChip')), findsOneWidget);
-      expect(find.text('Local only'), findsOneWidget);
+      expect(find.text('No account'), findsOneWidget);
       expect(find.byTooltip('Sign out'), findsNothing);
       expect(find.byIcon(Icons.devices), findsNothing);
 
@@ -234,6 +251,9 @@ void main() {
       expect(find.textContaining('never leave this device'), findsOneWidget);
       expect(find.byKey(const Key('localSheetConnect')), findsOneWidget);
       expect(find.byKey(const Key('localSheetBackup')), findsOneWidget);
+      // G54: says link groups become Matrix-synced too, links Why Matrix.
+      expect(find.textContaining('keep their link'), findsOneWidget);
+      expect(find.byKey(const Key('localSheetWhyMatrix')), findsOneWidget);
     });
 
     testWidgets('settings: connect + delete local data, no sync settings', (
@@ -268,7 +288,7 @@ void main() {
       );
       await tester.pump();
       await tester.pump();
-      expect(find.text('Nur lokal'), findsOneWidget);
+      expect(find.text('Kein Konto'), findsOneWidget);
     });
 
     testWidgets('a Matrix session shows no chip', (tester) async {

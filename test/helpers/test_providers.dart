@@ -3,6 +3,7 @@
 library;
 
 import 'package:money_ledger/features/link/link_join.dart';
+import 'package:money_ledger/features/welcome/why_matrix_hint.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -110,6 +111,10 @@ List<dynamic> testOverrides({
   // no state) and whether the ledger has a link group (default: none).
   List<LinkRelayView>? relayViews,
   bool linkGroupsExist = false,
+  // G54: the groups with a link channel and whether the one-time "Why
+  // Matrix?" hint was dismissed.
+  Set<String> linkGroupIds = const {},
+  bool whyMatrixHintDismissed = false,
   // G71: the sync status every group shows (default: synced).
   GroupSyncStatus syncStatus = const GroupSyncStatus(
     pendingPeers: {},
@@ -157,6 +162,10 @@ List<dynamic> testOverrides({
     ),
   ),
   linkGroupsExistProvider.overrideWith((_) => Stream.value(linkGroupsExist)),
+  linkGroupIdsProvider.overrideWith((_) => Stream.value(linkGroupIds)),
+  whyMatrixHintDismissedProvider.overrideWith(
+    (_) => Stream.value(whyMatrixHintDismissed),
+  ),
   // G39/G40: device-wide preferences in memory — welcome seen, no local
   // profile (never the platform file / localStorage).
   devicePrefsStoreProvider.overrideWithValue(

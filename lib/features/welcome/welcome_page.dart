@@ -10,9 +10,13 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
 import '../../core/widgets/content_width.dart';
 import '../about/about_page.dart' show kSourceCodeUrl;
+import 'why_matrix_page.dart' show kWhyMatrixLocation;
 import '../../core/widgets/large_text.dart';
 
-/// The explanation pages of the welcome, in order.
+/// The explanation pages of the welcome, in order. G54 (design doc §10.3):
+/// link groups are the default, Matrix the secure upgrade — the former
+/// "What is Matrix?" and "Who sees what" pages are merged into [link] and
+/// [matrix].
 enum WelcomeTopic {
   /// What MoneyLedger does (Splitwise / Tricount-style).
   intro,
@@ -20,11 +24,13 @@ enum WelcomeTopic {
   /// Free, open source, no MoneyLedger server.
   openSource,
 
-  /// What Matrix is and why one signs in.
-  matrix,
+  /// Share a group with an invite link (relays, encrypted, anyone with the
+  /// link).
+  link,
 
-  /// What is shared with whom.
-  privacy;
+  /// "Want more security? Matrix" — what Matrix is, who sees what; links
+  /// the "Why Matrix?" page.
+  matrix;
 
   static WelcomeTopic fromName(String? name) => values.firstWhere(
     (t) => t.name == name,
@@ -33,8 +39,9 @@ enum WelcomeTopic {
 }
 
 /// G39: the first-open welcome — explains the app *before* any login, then
-/// offers the three ways in: sign in with Matrix, create a Matrix account,
-/// or use the app without an account (G40). Choosing any of them marks the
+/// offers the ways in. G54 (design doc §10.3): *Start without an account*
+/// (G40) first, then *Join with an invite link*, then sign in / create a
+/// Matrix account under "Secure mode". Choosing any of them marks the
 /// device-wide "welcome seen" flag.
 ///
 /// With [revisit] the same explanation is shown again (About → "How
@@ -155,22 +162,35 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                 maxWidth: 520,
                 child: Row(
                   children: [
-                    _Dots(count: _count, current: _page, onTap: _goTo),
-                    const Spacer(),
-                    if (_page > 0)
-                      TextButton(
-                        key: const Key('welcomeBack'),
-                        onPressed: () => _goTo(_page - 1),
-                        child: Text(l.welcomeBack),
+                    WelcomeDots(count: _count, current: _page, onTap: _goTo),
+                    const SizedBox(width: Insets.s),
+                    // At a large font size the buttons wrap instead of
+                    // overflowing (360 dp, 200 %).
+                    Expanded(
+                      child: Wrap(
+                        alignment: WrapAlignment.end,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: Insets.s,
+                        runSpacing: Insets.xs,
+                        children: [
+                          if (_page > 0)
+                            TextButton(
+                              key: const Key('welcomeBack'),
+                              onPressed: () => _goTo(_page - 1),
+                              child: Text(l.welcomeBack),
+                            ),
+                          if (!_onLast || widget.revisit) ...[
+                            FilledButton(
+                              key: const Key('welcomeNext'),
+                              onPressed: _next,
+                              child: Text(
+                                _onLast ? l.welcomeDone : l.welcomeNext,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    if (!_onLast || widget.revisit) ...[
-                      const SizedBox(width: Insets.s),
-                      FilledButton(
-                        key: const Key('welcomeNext'),
-                        onPressed: _next,
-                        child: Text(_onLast ? l.welcomeDone : l.welcomeNext),
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -193,7 +213,7 @@ class _TopicPage extends StatelessWidget {
     final l = context.l10n;
     final (hero, title, body) = switch (topic) {
       WelcomeTopic.intro => (
-        const _Hero(
+        const WelcomeHero(
           center: BrandLogo(size: 96),
           satellites: [
             Icons.restaurant_outlined,
@@ -205,7 +225,7 @@ class _TopicPage extends StatelessWidget {
         l.welcomeIntroBody,
       ),
       WelcomeTopic.openSource => (
-        const _Hero(
+        const WelcomeHero(
           center: Icon(Icons.code, size: 64),
           satellites: [
             Icons.volunteer_activism_outlined,
@@ -216,29 +236,29 @@ class _TopicPage extends StatelessWidget {
         l.welcomeOpenTitle,
         l.welcomeOpenBody,
       ),
+      WelcomeTopic.link => (
+        const WelcomeHero(
+          center: Icon(Icons.link, size: 64),
+          satellites: [
+            Icons.chat_outlined,
+            Icons.lock_outline,
+            Icons.groups_outlined,
+          ],
+        ),
+        l.welcomeLinkTitle,
+        l.welcomeLinkBody,
+      ),
       WelcomeTopic.matrix => (
-        const _Hero(
-          center: Icon(Icons.hub_outlined, size: 64),
+        const WelcomeHero(
+          center: Icon(Icons.verified_user_outlined, size: 64),
           satellites: [
             Icons.dns_outlined,
             Icons.alternate_email,
-            Icons.lock_outline,
+            Icons.devices_outlined,
           ],
         ),
-        l.welcomeMatrixTitle,
-        l.welcomeMatrixBody,
-      ),
-      WelcomeTopic.privacy => (
-        const _Hero(
-          center: Icon(Icons.shield_outlined, size: 64),
-          satellites: [
-            Icons.groups_outlined,
-            Icons.dns_outlined,
-            Icons.visibility_off_outlined,
-          ],
-        ),
-        l.welcomePrivacyTitle,
-        null,
+        l.welcomeSecureTitle,
+        l.welcomeSecureBody,
       ),
     };
     final theme = Theme.of(context);
@@ -268,8 +288,7 @@ class _TopicPage extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: Insets.m),
-            if (body != null)
-              Text(body, style: muted, textAlign: TextAlign.center),
+            Text(body, style: muted, textAlign: TextAlign.center),
             if (topic == WelcomeTopic.openSource) ...[
               const SizedBox(height: Insets.l),
               Center(
@@ -284,25 +303,44 @@ class _TopicPage extends StatelessWidget {
                 ),
               ),
             ],
-            if (topic == WelcomeTopic.privacy)
-              for (final (icon, text) in [
-                (Icons.groups_outlined, l.welcomePrivacyMembers),
+            if (topic == WelcomeTopic.link || topic == WelcomeTopic.matrix)
+              const SizedBox(height: Insets.l),
+            for (final (icon, text) in switch (topic) {
+              WelcomeTopic.link => [
+                (Icons.lock_outline, l.welcomeLinkEncrypted),
+                (Icons.visibility_outlined, l.welcomeLinkRelays),
+                (Icons.link, l.welcomeLinkAnyone),
+              ],
+              WelcomeTopic.matrix => [
+                (Icons.groups_outlined, l.welcomeSecureMembers),
                 (Icons.dns_outlined, l.welcomePrivacyServer),
                 (Icons.visibility_off_outlined, l.welcomePrivacyNothingElse),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: Insets.l),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(icon, color: theme.colorScheme.primary),
-                      const SizedBox(width: Insets.l),
-                      Expanded(
-                        child: Text(text, style: theme.textTheme.bodyLarge),
-                      ),
-                    ],
-                  ),
+              ],
+              _ => const <(IconData, String)>[],
+            })
+              Padding(
+                padding: const EdgeInsets.only(bottom: Insets.l),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(icon, color: theme.colorScheme.primary),
+                    const SizedBox(width: Insets.l),
+                    Expanded(
+                      child: Text(text, style: theme.textTheme.bodyLarge),
+                    ),
+                  ],
                 ),
+              ),
+            // G54: the calm comparison page (design doc §10.2).
+            if (topic == WelcomeTopic.matrix)
+              Center(
+                child: TextButton.icon(
+                  key: const Key('welcomeWhyMatrix'),
+                  icon: const Icon(Icons.arrow_forward, size: 18),
+                  label: Text(l.whyMatrixTitle),
+                  onPressed: () => context.push(kWhyMatrixLocation),
+                ),
+              ),
           ],
         ),
       ),
@@ -310,7 +348,7 @@ class _TopicPage extends StatelessWidget {
   }
 }
 
-/// The last page of the first-open welcome: the three ways in.
+/// The last page of the first-open welcome: the ways in (G54 order).
 class _ChoicesPage extends StatelessWidget {
   const _ChoicesPage({required this.onChoose});
 
@@ -352,26 +390,12 @@ class _ChoicesPage extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: Insets.xxl),
+            // G54 (design doc §10.3): no account first, then the invite
+            // link, then Matrix as the secure mode.
             FilledButton.icon(
-              key: const Key('welcomeSignIn'),
-              style: FilledButton.styleFrom(minimumSize: big),
-              icon: const Icon(Icons.login),
-              label: Text(l.welcomeSignIn),
-              onPressed: () => onChoose('/login'),
-            ),
-            const SizedBox(height: Insets.m),
-            OutlinedButton.icon(
-              key: const Key('welcomeCreateAccount'),
-              style: OutlinedButton.styleFrom(minimumSize: big),
-              icon: const Icon(Icons.person_add_alt_outlined),
-              label: Text(l.welcomeCreateAccount),
-              onPressed: () => onChoose('/register'),
-            ),
-            const SizedBox(height: Insets.m),
-            FilledButton.tonalIcon(
               key: const Key('welcomeUseLocal'),
               style: FilledButton.styleFrom(minimumSize: big),
-              icon: const Icon(Icons.phone_android_outlined),
+              icon: const Icon(Icons.arrow_forward),
               label: Text(l.welcomeUseLocal),
               onPressed: () => onChoose('/local-setup'),
             ),
@@ -383,14 +407,52 @@ class _ChoicesPage extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            // G52 step 7: someone sent an invite link (G54 reorders the
-            // choices). The join itself marks the welcome seen.
-            const SizedBox(height: Insets.m),
-            TextButton.icon(
+            const SizedBox(height: Insets.l),
+            // G52 step 7: someone sent an invite link. The join itself marks
+            // the welcome seen (and an opened link goes to /join directly).
+            OutlinedButton.icon(
               key: const Key('welcomeJoinLink'),
+              style: OutlinedButton.styleFrom(minimumSize: big),
               icon: const Icon(Icons.link),
               label: Text(l.joinLinkEntry),
               onPressed: () => context.push('/join'),
+            ),
+            const SizedBox(height: Insets.xxl),
+            Semantics(
+              header: true,
+              child: Text(
+                l.welcomeSecureHeading,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: Insets.xs),
+            Text(
+              l.welcomeSecureHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: Insets.m),
+            FilledButton.tonalIcon(
+              key: const Key('welcomeSignIn'),
+              style: FilledButton.styleFrom(minimumSize: big),
+              icon: const Icon(Icons.login),
+              label: Text(l.welcomeSignIn),
+              onPressed: () => onChoose('/login'),
+            ),
+            const SizedBox(height: Insets.s),
+            TextButton.icon(
+              key: const Key('welcomeCreateAccount'),
+              style: TextButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              icon: const Icon(Icons.person_add_alt_outlined),
+              label: Text(l.welcomeCreateAccount),
+              onPressed: () => onChoose('/register'),
             ),
           ],
         ),
@@ -401,8 +463,12 @@ class _ChoicesPage extends StatelessWidget {
 
 /// The page illustration: the brand logo or a Material icon in a large soft
 /// circle, with three small "satellite" icons around it.
-class _Hero extends StatelessWidget {
-  const _Hero({required this.center, required this.satellites});
+class WelcomeHero extends StatelessWidget {
+  const WelcomeHero({
+    super.key,
+    required this.center,
+    required this.satellites,
+  });
 
   final Widget center;
   final List<IconData> satellites;
@@ -471,8 +537,9 @@ class _Hero extends StatelessWidget {
 }
 
 /// Page indicator dots (tappable).
-class _Dots extends StatelessWidget {
-  const _Dots({
+class WelcomeDots extends StatelessWidget {
+  const WelcomeDots({
+    super.key,
     required this.count,
     required this.current,
     required this.onTap,
@@ -485,26 +552,32 @@ class _Dots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // G54 (G71): the dots are a visual shortcut only — screen readers hear
+    // "page x of y" and use Back / Next (each dot is far below 48 dp).
     return Semantics(
       label: context.l10n.welcomePageOf(current + 1, count),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < count; i++)
-            GestureDetector(
-              onTap: () => onTap(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: i == current ? 22 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: i == current ? scheme.primary : scheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(4),
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < count; i++)
+              GestureDetector(
+                onTap: () => onTap(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: i == current ? 22 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: i == current
+                        ? scheme.primary
+                        : scheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

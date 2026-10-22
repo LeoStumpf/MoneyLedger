@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/widgets/action_error.dart';
 
 import '../../core/database/app_database.dart';
@@ -12,8 +13,9 @@ import '../../core/widgets/text_prompt_dialog.dart';
 import '../backup/backup_ui.dart' show exportFullBackup, runWithProgress;
 import '../expenses/expenses_provider.dart';
 import '../groups/group_provider.dart';
+import '../welcome/why_matrix_page.dart' show kWhyMatrixLocation;
 
-/// G40: the "Local only" chip in the groups app bar — the always-visible
+/// G40: the "No account" chip (G54: was "Local only") in the groups app bar — the always-visible
 /// local-mode indicator. Opens [showLocalModeSheet].
 class LocalModeChip extends StatelessWidget {
   const LocalModeChip({super.key});
@@ -23,20 +25,25 @@ class LocalModeChip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Insets.xs),
-      child: ActionChip(
-        key: const Key('localModeChip'),
-        avatar: Icon(
-          Icons.phone_android_outlined,
-          size: 18,
-          color: scheme.onTertiaryContainer,
+      // G54: an app-bar action — capped so it can't push the bar over at
+      // 200 % font (the tooltip / sheet carry the full text).
+      child: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: ActionChip(
+          key: const Key('localModeChip'),
+          avatar: Icon(
+            Icons.phone_android_outlined,
+            size: 18,
+            color: scheme.onTertiaryContainer,
+          ),
+          label: Text(context.l10n.localModeChip),
+          labelStyle: TextStyle(color: scheme.onTertiaryContainer),
+          backgroundColor: scheme.tertiaryContainer,
+          side: BorderSide.none,
+          visualDensity: VisualDensity.compact,
+          tooltip: context.l10n.localModeSheetTitle,
+          onPressed: () => showLocalModeSheet(context),
         ),
-        label: Text(context.l10n.localModeChip),
-        labelStyle: TextStyle(color: scheme.onTertiaryContainer),
-        backgroundColor: scheme.tertiaryContainer,
-        side: BorderSide.none,
-        visualDensity: VisualDensity.compact,
-        tooltip: context.l10n.localModeSheetTitle,
-        onPressed: () => showLocalModeSheet(context),
       ),
     );
   }
@@ -103,7 +110,16 @@ class _LocalModeSheet extends ConsumerWidget {
                 startConnectAccount(context, ref);
               },
             ),
-            const SizedBox(height: Insets.s),
+            // G54: the calm comparison, before deciding.
+            TextButton(
+              key: const Key('localSheetWhyMatrix'),
+              onPressed: () {
+                final router = GoRouter.of(context);
+                Navigator.of(context).pop();
+                router.push(kWhyMatrixLocation);
+              },
+              child: Text(l.whyMatrixTitle),
+            ),
             OutlinedButton.icon(
               key: const Key('localSheetBackup'),
               icon: const Icon(Icons.save_alt),

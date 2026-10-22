@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../welcome/why_matrix_page.dart' show WhyMatrixPage;
 import '../../core/l10n/l10n.dart';
 import '../../core/link/link_channel.dart';
 import '../../core/link/link_sync_engine.dart';
@@ -658,6 +659,22 @@ class LinkDisclosurePage extends StatelessWidget {
                       point(
                         Icons.verified_user_outlined,
                         l.linkDisclosureMatrix,
+                      ),
+                      // G54: the calm comparison — read only here (the
+                      // disclosure sits in front of an invite / join).
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: TextButton.icon(
+                          key: const Key('linkDisclosureWhyMatrix'),
+                          icon: const Icon(Icons.arrow_forward, size: 18),
+                          label: Text(l.whyMatrixTitle),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  const WhyMatrixPage(infoOnly: true),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),

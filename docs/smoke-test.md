@@ -26,19 +26,19 @@ Expected results are in *italics*.
 
 | # | Step → expected | How |
 |---|-----------------|-----|
-| 1.1 | Fresh install, launch → *welcome (G39): 4 pages (what it is · free/open source/no server · what is Matrix · who sees what) + "How do you want to start?" with Sign in / Create a Matrix account / Use without an account*; Sign in → *login screen, homeserver prefilled `matrix.org`, no crash*; relaunch → *no welcome again*. **G79:** on the welcome (before any choice) `adb -s <serial> shell run-as io.github.leostumpf.moneyledger ls files/` (debug build; app support dir) shows **no** `money_ledger_matrix.sqlite`; it appears only after *Sign in* / *Create account* | emu |
+| 1.1 | Fresh install, launch → *welcome (G39, G54): 4 pages (what it is · free/open source/no server · share a group with a link · want more security? Matrix + "Why Matrix?") + "How do you want to start?" with Start without an account / Join with an invite link / Secure mode: Sign in / Create a Matrix account*; Sign in → *login screen, homeserver prefilled `matrix.org`, no crash*; relaunch → *no welcome again*. **G79:** on the welcome (before any choice) `adb -s <serial> shell run-as io.github.leostumpf.moneyledger ls files/` (debug build; app support dir) shows **no** `money_ledger_matrix.sqlite`; it appears only after *Sign in* / *Create account* | emu |
 | 1.2 | Launcher label + icon → *app name and icon shown (currently `money_ledger` + Flutter default, see G12)* | emu |
 | 1.3 | First login of an account on this device → *onboarding "You're all set" (invite / background sync / keep a copy — no repetition of the welcome) shown once; "Get started" → Groups* | emu |
 | 1.4 | Kill + relaunch → *goes straight to Groups (session restored, no onboarding, no hang on a slow sync)* | emu |
 | 1.5 | Airplane mode, relaunch → *Groups and all local data shown offline* | emu |
 
 | 1.6 | About → *How MoneyLedger works* and login → *What is Matrix?* → *the welcome pages again, no choices, Done goes back* (G39); device in German → *German texts* | emu |
-| 1.7 | Welcome → *Use without an account* → name → *local onboarding (Everything stays on this device / Keep a copy / Share later) → Groups with a "Local only" chip and the settings gear only; Settings has no Sync / Advanced (Matrix) / Sign out* (G40, G65, G75) | emu |
+| 1.7 | Welcome → *Start without an account* → name → *local onboarding (No account needed / Invite with a link / Keep a copy) → Groups with a "No account" chip and the settings gear only; Settings has no Sync / Advanced (Matrix) / Sign out* (G40, G65, G75) | emu |
 | 1.8 | Local mode: create a group, *Add person* (name only — no Matrix ID field, no invite icon), expenses + a payment, balance, Back up all groups → *all works offline; no sync cloud; members page "You (on this device)"; logcat: no Matrix client / `[sync]` lines* | emu |
-| 1.9 | "Local only" chip → *sheet: nothing leaves this device, back up, connect an account* | emu |
+| 1.9 | "No account" chip → *sheet: unshared groups never leave this device, back up, connect an account (link groups keep their link), Why Matrix?* | emu |
 | 1.10 | Settings → *Connect a Matrix account* → login (close = cancel back to local) → sign in → *groups page banner "Your N local groups now belong to @…"; group members: you are the claimed member (MXID shown); logcat `[local] adopted N local group(s) … rows signed`* | emu |
 | 1.11 | After 1.10, another device of the same account → *the adopted group arrives (own-device digest → resync) with all entries; logcat there: no `[g6] refused`* | 2dev |
-| 1.12 | Signed out afterwards → *Use without an account* again → *setup page says the earlier local groups moved into @…; local mode starts empty*; Settings → *Delete local data* → confirm → *login page* | emu |
+| 1.12 | Signed out afterwards → *Start without an account* again → *setup page says the earlier local groups moved into @…; local mode starts empty*; Settings → *Delete local data* → confirm → *login page* | emu |
 | 1.13 | (G41) Local mode: a group with a person + an expense → *Back up all groups* (unencrypted) → Settings → *Delete local data* → confirm → *login page; `run-as`/root `ls …/app_flutter/` shows **no** `money_ledger_local.sqlite` (nor `-wal`/`-shm`/`-journal`)* | emu |
 | 1.14 | (G41) After 1.13: sign in with a Matrix account → Settings → *Restore from backup* → the local backup → *preview shows the takeover note "made without a Matrix account … moves its groups into @…" (no "other account" warning)* → Restore → *logcat `[backup] adopted N local-mode group(s) into @… (M rows signed)`; the expense shows "Added by you"; members: you are the claimed member* | emu |
 | 1.15 | (G41) After 1.14, another device of the same account → *the restored group arrives with all entries; logcat there: no `refused` lines* | 2dev |
@@ -74,7 +74,7 @@ Expected results are in *italics*.
 | 3.8 | ⋮ → Archive group → *back on Groups; group in the collapsed "Archived (N)" section; snackbar Undo works; totals unchanged* (G16) | emu |
 | 3.9 | Peer adds an expense to the archived group → *group is back among the active groups by itself* (G16) | 2dev |
 | 3.10 | Open an archived group → *"archived on this device" banner*; ⋮ / banner / group settings → Unarchive → *back in the list* (G16) | emu |
-| 3.11 | (G65, DE, 360 dp) Group ⋮ → *only Person hinzufügen / Archivieren / Gruppeneinstellungen*; title tap → *Gruppeneinstellungen with Gruppe / Personen / Daten / Auf diesem Gerät / Verlassen oder löschen (red, last)*; removed group → *Name & Währung + Zurücksetzen greyed, "Gruppe löschen"*; Groups app bar → *only the gear (+ "Nur lokal" chip)*; Settings page → *Konto / Synchronisierung & Geräte / Sichern & Wiederherstellen / Daten / Info*, back-up / restore dialogs + snackbars visible on the page | phone |
+| 3.11 | (G65, DE, 360 dp) Group ⋮ → *only Person hinzufügen / Archivieren / Gruppeneinstellungen*; title tap → *Gruppeneinstellungen with Gruppe / Personen / Daten / Auf diesem Gerät / Verlassen oder löschen (red, last)*; removed group → *Name & Währung + Zurücksetzen greyed, "Gruppe löschen"*; Groups app bar → *only the gear (+ "Kein Konto" chip)*; Settings page → *Konto / Synchronisierung & Geräte / Sichern & Wiederherstellen / Daten / Info*, back-up / restore dialogs + snackbars visible on the page | phone |
 
 ## 4. Members
 
@@ -246,6 +246,15 @@ signed in (@m, same group), L = a second emulator / browser in local mode.
 | 14.4 | A: group settings → *Make group secure* → *dialog names L's person*; remove that person (or L connects a Matrix account → the person shows as claimed on A and M) → *Make group secure* → confirm → *snackbar; A's + M's channels gone (`[link] … was locked`), L shows the secure-only banner, read-only* | 3dev |
 | 14.5 | A: *Invite with a link* again → *a new link (QR differs); M bridges again; L's old link finds nothing new* | 3dev |
 | 14.6 | 360 dp, 200 % font, German: the confirmation, the "who still needs to sign in" dialog and the secure-only banner fit | phone |
+
+## 15. "Why Matrix?" + welcome order (G54)
+
+| # | Step → expected | How |
+|---|-----------------|-----|
+| 15.1 | Fresh install → welcome → *page 3 "Share a group with a link", page 4 "Want more security? Matrix" → Why Matrix? → 3 pages, last offers Sign in / Create account / Not now*; choices: *Start without an account* first, *Join with an invite link*, *Secure mode* below | emu |
+| 15.2 | No account: a link group with 10 expenses → groups page *one-time card "There's also a secure mode"* → *Tell me more* → Why Matrix; back → card gone, also after a restart | emu |
+| 15.3 | Link group ⋮ → *Why Matrix?* → last page *Connect a Matrix account* → login page (connect mode); link disclosure → *Why Matrix?* → last page only *Done* → back on the disclosure | emu |
+| 15.4 | 360 dp, 200 % font, German, TalkBack: welcome choices, the three pages, the card and the "Kein Konto" chip fit; dots read as "Seite x von y" | phone |
 
 ## iOS
 

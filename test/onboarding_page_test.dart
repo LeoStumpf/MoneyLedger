@@ -33,31 +33,36 @@ void main() {
     expect(find.byKey(const Key('getStartedBtn')), findsOneWidget);
   });
 
-  testWidgets('local mode (G40): what "local" means, backup, connect later', (
-    tester,
-  ) async {
-    final db = openTestDatabase();
-    addTearDown(db.close);
-    await tester.pumpWidget(
-      _app(
-        db,
-        overrides: [
-          devicePrefsStoreProvider.overrideWithValue(
-            InMemoryDevicePrefsStore({
-              'welcome_seen': '1',
-              'local_profile': '{"name":"Lea","created_at":1}',
-            }),
-          ),
-        ],
-      ),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'no account (G40, G54): device-only, invite with a link, backup',
+    (tester) async {
+      final db = openTestDatabase();
+      addTearDown(db.close);
+      await tester.pumpWidget(
+        _app(
+          db,
+          overrides: [
+            devicePrefsStoreProvider.overrideWithValue(
+              InMemoryDevicePrefsStore({
+                'welcome_seen': '1',
+                'local_profile': '{"name":"Lea","created_at":1}',
+              }),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Everything stays on this device'), findsOneWidget);
-    expect(find.text('Keep a copy'), findsOneWidget);
-    expect(find.text('Share later'), findsOneWidget);
-    expect(find.text('Syncs while you are away'), findsNothing);
-  });
+      expect(find.text('No account needed'), findsOneWidget);
+      expect(find.text('Keep a copy'), findsOneWidget);
+      // G54: "invite with a link" replaces "share later".
+      expect(find.text('Invite with a link'), findsOneWidget);
+      expect(find.textContaining('no account needed'), findsOneWidget);
+      expect(find.text('Share later'), findsNothing);
+      expect(find.textContaining('everything stays'), findsNothing);
+      expect(find.text('Syncs while you are away'), findsNothing);
+    },
+  );
 
   testWidgets('"Get started" marks onboarding seen and navigates to groups', (
     tester,

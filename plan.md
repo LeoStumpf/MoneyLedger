@@ -672,16 +672,19 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] (from step 6) Disclosure: name the **configured** relays + "(one
       operator)" + "linked in Settings → Relays" / "add your own relay"
       once step 9 has the relay list (done in step 9); link *Why Matrix?*
-      (G54) from it → stays with G54
+      (G54) from it → stays with G54 — **done in G54**
+      (`linkDisclosureWhyMatrix`, read-only page)
 - [ ] (from step 6) Invite sheet: the "Invite a Matrix user (secure)"
       section (§8.4) is left out — a link-only group refuses Matrix claims
       until G53; add it with G53's mixed groups
-- [ ] (from step 6) §8.2: rename the local-mode chip "Local only" → "No
+- [x] (from step 6) §8.2: rename the local-mode chip "Local only" → "No
       account" and its sheet / onboarding texts (device-only vs. shared by
       link) — with step 11 or G54 (step 6 review: the chip sheet's
       "Nothing leaves this device" and the settings line already say
       "groups you don't share …"; welcome + onboarding texts still say
-      "everything stays on this device")
+      "everything stays on this device") — **done in G54** (chip *No
+      account* / *Kein Konto*, sheet title, welcome + onboarding + local
+      setup texts)
 - [x] (from step 6) Leaving / deleting a link group uses `groupExitKind`
       (Matrix claims) — a link group of a signed-in user shows *Delete*;
       revisit with step 10 (unpublish) — kept: §7.3 says *Leave* = *Delete
@@ -699,7 +702,9 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (from step 7) After a join that created the local profile, the router
       shows the local-mode onboarding before the group (per-DB flag) and its
       texts still say "everything stays on this device" — with the §8.2
-      "No account" texts (step 11 / G54)
+      "No account" texts (step 11 / G54) — G54: the texts are fixed (no
+      account needed / invite with a link / keep a copy); the onboarding
+      still comes before the joined group (routing unchanged)
 - [ ] (from step 7) Web: the secret stays in the tab's history
       (`#/join?…`); consider `history.replaceState` after the join
 - [ ] (from step 7) Landing page `join.html` + `assetlinks.json` (step 11) —
@@ -830,18 +835,38 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (G53) The backup still carries the invite key next to the bootstrap
       (`link: {epoch, secret}`) for link-only groups; a mixed group's signed
       meta carries it too now — keep both readers
-- [ ] (G53) *Connect a Matrix account* texts don't say that shared link
-      groups become shared with Matrix too (mixed) — with G54's texts
+- [x] (G53) *Connect a Matrix account* texts don't say that shared link
+      groups become shared with Matrix too (mixed) — with G54's texts —
+      done: the no-account sheet + the Why Matrix ready page say link
+      groups keep their link and also sync over Matrix (the login page's
+      connect subtitle is unchanged)
 - [x] (G53 review) A Matrix account that joined a mixed group by link (its
       "me" unclaimed) signed its writes — every peer dropped them
       (`signer_not_member`); it now writes link versions like local mode
       (`GroupPolicyInfo.myMatrixId`, `LocalRecordSigner`)
 
 ### G54. "Why Matrix?" info screen + welcome reorder 🟡
-- [ ] Calm info page in the welcome style ("Hey, there's another mode — also
+- [x] Calm info page in the welcome style ("Hey, there's another mode — also
       free and it works even better, you just sign in"), from a link group's
       menu, "How it works" and once as a dismissible hint (no nagging); EN+DE
-- [ ] Welcome/onboarding reordered for "link = default", Matrix as the upgrade
+      — `WhyMatrixPage` (`/why-matrix`, public), entry points: group ⋮ (open
+      link), welcome / How it works Matrix page, link disclosure (read only),
+      no-account sheet, one-time groups-page card (`why_matrix_hint_dismissed`)
+- [x] Welcome/onboarding reordered for "link = default", Matrix as the upgrade
+      — choices: *Start without an account* · *Join with an invite link* ·
+      *Secure mode* (sign in / create); pages 3 + 4 = link / Matrix (the old
+      "What is Matrix" + "Who sees what" merged); onboarding "Invite with a
+      link" replaces "Share later"; chip *No account*
+- [ ] Device pass: smoke §15 (with G52 step 13)
+- [ ] (G54) The one-time hint is shown **only without an account** (local
+      mode) — a Matrix account that created / joined a link-only group sees
+      no card (it is in the secure mode already; the ⋮ entry is there).
+      Design §10.3 doesn't say; Leo to confirm
+- [ ] (G54) Welcome *Join with an invite link* is a button to the join page
+      (which has the paste field and is opened directly by a link) — no
+      inline paste field on the choices page
+- [ ] (G54) The welcome dots are no longer separate screen-reader targets
+      (below 48 dp, G71) — TalkBack uses the page label + Back / Next
 
 ### G55. Web glyph coverage without Google (found in G43) 🟢
 - [x] Emoji / CJK / Arabic typed by users render as boxes on web and cause
@@ -1138,7 +1163,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G51 — Nostr spike — GO (2026-10-17); retention checks + web-verify decision open
 - [ ] G52 — link groups implementation
 - [x] G53 — mixed groups + lock group (device pass with G52 step 13; open points for Leo in G53)
-- [ ] G54 — "Why Matrix?" info screen + welcome reorder
+- [x] G54 — "Why Matrix?" info screen + welcome reorder (device pass: smoke §15 with G52 step 13)
 - [x] G55 — web glyph coverage without Google (found in G43) — accepted as is (Leo 2026-10-17); Flutter-upgrade reminder kept in G55
 - [x] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel) — done 2026-10-17: all pass; found G62
 - [ ] G58 — restore-point follow-ups (found in G48)

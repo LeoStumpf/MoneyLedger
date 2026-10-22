@@ -223,6 +223,19 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
 
   // ── link groups (G52) ────────────────────────────────────────────────────
 
+  // ── "Why Matrix?" hint (G54) ─────────────────────────────────────────────
+
+  static const _whyMatrixHintKey = 'why_matrix_hint_dismissed';
+
+  /// Whether the one-time groups-page "Why Matrix?" hint was dismissed (or
+  /// followed) — device-local, per ledger.
+  Stream<bool> watchWhyMatrixHintDismissed() =>
+      (select(appSettings)..where((t) => t.key.equals(_whyMatrixHintKey)))
+          .watchSingleOrNull()
+          .map((row) => row?.value == 'true');
+
+  Future<void> dismissWhyMatrixHint() => _setValue(_whyMatrixHintKey, 'true');
+
   static const _linkRelaysKey = 'link_relays';
   static const _linkRelayStatePrefix = 'link_relay_state:';
 

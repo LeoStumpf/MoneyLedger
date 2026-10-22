@@ -13,9 +13,11 @@ rooms: Matrix is used purely as an **end-to-end-encrypted to-device relay** to
 replicate records between members, so the homeserver retains no financial data
 and sees only ciphertext.
 
-- **Works without an account too:** choose *Use without an account* and
-  everything stays on this device (no Matrix, no server contacted, no sync) —
-  connect a Matrix account later and your local groups move into it.
+- **Works without an account — the default:** choose *Start without an
+  account*; groups you don't share stay on this device (no Matrix, no server
+  contacted, no sync) — share one with an invite link (below), or connect a
+  Matrix account later (the secure mode, explained calmly on a *Why Matrix?*
+  page) and your groups move into it.
 - **Share a group with an invite link (no account needed):** a link / QR
   code carries the group's key in its `#fragment`; every device publishes its
   copy of the group **end-to-end encrypted** (gzip + AES-256-GCM) to public
@@ -34,12 +36,14 @@ and sees only ciphertext.
 ### Features
 
 - **First-open welcome** that explains the app before any login: what it
-  does, free + open source, no MoneyLedger server, what Matrix is and why you
-  sign in, who sees what — then *Sign in with Matrix*, *Create a Matrix
-  account* or *Use without an account* (re-read it via About → *How
-  MoneyLedger works* or the login page's *What is Matrix?*).
-- **Local mode (no account):** your name + a device-local ledger; other people
-  are names only; a *Local only* chip explains it (back up regularly!).
+  does, free + open source, no MoneyLedger server, sharing a group with a
+  link, and Matrix as the secure mode — then *Start without an account*,
+  *Join with an invite link*, or (secure mode) *Sign in with Matrix* /
+  *Create a Matrix account* (re-read it via About → *How MoneyLedger works*
+  or the login page's *What is Matrix?*). *Why Matrix?* (from the welcome, a
+  link group's ⋮ and once a hint on the groups page) compares the two modes.
+- **No account (local mode):** your name + a device-local ledger; other people
+  are names only; a *No account* chip explains it (back up regularly!).
   *Settings → Connect a Matrix account* later moves every local group into
   that account (you become its claimed member, every entry is signed by the
   new device) so you can invite people and sync your devices; *Delete local
@@ -195,9 +199,10 @@ flutter run -d android
 flutter devices                  # list available run targets
 ```
 
-On first launch a short welcome explains the app and lets you choose: *Sign
-in with Matrix* (enter your homeserver, e.g. `matrix.org`, then password or
-SSO), *Create a Matrix account*, or *Use without an account* (local mode).
+On first launch a short welcome explains the app and lets you choose: *Start
+without an account* (local mode), *Join with an invite link*, or — secure
+mode — *Sign in with Matrix* (enter your homeserver, e.g. `matrix.org`, then
+password or SSO) / *Create a Matrix account*.
 
 ### Offline demo mode
 

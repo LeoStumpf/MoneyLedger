@@ -1795,17 +1795,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcomeMatrixTitle => 'What is Matrix?';
 
   @override
-  String get welcomeMatrixBody =>
-      'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. MoneyLedger uses your Matrix account as your identity and as an end-to-end-encrypted relay to the other people in your groups — that is why you sign in.';
-
-  @override
-  String get welcomePrivacyTitle => 'Who sees what';
-
-  @override
-  String get welcomePrivacyMembers =>
-      'Everyone in a group gets that group\'s expenses and payments on their devices — end-to-end encrypted.';
-
-  @override
   String get welcomePrivacyServer =>
       'Homeservers only relay encrypted messages: they see which accounts exchange them and when, never the content, and keep nothing once it is delivered.';
 
@@ -1818,7 +1807,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeStartBody =>
-      'With a Matrix account you can share groups with others and sync your devices. Without one, everything stays on this device.';
+      'Start right away — no account needed. Share a group with an invite link whenever you like.';
 
   @override
   String get welcomeSignIn => 'Sign in with Matrix';
@@ -1827,18 +1816,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcomeCreateAccount => 'Create a Matrix account';
 
   @override
-  String get welcomeUseLocal => 'Use without an account';
+  String get welcomeUseLocal => 'Start without an account';
 
   @override
   String get welcomeUseLocalHint =>
-      'You can connect a Matrix account later — your groups come along.';
+      'Groups you don\'t share stay on this device. You can connect a Matrix account later — your groups come along.';
 
   @override
   String get howItWorksTitle => 'How MoneyLedger works';
 
   @override
   String get localSetupStaysHere =>
-      'Your groups and expenses stay on this device only — nothing is sent anywhere.';
+      'Groups you don\'t share stay on this device only — nothing is sent anywhere.';
 
   @override
   String get localSetupPeople => 'Add the other people by name.';
@@ -1849,7 +1838,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localSetupConnectLater =>
-      'You can connect a Matrix account later to share your groups.';
+      'Share a group with an invite link — the others join without an account. You can connect a Matrix account (secure mode) later.';
 
   @override
   String localSetupAdoptedNotice(Object account) {
@@ -1869,10 +1858,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localSetupStart => 'Start';
 
   @override
-  String get localModeChip => 'Local only';
+  String get localModeChip => 'No account';
 
   @override
-  String get localModeSheetTitle => 'Local mode';
+  String get localModeSheetTitle => 'Without an account';
 
   @override
   String get localModeSheetBody =>
@@ -1884,7 +1873,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localModeConnectHint =>
-      'Connect a Matrix account to share groups with others and sync your devices. Your local groups move into that account.';
+      'Connect a Matrix account (secure mode) to sync your devices and invite people by their Matrix ID. Your groups move into that account; groups you share by link keep their link and also sync over Matrix.';
 
   @override
   String get localModeSettingsBody =>
@@ -1942,7 +1931,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localModeMembersHint =>
-      'Local mode: people are added by name. Connect a Matrix account (Settings) to invite them.';
+      'No account: people are added by name. Invite them with a link from the group\'s menu, or connect a Matrix account (Settings).';
 
   @override
   String localAdoptedBanner(int count, Object account) {
@@ -1964,7 +1953,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingReadyLocalBody =>
-      'A few things worth knowing about local mode.';
+      'A few things worth knowing before you start.';
 
   @override
   String get onboardingBackgroundTitle => 'Syncs while you are away';
@@ -1974,22 +1963,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'The devices in a group exchange changes while the app runs — on Android also about every 15 minutes in the background (Settings).';
 
   @override
-  String get onboardingLocalOnlyTitle => 'Everything stays on this device';
+  String get onboardingLocalOnlyTitle => 'No account needed';
 
   @override
   String get onboardingLocalOnlyBody =>
-      'No account, no sync: create groups and add the other people by name. The \"Local only\" chip on the groups page explains it again.';
+      'Create groups and add the other people by name. Groups you don\'t share stay on this device only.';
 
   @override
   String get onboardingBackupLocalBody =>
       'Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.';
-
-  @override
-  String get onboardingConnectLaterTitle => 'Share later';
-
-  @override
-  String get onboardingConnectLaterBody =>
-      'Settings → Connect a Matrix account moves your groups into an account, so you can invite others and sync your devices.';
 
   @override
   String get privacyLocalTitle => 'Local mode (without an account)';
@@ -3544,4 +3526,150 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get secureOnlyBanner =>
       'This group is now secure-only — sign in with Matrix to keep using it.';
+
+  @override
+  String get onboardingInviteLinkTitle => 'Invite with a link';
+
+  @override
+  String get onboardingInviteLinkBody =>
+      'In a group, tap ⋮ → Invite with a link: the others open it and pick their name — no account needed. Anyone with the link can see and change the group.';
+
+  @override
+  String get welcomeLinkTitle => 'Share a group with a link';
+
+  @override
+  String get welcomeLinkBody =>
+      'Send the others an invite link — by messenger, e-mail or as a QR code. They open it, pick their name, and everyone sees the same expenses. Nobody needs an account.';
+
+  @override
+  String get welcomeLinkEncrypted =>
+      'The group syncs encrypted through public Nostr relays — only people with the link can read it.';
+
+  @override
+  String get welcomeLinkRelays =>
+      'The relays see your IP address and when you sync, never the content.';
+
+  @override
+  String get welcomeLinkAnyone =>
+      'Anyone with the link can see and change the group — share it only with the people in it.';
+
+  @override
+  String get welcomeSecureTitle => 'Want more security? Matrix';
+
+  @override
+  String get welcomeSecureBody =>
+      'Matrix is an open, decentralized messaging network. Like with e-mail, you choose a provider (a \"homeserver\", e.g. matrix.org) and create a free account there. Signed in, MoneyLedger syncs your groups end-to-end encrypted with the people you added — the secure mode.';
+
+  @override
+  String get welcomeSecureMembers =>
+      'Only the people you added get a group — every change is signed by the device that made it.';
+
+  @override
+  String get welcomeSecureHeading => 'Secure mode';
+
+  @override
+  String get welcomeSecureHint =>
+      'With a free Matrix account: only people you added, signed changes, your groups on every device.';
+
+  @override
+  String get whyMatrixTitle => 'Why Matrix?';
+
+  @override
+  String get whyMatrixEasyTitle => 'Links are easy';
+
+  @override
+  String get whyMatrixEasyBody =>
+      'A link is the quickest way to share a group: send it, the others pick their name, done. No account, no sign-up — that\'s why it\'s the default, and for a trip or a dinner it\'s often all you need.';
+
+  @override
+  String get whyMatrixCompareTitle => 'There\'s another mode';
+
+  @override
+  String get whyMatrixCompareBody =>
+      'Matrix is free too, and it works even better — you just sign in. What changes:';
+
+  @override
+  String get whyMatrixWhoTitle => 'Who can see and change a group';
+
+  @override
+  String get whyMatrixWhoLink =>
+      'anyone who has the link, also when it\'s forwarded.';
+
+  @override
+  String get whyMatrixWhoMatrix =>
+      'only the people you added; every change is signed by the device that made it.';
+
+  @override
+  String get whyMatrixRemoveTitle => 'Removing someone';
+
+  @override
+  String get whyMatrixRemoveLink =>
+      'they keep access until you reset the link and send the new one to everyone else.';
+
+  @override
+  String get whyMatrixRemoveMatrix =>
+      'it sticks — their changes are ignored from then on.';
+
+  @override
+  String get whyMatrixPhoneTitle => 'New or lost phone';
+
+  @override
+  String get whyMatrixPhoneLink => 'you need the link (or a backup) again.';
+
+  @override
+  String get whyMatrixPhoneMatrix =>
+      'sign in, and your groups come back from your other devices or the others in the group.';
+
+  @override
+  String get whyMatrixServersTitle => 'Who sees what';
+
+  @override
+  String get whyMatrixServersLink =>
+      'public relays run by volunteers see your IP address, when you sync and roughly how big the group is.';
+
+  @override
+  String get whyMatrixServersMatrix =>
+      'only the homeservers you choose see who exchanges messages with whom — never the content.';
+
+  @override
+  String get whyMatrixReadyTitle => 'Ready when you are';
+
+  @override
+  String get whyMatrixReadyConnectBody =>
+      'Create a free account, e.g. at matrix.org, and connect it. Your groups come along; groups you share by link keep their link and also sync over Matrix.';
+
+  @override
+  String get whyMatrixReadySignInBody =>
+      'Create a free account, e.g. at matrix.org, and sign in — or start without an account and connect one any time later.';
+
+  @override
+  String get whyMatrixReadySignedInBody =>
+      'You\'re already signed in with Matrix. Groups you create are Matrix groups. In a group that is also shared by link, Make group secure (group settings) closes the link once everyone in it is on Matrix.';
+
+  @override
+  String get whyMatrixReadyLaterBody =>
+      'Matrix is free. You can connect an account any time later in the settings — your groups come along.';
+
+  @override
+  String get whyMatrixNotNow => 'Not now';
+
+  @override
+  String get whyMatrixHintTitle => 'There\'s also a secure mode';
+
+  @override
+  String get whyMatrixHintBody =>
+      'Your link group is in full use. With a free Matrix account, only the people you added can see a group, and every change is signed.';
+
+  @override
+  String get whyMatrixHintMore => 'Tell me more';
+
+  @override
+  String whyMatrixWithLink(String text) {
+    return 'Link: $text';
+  }
+
+  @override
+  String whyMatrixWithMatrix(String text) {
+    return 'Matrix: $text';
+  }
 }
