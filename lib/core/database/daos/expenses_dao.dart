@@ -302,6 +302,8 @@ ExpenseModel _expenseFromCompanion(ExpensesCompanion c) => ExpenseModel(
   sig: RecordSignature.decode(_v(c.sig, null)),
   origin: RecordSignature.decode(_v(c.origin, null)),
   pendingSign: _v(c.pendingSign, false),
+  // G72: not hashed, but part of the stored version (history `by`).
+  linkAuthor: _v(c.linkAuthor, null),
 );
 
 SettlementModel _settlementFromCompanion(SettlementsCompanion c) =>
@@ -319,15 +321,23 @@ SettlementModel _settlementFromCompanion(SettlementsCompanion c) =>
       sig: RecordSignature.decode(_v(c.sig, null)),
       origin: RecordSignature.decode(_v(c.origin, null)),
       pendingSign: _v(c.pendingSign, false),
+      linkAuthor: _v(c.linkAuthor, null),
     );
 
 /// G48: whether [c] sets every signing column (with [_completeExpense] the
-/// companion then *is* the stored row).
+/// companion then *is* the stored row). G72: and the link author — else
+/// the history entry lost a kept `by`.
 bool _signingComplete(ExpensesCompanion c) =>
-    c.sig.present && c.origin.present && c.pendingSign.present;
+    c.sig.present &&
+    c.origin.present &&
+    c.pendingSign.present &&
+    c.linkAuthor.present;
 
 bool _signingCompleteSettlement(SettlementsCompanion c) =>
-    c.sig.present && c.origin.present && c.pendingSign.present;
+    c.sig.present &&
+    c.origin.present &&
+    c.pendingSign.present &&
+    c.linkAuthor.present;
 
 /// G37: whether [c] sets every column the expense content hash covers.
 bool _completeExpense(ExpensesCompanion c) =>

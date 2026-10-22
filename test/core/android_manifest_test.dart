@@ -67,6 +67,29 @@ void main() {
     );
   });
 
+  test('G72: POST_NOTIFICATIONS is declared (not removed) for the local '
+      'change notifications, without push / Google services', () {
+    final decl = RegExp(
+      r'<uses-permission\s+android:name="android\.permission'
+      r'\.POST_NOTIFICATIONS"[^>]*>',
+    ).firstMatch(manifest)?.group(0);
+    expect(decl, isNotNull, reason: 'Android 13+ shows nothing without it');
+    expect(decl, isNot(contains('tools:node="remove"')));
+    // Local notifications only: no Firebase / Play-services messaging.
+    for (final s in ['com.google.firebase', 'c2dm', 'RECEIVE_BOOT_COMPLETED']) {
+      expect(manifest, isNot(contains(s)));
+    }
+    // flutter_local_notifications needs core library desugaring.
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    expect(gradle, contains('isCoreLibraryDesugaringEnabled = true'));
+    expect(gradle, contains('coreLibraryDesugaring("com.android.tools:'));
+    // The status-bar icon (white on transparent) the notifications use.
+    expect(
+      File('android/app/src/main/res/drawable/ic_stat_notify.xml').existsSync(),
+      isTrue,
+    );
+  });
+
   test('G44: no encrypted dependency-info blob in the APK / bundle', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
     final block = RegExp(

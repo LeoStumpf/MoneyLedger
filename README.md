@@ -106,6 +106,10 @@ and sees only ciphertext.
   connected, battery not low) — so a closed phone still answers its peers and
   new devices. Toggle per account under *Settings* (gear) on the groups screen.
   The web app syncs only while its tab is open.
+- **Notifications (Android):** the background round notifies about others'
+  new / edited / deleted expenses and payments — posted on the device (no
+  push service, no Firebase); on by default, *Settings → Sync →
+  Notifications*. Android 13+ asks for the permission once a group is shared.
 
 ## Screenshots
 
@@ -153,6 +157,9 @@ smoke checklist lives in [`docs/smoke-test.md`](docs/smoke-test.md).
 - [`image_picker`](https://pub.dev/packages/image_picker) — receipt photo from
   the camera app / photo picker (Android only, kept on this device only — G78;
   BSD-3-Clause)
+- [`flutter_local_notifications`](https://pub.dev/packages/flutter_local_notifications)
+  — change notifications from the Android background round (G72;
+  BSD-3-Clause; needs core library desugaring in the Android build)
 - `flutter_localizations` + [`intl`](https://pub.dev/packages/intl) — EN/DE
   strings from ARB files (`lib/l10n/`), number/date/currency formatting
 

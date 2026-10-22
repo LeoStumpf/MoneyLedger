@@ -77,6 +77,41 @@ MONO = svg(mark(512, 512, 500, bar='#FFFFFF', accent='#FFFFFF'))
 MARK = svg(mark(512, 512, 900, bar=INK, accent=ORANGE))
 
 
+def notification_icon():
+    """G72: the status-bar icon of the notifications — the mark alone, white
+    on transparent, as an Android vector drawable (24 dp; the system tints
+    it)."""
+    k = 22 / _MARK_W  # 1 dp margin each side
+    x0 = 1
+    y0 = 12 - _MARK_H * k / 2
+    h = _BAR_H * k
+    r = h / 2
+    paths = []
+    for x, y, w in _PIECES:
+        left = x0 + x * k
+        top = y0 + y * k
+        width = w * k
+        paths.append(
+            f'    <path android:fillColor="#FFFFFFFF" android:pathData="'
+            f'M{left + r:.3f},{top:.3f}h{width - 2 * r:.3f}'
+            f'a{r:.3f},{r:.3f} 0 0 1 0,{h:.3f}'
+            f'h{-(width - 2 * r):.3f}a{r:.3f},{r:.3f} 0 0 1 0,{-h:.3f}z"/>')
+    return ('<?xml version="1.0" encoding="utf-8"?>\n'
+            '<!-- G72: notification status-bar icon. Rendered by '
+            'tool/brand/render_icons.py. -->\n'
+            '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+            '    android:width="24dp" android:height="24dp"\n'
+            '    android:viewportWidth="24" android:viewportHeight="24">\n'
+            + '\n'.join(paths) + '\n</vector>\n')
+
+
+def write_notification_icon():
+    path = os.path.join(ROOT, 'android/app/src/main/res/drawable/'
+                        'ic_stat_notify.xml')
+    with open(path, 'w') as f:
+        f.write(notification_icon())
+
+
 def _text(x, y, text, size, weight=700, fill=INK, spacing=0):
     return (f'<text x="{x}" y="{y}" font-family="sans-serif" '
             f'font-size="{size}" font-weight="{weight}" fill="{fill}" '
@@ -161,6 +196,9 @@ def main():
         png(MONO, layer, f'{res}/mipmap-{density}/ic_launcher_monochrome.png')
         # Pre-Android-12 launch screen logo (96 dp, centred on the theme bg).
         png(FULL, round(96 * scale), f'{res}/drawable-{density}/splash_logo.png')
+
+    # G72: the notifications' status-bar icon (vector drawable).
+    write_notification_icon()
 
     # Web.
     png(FULL, 32, 'web/favicon.png')

@@ -52,6 +52,48 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
+  // ── notifications (G72) ─────────────────────────────────────────────────
+
+  static const _notificationsKey = 'notifications_enabled';
+  static const _notificationPermissionAskedKey =
+      'notification_permission_asked';
+
+  /// Whether background rounds notify about others' changes (device-local,
+  /// per ledger). Default: on (Leo 2026-10-17).
+  Stream<bool> watchNotificationsEnabled() =>
+      (select(appSettings)..where((t) => t.key.equals(_notificationsKey)))
+          .watchSingleOrNull()
+          .map((row) => row?.value != 'false');
+
+  Future<bool> notificationsEnabled() =>
+      (select(appSettings)..where((t) => t.key.equals(_notificationsKey)))
+          .getSingleOrNull()
+          .then((row) => row?.value != 'false');
+
+  Future<void> setNotificationsEnabled(bool enabled) =>
+      into(appSettings).insertOnConflictUpdate(
+        AppSettingsCompanion(
+          key: const Value(_notificationsKey),
+          value: Value(enabled ? 'true' : 'false'),
+        ),
+      );
+
+  /// Whether the app already asked for the Android 13+ notification
+  /// permission on its own (once per ledger; the settings switch asks again).
+  Future<bool> notificationPermissionAsked() =>
+      (select(appSettings)
+            ..where((t) => t.key.equals(_notificationPermissionAskedKey)))
+          .getSingleOrNull()
+          .then((row) => row?.value == 'true');
+
+  Future<void> markNotificationPermissionAsked() =>
+      into(appSettings).insertOnConflictUpdate(
+        const AppSettingsCompanion(
+          key: Value(_notificationPermissionAskedKey),
+          value: Value('true'),
+        ),
+      );
+
   // ── device verification (G11) ───────────────────────────────────────────
 
   static const _verifiedOnlyKey = 'verified_only_sync';

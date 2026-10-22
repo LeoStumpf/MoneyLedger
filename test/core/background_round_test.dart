@@ -23,6 +23,7 @@ import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/expenses/ledger_syncer.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/history/snapshot_store.dart';
+import 'package:money_ledger/features/notifications/change_notices.dart';
 
 import '../helpers/fake_ledger_network.dart';
 
@@ -123,6 +124,7 @@ void main() {
     SnapshotStore? Function(String dbName)? snapshotStores,
     Duration snapshotMinRemaining = Duration.zero,
     int Function()? clock,
+    Future<void> Function(List<ChangeNotice>)? notify,
   }) => runBackgroundRound(
     tryAcquire: tryAcquire ?? () async => true,
     openSession: () async =>
@@ -138,6 +140,7 @@ void main() {
     snapshotStores: snapshotStores,
     snapshotMinRemaining: snapshotMinRemaining,
     clock: clock,
+    notify: notify,
   );
 
   /// Alice and Bob share "Trip"; both apps ran once, Bob's is now closed.
@@ -550,6 +553,131 @@ void main() {
       isNotEmpty,
     );
     expect(a, isNotNull);
+  });
+
+  group('G72 notifications', () {
+    Future<void> addExpense(ProviderContainer a, String groupId, String d) => a
+        .read(expenseAdderProvider.notifier)
+        .addExpense(
+          roomId: groupId,
+          description: d,
+          amountCents: 1000,
+          currency: 'EUR',
+          paidBy: alice,
+          splits: {alice: 500, bob: 500},
+        );
+
+    test("others' changes queued while the app was closed → one notice "
+        'per group', () async {
+      final (a, groupId) = await sharedGroupBobClosed();
+      await addExpense(a, groupId, 'Dinner');
+      await net.settle();
+
+      final posted = <List<ChangeNotice>>[];
+      final result = await round(bob, notify: (n) async => posted.add(n));
+      expect(result.status, BackgroundRoundStatus.completed);
+      expect(result.notified, 1);
+      final notice = posted.single.single;
+      expect(notice.groupId, groupId);
+      expect(notice.groupName, 'Trip');
+      expect(notice.newGroup, isFalse);
+      final c = notice.changes.single;
+      expect(c.action, NoticeAction.added);
+      expect(c.description, 'Dinner');
+      expect(c.author, 'alice');
+
+      // Nothing new → the next round posts nothing.
+      posted.clear();
+      final again = await round(bob, notify: (n) async => posted.add(n));
+      expect(again.notified, 0);
+      expect(posted, isEmpty);
+    });
+
+    test('an edit of a record held before is "edited"', () async {
+      final (a, groupId) = await sharedGroupBobClosed();
+      await addExpense(a, groupId, 'Dinner');
+      await net.settle();
+      await round(bob, notify: (_) async {});
+
+      final e =
+          (await a.read(expensesDaoProvider).getAllExpensesForGroup(groupId))
+              .single;
+      await a
+          .read(expenseAdderProvider.notifier)
+          .updateExpense(
+            id: e.id,
+            roomId: groupId,
+            createdAt: e.createdAt,
+            description: 'Dinner + wine',
+            amountCents: 1200,
+            currency: 'EUR',
+            paidBy: alice,
+            splits: {alice: 600, bob: 600},
+          );
+      await net.settle();
+      final posted = <ChangeNotice>[];
+      await round(bob, notify: (n) async => posted.addAll(n));
+      final c = posted.single.changes.single;
+      expect(c.action, NoticeAction.edited);
+      expect(c.description, 'Dinner + wine');
+    });
+
+    test('being added to a group while the app was closed → "you were '
+        'added"', () async {
+      net.clientFor(alice);
+      net.clientFor(bob);
+      final a = openApp(alice);
+      await closeApp(openApp(bob));
+      await net.settle();
+      await a.read(groupCreatorProvider.notifier).create('Flat', 'EUR');
+      final groupId =
+          (await a.read(groupsDaoProvider).getAllGroups()).single.roomId;
+      await a.read(memberAdderProvider.notifier).add(groupId, bob);
+      await net.settle();
+
+      final posted = <ChangeNotice>[];
+      await round(bob, notify: (n) async => posted.addAll(n));
+      expect(posted.single.groupName, 'Flat');
+      expect(posted.single.newGroup, isTrue);
+    });
+
+    test('notifications turned off → nothing is posted', () async {
+      final (a, groupId) = await sharedGroupBobClosed();
+      final db = openDb(bob);
+      await SettingsDao(db).setNotificationsEnabled(false);
+      await db.close();
+      await addExpense(a, groupId, 'Dinner');
+      await net.settle();
+      var called = false;
+      final result = await round(bob, notify: (_) async => called = true);
+      expect(result.status, BackgroundRoundStatus.completed);
+      expect(called, isFalse);
+      expect(await bobExpenseDescriptions(), ['Dinner']);
+    });
+
+    test('our own changes are not announced', () async {
+      final (a, groupId) = await sharedGroupBobClosed();
+      // Bob's app writes, then closes; the round finds only Alice's echo
+      // traffic (digests) — nothing by someone else.
+      final b = openApp(bob);
+      await b
+          .read(expenseAdderProvider.notifier)
+          .addExpense(
+            roomId: groupId,
+            description: 'Mine',
+            amountCents: 1000,
+            currency: 'EUR',
+            paidBy: bob,
+            splits: {alice: 500, bob: 500},
+          );
+      await net.settle();
+      await closeApp(b);
+      await a.read(syncEngineProvider).broadcastDigests();
+      await net.settle();
+      final posted = <ChangeNotice>[];
+      await round(bob, notify: (n) async => posted.addAll(n));
+      expect(posted, isEmpty);
+    });
   });
 }
 

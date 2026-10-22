@@ -911,7 +911,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyBackgroundBody =>
-      'Unter Android kann MoneyLedger etwa alle 15 Minuten synchronisieren, während die App geschlossen ist (nur mit Netzwerkverbindung und nicht bei niedrigem Akku). Dafür werden dieselben verschlüsselten Nachrichten an deinen Homeserver genutzt und, für Gruppen, die du per Einladungslink teilst, dieselben verschlüsselten Kopien auf den Nostr-Relays (auch ohne Konto); es werden keine Benachrichtigungen angezeigt. Mit einem Matrix-Konto kannst du das in den Einstellungen abschalten; ohne Konto läuft es nur, solange du eine Gruppe per Einladungslink teilst. Die Web-Version synchronisiert nur, solange ihr Tab geöffnet ist.';
+      'Unter Android kann MoneyLedger etwa alle 15 Minuten synchronisieren, während die App geschlossen ist (nur mit Netzwerkverbindung und nicht bei niedrigem Akku). Dafür werden dieselben verschlüsselten Nachrichten an deinen Homeserver genutzt und, für Gruppen, die du per Einladungslink teilst, dieselben verschlüsselten Kopien auf den Nostr-Relays (auch ohne Konto). Findet es Ausgaben oder Zahlungen, die jemand anderes eingetragen, geändert oder gelöscht hat, zeigt es eine Benachrichtigung mit dem Namen der Gruppe, wer es war, der Beschreibung und dem Betrag (standardmäßig an; Einstellungen → Synchronisierung → Benachrichtigungen). Diese Benachrichtigungen entstehen auf dem Gerät selbst – kein Push-Dienst, kein Google oder Firebase, dafür wird nichts gesendet – und auf dem Sperrbildschirm gilt die Android-Einstellung für vertrauliche Inhalte. Mit einem Matrix-Konto kannst du die Hintergrund-Synchronisierung in den Einstellungen abschalten; ohne Konto läuft es nur, solange du eine Gruppe per Einladungslink teilst. Die Web-Version synchronisiert nur, solange ihr Tab geöffnet ist, und zeigt keine Benachrichtigungen.';
 
   @override
   String get privacyCsvTitle => 'Export, Sicherung und Import';
@@ -3960,6 +3960,92 @@ class AppLocalizationsDe extends AppLocalizations {
       count,
       locale: localeName,
       other: 'Bezahlt von $count Personen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationsTitle => 'Benachrichtigungen';
+
+  @override
+  String get notificationsBody =>
+      'Melden, wenn andere Ausgaben oder Zahlungen eintragen, ändern oder löschen (geprüft bei der Hintergrund-Synchronisierung).';
+
+  @override
+  String get notificationsNeedBackgroundSync =>
+      'Braucht die Hintergrund-Synchronisierung – schalte sie oben ein.';
+
+  @override
+  String get notificationsBlocked =>
+      'Benachrichtigungen sind für MoneyLedger blockiert – erlaube sie in den App-Einstellungen von Android.';
+
+  @override
+  String get notificationChannelName => 'Änderungen anderer';
+
+  @override
+  String get notificationChannelDescription =>
+      'Wenn jemand in deinen Gruppen eine Ausgabe oder Zahlung einträgt, ändert oder löscht.';
+
+  @override
+  String get notifySomeone => 'Jemand';
+
+  @override
+  String get notifyAnExpense => 'eine Ausgabe';
+
+  @override
+  String notifyExpenseAdded(String name, String what, String amount) {
+    return '$name hat $what eingetragen · $amount';
+  }
+
+  @override
+  String notifyExpenseEdited(String name, String what) {
+    return '$name hat $what geändert';
+  }
+
+  @override
+  String notifyExpenseDeleted(String name, String what) {
+    return '$name hat $what gelöscht';
+  }
+
+  @override
+  String notifyPaymentAdded(
+    String name,
+    String from,
+    String to,
+    String amount,
+  ) {
+    return '$name hat eine Zahlung eingetragen: $from → $to · $amount';
+  }
+
+  @override
+  String notifyPaymentEdited(String name, String from, String to) {
+    return '$name hat eine Zahlung geändert: $from → $to';
+  }
+
+  @override
+  String notifyPaymentDeleted(String name, String from, String to) {
+    return '$name hat eine Zahlung gelöscht: $from → $to';
+  }
+
+  @override
+  String notifySeveralChanges(int count, String names) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Änderungen von $names',
+      one: '1 Änderung von $names',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String notifyAddedToGroup(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Du wurdest zu dieser Gruppe hinzugefügt – $count Einträge.',
+      one: 'Du wurdest zu dieser Gruppe hinzugefügt – 1 Eintrag.',
+      zero: 'Du wurdest zu dieser Gruppe hinzugefügt.',
     );
     return '$_temp0';
   }

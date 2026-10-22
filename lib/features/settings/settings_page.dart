@@ -18,6 +18,7 @@ import '../groups/group_provider.dart';
 import '../link/relay_settings.dart';
 import '../link/relay_settings_page.dart';
 import '../local/local_mode_ui.dart';
+import '../notifications/notifications_tile.dart';
 import '../../core/link/link_sync_engine.dart' show linkRelaysViewProvider;
 import '../onboarding/onboarding_provider.dart';
 import '../payment/payment_details_page.dart';
@@ -245,6 +246,8 @@ class _SyncSection extends ConsumerWidget {
             title: Text(l.noBackgroundSyncTitle),
             subtitle: Text(l.noBackgroundSyncBody),
           ),
+        // G72: notifications about others' changes (Android).
+        const NotificationsTile(),
         const RelaysTile(),
       ],
     );
@@ -291,6 +294,7 @@ class _LocalSyncSection extends ConsumerWidget {
               style: TextStyle(color: theme.colorScheme.error),
             ),
           ),
+        if (links) const NotificationsTile(),
         const RelaysTile(),
       ],
     );

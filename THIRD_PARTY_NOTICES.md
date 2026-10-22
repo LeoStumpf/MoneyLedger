@@ -28,6 +28,7 @@ The version-exact list of all packages (direct and transitive) is in
 | `share_plus` (system share sheet — "who pays whom" as text, G69; G52 invite sheet; pulls in `share_plus_platform_interface`, `cross_file`, `mime`, all BSD-3-Clause, and the Android `androidx.core` / `kotlinx-coroutines-android`, Apache-2.0 — no Google Play services) | 13.3.1 | BSD-3-Clause |
 | `qr` (invite-link QR code, G52 step 6 — the pure-Dart encoder; painted by our own widget, no platform code) | 3.0.2 | BSD-3-Clause |
 | `image_picker` (G78 receipt photos, Android only — the system camera app via an intent and the system photo picker / file chooser; no camera or storage permission, its Play-services photo-picker hook removed from the manifest; pulls in `image_picker_*` platform packages, `file_selector_*` (desktop), `flutter_plugin_android_lifecycle`, all BSD-3-Clause, and the Android `androidx.core` / `androidx.activity` / `androidx.exifinterface`, Apache-2.0 — no Google Play services) | 1.2.4 | BSD-3-Clause |
+| `flutter_local_notifications` (G72 change notifications from the Android background round — posted on the device, no push service / Firebase / Google Play services; pulls in `flutter_local_notifications_platform_interface`, `_linux`, `_windows`, `_web`, all BSD-3-Clause, `timezone` 0.11.2, BSD-2-Clause, and the Android `androidx.core` / `androidx.media` and `gson`, Apache-2.0) | 22.3.2 | BSD-3-Clause |
 | `flutter`, `flutter_localizations` (SDK) | 3.44 | BSD-3-Clause |
 | `go_router`, `http` (G36), `intl`, `package_info_plus`, `path_provider`, `url_launcher`, `web` | see lock | BSD-3-Clause |
 | `sqflite` | 2.4.4+2 | BSD-2-Clause |
@@ -44,6 +45,12 @@ The version-exact list of all packages (direct and transitive) is in
 - **SQLite** — public domain; bundled by the `sqlite3` 3.x build hooks (Android) and as
   [`web/sqlite3.wasm`](web/sqlite3.wasm) with Drift's
   [`web/drift_worker.js`](web/drift_worker.js) (MIT) on the web.
+
+- **desugar_jdk_libs** (`com.android.tools:desugar_jdk_libs` 2.1.4, G72) —
+  the OpenJDK `java.*` libraries core library desugaring (required by
+  `flutter_local_notifications`) compiles into the Android app, **GPL-2.0
+  with the Classpath Exception** (the exception permits combining it with
+  code under any license, the AGPL included).
 
 ### Data
 
@@ -97,7 +104,7 @@ permissive — MIT, BSD-2/3-Clause or Apache-2.0 — plus:
 
 - (`vodozemac`, `canonical_json` and `crypto` used to be transitive only;
   since G6 they are direct dependencies — see the table above);
-- `dbus` — MPL-2.0, Linux-desktop only via `file_picker_linux` (not shipped in
+- `dbus` — MPL-2.0, Linux-desktop only via `file_picker_linux` and `flutter_local_notifications_linux` (not shipped in
   the Android/web app). (`gtk`, MPL-2.0, was dropped with file_picker 8.)
 
 ## Compatibility
@@ -105,7 +112,8 @@ permissive — MIT, BSD-2/3-Clause or Apache-2.0 — plus:
 All of the above are compatible with distributing MoneyLedger under the
 AGPL-3.0: the AGPL-3.0 packages (`matrix`, `flutter_vodozemac`, `vodozemac`) are the
 reason the app itself is AGPL-licensed; MIT, BSD, Apache-2.0 (incl. the Matrix spec's SAS
-emoji data) and MPL-2.0 code may be combined with AGPL-3.0 code; the web fonts
+emoji data) and MPL-2.0 code may be combined with AGPL-3.0 code, and so may the
+GPL-2.0 desugaring library under its Classpath Exception (G72); the web fonts
 (Apache-2.0, OFL-1.1, Bitstream Vera) are separate font files distributed
 alongside the app under their own licenses, which permit that. **No incompatible license was found**
 (checked against each package's `LICENSE` in the pub cache for the versions in

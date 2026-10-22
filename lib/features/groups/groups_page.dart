@@ -8,6 +8,7 @@ import '../../core/matrix/crypto_status.dart';
 import '../../core/session/app_session.dart';
 import '../../core/session/local_adoption.dart';
 import '../local/local_mode_ui.dart';
+import '../notifications/notifications_provider.dart';
 import '../../core/l10n/l10n.dart';
 import '../auth/auth_provider.dart';
 import '../backup/backup_providers.dart';
@@ -37,6 +38,8 @@ class GroupsPage extends ConsumerWidget {
     ref.watch(syncEngineProvider); // run anti-entropy while signed in
     // G17: one-off upgrade of localpart names to Matrix profile names.
     ref.watch(profileNameRefreshProvider);
+    // G72: ask for the notification permission once a group is shared.
+    if (!kOfflineDemo) ref.watch(notificationPermissionPromptProvider);
     final groupsAsync = ref.watch(ledgerGroupsProvider);
     final l = context.l10n;
     // G40: no account — a "No account" indicator (G54: was "Local only") (G65: account, devices and

@@ -1577,7 +1577,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyBackgroundBody.
   ///
   /// In en, this message translates to:
-  /// **'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and, for groups you share with an invite link, the same encrypted copies on the Nostr relays (also without an account), and shows no notifications. With a Matrix account you can turn it off in Settings; without one it runs only while you have a group shared with an invite link. The web version syncs only while its tab is open.'**
+  /// **'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and, for groups you share with an invite link, the same encrypted copies on the Nostr relays (also without an account). When it finds expenses or payments that someone else added, changed or deleted, it shows a notification with the group\'s name, who did it, the description and the amount (on by default; Settings → Sync → Notifications). These notifications are made on the device itself — no push service, no Google or Firebase, nothing is sent for them — and on the lock screen they follow Android\'s setting for sensitive content. With a Matrix account you can turn background sync off in Settings; without one it runs only while you have a group shared with an invite link. The web version syncs only while its tab is open and shows no notifications.'**
   String get privacyBackgroundBody;
 
   /// No description provided for @privacyCsvTitle.
@@ -6181,6 +6181,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, other{Paid by {count} people}}'**
   String paidByMany(int count);
+
+  /// G72: settings switch title
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// G72: settings switch subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Tell me when others add, change or delete expenses or payments (checked during background sync).'**
+  String get notificationsBody;
+
+  /// G72: subtitle while background sync is off
+  ///
+  /// In en, this message translates to:
+  /// **'Needs background sync — turn it on above.'**
+  String get notificationsNeedBackgroundSync;
+
+  /// G72: subtitle while the OS permission is missing
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are blocked for MoneyLedger — allow them in Android\'s app settings.'**
+  String get notificationsBlocked;
+
+  /// G72: Android notification channel name
+  ///
+  /// In en, this message translates to:
+  /// **'Changes by others'**
+  String get notificationChannelName;
+
+  /// G72: Android notification channel description
+  ///
+  /// In en, this message translates to:
+  /// **'When someone adds, changes or deletes an expense or payment in your groups.'**
+  String get notificationChannelDescription;
+
+  /// G72: unknown author in a notification
+  ///
+  /// In en, this message translates to:
+  /// **'Someone'**
+  String get notifySomeone;
+
+  /// G72: expense without a description in a notification
+  ///
+  /// In en, this message translates to:
+  /// **'an expense'**
+  String get notifyAnExpense;
+
+  /// G72: notification line
+  ///
+  /// In en, this message translates to:
+  /// **'{name} added {what} · {amount}'**
+  String notifyExpenseAdded(String name, String what, String amount);
+
+  /// G72: notification line
+  ///
+  /// In en, this message translates to:
+  /// **'{name} changed {what}'**
+  String notifyExpenseEdited(String name, String what);
+
+  /// G72: notification line
+  ///
+  /// In en, this message translates to:
+  /// **'{name} deleted {what}'**
+  String notifyExpenseDeleted(String name, String what);
+
+  /// G72: notification line
+  ///
+  /// In en, this message translates to:
+  /// **'{name} recorded a payment: {from} → {to} · {amount}'**
+  String notifyPaymentAdded(String name, String from, String to, String amount);
+
+  /// G72: notification line
+  ///
+  /// In en, this message translates to:
+  /// **'{name} changed a payment: {from} → {to}'**
+  String notifyPaymentEdited(String name, String from, String to);
+
+  /// G72: notification line
+  ///
+  /// In en, this message translates to:
+  /// **'{name} deleted a payment: {from} → {to}'**
+  String notifyPaymentDeleted(String name, String from, String to);
+
+  /// G72: notification body
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change by {names}} other{{count} changes by {names}}}'**
+  String notifySeveralChanges(int count, String names);
+
+  /// G72: notification body
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{You were added to this group.} =1{You were added to this group — 1 entry.} other{You were added to this group — {count} entries.}}'**
+  String notifyAddedToGroup(int count);
 }
 
 class _AppLocalizationsDelegate

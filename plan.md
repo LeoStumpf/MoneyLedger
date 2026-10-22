@@ -1026,10 +1026,24 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
 - [ ] Device check: smoke §11 (11.1–11.8) in the G52 step 13 pass
 
 ### G72. Local notifications (U26) 🟢
-- [ ] Notify from the background round about others' changes — **on by
+- [x] Notify from the background round about others' changes — **on by
       default** (Leo 2026-10-17), setting to turn off, privacy text; Android 13+
       needs `POST_NOTIFICATIONS` (today removed from the manifest, G31) +
       the runtime prompt at a sensible moment — after G52 step 8
+      → `flutter_local_notifications` (no Firebase), manifest declares the
+      permission; `runBackgroundRound(notify:)` announces the inbound
+      expense / payment versions of the round's G48 history (not our own
+      account's / "me"'s), one notification per group, tap opens the group;
+      prompt once per ledger on the groups page when a group is shared;
+      Settings → Sync → *Notifications*; privacy text + PRIVACY.md; CLAUDE.md
+      "Change notifications (G72)", open points, smoke 7.13
+- [ ] Device check: smoke 7.13 (Android 13+ prompt, a real round's
+      notification incl. icon, tap from cold start, own-device changes
+      silent, DE texts) — also build the release APK once (desugaring /
+      resource shrinking of the icon)
+- [ ] Later maybe: a deep link to Android's app notification settings when
+      blocked; merge an unread group notification with the next round's
+      instead of replacing it; announce member / name changes
 
 ### G73. Manual exchange rates (U18) 🟢
 - [x] Fixed rates per group in the signed meta, "settle in {currency}" — wire
@@ -1227,7 +1241,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G69 — share + overview
 - [x] G70 — simplify backup / restore
 - [x] G71 — accessibility + form flow
-- [ ] G72 — local notifications (on by default)
+- [x] G72 — local notifications (on by default) — device check smoke 7.13 open
 - [x] G73 — manual exchange rates + fetch button (with G57) — device check smoke 6.7 + G57 decision open
 - [x] G75 — usability polish (review leftovers)
 - [~] G74 — payment details + GiroCode (with G57 / G73) — device-local part done; synced part needs Leo (wire / privacy)

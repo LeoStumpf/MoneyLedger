@@ -21,7 +21,9 @@ import '../../features/expenses/expenses_provider.dart';
 import '../../features/expenses/ledger_syncer.dart';
 import '../../features/history/restore_points.dart';
 import '../../features/history/snapshot_store.dart';
+import '../../features/notifications/change_notices.dart';
 import '../database/app_database.dart';
+import '../database/daos/history_dao.dart';
 import '../database/daos/settings_dao.dart';
 import '../database/daos/link_dao.dart';
 import '../database/daos/sync_states_dao.dart';
@@ -152,6 +154,9 @@ class BackgroundRoundResult {
   final int linkEvents;
   final int linkMerged;
 
+  /// G72: notifications posted (one per group with others' changes).
+  final int notified;
+
   const BackgroundRoundResult(
     this.status, {
     this.received = 0,
@@ -161,13 +166,15 @@ class BackgroundRoundResult {
     this.link = false,
     this.linkEvents = 0,
     this.linkMerged = 0,
+    this.notified = 0,
   });
 
   @override
   String toString() =>
       'BackgroundRoundResult(${status.name}, '
       'received: $received, sent: $sent, digests: $broadcastDigests, '
-      'snapshot: $snapshot, link: $link ($linkMerged/$linkEvents merged))';
+      'snapshot: $snapshot, link: $link ($linkMerged/$linkEvents merged), '
+      'notified: $notified)';
 }
 
 /// Runs one background round. Every dependency is injected:
@@ -200,6 +207,14 @@ class BackgroundRoundResult {
 ///   stores: a request may take up to `kHttpHeaderTimeout` (90 s), far
 ///   longer than [inFlightGrace] — aborted, the step fails at once instead
 ///   of finishing (and writing) after the stores were closed.
+/// - [notify] — G72: posts the notifications about **others' changes**
+///   stored during this round (`collectChangeNotices`: the inbound
+///   expense / payment versions in `record_history` after the id noted
+///   before syncing, minus our own account's / "me"'s). Called after the
+///   link phase, only when the ledger's `notifications_enabled` (default
+///   on) allows it and something is to tell; null = no notifications. A
+///   round stopped before that step notifies nothing (those changes are
+///   not announced later either — they are in the app).
 ///
 /// Steps: open the session and the account DB; start [LedgerSyncer] +
 /// [SyncEngine] (no startup digest); fetch once and wait until the relay is
@@ -231,6 +246,7 @@ Future<BackgroundRoundResult> runBackgroundRound({
   Future<void>? abort,
   void Function()? abortRequests,
   SnapshotStore? Function(String dbName)? snapshotStores,
+  Future<void> Function(List<ChangeNotice> notices)? notify,
   Duration snapshotMinRemaining = kBackgroundSnapshotMinRemaining,
   Duration timeout = kBackgroundRoundTimeout,
   Duration quietPeriod = const Duration(seconds: 2),
@@ -380,6 +396,8 @@ Future<BackgroundRoundResult> runBackgroundRound({
     }
     final identity = local ? kLocalAccountId : session!.userId;
     var hasLinks = false;
+    var notifyOn = false;
+    var historyBefore = 0;
     try {
       final opened = db = local ? openLocalDatabase!() : openDatabase(identity);
       if (!await SettingsDao(opened).backgroundSyncEnabled()) {
@@ -389,6 +407,11 @@ Future<BackgroundRoundResult> runBackgroundRound({
         );
       }
       hasLinks = (await LinkDao(opened).getAllChannels()).isNotEmpty;
+      // G72: what is stored from here on is this round's.
+      if (notify != null && await SettingsDao(opened).notificationsEnabled()) {
+        notifyOn = true;
+        historyBefore = await HistoryDao(opened).latestId();
+      }
     } catch (e) {
       debugPrint('[bg] could not open the ledger DB: $e');
       return const BackgroundRoundResult(BackgroundRoundStatus.failed);
@@ -488,6 +511,24 @@ Future<BackgroundRoundResult> runBackgroundRound({
       linkDone = true;
     }
 
+    // G72: tell the user what the others changed.
+    var notified = 0;
+    if (notifyOn) {
+      if (!await guard(
+        collectChangeNotices(
+          openedDb,
+          afterHistoryId: historyBefore,
+          identity: identity,
+        ).then((notices) async {
+          if (notices.isEmpty) return;
+          await notify!(notices);
+          notified = notices.length;
+        }),
+      )) {
+        return ended();
+      }
+    }
+
     // G58: the daily restore point — the app may not be opened for days.
     var snapshot = false;
     if (snapshotStores != null) {
@@ -518,6 +559,7 @@ Future<BackgroundRoundResult> runBackgroundRound({
       link: linkDone,
       linkEvents: linkEvents,
       linkMerged: linkMerged,
+      notified: notified,
     );
     debugPrint('[bg] round done: $result');
     return result;

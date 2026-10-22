@@ -27,6 +27,7 @@ MoneyLedger is a decentralized expense-sharing app (Splitwise/Tricount alternati
 - [`share_plus`](https://pub.dev/packages/share_plus) 13.x (BSD-3) — system share sheet (G69 balance text; G52 invite sheet), via `core/platform/text_sharer.dart`
 - [`qr`](https://pub.dev/packages/qr) 3.0 (BSD-3) — G52 invite QR code (pure-Dart encoder, painted by `core/widgets/qr_code_view.dart`)
 - [`image_picker`](https://pub.dev/packages/image_picker) 1.2 (BSD-3) — G78 receipt photo (Android only): camera app via intent / system photo picker, scaled natively
+- [`flutter_local_notifications`](https://pub.dev/packages/flutter_local_notifications) 22.x (BSD-3) — G72 change notifications from the Android background round (no push / Firebase)
 - [`file_picker`](https://pub.dev/packages/file_picker) 13.x — CSV/backup save + open (static `FilePicker.saveFile` / `pickFile`, web download included)
 - `vodozemac` (Ed25519 verify), [`canonical_json`](https://pub.dev/packages/canonical_json) + [`crypto`](https://pub.dev/packages/crypto) (SHA-256) — G6 signed records
 - [`cryptography`](https://pub.dev/packages/cryptography) 2.9 (Apache-2.0) — encrypted backups (G34): its **pure-Dart** `DartArgon2id` + `DartAesGcm` on every platform
@@ -1263,8 +1264,8 @@ connected + battery not low; `lib/core/background/`) fixes that:
   local mode; the round still honours `background_sync_enabled`). Tests:
   `test/core/background_round_link_test.dart`,
   `background_sync_scheduling_test.dart`.
-- The app manifest removes the plugin's `POST_NOTIFICATIONS` permission (no
-  expedited / foreground workers). Web/iOS: no background sync.
+- No expedited / foreground workers. (`POST_NOTIFICATIONS` is declared since
+  G72 — the change notifications below.) Web/iOS: no background sync.
 - **Debug builds only (G36):** the settings page's *Debug* section has *Run background sync now
   (debug)* (`kDebugMode`) → `BackgroundScheduler.runOnce(delay: 15 s)` = a
   WorkManager one-off task (`moneyledger-background-sync-once`, same
@@ -1278,6 +1279,65 @@ connected + battery not low; `lib/core/background/`) fixes that:
   it changes when WorkManager reschedules, e.g. after a force stop); logs are
   tagged `[bg]` / `[bg-gate]` — debug / profile builds only (G44: release
   builds are silent).
+
+### Change notifications (G72, Android)
+
+Local notifications about **others'** changes, posted by the **background
+round** (G31) — on by default (Leo 2026-10-17). `lib/features/notifications/`.
+- **Plugin:** `flutter_local_notifications` 22 (BSD-3; no push / Firebase /
+  Play services — F-Droid ok). Needs core library desugaring
+  (`android/app/build.gradle.kts`: `isCoreLibraryDesugaringEnabled` +
+  `desugar_jdk_libs`). The manifest now **declares** `POST_NOTIFICATIONS`
+  (G31 used to remove workmanager's copy; still no expedited / foreground
+  workers) — pinned by `test/core/android_manifest_test.dart`. Status-bar
+  icon `res/drawable/ic_stat_notify.xml` (vector, from
+  `tool/brand/render_icons.py`; kept by `res/raw/keep.xml`).
+- **What is announced** (`change_notices.dart`, pure `planChangeNotices` +
+  `collectChangeNotices`): the round notes `HistoryDao.latestId()` before
+  it syncs (only while `notifications_enabled`, `AppSettings`, per ledger,
+  default on); after the Matrix + link phases every `record_history` entry
+  above it with source `inbound` of kind expense / settlement — newest
+  version per record; *added* (not held before — `recordsWithEntriesUpTo`;
+  added + deleted in the round = skipped) / *edited* / *deleted*. Not ours:
+  signer = this account (another own device) or link `by` = "me"
+  (`link_channels.my_participant_id` or the participant this identity
+  claims). A group without history before the round → *"You were added to
+  this group"* when someone else wrote any of it. One notification per
+  group (`noticeIdFor`: FNV-1a, replaced by the next round), title = group
+  name, body "Anna added Dinner · €42.10" / "3 changes by Anna, Ben" (+ an
+  inbox list, ≤ `kNoticeMaxLines`); payload = group id. Texts via
+  `noticeText(n, l)` in the device language (`deviceLocalizations()` —
+  no widget tree in the headless engine). Channel `others_changes`
+  ("Changes by others"), `visibility: private`. Stopped before the step →
+  nothing posted (not announced later either).
+  `runBackgroundRound(notify:)` (native: `createPlatformNotifications()
+  ?.show`); `BackgroundRoundResult.notified`.
+- **History fix:** the G48 history of a link-group expense / payment now
+  keeps its `by` (`_expenseFromCompanion` / `_settlementFromCompanion`
+  carry `linkAuthor`; a companion without it re-reads the row).
+- **App side** (`notifications_provider.dart`): `notificationPlatformProvider`
+  (`NotificationPlatform` seam: permission, show, launch / tap payloads;
+  null on the web / desktop / test VM — tests use
+  `FakeNotificationPlatform`), `notificationsSupportedProvider`
+  (= background sync supported + a platform). **Permission prompt** (Android
+  13+): `notificationPermissionPromptProvider`, watched by `GroupsPage` (not
+  in the offline demo) — once per ledger (`notification_permission_asked`)
+  when notifications + background sync are on and a group is **shared**
+  (`sharedGroupExistsProvider`: a link group, or another active Matrix
+  account — `MembersDao.watchHasOtherClaimedMember`); pure
+  `shouldAskNotificationPermission`. **Settings:** `NotificationsTile`
+  (`notificationsSwitch`) in *Sync* (Matrix) / local *Sync* (with a link
+  group): turning it on asks again; disabled while background sync is off
+  (`notificationsNeedBackgroundSync`); OS-blocked → `notificationsBlocked`.
+  **Tap:** `NotificationTapListener` (App builder) opens
+  `/groups/<id>/expenses` for the launching / a tapped notification once
+  the router is past splash / onboarding / sign-in (`notificationOpenAllowed`).
+- Privacy: `privacyBackgroundBody` + PRIVACY.md (pinned equal by
+  `test/g72_notifications_test.dart`). Limits: `docs/open-points.md`.
+  Tests: `test/features/change_notices_test.dart`,
+  `test/g72_notifications_test.dart`, `background_round_test.dart` /
+  `background_round_link_test.dart` (G72 groups), G71 guideline test,
+  smoke 7.13.
 
 ### Anti-entropy (Phase C)
 

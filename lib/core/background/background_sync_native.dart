@@ -17,6 +17,7 @@ import 'package:workmanager/workmanager.dart';
 
 import '../../features/auth/auth_provider.dart';
 import '../../features/history/snapshot_store_platform.dart';
+import '../../features/notifications/notification_platform.dart';
 import '../link/link_sync_engine.dart';
 import '../session/app_session.dart';
 import '../session/device_prefs.dart';
@@ -231,6 +232,8 @@ Future<BackgroundRoundResult?> runBackgroundTask() async {
       // works in this headless engine (WorkManager registers the plugins;
       // buildMatrixClient resolves its store the same way).
       snapshotStores: createPlatformSnapshotStore,
+      // G72: local notifications about others' changes.
+      notify: createPlatformNotifications()?.show,
     );
   } finally {
     gate.release();

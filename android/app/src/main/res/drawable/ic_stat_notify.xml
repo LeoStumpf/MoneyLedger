@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- G72: notification status-bar icon. Rendered by tool/brand/render_icons.py. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M3.466,5.931h8.724a2.466,2.466 0 0 1 0,4.931h-8.724a2.466,2.466 0 0 1 0,-4.931z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M18.638,5.931h1.897a2.466,2.466 0 0 1 0,4.931h-1.897a2.466,2.466 0 0 1 0,-4.931z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M3.466,13.138h1.897a2.466,2.466 0 0 1 0,4.931h-1.897a2.466,2.466 0 0 1 0,-4.931z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M11.810,13.138h8.724a2.466,2.466 0 0 1 0,4.931h-8.724a2.466,2.466 0 0 1 0,-4.931z"/>
+</vector>

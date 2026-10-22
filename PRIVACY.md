@@ -71,10 +71,16 @@ crash reporting, no advertising ID and no tracking of any kind.
 On Android, MoneyLedger can sync about every 15 minutes while the app is closed
 (only with a network connection and not on low battery). It uses the same
 encrypted messages to your homeserver and, for groups you share with an invite
-link, the same encrypted copies on the Nostr relays (also without an account),
-and shows no notifications. With a Matrix account you can turn it off in
-Settings; without one it runs only while you have a group shared with an invite
-link. The web version syncs only while its tab is open.
+link, the same encrypted copies on the Nostr relays (also without an account).
+When it finds expenses or payments that someone else added, changed or deleted,
+it shows a notification with the group's name, who did it, the description and
+the amount (on by default; Settings → Sync → Notifications). These
+notifications are made on the device itself — no push service, no Google or
+Firebase, nothing is sent for them — and on the lock screen they follow
+Android's setting for sensitive content. With a Matrix account you can turn
+background sync off in Settings; without one it runs only while you have a
+group shared with an invite link. The web version syncs only while its tab is
+open and shows no notifications.
 
 ## Local mode (without an account)
 

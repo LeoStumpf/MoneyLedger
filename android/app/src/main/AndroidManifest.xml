@@ -3,11 +3,12 @@
     <!-- Required for release builds to reach the Matrix homeserver (Flutter only
          adds it to the debug/profile manifests). -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- G31: the workmanager plugin declares POST_NOTIFICATIONS for expedited /
-         foreground workers. The periodic background sync uses neither and the
-         app never shows notifications, so drop it from the merged manifest. -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"
-        tools:node="remove"/>
+    <!-- G72: the background round notifies about others' changes (local
+         notifications via flutter_local_notifications, no push / Firebase).
+         Android 13+ asks for it at runtime (first shared group / the
+         settings switch). (G31 removed workmanager's copy — the app still
+         uses no expedited / foreground workers.) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- G32: no Android auto-backup / device transfer. The app data holds the
          ledger databases and the Matrix session incl. its crypto keys; a
          restore onto a new phone would resurrect a stale crypto identity.

@@ -75,6 +75,11 @@ dependencies:
   # (maxWidth / imageQuality — no extra image library). BSD-3-Clause, no
   # Google services (its Play-services hook is removed in the manifest).
   image_picker: ^1.2.4
+  # G72: local notifications from the background round about others'
+  # changes (Android only) + the Android 13 permission prompt —
+  # BSD-3-Clause, no Firebase / Google services (F-Droid ok). Needs core
+  # library desugaring (android/app/build.gradle.kts).
+  flutter_local_notifications: ^22.3.2
 
 dev_dependencies:
   flutter_test:

@@ -43,6 +43,8 @@ import 'package:money_ledger/features/link/relay_settings_page.dart';
 import 'package:money_ledger/features/sync/group_sync_sheet.dart';
 import 'package:money_ledger/features/receipts/receipt_store.dart';
 import 'package:money_ledger/features/settings/settings_page.dart';
+import 'package:money_ledger/features/notifications/notifications_provider.dart';
+import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/features/welcome/welcome_page.dart';
 import 'package:money_ledger/features/welcome/why_matrix_page.dart';
 import 'package:money_ledger/models/exchange_rates.dart';
@@ -56,6 +58,7 @@ import 'package:money_ledger/features/payment/payment_details_page.dart';
 
 import 'helpers/fake_device_gateway.dart';
 import 'helpers/fake_ledger_network.dart';
+import 'helpers/fake_notifications.dart';
 import 'helpers/in_memory_database.dart';
 import 'helpers/l10n.dart';
 import 'helpers/test_providers.dart';
@@ -342,6 +345,36 @@ void main() {
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(_routed(const SettingsPage(), _overrides()));
     await tester.pumpAndSettle();
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  // G72: the settings page on Android with the notifications switch (and
+  // the background-sync switch above it).
+  testWidgets('G72 settings page with notifications', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(
+        const SettingsPage(),
+        _overrides(
+          extra: [
+            backgroundSyncSupportedProvider.overrideWithValue(true),
+            backgroundSyncEnabledProvider.overrideWith(
+              (_) => Stream.value(true),
+            ),
+            notificationPlatformProvider.overrideWithValue(
+              FakeNotificationPlatform(granted: false),
+            ),
+            notificationsEnabledProvider.overrideWith(
+              (_) => Stream.value(true),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('notificationsSwitch')), findsOneWidget);
     await _expectGuidelines(tester);
     handle.dispose();
   });

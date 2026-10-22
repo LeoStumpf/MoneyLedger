@@ -13,6 +13,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/features/notifications/change_notices.dart';
 import 'package:money_ledger/core/background/background_round.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
@@ -233,6 +234,7 @@ void main() {
     _Session? session,
     Future<void>? abort,
     void Function()? onOpenSession,
+    Future<void> Function(List<ChangeNotice>)? notify,
   }) => runBackgroundRound(
     tryAcquire: () async => true,
     whichLedger: () async => ledger,
@@ -250,6 +252,7 @@ void main() {
     followUpWait: Duration.zero,
     inFlightGrace: const Duration(milliseconds: 500),
     clock: () => now,
+    notify: notify,
   );
 
   /// EVENT frames of kind 31847 that [pubkey] sent to [relay].
@@ -265,6 +268,28 @@ void main() {
             (f[1] as Map)['kind'] == kLinkEventKind,
       )
       .length;
+
+  test("G72: a link group — the peer's new expense is announced with its "
+      "author's name", () async {
+    final (a, annaChannel) = await anna();
+    final name = await benJoinedAndClosed(annaChannel);
+    now += 60000;
+    await putExpense(a.read(appDatabaseProvider), 'e2', at: now);
+    await settle(a);
+
+    final posted = <ChangeNotice>[];
+    final result = await round(
+      dbName: name,
+      notify: (n) async => posted.addAll(n),
+    );
+    expect(result.status, BackgroundRoundStatus.completed, reason: '$result');
+    expect(result.notified, 1);
+    final c = posted.single.changes.single;
+    expect(posted.single.groupName, 'Trip');
+    expect(c.description, 'Dinner e2');
+    expect(c.author, 'Anna');
+    expect(c.action, NoticeAction.added);
+  });
 
   test('local mode: fetches + merges what the peer published while the app '
       'was closed, publishes once after the merge, closes every connection — '

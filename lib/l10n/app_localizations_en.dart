@@ -901,7 +901,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyBackgroundBody =>
-      'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and, for groups you share with an invite link, the same encrypted copies on the Nostr relays (also without an account), and shows no notifications. With a Matrix account you can turn it off in Settings; without one it runs only while you have a group shared with an invite link. The web version syncs only while its tab is open.';
+      'On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and, for groups you share with an invite link, the same encrypted copies on the Nostr relays (also without an account). When it finds expenses or payments that someone else added, changed or deleted, it shows a notification with the group\'s name, who did it, the description and the amount (on by default; Settings → Sync → Notifications). These notifications are made on the device itself — no push service, no Google or Firebase, nothing is sent for them — and on the lock screen they follow Android\'s setting for sensitive content. With a Matrix account you can turn background sync off in Settings; without one it runs only while you have a group shared with an invite link. The web version syncs only while its tab is open and shows no notifications.';
 
   @override
   String get privacyCsvTitle => 'Export, backup and import';
@@ -3918,6 +3918,92 @@ class AppLocalizationsEn extends AppLocalizations {
       count,
       locale: localeName,
       other: 'Paid by $count people',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationsTitle => 'Notifications';
+
+  @override
+  String get notificationsBody =>
+      'Tell me when others add, change or delete expenses or payments (checked during background sync).';
+
+  @override
+  String get notificationsNeedBackgroundSync =>
+      'Needs background sync — turn it on above.';
+
+  @override
+  String get notificationsBlocked =>
+      'Notifications are blocked for MoneyLedger — allow them in Android\'s app settings.';
+
+  @override
+  String get notificationChannelName => 'Changes by others';
+
+  @override
+  String get notificationChannelDescription =>
+      'When someone adds, changes or deletes an expense or payment in your groups.';
+
+  @override
+  String get notifySomeone => 'Someone';
+
+  @override
+  String get notifyAnExpense => 'an expense';
+
+  @override
+  String notifyExpenseAdded(String name, String what, String amount) {
+    return '$name added $what · $amount';
+  }
+
+  @override
+  String notifyExpenseEdited(String name, String what) {
+    return '$name changed $what';
+  }
+
+  @override
+  String notifyExpenseDeleted(String name, String what) {
+    return '$name deleted $what';
+  }
+
+  @override
+  String notifyPaymentAdded(
+    String name,
+    String from,
+    String to,
+    String amount,
+  ) {
+    return '$name recorded a payment: $from → $to · $amount';
+  }
+
+  @override
+  String notifyPaymentEdited(String name, String from, String to) {
+    return '$name changed a payment: $from → $to';
+  }
+
+  @override
+  String notifyPaymentDeleted(String name, String from, String to) {
+    return '$name deleted a payment: $from → $to';
+  }
+
+  @override
+  String notifySeveralChanges(int count, String names) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes by $names',
+      one: '1 change by $names',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String notifyAddedToGroup(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'You were added to this group — $count entries.',
+      one: 'You were added to this group — 1 entry.',
+      zero: 'You were added to this group.',
     );
     return '$_temp0';
   }

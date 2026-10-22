@@ -274,6 +274,49 @@ class HistoryDao extends DatabaseAccessor<AppDatabase> with _$HistoryDaoMixin {
           .watch()
           .map((rows) => [for (final r in rows) ?_toEntry(r)]);
 
+  /// G72: every entry appended after [afterId] (append order) — what a
+  /// background round stored.
+  Future<List<HistoryEntry>> entriesAfter(int afterId) =>
+      (select(recordHistory)
+            ..where((t) => t.id.isBiggerThanValue(afterId))
+            ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+          .get()
+          .then((rows) => [for (final r in rows) ?_toEntry(r)]);
+
+  /// G72: the groups with at least one entry up to [upToId] (held before).
+  Future<Set<String>> groupsWithEntriesUpTo(int upToId) async {
+    final q = selectOnly(recordHistory, distinct: true)
+      ..addColumns([recordHistory.groupId])
+      ..where(recordHistory.id.isSmallerOrEqualValue(upToId));
+    final rows = await q.get();
+    return {for (final r in rows) r.read(recordHistory.groupId)!};
+  }
+
+  /// G72: which of [recordIds] have an entry up to [upToId], as
+  /// `"<kind wire>:<record id>"` keys (the record was held before).
+  Future<Set<String>> recordsWithEntriesUpTo(
+    int upToId,
+    Iterable<String> recordIds,
+  ) async {
+    final ids = recordIds.toSet().toList();
+    final out = <String>{};
+    for (var i = 0; i < ids.length; i += 500) {
+      final chunk = ids.sublist(i, i + 500 > ids.length ? ids.length : i + 500);
+      final q = selectOnly(recordHistory, distinct: true)
+        ..addColumns([recordHistory.kind, recordHistory.recordId])
+        ..where(
+          recordHistory.id.isSmallerOrEqualValue(upToId) &
+              recordHistory.recordId.isIn(chunk),
+        );
+      for (final r in await q.get()) {
+        out.add(
+          '${r.read(recordHistory.kind)}:${r.read(recordHistory.recordId)}',
+        );
+      }
+    }
+    return out;
+  }
+
   /// Number of history rows of this account.
   Future<int> rowCount() async {
     final c = recordHistory.id.count();

@@ -23,6 +23,22 @@ class MembersDao extends DatabaseAccessor<AppDatabase> with _$MembersDaoMixin {
   Stream<List<MemberModel>> watchAllMembers() =>
       select(members).watch().map((rows) => rows.map(_toModel).toList());
 
+  /// G72: whether some group has an active participant claimed by another
+  /// Matrix account than [me] (a group shared over Matrix) — the moment the
+  /// notification permission is worth asking for.
+  Stream<bool> watchHasOtherClaimedMember(String me) =>
+      (select(members)..where(
+            (t) =>
+                t.status.equals('active') &
+                t.matrixId.isNotNull() &
+                t.matrixId.equals(me).not() &
+                // Only Matrix IDs — not local mode's `local:self`.
+                t.matrixId.like('@%:%'),
+          ))
+          .watch()
+          .map((rows) => rows.any((r) => isValidMxid(r.matrixId)))
+          .distinct();
+
   /// Participant ids of the group's currently-active participants. NOTE: these
   /// are participant ids, not necessarily MXIDs — use [activeClaimedMatrixIds]
   /// for replication targets.

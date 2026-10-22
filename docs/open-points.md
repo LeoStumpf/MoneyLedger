@@ -401,6 +401,33 @@ peers'), and SAS works with other members' devices (members page). Open:
 - The EPC remittance text is the group name (≤ 140 characters, cut to the
   331-byte limit); some banks only accept Latin characters there.
 
+### Change notifications (G72) — limits
+- **Only from the Android background round** (every ~15 min, network +
+  battery constraints): while the app runs (or a round delegates to the
+  running app) nothing is posted — the changes are on screen. The web has
+  none (no service worker / Web Push — that would need a push server).
+- **One notification per group, replaced by the next round's** (stable id):
+  an unread "Anna added Dinner" is overwritten by a later round's changes of
+  that group (not merged).
+- **A round stopped early** (time budget / app started / OS stop) before the
+  notify step posts nothing for what it already applied; a later round
+  doesn't announce those changes either (they are in the app).
+- **What counts:** inbound expense / payment versions (G48 history, source
+  `inbound`) not written by this account (another own device) or by "me" in
+  a link group; a group that arrived in the round → "You were added"
+  (also when a new own device restores groups others created — rare in a
+  background round). Member / name / category changes are not announced.
+  Unsigned link versions without `by` show *Someone*.
+- **Permission:** asked once per ledger on the groups page once a group is
+  shared (Android 13+ shows the dialog at most twice); afterwards only the
+  settings switch asks again, and after two denials only Android's app
+  settings help (no deep link to them yet). The blocked hint in the settings
+  refreshes on reopening the page, not on returning from Android's
+  settings.
+- **Dependency:** `flutter_local_notifications` needs core library
+  desugaring (`desugar_jdk_libs`, GPL-2.0 + Classpath Exception) in the
+  Android build; F-Droid-compatible (no Google services).
+
 ### Real-device smoke tests
 Flows that can only be verified on a real device + homeserver, not in
 `flutter test` or the web build (`docs/smoke-test.md`):

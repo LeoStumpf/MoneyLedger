@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/sync/ledger_sync_host.dart';
 import 'features/devices/devices_page.dart';
 import 'features/link/link_join.dart';
+import 'features/notifications/notifications_provider.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -32,7 +33,14 @@ class App extends ConsumerWidget {
           // G52 step 7: an opened invite link → the join page.
           child: JoinLinkListener(
             go: router.go,
-            child: child ?? const SizedBox.shrink(),
+            // G72: a tapped change notification opens its group.
+            child: NotificationTapListener(
+              go: router.go,
+              location: () =>
+                  router.routerDelegate.currentConfiguration.uri.path,
+              locationChanges: router.routerDelegate,
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
       ),
