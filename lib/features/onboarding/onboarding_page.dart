@@ -4,6 +4,8 @@ import '../../core/widgets/action_error.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/l10n/l10n.dart';
+import '../../core/background/background_sync_provider.dart'
+    show linkGroupsExistProvider;
 import '../../core/session/app_session.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
@@ -21,6 +23,7 @@ class OnboardingPage extends ConsumerWidget {
   static List<(IconData, String, String)> _points(
     AppLocalizations l, {
     required bool local,
+    required bool linkGroups,
   }) => local
       ? [
           (
@@ -33,7 +36,11 @@ class OnboardingPage extends ConsumerWidget {
           (
             Icons.backup_outlined,
             l.onboardingBackupTitle,
-            l.onboardingBackupLocalBody,
+            // DEV-J: right after joining a shared group "nobody else has a
+            // copy" isn't true — the others (and anyone with the link) do.
+            linkGroups
+                ? l.onboardingBackupLinkBody
+                : l.onboardingBackupLocalBody,
           ),
         ]
       : [
@@ -63,6 +70,8 @@ class OnboardingPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final local = ref.watch(localModeActiveProvider);
+    final linkGroups =
+        local && (ref.watch(linkGroupsExistProvider).value ?? false);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     // G17: one designed page — logo hero, three cards, and the button
@@ -106,6 +115,7 @@ class OnboardingPage extends ConsumerWidget {
                       for (final (icon, title, body) in _points(
                         l,
                         local: local,
+                        linkGroups: linkGroups,
                       ))
                         Padding(
                           padding: const EdgeInsets.only(bottom: Insets.m),

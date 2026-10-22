@@ -115,7 +115,8 @@ LinkGroupPreview? linkGroupPreviewFrom(List<OpenedLinkPart> parts) {
   for (final p in content) {
     if (p.header.group != groupId) continue;
     final me = p.header.me;
-    if (me != null) used.add(me);
+    // DEV-J: a phone that removed its copy no longer "uses" that person.
+    if (me != null && !p.header.left) used.add(me);
     final meta = p.content['meta'];
     if (meta is Map<String, dynamic>) {
       try {

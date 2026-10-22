@@ -105,8 +105,9 @@ class RestorePointsService {
     if (!go()) return false;
     final groups = (jsonDecode(json) as Map<String, dynamic>)['groups'] as List;
     if (groups.isEmpty) {
-      // Nothing to protect (yet) — no empty snapshots.
-      await history.markSnapshotChecked(day);
+      // Nothing to protect (yet) — no empty snapshots. The day is NOT
+      // marked checked (G58, DEV-J): a group created later today gets its
+      // first restore point at the next start / background round today.
       return false;
     }
     await s.write(

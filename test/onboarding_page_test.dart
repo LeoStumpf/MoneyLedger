@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/settings_dao.dart';
 import 'package:money_ledger/core/session/device_prefs.dart';
@@ -48,11 +49,13 @@ void main() {
                 'local_profile': '{"name":"Lea","created_at":1}',
               }),
             ),
+            linkGroupsExistProvider.overrideWith((_) => Stream.value(false)),
           ],
         ),
       );
       await tester.pumpAndSettle();
 
+      expect(find.text(en.onboardingBackupLocalBody), findsOneWidget);
       expect(find.text('No account needed'), findsOneWidget);
       expect(find.text('Keep a copy'), findsOneWidget);
       // G54: "invite with a link" replaces "share later".
@@ -110,6 +113,43 @@ void main() {
     expect(find.text("Couldn't save on this device"), findsOneWidget);
     expect(find.textContaining('disk full'), findsNothing);
     expect(find.text('groups-home'), findsNothing);
+  });
+
+  testWidgets('no account, right after joining a link group (DEV-J): '
+      "\"Keep a copy\" doesn't say nobody else has one", (tester) async {
+    final db = openTestDatabase();
+    addTearDown(db.close);
+    await tester.pumpWidget(
+      _app(
+        db,
+        overrides: [
+          devicePrefsStoreProvider.overrideWithValue(
+            InMemoryDevicePrefsStore({
+              'welcome_seen': '1',
+              'local_profile': '{"name":"Lea","created_at":1}',
+            }),
+          ),
+          linkGroupsExistProvider.overrideWith((_) => Stream.value(true)),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(en.onboardingBackupLinkBody), findsOneWidget);
+    expect(find.text(en.onboardingBackupLocalBody), findsNothing);
+  });
+
+  test('backup hints name the settings section since G70 (DEV-J)', () {
+    for (final l in [en, de]) {
+      for (final text in [
+        l.onboardingBackupBody,
+        l.onboardingBackupLocalBody,
+        l.onboardingBackupLinkBody,
+        l.localModeBackupHint,
+        l.backupBeforeExitTip,
+      ]) {
+        expect(text, contains(l.settingsSectionBackup));
+      }
+    }
   });
 }
 

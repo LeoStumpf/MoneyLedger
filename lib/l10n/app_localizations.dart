@@ -863,7 +863,7 @@ abstract class AppLocalizations {
   /// No description provided for @backupBeforeExitTip.
   ///
   /// In en, this message translates to:
-  /// **'Tip: back up all groups first (Settings → Back up all groups).'**
+  /// **'Tip: back up all groups first (Settings → Backup & restore).'**
   String get backupBeforeExitTip;
 
   /// No description provided for @backupBeforeExit.
@@ -2135,7 +2135,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingBackupBody.
   ///
   /// In en, this message translates to:
-  /// **'Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).'**
+  /// **'Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Backup & restore).'**
   String get onboardingBackupBody;
 
   /// No description provided for @csvPreviewTitle.
@@ -3035,7 +3035,7 @@ abstract class AppLocalizations {
   /// G40 explanation sheet
   ///
   /// In en, this message translates to:
-  /// **'Back up regularly (Settings → Back up all groups) — nobody else has a copy.'**
+  /// **'Back up regularly (Settings → Backup & restore) — nobody else has a copy.'**
   String get localModeBackupHint;
 
   /// G40 explanation sheet
@@ -3173,8 +3173,14 @@ abstract class AppLocalizations {
   /// Onboarding card (local mode)
   ///
   /// In en, this message translates to:
-  /// **'Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.'**
+  /// **'Nobody else has a copy of your ledger. Save a backup now and then (Settings → Backup & restore) and keep it somewhere safe.'**
   String get onboardingBackupLocalBody;
+
+  /// DEV-J: onboarding Keep a copy card without an account when a link group exists (e.g. right after joining one)
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone with the invite link has a copy of a shared group — and can change or empty it. Save a backup now and then (Settings → Backup & restore) and keep it somewhere safe.'**
+  String get onboardingBackupLinkBody;
 
   /// Privacy policy section title (G40)
   ///
@@ -5065,6 +5071,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Synced through the relays'**
   String get linkCloudSynced;
+
+  /// DEV-J: link group sync icon tooltip while no relay can be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — no relay reachable'**
+  String get linkCloudOffline;
+
+  /// DEV-J: link group sync sheet summary while no relay can be reached
+  ///
+  /// In en, this message translates to:
+  /// **'No relay can be reached right now — are you offline? What changed since the last sync is sent as soon as the connection is back.'**
+  String get linkSyncOffline;
 
   /// G68: button in the sync sheet
   ///

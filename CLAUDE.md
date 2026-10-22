@@ -792,6 +792,8 @@ groups over Nostr. **No link channel → no connection, no NIP-11 request.**
   `created_at` via `LinkDao.nextCreatedAt`, `expiration` +30 d, `alt`),
   retired parts header-only (+1 d). Recorded only when every event reached
   ≥ 1 relay. Nothing is published while "me" (`my_participant_id`) is unset.
+  A relay added in the settings (`_newRelays`, DEV-J) gets the snapshot on
+  its own, retried with the back-off until it holds every part.
 - **Relays** (`link_relay_policy.dart`): `rate-limited:` 1 min → 1 h back-off;
   `blocked:` / `restricted:` / `invalid:` (not "too large") / `pow:` /
   `auth-required:` → skipped until restart; `replaced:` → fetch our newest
@@ -807,7 +809,13 @@ groups over Nostr. **No link channel → no connection, no NIP-11 request.**
   one transaction. Merges trigger a republish (unchanged digest → nothing).
 - **Status:** `linkGroupSyncStatusProvider(groupId)` → `LinkGroupSyncStatus`
   (synced / pending / failing + `LinkSyncProblem`), engine-local (not
-  `SyncHealth`).
+  `SyncHealth`). **DEV-J:** `NostrRelayPool.offline` (no relay connected,
+  each failed) → `LinkSyncProblem.offline` overlaid on every group (cloud
+  *Offline*); row mark `isLinkRecordPending` (not synced + newer than our
+  last delivered snapshot); back online → unsynced groups publish at once;
+  live reconnect back-off ≤ 30 s (`linkReconnectBackoffProvider`), resume →
+  `reconnectNow`. Leave / delete unpublish parts carry `left: true` →
+  receivers drop that publisher's `link_peers` row.
 - **Seams:** `openChannel` (`link_channel.dart`: drops our own claim, sets
   "me", plain link versions, fresh secret + key; refuses signed-meta groups —
   G53), `refresh(groupId:)` (join / pull / background), `publishAll()`,
@@ -1368,7 +1376,9 @@ round** (G31) — on by default (Leo 2026-10-17). `lib/features/notifications/`.
   `shouldAskNotificationPermission`. **Settings:** `NotificationsTile`
   (`notificationsSwitch`) in *Sync* (Matrix) / local *Sync* (with a link
   group): turning it on asks again; disabled while background sync is off
-  (`notificationsNeedBackgroundSync`); OS-blocked → `notificationsBlocked`.
+  (`notificationsNeedBackgroundSync`); not allowed → the switch shows off;
+  `notificationsBlocked` only after the 2nd denial
+  (`notification_permission_denials`, `notificationsBlockedFor` — smoke 7.13).
   **Tap:** `NotificationTapListener` (App builder) opens
   `/groups/<id>/expenses` for the launching / a tapped notification once
   the router is past splash / onboarding / sign-in (`notificationOpenAllowed`).
@@ -1719,7 +1729,8 @@ a backup file / digest:
   full backup (`BackupService.exportJson`, `account` = the ledger identity,
   so local mode's file restores like local mode's backup, G41); written only
   if its SHA-256 differs from the last snapshot's (`snapshot_fingerprint`;
-  computed with `exported_at: 0`) and the ledger has a group, to
+  computed with `exported_at: 0`) and the ledger has a group (an empty
+  ledger doesn't mark the day checked — DEV-J), to
   `<app support>/snapshots/<ledger DB name>/YYYY-MM-DD.json` (temp file +
   rename, `FileSnapshotStore`); rotation (pure `snapshotsToKeep`): the 7
   newest + the newest of each of the next 4 older calendar weeks.

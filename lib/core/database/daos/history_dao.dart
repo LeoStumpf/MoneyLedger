@@ -106,6 +106,13 @@ class HistoryEntry {
 
   /// The account that signed this version, if any.
   String? get signer => RecordSignature.fromJson(content['sig'])?.user;
+
+  /// G52: the participant an unsigned link version names as its writer
+  /// (`by` — a display hint, not authenticated), if any.
+  String? get linkAuthor => switch (content['by']) {
+    final String by when by.isNotEmpty => by,
+    _ => null,
+  };
 }
 
 /// Appends a history entry for a version an LWW upsert just stored — called

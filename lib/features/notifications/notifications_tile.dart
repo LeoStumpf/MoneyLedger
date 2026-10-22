@@ -6,8 +6,9 @@ import '../../core/l10n/l10n.dart';
 import 'notifications_provider.dart';
 
 /// G72: settings → *Sync* → *Notifications* (Android only): on by default,
-/// needs background sync (the round posts them); says so when Android
-/// blocks them.
+/// needs background sync (the round posts them); shows off while Android
+/// doesn't allow them (turning it on asks), says so once Android blocks
+/// them for good.
 class NotificationsTile extends ConsumerWidget {
   const NotificationsTile({super.key});
 
@@ -21,7 +22,13 @@ class NotificationsTile extends ConsumerWidget {
     final enabled = ref.watch(notificationsEnabledProvider).value ?? true;
     final background = ref.watch(backgroundSyncEnabledProvider).value ?? true;
     final granted = ref.watch(notificationPermissionProvider).value;
-    final blocked = background && enabled && granted == false;
+    final denials = ref.watch(notificationPermissionDenialsProvider).value ?? 0;
+    // Not allowed (yet): the switch shows off — turning it on asks again.
+    // "Blocked" only once Android stopped asking (2nd denial, smoke 7.13).
+    final blocked =
+        background &&
+        enabled &&
+        notificationsBlockedFor(granted: granted, denials: denials);
     return SwitchListTile(
       key: const Key('notificationsSwitch'),
       secondary: const Icon(Icons.notifications_outlined),
@@ -35,7 +42,7 @@ class NotificationsTile extends ConsumerWidget {
         key: const Key('notificationsSubtitle'),
         style: blocked ? TextStyle(color: theme.colorScheme.error) : null,
       ),
-      value: background && enabled,
+      value: background && enabled && granted != false,
       onChanged: background ? (v) => setNotificationsEnabled(ref, v) : null,
     );
   }

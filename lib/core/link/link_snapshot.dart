@@ -298,6 +298,11 @@ class LinkSnapshotHeader {
   /// post one); the event carries nothing to merge.
   final bool replaced;
 
+  /// DEV-J: the publisher removed its copy of the group (leave / delete,
+  /// G52 step 10 — the header-only parts before the NIP-09 deletion) — a
+  /// hint only; it drops nothing but that publisher's own peer row.
+  final bool left;
+
   const LinkSnapshotHeader({
     required this.group,
     required this.me,
@@ -306,6 +311,7 @@ class LinkSnapshotHeader {
     required this.app,
     this.locked = false,
     this.replaced = false,
+    this.left = false,
   });
 
   /// A header-only part overwriting a part no longer in use.
@@ -349,6 +355,7 @@ LinkSnapshotHeader parseLinkSnapshotHeader(Map<String, dynamic> json) {
     app: app is String ? app : null,
     locked: json['locked'] == true,
     replaced: json['replaced'] == true,
+    left: json['left'] == true,
   );
 }
 

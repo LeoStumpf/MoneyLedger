@@ -46,6 +46,18 @@ final notificationPermissionProvider = FutureProvider.autoDispose<bool?>((
   return platform?.permissionGranted();
 });
 
+/// How often the permission was denied in a row (0 without a ledger — the
+/// signed-out placeholder DB has no rows). Invalidated after a request.
+final notificationPermissionDenialsProvider = FutureProvider.autoDispose<int>(
+  (ref) => ref.watch(settingsDaoProvider).notificationPermissionDenials(),
+);
+
+/// Whether Android blocks the notifications for good (pure): not granted
+/// and denied at least twice — after one *Don't allow* Android still shows
+/// its dialog when asked again (smoke 7.13).
+bool notificationsBlockedFor({required bool? granted, required int denials}) =>
+    granted == false && denials >= 2;
+
 /// Whether the open ledger has a group shared with someone else — a link
 /// group or another Matrix account in a group.
 final sharedGroupExistsProvider = StreamProvider.autoDispose<bool>((ref) {
@@ -99,8 +111,12 @@ final notificationPermissionPromptProvider = FutureProvider.autoDispose<void>((
     }
     // Marked first: a dialog dismissed by a crash / kill is not repeated.
     await dao.markNotificationPermissionAsked();
-    await platform.requestPermission();
-    if (ref.mounted) ref.invalidate(notificationPermissionProvider);
+    final ok = await platform.requestPermission();
+    await dao.recordNotificationPermissionResult(ok);
+    if (ref.mounted) {
+      ref.invalidate(notificationPermissionProvider);
+      ref.invalidate(notificationPermissionDenialsProvider);
+    }
   } catch (e) {
     // The DB closed under us (account switch) — try again next time.
     debugPrint('[notify] permission prompt skipped: $e');
@@ -115,9 +131,11 @@ Future<void> setNotificationsEnabled(WidgetRef ref, bool on) async {
   await dao.setNotificationsEnabled(on);
   if (on && platform != null) {
     await dao.markNotificationPermissionAsked();
-    await platform.requestPermission();
+    final ok = await platform.requestPermission();
+    await dao.recordNotificationPermissionResult(ok);
   }
   ref.invalidate(notificationPermissionProvider);
+  ref.invalidate(notificationPermissionDenialsProvider);
 }
 
 /// Pages a tapped notification must not jump away from: start-up, sign-in

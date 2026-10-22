@@ -90,6 +90,7 @@ void main() {
     Duration retry = const Duration(hours: 1),
     Duration rateLimit = const Duration(hours: 1),
     Duration pauseGrace = const Duration(seconds: 30),
+    Duration reconnect = const Duration(milliseconds: 20),
   }) {
     final db = openTestDatabase();
     final c = ProviderContainer(
@@ -107,6 +108,10 @@ void main() {
         ),
         linkPublishMinIntervalProvider.overrideWithValue(Duration.zero),
         linkRetryBackoffProvider.overrideWithValue((min: retry, max: retry)),
+        linkReconnectBackoffProvider.overrideWithValue((
+          min: reconnect,
+          max: reconnect,
+        )),
         linkRateLimitBackoffProvider.overrideWithValue((
           min: rateLimit,
           max: rateLimit,
@@ -174,8 +179,8 @@ void main() {
 
   /// Device A: a local-mode group (p1 = me via local:self, p2) + one
   /// expense, then its link channel.
-  Future<_Device> creator() async {
-    final a = device();
+  Future<_Device> creator({Duration retry = const Duration(hours: 1)}) async {
+    final a = device(retry: retry);
     await a.c.read(linkSyncEngineProvider).ready;
     await GroupsDao(a.db).upsertGroupLww(
       groupCompanion(
@@ -560,7 +565,8 @@ void main() {
         () => a.engine.statusOf(_g)?.phase == LinkSyncPhase.failing,
       );
       final s = a.engine.statusOf(_g)!;
-      expect(s.problem, LinkSyncProblem.notDelivered);
+      // DEV-J: no relay connects at all → said as "offline".
+      expect(s.problem, LinkSyncProblem.offline);
       expect(s.consecutiveFailures, greaterThanOrEqualTo(2));
       expect((await a.link.getChannel(_g))!.lastPublishedHash, isNull);
       net.relay(_r1).offline = false;
@@ -955,7 +961,10 @@ void main() {
       'retry back-off is cut short)', () async {
     net.relay(_r1).offline = true;
     net.relay(_r2).offline = true;
-    final a = device(retry: const Duration(hours: 1));
+    final a = device(
+      retry: const Duration(hours: 1),
+      reconnect: const Duration(hours: 1),
+    );
     await a.engine.ready;
     await GroupsDao(a.db).upsertGroupLww(
       groupCompanion(
@@ -975,8 +984,9 @@ void main() {
     );
     final ch = await a.engine.openChannel(_g);
     await eventually(
-      () => a.engine.statusOf(_g)?.problem == LinkSyncProblem.notDelivered,
+      () => a.engine.statusOf(_g)?.problem == LinkSyncProblem.offline,
     );
+    await settle(); // the publish attempts in flight fail too
     net.relay(_r1).offline = false;
     net.relay(_r2).offline = false;
     // Nothing happens for an hour on its own …
@@ -987,6 +997,73 @@ void main() {
     expect(r.anyComplete, isTrue);
     await settle();
     expect(linkEvents(_r1, nostrPublicKey(ch.nostrPriv)), hasLength(1));
+    expect(a.engine.statusOf(_g)!.phase, LinkSyncPhase.synced);
+  });
+
+  test('offline (DEV-J): the status says so and a record written offline is '
+      '"not synced yet"; back online it is published at once (no retry '
+      'back-off)', () async {
+    final a = await creator();
+    await settle();
+    final aPub = nostrPublicKey(a.channel!.nostrPriv);
+    expect(a.engine.statusOf(_g)!.phase, LinkSyncPhase.synced);
+    final before = a.engine.statusOf(_g)!;
+    expect(isLinkRecordPending(before, _t0 - 4000), isFalse);
+
+    // The network goes away: the connections drop, reconnecting fails.
+    for (final r in [_r1, _r2]) {
+      net.relay(r).offline = true;
+      net.relay(r).dropConnections();
+    }
+    await eventually(
+      () => a.engine.statusOf(_g)?.problem == LinkSyncProblem.offline,
+    );
+    final offline = a.engine.statusOf(_g)!;
+    expect(offline.phase, LinkSyncPhase.pending);
+    // What was published before isn't marked …
+    expect(isLinkRecordPending(offline, _t0 - 4000), isFalse);
+    // … an expense added now is.
+    await putExpense(a, 'e2', at: _t0 + 10);
+    await eventually(
+      () async => (await a.link.getChannel(_g))!.lastPublishedAt == _t0,
+    );
+    expect(isLinkRecordPending(a.engine.statusOf(_g), _t0 + 10), isTrue);
+
+    // Back online: reconnected → published right away (the retry back-off
+    // of this device is an hour).
+    clock.ms = _t0 + 1000;
+    for (final r in [_r1, _r2]) {
+      net.relay(r).offline = false;
+    }
+    await eventually(
+      () => a.engine.statusOf(_g)?.phase == LinkSyncPhase.synced,
+    );
+    expect(isLinkRecordPending(a.engine.statusOf(_g), _t0 + 10), isFalse);
+    final snap = await decrypt(a.channel!.secret, linkEvents(_r1, aPub).single);
+    expect(snap['expenses'], hasLength(2));
+  });
+
+  test('a relay added in the settings that missed the first publish is '
+      'retried until it holds our snapshot (DEV-J) — only it', () async {
+    const r3 = 'wss://relay.example.org';
+    final a = await creator(retry: const Duration(milliseconds: 20));
+    await settle();
+    final aPub = nostrPublicKey(a.channel!.nostrPriv);
+    final framesR1 = net.relay(_r1).eventFrames.length;
+    net.relay(r3).offline = true;
+    await a.engine.setRelays([_r1, _r2, r3]);
+    await settle();
+    expect(linkEvents(r3, aPub), isEmpty);
+    expect(a.engine.statusOf(_g)!.phase, LinkSyncPhase.synced);
+    net.relay(r3).offline = false;
+    await eventually(() => linkEvents(r3, aPub).isNotEmpty);
+    await settle();
+    expect(linkEvents(r3, aPub), hasLength(1));
+    expect(
+      net.relay(_r1).eventFrames,
+      hasLength(framesR1),
+      reason: 'the up-to-date relays get nothing again',
+    );
     expect(a.engine.statusOf(_g)!.phase, LinkSyncPhase.synced);
   });
 }

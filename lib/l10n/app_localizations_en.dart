@@ -481,7 +481,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backupBeforeExitTip =>
-      'Tip: back up all groups first (Settings → Back up all groups).';
+      'Tip: back up all groups first (Settings → Backup & restore).';
 
   @override
   String get backupBeforeExit => 'Back up all groups first';
@@ -1317,7 +1317,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingBackupBody =>
-      'Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).';
+      'Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Backup & restore).';
 
   @override
   String get csvPreviewTitle => 'Import CSV?';
@@ -1887,7 +1887,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localModeBackupHint =>
-      'Back up regularly (Settings → Back up all groups) — nobody else has a copy.';
+      'Back up regularly (Settings → Backup & restore) — nobody else has a copy.';
 
   @override
   String get localModeConnectHint =>
@@ -1989,7 +1989,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingBackupLocalBody =>
-      'Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.';
+      'Nobody else has a copy of your ledger. Save a backup now and then (Settings → Backup & restore) and keep it somewhere safe.';
+
+  @override
+  String get onboardingBackupLinkBody =>
+      'Everyone with the invite link has a copy of a shared group — and can change or empty it. Save a backup now and then (Settings → Backup & restore) and keep it somewhere safe.';
 
   @override
   String get privacyLocalTitle => 'Local mode (without an account)';
@@ -3205,6 +3209,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get linkCloudSynced => 'Synced through the relays';
+
+  @override
+  String get linkCloudOffline => 'Offline — no relay reachable';
+
+  @override
+  String get linkSyncOffline =>
+      'No relay can be reached right now — are you offline? What changed since the last sync is sent as soon as the connection is back.';
 
   @override
   String get syncNow => 'Sync now';

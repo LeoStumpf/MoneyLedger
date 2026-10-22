@@ -328,7 +328,7 @@
       "group": {}
     }
   },
-  "backupBeforeExitTip": "Tip: back up all groups first (Settings → Back up all groups).",
+  "backupBeforeExitTip": "Tip: back up all groups first (Settings → Backup & restore).",
   "backupBeforeExit": "Back up all groups first",
   "leave": "Leave",
   "groupNameLabel": "Group name",
@@ -849,7 +849,7 @@
   "backupNudgeLater": "Later",
   "backupNudgeAction": "Back up now",
   "onboardingBackupTitle": "Keep a copy",
-  "onboardingBackupBody": "Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Back up all groups).",
+  "onboardingBackupBody": "Nobody else stores your ledger. Groups with other people are copied to their devices. For groups only you use, sign in on a second device too, or save a backup now and then (Settings → Backup & restore).",
   "csvPreviewTitle": "Import CSV?",
   "csvPreviewNewGroup": "Creates the new group “{name}”.",
   "@csvPreviewNewGroup": {
@@ -1584,7 +1584,7 @@
   "@localModeSheetBody": {
     "description": "G40 explanation sheet"
   },
-  "localModeBackupHint": "Back up regularly (Settings → Back up all groups) — nobody else has a copy.",
+  "localModeBackupHint": "Back up regularly (Settings → Backup & restore) — nobody else has a copy.",
   "@localModeBackupHint": {
     "description": "G40 explanation sheet"
   },
@@ -1690,7 +1690,11 @@
   "@onboardingLocalOnlyBody": {
     "description": "Onboarding card (local mode)"
   },
-  "onboardingBackupLocalBody": "Nobody else has a copy of your ledger. Save a backup now and then (Settings → Back up all groups) and keep it somewhere safe.",
+  "onboardingBackupLocalBody": "Nobody else has a copy of your ledger. Save a backup now and then (Settings → Backup & restore) and keep it somewhere safe.",
+  "onboardingBackupLinkBody": "Everyone with the invite link has a copy of a shared group — and can change or empty it. Save a backup now and then (Settings → Backup & restore) and keep it somewhere safe.",
+  "@onboardingBackupLinkBody": {
+    "description": "DEV-J: onboarding Keep a copy card without an account when a link group exists (e.g. right after joining one)"
+  },
   "@onboardingBackupLocalBody": {
     "description": "Onboarding card (local mode)"
   },
@@ -3228,6 +3232,14 @@
   "linkCloudSynced": "Synced through the relays",
   "@linkCloudSynced": {
     "description": "G52 step 9: link group sync icon tooltip"
+  },
+  "linkCloudOffline": "Offline — no relay reachable",
+  "@linkCloudOffline": {
+    "description": "DEV-J: link group sync icon tooltip while no relay can be reached"
+  },
+  "linkSyncOffline": "No relay can be reached right now — are you offline? What changed since the last sync is sent as soon as the connection is back.",
+  "@linkSyncOffline": {
+    "description": "DEV-J: link group sync sheet summary while no relay can be reached"
   },
   "syncNow": "Sync now",
   "@syncNow": {

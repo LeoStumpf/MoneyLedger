@@ -126,6 +126,11 @@ const kLinkAltText = 'MoneyLedger encrypted group data';
 /// How long a `replaced:` follow-up fetch of our own event may take.
 const kLinkOwnFetchTimeout = Duration(seconds: 5);
 
+/// DEV-J: the live subscription's reconnect backoff caps here (the pool's
+/// own default is 5 min) — the app is in the foreground while it lives, and
+/// the device pass caught up only ~60 s after the network came back.
+const kLinkReconnectMax = Duration(seconds: 30);
+
 /// How long the merge waits for the ledger transport (its crypto verifies
 /// signed versions) before falling back to local verification.
 const kLinkTransportWait = Duration(seconds: 10);
@@ -164,6 +169,12 @@ final linkPublishMinIntervalProvider = Provider<Duration>(
 /// Retry of a publish nobody accepted: first delay, doubling up to the max.
 final linkRetryBackoffProvider = Provider<({Duration min, Duration max})>(
   (ref) => (min: const Duration(minutes: 1), max: const Duration(hours: 1)),
+);
+
+/// DEV-J: the live connections' reconnect back-off (first delay, doubling
+/// up to the max — [kLinkReconnectMax] instead of the pool's 5 min).
+final linkReconnectBackoffProvider = Provider<({Duration min, Duration max})>(
+  (ref) => (min: kRelayReconnectMin, max: kLinkReconnectMax),
 );
 
 /// `rate-limited:` back-off per relay: first delay, doubling up to the max.
@@ -280,6 +291,21 @@ enum LinkSyncProblem {
 
   /// A peer's snapshot couldn't be merged (DB error) — retried later.
   mergeFailed,
+
+  /// DEV-J: no relay can be reached right now (every connection failed) —
+  /// whatever changed since the last publish waits for the connection.
+  offline,
+}
+
+/// DEV-J: whether a record stored with [recordUpdatedAt] may not be on the
+/// relays yet (the ledger row's "not synced yet" mark in a link group): the
+/// group isn't synced and the record is newer than our last delivered
+/// snapshot. Never while this device has no participant (it publishes
+/// nothing; everything it holds came from the relays).
+bool isLinkRecordPending(LinkGroupSyncStatus? status, int recordUpdatedAt) {
+  if (status == null || status.phase == LinkSyncPhase.synced) return false;
+  if (status.problem == LinkSyncProblem.noParticipant) return false;
+  return recordUpdatedAt > (status.lastPublishedAt ?? 0);
 }
 
 /// The §5.3 sync status of one link group.
@@ -380,6 +406,7 @@ class LinkSyncEngine {
   final Duration _debounce;
   final Duration _minInterval;
   final ({Duration min, Duration max}) _retry;
+  final ({Duration min, Duration max}) _reconnect;
   final Duration _refreshCheck;
   final Duration _pauseGrace;
   final bool _verifySignatures;
@@ -399,11 +426,17 @@ class LinkSyncEngine {
   bool _relayInfoChecked = false;
   final _relayChanges = StreamController<void>.broadcast();
 
-  /// Groups to publish even when their snapshot is unchanged (a relay was
-  /// added — it doesn't hold our events yet).
-  final Set<String> _forced = {};
-
   NostrRelayPool? _pool;
+
+  /// DEV-J: the pool says no relay is reachable ([LinkSyncProblem.offline]
+  /// overlays every group's status while true).
+  bool _offline = false;
+
+  /// DEV-J: relays added in [setRelays] that haven't accepted a group's
+  /// snapshot yet — the group is published to them again until they do
+  /// (a delivery counts once ≥ 1 relay accepted, so a slow new relay was
+  /// never retried: "not used yet" in the device pass).
+  final Map<String, Set<String>> _newRelays = {};
   NostrSubscription? _sub;
   StreamSubscription<NostrReceivedEvent>? _subEvents;
   StreamSubscription<Set<TableUpdate>>? _tables;
@@ -463,6 +496,7 @@ class LinkSyncEngine {
       _debounce = ref.read(linkPublishDebounceProvider),
       _minInterval = ref.read(linkPublishMinIntervalProvider),
       _retry = ref.read(linkRetryBackoffProvider),
+      _reconnect = ref.read(linkReconnectBackoffProvider),
       _refreshCheck = ref.read(linkRefreshCheckIntervalProvider),
       _pauseGrace = ref.read(linkPauseGraceProvider),
       _verifySignatures = ref.read(linkVerifySignaturesProvider),
@@ -532,15 +566,67 @@ class LinkSyncEngine {
     if (!_relayChanges.isClosed) _relayChanges.add(null);
   }
 
-  LinkGroupSyncStatus? statusOf(String groupId) => _status[groupId];
+  LinkGroupSyncStatus? statusOf(String groupId) => _effective(_status[groupId]);
 
   /// The status of [groupId]: the current one (if known), then every change.
   Stream<LinkGroupSyncStatus> watchStatus(String groupId) async* {
-    final now = _status[groupId];
+    final now = statusOf(groupId);
     if (now != null) yield now;
     await for (final id in _statusChanges.stream) {
-      final s = _status[id];
+      final s = statusOf(id);
       if (id == groupId && s != null) yield s;
+    }
+  }
+
+  /// DEV-J: [s] as shown while no relay is reachable — pending (failing
+  /// stays failing) with [LinkSyncProblem.offline], unless the problem is
+  /// one the connection doesn't change (refused / too large / no "me").
+  LinkGroupSyncStatus? _effective(LinkGroupSyncStatus? s) {
+    if (s == null || !_offline) return s;
+    switch (s.problem) {
+      case LinkSyncProblem.relaysReject:
+      case LinkSyncProblem.tooLarge:
+      case LinkSyncProblem.noParticipant:
+        return s;
+      case LinkSyncProblem.notDelivered:
+      case LinkSyncProblem.mergeFailed:
+      case LinkSyncProblem.offline:
+      case null:
+        break;
+    }
+    return LinkGroupSyncStatus(
+      phase: s.phase == LinkSyncPhase.failing
+          ? LinkSyncPhase.failing
+          : LinkSyncPhase.pending,
+      lastPublishedAt: s.lastPublishedAt,
+      consecutiveFailures: s.consecutiveFailures,
+      problem: LinkSyncProblem.offline,
+    );
+  }
+
+  /// DEV-J: the pool's connections changed — update [_offline]; back online,
+  /// every group not synced is published right away (its retry back-off cut
+  /// short) and every other one re-checked.
+  void _onConnectivity(NostrRelayPool pool) {
+    if (!_alive || !identical(pool, _pool)) return;
+    _setOffline(pool.offline);
+  }
+
+  void _setOffline(bool offline) {
+    if (!_alive || offline == _offline) return;
+    _offline = offline;
+    debugPrint('[link] relays ${offline ? 'unreachable' : 'reachable again'}');
+    for (final g in _channels.keys) {
+      _emit(g);
+    }
+    if (offline) return;
+    for (final g in [..._channels.keys]) {
+      final s = _status[g];
+      if (s == null || s.phase != LinkSyncPhase.synced) {
+        _retryTimers.remove(g)?.cancel();
+        _lastPublishAt.remove(g);
+      }
+      _schedulePublish(g, delay: Duration.zero);
     }
   }
 
@@ -637,6 +723,10 @@ class LinkSyncEngine {
     _pauseTimer = null;
     if (_sub == null && _channels.isNotEmpty) {
       unawaited(_track(() => _updateSubscription(sinceNewest: true)));
+    } else {
+      // DEV-J: still subscribed (paused < 30 s) — a relay waiting for its
+      // reconnect backoff is tried now.
+      _pool?.reconnectNow();
     }
   }
 
@@ -651,6 +741,7 @@ class LinkSyncEngine {
     if (_debounceTimers.isNotEmpty) return;
     final pool = _pool;
     _pool = null;
+    _setOffline(false);
     await pool?.close();
   }
 
@@ -661,6 +752,8 @@ class LinkSyncEngine {
     _sub = null;
     _subEvents = null;
     _pool = null;
+    // No connections wanted → nothing known about reachability.
+    _setOffline(false);
     await events?.cancel();
     await sub?.close();
     await pool?.close();
@@ -854,9 +947,13 @@ class LinkSyncEngine {
     await _updateSubscription();
     if (!_alive) return;
     unawaited(_track(refreshRelayInfo));
+    for (final set in _newRelays.values) {
+      set.removeWhere((r) => !next.contains(r));
+    }
+    _newRelays.removeWhere((_, set) => set.isEmpty);
     if (added.isEmpty || _roundMode) return;
     for (final g in _channels.keys) {
-      _forced.add(g);
+      (_newRelays[g] ??= {}).addAll(added);
       _schedulePublish(g, delay: Duration.zero);
     }
   });
@@ -902,12 +999,21 @@ class LinkSyncEngine {
     }
   }
 
-  NostrRelayPool _ensurePool() => _pool ??= NostrRelayPool(
-    relays: _relays,
-    connector: _connector,
-    verifySignatures: _verifySignatures,
-    nowSeconds: () => _nowSec,
-  );
+  NostrRelayPool _ensurePool() {
+    final existing = _pool;
+    if (existing != null) return existing;
+    final pool = NostrRelayPool(
+      relays: _relays,
+      connector: _connector,
+      verifySignatures: _verifySignatures,
+      nowSeconds: () => _nowSec,
+      reconnectMin: _reconnect.min,
+      reconnectMax: _reconnect.max,
+    );
+    _pool = pool;
+    pool.connectionChanges.listen((_) => _onConnectivity(pool));
+    return pool;
+  }
 
   List<NostrFilter> _filters(Iterable<String> topics, {int? since}) => [
     NostrFilter(
@@ -1013,6 +1119,14 @@ class LinkSyncEngine {
     // the publisher (its old key never publishes here again).
     if (header.replaced) {
       await _noteReplaced(group, ch.model, event, header.me);
+      return false;
+    }
+    // DEV-J: the publisher deleted its copy (leave / delete, §7.3) — it
+    // isn't a peer that "updated just now"; forget it (its events are being
+    // deleted). Only its own row: the event is bound to its key.
+    if (header.left) {
+      debugPrint('[link] $group: a peer removed its copy');
+      await _link.deletePeer(group, event.pubkey);
       return false;
     }
     final gate = await _gateFor();
@@ -1362,28 +1476,49 @@ class LinkSyncEngine {
     }
     final digest = linkSnapshotDigest(bootstrap);
     final now = _clock();
-    final due =
-        _forced.contains(group) ||
+    final changed =
         digest != ch.lastPublishedHash ||
         now - ch.lastPublishedAt >= kLinkRefreshAfter.inMilliseconds;
-    if (!due) {
+    // DEV-J: relays added since that don't hold our snapshot yet — when
+    // nothing else is due, only they get it (the others are up to date).
+    final newRelays = {
+      for (final r in _newRelays[group] ?? const <String>{})
+        if (_relays.contains(r)) r,
+    };
+    final onlyNew = !changed;
+    if (onlyNew && newRelays.isEmpty) {
+      _newRelays.remove(group);
       _synced(group, ch.lastPublishedAt);
       return;
     }
-    _setStatus(
-      group,
-      LinkGroupSyncStatus(
-        phase: (_failures[group] ?? 0) >= kSyncFailureThreshold
-            ? LinkSyncPhase.failing
-            : LinkSyncPhase.pending,
-        lastPublishedAt: ch.lastPublishedAt == 0 ? null : ch.lastPublishedAt,
-        consecutiveFailures: _failures[group] ?? 0,
-      ),
-    );
+    if (!onlyNew) {
+      _setStatus(
+        group,
+        LinkGroupSyncStatus(
+          phase: (_failures[group] ?? 0) >= kSyncFailureThreshold
+              ? LinkSyncPhase.failing
+              : LinkSyncPhase.pending,
+          lastPublishedAt: ch.lastPublishedAt == 0 ? null : ch.lastPublishedAt,
+          consecutiveFailures: _failures[group] ?? 0,
+        ),
+      );
+    }
     final targets = [
       for (final r in _relays)
-        if (_policy.canPublish(r)) r,
+        if (_policy.canPublish(r) && (!onlyNew || newRelays.contains(r))) r,
     ];
+    if (targets.isEmpty && onlyNew) {
+      // The new relays back off / refuse us: retry later, or give up on
+      // the ones that refuse (the relay page shows why).
+      final wait = _policy.nextAvailableIn(newRelays.toList());
+      if (wait == null) {
+        _newRelays.remove(group);
+      } else {
+        _scheduleRetry(group, atLeast: wait);
+      }
+      _synced(group, ch.lastPublishedAt);
+      return;
+    }
     if (targets.isEmpty) {
       final wait = _policy.nextAvailableIn(_relays);
       if (wait == null) {
@@ -1437,8 +1572,10 @@ class LinkSyncEngine {
     ];
     if (!_alive) return;
     var delivered = true;
+    // The relays that took every event (a new relay counts once it did).
+    var holdAll = targets.toSet();
     for (final e in events) {
-      final ok = await _publishEvent(
+      final holders = await _publishEvent(
         group,
         route,
         d: e.d,
@@ -1447,7 +1584,25 @@ class LinkSyncEngine {
         targets: targets,
       );
       if (!_alive) return;
-      if (!ok) delivered = false;
+      if (holders.isEmpty) delivered = false;
+      holdAll = holdAll.intersection(holders);
+    }
+    final stillNew = newRelays.difference(holdAll);
+    if (stillNew.isEmpty) {
+      _newRelays.remove(group);
+    } else {
+      _newRelays[group] = stillNew;
+    }
+    if (onlyNew) {
+      // The others were up to date already: the group stays synced; a new
+      // relay that didn't take it is tried again after the back-off.
+      if (stillNew.isNotEmpty) {
+        _scheduleRetry(group);
+      } else {
+        _retryStreak.remove(group);
+      }
+      _synced(group, ch.lastPublishedAt);
+      return;
     }
     if (!delivered) {
       final wait = _policy.nextAvailableIn(_relays);
@@ -1465,11 +1620,11 @@ class LinkSyncEngine {
       parts: parts,
     );
     if (!_alive) return;
-    _forced.remove(group);
     _lastPublishAt[group] = now;
     _failures.remove(group);
     _retryStreak.remove(group);
     _retryTimers.remove(group)?.cancel();
+    if (stillNew.isNotEmpty) _scheduleRetry(group);
     _synced(group, now);
   }
 
@@ -1482,9 +1637,9 @@ class LinkSyncEngine {
       );
 
   /// Signs and publishes one event (a fresh `created_at`); `replaced:` →
-  /// one republish past our newest event there. Returns whether ≥ 1 relay
-  /// holds it.
-  Future<bool> _publishEvent(
+  /// one republish past our newest event there. Returns the relays that
+  /// hold it (empty = not delivered).
+  Future<Set<String>> _publishEvent(
     String group,
     _Channel route, {
     required String d,
@@ -1516,29 +1671,32 @@ class LinkSyncEngine {
     }
 
     final first = await once(targets);
-    if (first == null) return false;
-    var ok = first.any((r) => classifyRelayAnswer(r) == RelayAnswer.ok);
+    if (first == null) return const {};
+    final holders = {
+      for (final r in first)
+        if (classifyRelayAnswer(r) == RelayAnswer.ok) r.relay,
+    };
     final replaced = [
       for (final r in first)
         if (classifyRelayAnswer(r) == RelayAnswer.replaced) r.relay,
     ];
-    if (replaced.isEmpty) return ok;
+    if (replaced.isEmpty) return holders;
     // §4.4 / §4.5: a relay holds a newer event of ours at this address —
     // move our clock past it and republish once.
     final newest = await _ownNewestOn(route, d);
-    if (!_alive) return false;
+    if (!_alive) return const {};
     await _link.bumpCreatedAt(group, newest);
-    if (!_alive) return false;
+    if (!_alive) return const {};
     final second = await once(replaced);
-    if (second == null) return false;
+    if (second == null) return const {};
     // A second `replaced:` still means the relay holds an event of ours.
-    ok =
-        ok ||
-        second.any((r) {
-          final a = classifyRelayAnswer(r);
-          return a == RelayAnswer.ok || a == RelayAnswer.replaced;
-        });
-    return ok;
+    for (final r in second) {
+      final a = classifyRelayAnswer(r);
+      if (a == RelayAnswer.ok || a == RelayAnswer.replaced) {
+        holders.add(r.relay);
+      }
+    }
+    return holders;
   }
 
   /// The newest `created_at` of our own event at `d` on the relays (a
@@ -1751,11 +1909,22 @@ class LinkSyncEngine {
         'settlements': const <Object?>[],
       };
       for (var i = 0; i < used; i++) {
-        final part = i == 0
-            ? (lock
-                  ? buildLinkLockPart(empty, me: me, app: app)
-                  : buildLinkSnapshotPart(empty, me: me, app: app))
-            : buildRetiredLinkPart(empty, me: me, app: app, index: i, parts: 1);
+        final part = <String, dynamic>{
+          ...(i == 0
+              ? (lock
+                    ? buildLinkLockPart(empty, me: me, app: app)
+                    : buildLinkSnapshotPart(empty, me: me, app: app))
+              : buildRetiredLinkPart(
+                  empty,
+                  me: me,
+                  app: app,
+                  index: i,
+                  parts: 1,
+                )),
+          // DEV-J: "this copy is gone" — peers drop this publisher from the
+          // sync sheet (older builds merge the header-only part as before).
+          if (!lock) 'left': true,
+        };
         final content = await _seal(route, i, packLinkSnapshot(part));
         final createdAt = await _link.nextCreatedAt(groupId, _nowSec);
         if (createdAt == null || !_alive) return false;
@@ -1869,7 +2038,7 @@ class LinkSyncEngine {
       );
       _failures.remove(groupId);
       _retryStreak.remove(groupId);
-      _forced.remove(groupId);
+      _newRelays.remove(groupId);
       _lastPublishAt.remove(groupId);
       _mergeFailed.remove(groupId);
       _status[groupId] = const LinkGroupSyncStatus(
@@ -2042,7 +2211,7 @@ class LinkSyncEngine {
       await _link.deleteChannel(groupId);
       _failures.remove(groupId);
       _retryStreak.remove(groupId);
-      _forced.remove(groupId);
+      _newRelays.remove(groupId);
       _lastPublishAt.remove(groupId);
       _mergeFailed.remove(groupId);
       _status.remove(groupId);

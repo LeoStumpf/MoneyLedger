@@ -36,7 +36,8 @@ import '../../models/record_signature.dart';
 import 'record_attribution.dart';
 import 'record_actions.dart';
 import 'record_details_sheet.dart';
-import '../../core/link/link_sync_engine.dart' show linkClockProvider;
+import '../../core/link/link_sync_engine.dart'
+    show isLinkRecordPending, linkClockProvider, linkGroupSyncStatusProvider;
 import '../link/link_invite.dart';
 import '../link/link_join.dart' show chooseLinkParticipant;
 import '../link/link_replaced_banner.dart';
@@ -76,6 +77,16 @@ class ExpensesPage extends ConsumerWidget {
     final expensesAsync = ref.watch(expensesForRoomProvider(roomId));
     final settlementsAsync = ref.watch(settlementsForRoomProvider(roomId));
     final syncStatus = ref.watch(groupSyncStatusProvider(roomId));
+    // DEV-J: in a link group the row's "not synced yet" mark follows the
+    // relays (newer than our last delivered snapshot while not synced —
+    // e.g. added offline), not the Matrix peers.
+    final byLink = ref.watch(groupSyncsByLinkProvider(roomId)) == true;
+    final linkStatus = byLink
+        ? ref.watch(linkGroupSyncStatusProvider(roomId)).value
+        : null;
+    bool isPending(int updatedAt) => byLink
+        ? isLinkRecordPending(linkStatus, updatedAt)
+        : syncStatus.isRecordPending(updatedAt);
     final names = ref.watch(participantNamesProvider(roomId));
     final meAsync = ref.watch(currentParticipantProvider(roomId));
     final members =
@@ -399,7 +410,7 @@ class ExpensesPage extends ConsumerWidget {
                   expensesAsync,
                   settlementsAsync,
                   names,
-                  syncStatus,
+                  isPending,
                   overview,
                   readOnly: removed,
                   busy: expenseState.isLoading,
@@ -432,7 +443,7 @@ class ExpensesPage extends ConsumerWidget {
     AsyncValue<List<ExpenseModel>> expensesAsync,
     AsyncValue<List<SettlementModel>> settlementsAsync,
     Map<String, String> names,
-    GroupSyncStatus syncStatus,
+    bool Function(int updatedAt) isPending,
     GroupOverview overview, {
     required bool readOnly,
     required bool busy,
@@ -586,7 +597,7 @@ class ExpensesPage extends ConsumerWidget {
                 : l.settlementTitle(a, b),
             names: {a: from, b: to},
           ),
-          pending: syncStatus.isRecordPending(record.updatedAt),
+          pending: isPending(record.updatedAt),
           attention: attention(record.origin, record.sig),
           // G60: tap (or ⋮ → Edit) edits the payment; read-only: neither.
           // G67 (U15): read-only → a details sheet to look at it.
@@ -613,7 +624,7 @@ class ExpensesPage extends ConsumerWidget {
         category: resolveCategory(expense.category, customCategories),
         payerLine: payerLineOf(expense, myId: myId, nameOf: nameOf, l: l),
         effect: myId == null ? null : expenseEffectFor(expense, myId),
-        pending: syncStatus.isRecordPending(expense.updatedAt),
+        pending: isPending(expense.updatedAt),
         attention: attention(expense.origin, expense.sig),
         hasReceipt: receiptIds.contains(expense.id),
         // G67 (U15): read-only → a details sheet to look at it.

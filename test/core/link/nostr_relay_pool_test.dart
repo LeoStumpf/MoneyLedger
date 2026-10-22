@@ -579,6 +579,37 @@ void main() {
       expect(delays, [2, 4, 8, 16, 32, 64, 128, 256, 300, 300]);
     });
 
+    test('offline + connectionChanges + reconnectNow (DEV-J)', () async {
+      final timers = ManualTimers();
+      final p = pool(timers: timers);
+      var changes = 0;
+      p.connectionChanges.listen((_) => changes++);
+      expect(p.offline, isFalse, reason: 'nothing tried yet');
+      p.subscribe(_filter);
+      await net.settle();
+      expect(p.offline, isFalse);
+      // One relay drops: not offline while the other is connected.
+      net.relay(_a).offline = true;
+      net.relay(_a).dropConnections();
+      await net.settle();
+      expect(p.offline, isFalse);
+      net.relay(_b).offline = true;
+      net.relay(_b).dropConnections();
+      await net.settle();
+      expect(p.offline, isTrue);
+      expect(changes, greaterThanOrEqualTo(2));
+      // Back: reconnectNow doesn't wait for the backoff timers.
+      net.relay(_a).offline = false;
+      net.relay(_b).offline = false;
+      final pendingBefore = timers.pending.length;
+      expect(pendingBefore, greaterThan(0));
+      p.reconnectNow();
+      await net.settle();
+      expect(p.isConnected(_a), isTrue);
+      expect(p.isConnected(_b), isTrue);
+      expect(p.offline, isFalse);
+    });
+
     test('no reconnect without live subscriptions', () async {
       final timers = ManualTimers();
       final p = pool(relays: [_a], timers: timers);

@@ -94,6 +94,27 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
+  static const _notificationDenialsKey = 'notification_permission_denials';
+
+  /// How often a permission request in a row came back denied (smoke 7.13:
+  /// Android only stops showing its dialog after the second denial, so the
+  /// switch says "blocked" only from then on). Reset when granted.
+  Future<int> notificationPermissionDenials() =>
+      (select(appSettings)..where((t) => t.key.equals(_notificationDenialsKey)))
+          .getSingleOrNull()
+          .then((row) => int.tryParse(row?.value ?? '') ?? 0);
+
+  /// Records the outcome of a permission request ([granted] resets it).
+  Future<void> recordNotificationPermissionResult(bool granted) async {
+    final next = granted ? 0 : await notificationPermissionDenials() + 1;
+    await into(appSettings).insertOnConflictUpdate(
+      AppSettingsCompanion(
+        key: const Value(_notificationDenialsKey),
+        value: Value('$next'),
+      ),
+    );
+  }
+
   // ── device verification (G11) ───────────────────────────────────────────
 
   static const _verifiedOnlyKey = 'verified_only_sync';

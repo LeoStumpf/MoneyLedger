@@ -16,6 +16,7 @@ import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/features/link/link_invite.dart';
 import 'package:money_ledger/features/link/relay_settings_page.dart';
 import 'package:money_ledger/features/sync/group_sync_sheet.dart';
+import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/link_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
@@ -164,6 +165,7 @@ void main() {
       LinkGroupSyncStatus status, {
       Locale? locale,
       String? localProfile,
+      List<ExpenseModel> expenses = const [],
     }) => testApp(
       const ExpensesPage(roomId: _g),
       locale: locale,
@@ -172,6 +174,7 @@ void main() {
           isLoggedIn: localProfile == null,
           localProfile: localProfile,
           members: members,
+          expenses: expenses,
           // The Matrix status would say "waiting" — never shown here.
           syncStatus: const GroupSyncStatus(
             pendingPeers: {'@x:y.org'},
@@ -262,6 +265,51 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(en.syncNowUnreachable), findsOneWidget);
     });
+
+    for (final (locale, l) in [
+      (const Locale('en'), en),
+      (const Locale('de'), de),
+    ]) {
+      testWidgets('offline (DEV-J): offline cloud + sheet text; only the '
+          'expense newer than the last publish is "not synced yet" '
+          '($locale)', (tester) async {
+        _phone(tester);
+        final published = _minsAgo(10);
+        ExpenseModel e(String id, int at) => ExpenseModel(
+          id: id,
+          roomId: _g,
+          description: id,
+          amountCents: 1000,
+          currency: 'EUR',
+          paidBy: 'p1',
+          splitsJson: '{"p1":500,"p2":500}',
+          createdAt: at,
+          updatedAt: at,
+        );
+        await tester.pumpWidget(
+          app(
+            _SyncNowSpy(),
+            LinkGroupSyncStatus(
+              phase: LinkSyncPhase.pending,
+              lastPublishedAt: published,
+              problem: LinkSyncProblem.offline,
+            ),
+            locale: locale,
+            localProfile: 'Anna',
+            expenses: [e('Old', published - 1000), e('New', published + 1000)],
+          ),
+        );
+        await tester.pumpAndSettle();
+        final cloud = find.byKey(const Key('groupSyncButton'));
+        expect(tester.widget<IconButton>(cloud).tooltip, l.linkCloudOffline);
+        expect(find.text('New'), findsOneWidget);
+        expect(find.byIcon(Icons.cloud_queue), findsOneWidget);
+        await tester.tap(cloud);
+        await tester.pumpAndSettle();
+        expect(find.text(l.linkSyncOffline), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('local mode, not a link group: no sync icon', (tester) async {
       _phone(tester);

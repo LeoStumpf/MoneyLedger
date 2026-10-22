@@ -48,6 +48,7 @@ class GroupResetPage extends ConsumerWidget {
       history.value ?? const <HistoryEntry>[],
       floor: floor,
       me: myId.isEmpty ? null : myId,
+      meParticipant: me.value?.userId,
     );
     final shown = batches.take(kMaxShownChangeBatches).toList();
     final anyResettable = shown.any((b) => b.resettable);
@@ -101,7 +102,10 @@ class GroupResetPage extends ConsumerWidget {
               for (final b in shown)
                 _BatchTile(
                   batch: b,
-                  editors: _editorNames(b.editors, members),
+                  editors: [
+                    ..._editorNames(b.editors, members),
+                    ..._linkEditorNames(b.linkEditors, members),
+                  ],
                   onUndo: readOnly || !b.resettable
                       ? null
                       : () => _undoFrom(context, ref, b),
@@ -124,6 +128,16 @@ class GroupResetPage extends ConsumerWidget {
           (id.startsWith('@') && id.contains(':')
               ? id.substring(1, id.indexOf(':'))
               : id),
+  ];
+
+  /// DEV-J: names of the participants link versions name as their writer
+  /// (unknown id → left out: it's only a hint).
+  static List<String> _linkEditorNames(
+    Set<String> ids,
+    List<MemberModel> ms,
+  ) => [
+    for (final id in ids)
+      if (ms.where((m) => m.userId == id).firstOrNull case final m?) m.label,
   ];
 
   Future<void> _undoFrom(

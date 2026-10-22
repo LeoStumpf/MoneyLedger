@@ -153,11 +153,18 @@ class _LinkSyncButton extends ConsumerWidget {
     final status = ref.watch(linkGroupSyncStatusProvider(groupId)).value;
     final l = context.l10n;
     final phase = status?.phase ?? LinkSyncPhase.pending;
+    final offline = status?.problem == LinkSyncProblem.offline;
     final (icon, tooltip, error) = switch (phase) {
       LinkSyncPhase.failing => (Icons.cloud_off, l.syncProblemTooltip, true),
       LinkSyncPhase.synced => (
         Icons.cloud_done_outlined,
         l.linkCloudSynced,
+        false,
+      ),
+      // DEV-J: offline is said as such, not "sending …".
+      LinkSyncPhase.pending when offline => (
+        Icons.cloud_off,
+        l.linkCloudOffline,
         false,
       ),
       LinkSyncPhase.pending => (Icons.cloud_queue, l.linkSyncPending, false),
@@ -404,6 +411,7 @@ class _GroupSyncSheetState extends ConsumerState<GroupSyncSheet> {
       LinkSyncProblem.tooLarge => l.linkSyncTooLarge,
       LinkSyncProblem.noParticipant => l.linkSyncNoParticipant,
       LinkSyncProblem.mergeFailed => l.linkSyncMergeFailed,
+      LinkSyncProblem.offline => l.linkSyncOffline,
       null =>
         synced
             ? (published != null

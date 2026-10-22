@@ -117,10 +117,15 @@ class BackupService {
       RestoreTakeover.none => null,
     };
     final plans = <GroupRestorePlan>[];
+    var reopenedLinks = 0;
     for (final g in backup.groups) {
       if (!_alive) throw StateError('account switched during preview');
       final gid = g['group'] as String;
       final local = await groups.getGroup(gid);
+      // DEV-J: only a link group that isn't here comes back with its key
+      // (`reopenLinkChannel`) and needs "who are you?" — one already here
+      // keeps its own channel.
+      if (local == null && backupGroupLink(g) != null) reopenedLinks++;
       final left = await settings.leftGroup(gid);
       var changes = 0;
       final metaClock = g['updated_at'] as int? ?? 0;
@@ -170,7 +175,7 @@ class BackupService {
       groups: plans,
       takeover: takeover,
       myAccount: myMxid,
-      linkGroups: backup.groups.where((g) => backupGroupLink(g) != null).length,
+      linkGroups: reopenedLinks,
       otherAccount:
           takeover == RestoreTakeover.none &&
           backup.account != null &&
@@ -585,7 +590,9 @@ class RestorePreview {
   /// The ledger restored into: the signed-in MXID, or [kLocalAccountId].
   final String? myAccount;
 
-  /// G52 step 10: groups of the file that carry a link group's invite key.
+  /// G52 step 10: link groups of the file whose invite key the restore
+  /// brings back (not held here yet — DEV-J: a group already here keeps its
+  /// own channel, so its key in the file changes nothing).
   final int linkGroups;
   const RestorePreview({
     required this.backup,

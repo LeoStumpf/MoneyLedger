@@ -34,6 +34,14 @@ class _SpySettingsDao extends SettingsDao {
 
   final enabledWrites = <bool>[];
   int askedMarks = 0;
+  int denials = 0;
+
+  @override
+  Future<int> notificationPermissionDenials() async => denials;
+
+  @override
+  Future<void> recordNotificationPermissionResult(bool granted) async =>
+      denials = granted ? 0 : denials + 1;
 
   @override
   Future<void> setNotificationsEnabled(bool enabled) async =>
@@ -126,17 +134,45 @@ void main() {
       expect(platform.requests, 1);
     });
 
-    testWidgets('blocked by Android → says where to allow them', (
-      tester,
-    ) async {
+    testWidgets('blocked by Android (denied twice) → says where to allow '
+        'them', (tester) async {
       await _pump(
         tester,
         _overrides(
           platform: FakeNotificationPlatform(granted: false),
-          dao: _SpySettingsDao(),
+          dao: _SpySettingsDao()..denials = 2,
         ),
       );
       expect(find.text(en.notificationsBlocked), findsOneWidget);
+    });
+
+    testWidgets('denied once → not "blocked" yet; the switch shows off and '
+        'turning it on asks again (smoke 7.13)', (tester) async {
+      final platform = FakeNotificationPlatform(
+        granted: false,
+        grantOnRequest: false,
+      );
+      final dao = _SpySettingsDao()..denials = 1;
+      await _pump(tester, _overrides(platform: platform, dao: dao));
+      expect(find.text(en.notificationsBlocked), findsNothing);
+      expect(find.text(en.notificationsBody), findsOneWidget);
+      SwitchListTile sw() => tester.widget<SwitchListTile>(
+        find.byKey(const Key('notificationsSwitch')),
+      );
+      expect(sw().value, isFalse);
+      await tester.tap(find.byKey(const Key('notificationsSwitch')));
+      await tester.pumpAndSettle();
+      expect(platform.requests, 1);
+      expect(dao.denials, 2);
+      expect(find.text(en.notificationsBlocked), findsOneWidget);
+    });
+
+    test('notificationsBlockedFor', () {
+      expect(notificationsBlockedFor(granted: false, denials: 0), isFalse);
+      expect(notificationsBlockedFor(granted: false, denials: 1), isFalse);
+      expect(notificationsBlockedFor(granted: false, denials: 2), isTrue);
+      expect(notificationsBlockedFor(granted: true, denials: 5), isFalse);
+      expect(notificationsBlockedFor(granted: null, denials: 5), isFalse);
     });
 
     testWidgets('background sync off → switch disabled, says why', (
@@ -207,10 +243,14 @@ void main() {
     Future<(FakeNotificationPlatform, AppDatabase, ProviderContainer)> run({
       required bool shared,
       bool granted = false,
+      bool grantOnRequest = true,
     }) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
-      final platform = FakeNotificationPlatform(granted: granted);
+      final platform = FakeNotificationPlatform(
+        granted: granted,
+        grantOnRequest: grantOnRequest,
+      );
       final c = ProviderContainer(
         overrides: [
           backgroundSyncSupportedProvider.overrideWithValue(true),
@@ -261,6 +301,23 @@ void main() {
       sub.close();
       expect(platform.requests, 1);
     });
+
+    test(
+      'a denied prompt counts as the first denial; granted resets it',
+      () async {
+        final (platform, db, _) = await run(
+          shared: true,
+          grantOnRequest: false,
+        );
+        expect(platform.requests, 1);
+        final dao = SettingsDao(db);
+        expect(await dao.notificationPermissionDenials(), 1);
+        await dao.recordNotificationPermissionResult(false);
+        expect(await dao.notificationPermissionDenials(), 2);
+        await dao.recordNotificationPermissionResult(true);
+        expect(await dao.notificationPermissionDenials(), 0);
+      },
+    );
 
     test('nothing shared yet → no prompt', () async {
       final (platform, db, _) = await run(shared: false);

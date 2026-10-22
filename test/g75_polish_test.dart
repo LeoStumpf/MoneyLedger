@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:money_ledger/core/background/background_sync_provider.dart';
 import 'package:money_ledger/core/database/account_database.dart';
 import 'package:money_ledger/core/database/app_database.dart';
 import 'package:money_ledger/core/database/daos/expenses_dao.dart';
@@ -506,29 +507,47 @@ void main() {
       expect(find.byKey(const Key('webLimitsBanner')), findsNothing);
     });
 
-    testWidgets('local mode: the text without "while the tab is open"', (
-      tester,
-    ) async {
-      _phone(tester);
-      await tester.pumpWidget(
-        testApp(
-          const Scaffold(body: WebLimitsBanner()),
-          locale: const Locale('de'),
-          overrides: [
-            isWebProvider.overrideWithValue(true),
-            devicePrefsStoreProvider.overrideWithValue(
-              InMemoryDevicePrefsStore({
-                'welcome_seen': '1',
-                'local_profile': jsonEncode({'name': 'Lea', 'created_at': 1}),
-              }),
+    for (final linkGroups in [false, true]) {
+      testWidgets(
+        linkGroups
+            ? 'local mode with a link group (DEV-J): it syncs too → the '
+                  'full text'
+            : 'local mode: the text without "while the tab is open"',
+        (tester) async {
+          _phone(tester);
+          await tester.pumpWidget(
+            testApp(
+              const Scaffold(body: WebLimitsBanner()),
+              locale: const Locale('de'),
+              overrides: [
+                isWebProvider.overrideWithValue(true),
+                linkGroupsExistProvider.overrideWith(
+                  (_) => Stream.value(linkGroups),
+                ),
+                devicePrefsStoreProvider.overrideWithValue(
+                  InMemoryDevicePrefsStore({
+                    'welcome_seen': '1',
+                    'local_profile': jsonEncode({
+                      'name': 'Lea',
+                      'created_at': 1,
+                    }),
+                  }),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            find.text(de.webLimitsBodyLocal),
+            linkGroups ? findsNothing : findsOneWidget,
+          );
+          expect(
+            find.text(de.webLimitsBody),
+            linkGroups ? findsOneWidget : findsNothing,
+          );
+        },
       );
-      await tester.pumpAndSettle();
-      expect(find.text(de.webLimitsBodyLocal), findsOneWidget);
-      expect(find.text(de.webLimitsBody), findsNothing);
-    });
+    }
 
     testWidgets('on the groups page (web), above the list', (tester) async {
       _phone(tester);

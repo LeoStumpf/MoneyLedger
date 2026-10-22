@@ -183,6 +183,28 @@ void main() {
     });
   });
 
+  test('link groups (DEV-J): unsigned versions name their writer (`by`) — '
+      'one batch per writer; our own participant counts as us', () {
+    final t0 = 3000000;
+    ExpenseModel by(ExpenseModel e, String p) => e.asLinkVersion(p);
+    final entries = [
+      _mt(_meta('Trip'), t0),
+      _ex(by(_e('e1', 'Dinner'), 'p1'), t0),
+      // An hour later: Ben (p2) adds two, then Ann's other phone (p1) edits.
+      _ex(by(_e('e2', 'Taxi'), 'p2'), t0 + 60 * _min),
+      _ex(by(_e('e3', 'Bar'), 'p2'), t0 + 61 * _min),
+      _ex(by(_e('e1', 'Dinner!', at: 2), 'p1'), t0 + 62 * _min),
+    ];
+    final b = changeBatches(entries, me: null, meParticipant: 'p1');
+    expect(b, hasLength(3));
+    expect(b[0].byMe, isTrue);
+    expect(b[0].linkEditors, isEmpty);
+    expect(b[1].linkEditors, {'p2'});
+    expect(b[1].byMe, isFalse);
+    expect(b[1].editors, isEmpty);
+    expect(b[1].added, 2);
+  });
+
   group('changeBatches — G62 (base batch + author boundaries)', () {
     const me = '@ann:x.org';
     const meSig = RecordSignature(user: me, device: 'A2', key: 'KA2', sig: 'M');

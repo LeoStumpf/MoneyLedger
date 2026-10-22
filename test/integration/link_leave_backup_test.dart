@@ -244,6 +244,12 @@ void main() {
         (await ExpensesDao(s.bDb).getAllExpensesForGroup(_g)).single.id,
         'e1',
       );
+      // DEV-J: B saw A's "left" header parts — A is no longer listed as a
+      // peer that "updated just now" in B's sync sheet.
+      expect(
+        (await LinkDao(s.bDb).getPeers(_g)).map((p) => p.pubkey),
+        isNot(contains(aPub)),
+      );
 
       // Restore on A: the preview counts the link group; the channel comes
       // back with the same key, a fresh Nostr key and no "me".
@@ -294,9 +300,12 @@ void main() {
     );
     keep.close();
 
-    // Same device, channel still there: unchanged.
+    // Same device, channel still there: unchanged — and the preview
+    // doesn't warn about the invite key (DEV-J: nothing comes back).
     final before = (await LinkDao(s.aDb).getChannel(_g))!;
     final again = s.a.listen(backupServiceProvider, (_, _) {});
+    final preview = await again.read().preview(backup, myMxid: kLocalAccountId);
+    expect(preview.linkGroups, 0);
     await again.read().restore(backup);
     again.close();
     final after = (await LinkDao(s.aDb).getChannel(_g))!;

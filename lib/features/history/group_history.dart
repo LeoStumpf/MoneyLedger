@@ -53,6 +53,7 @@ class ChangeBatch {
     required this.byMe,
     required this.resettable,
     this.base = false,
+    this.linkEditors = const {},
   });
 
   /// First / last history id in the batch (append order).
@@ -75,6 +76,10 @@ class ChangeBatch {
   /// Accounts that signed versions in the batch (from peers).
   final Set<String> editors;
 
+  /// DEV-J: participant ids named as writers (`by`) of unsigned link
+  /// versions from others in the batch — a display hint like "via link".
+  final Set<String> linkEditors;
+
   /// Some version was written on this device (unsigned local writes count).
   final bool byMe;
 
@@ -93,7 +98,9 @@ class ChangeBatch {
 /// The change batches of one group's [entries] (any order), **newest
 /// first**. [floor]: `HistoryDao.floor` — batches starting before it are
 /// marked not resettable. [me]: this device's account (its signed versions
-/// count as [ChangeBatch.byMe]).
+/// count as [ChangeBatch.byMe]). [meParticipant]: this device's participant
+/// in the group — a link version naming it (`by`, e.g. from our own other
+/// phone) counts as ours too (DEV-J).
 ///
 /// G62 — batch boundaries:
 /// - **The base batch** is the group's arrival on this device: every entry
@@ -113,6 +120,7 @@ List<ChangeBatch> changeBatches(
   List<HistoryEntry> entries, {
   int floor = 0,
   String? me,
+  String? meParticipant,
   Duration gap = kChangeBatchGap,
 }) {
   final sorted = [...entries]..sort((a, b) => a.id.compareTo(b.id));
@@ -128,11 +136,11 @@ List<ChangeBatch> changeBatches(
     if (isBase) {
       j = baseEnd;
     } else {
-      final author = _author(sorted[i], me);
+      final author = _author(sorted[i], me, meParticipant);
       while (j < sorted.length &&
           sorted[j].recordedAt - sorted[j - 1].recordedAt <=
               gap.inMilliseconds &&
-          _author(sorted[j], me) == author) {
+          _author(sorted[j], me, meParticipant) == author) {
         j++;
       }
     }
@@ -142,6 +150,7 @@ List<ChangeBatch> changeBatches(
     final after = <String, HistoryEntry>{};
     var other = 0;
     final editors = <String>{};
+    final linkEditors = <String>{};
     var byMe = false;
     for (final e in batch) {
       if (e.kind == RecordKind.member || e.kind == RecordKind.meta) {
@@ -156,6 +165,15 @@ List<ChangeBatch> changeBatches(
         byMe = true;
       } else if (signer != null) {
         editors.add(signer);
+      } else if (e.source == HistorySource.inbound) {
+        switch (e.linkAuthor) {
+          case final by? when by == meParticipant:
+            byMe = true;
+          case final by?:
+            linkEditors.add(by);
+          case null:
+            break;
+        }
       }
     }
     var added = 0, changed = 0, deleted = 0;
@@ -184,6 +202,7 @@ List<ChangeBatch> changeBatches(
         byMe: byMe,
         resettable: resettable,
         base: isBase,
+        linkEditors: linkEditors,
       ),
     );
     for (final e in batch) {
@@ -224,15 +243,19 @@ int _baseEnd(List<HistoryEntry> sorted) {
 /// G62: who a history entry's change came from, for batch boundaries — this
 /// device or our own account (`me`), a peer's account, or the source of an
 /// unsigned / bulk write (restore, CSV import, initial backfill).
-String _author(HistoryEntry e, String? me) => switch (e.source) {
-  HistorySource.local || HistorySource.revert => 'me',
-  HistorySource.inbound => switch (e.signer) {
-    null => 'inbound',
-    final s when s == me => 'me',
-    final s => 'user:$s',
-  },
-  _ => 'source:${e.source.wire}',
-};
+String _author(HistoryEntry e, String? me, String? meParticipant) =>
+    switch (e.source) {
+      HistorySource.local || HistorySource.revert => 'me',
+      HistorySource.inbound => switch ((e.signer, e.linkAuthor)) {
+        (null, null) => 'inbound',
+        // DEV-J: unsigned link versions by their `by` participant.
+        (null, final by?) when by == meParticipant => 'me',
+        (null, final by?) => 'link:$by',
+        (final s?, _) when s == me => 'me',
+        (final s?, _) => 'user:$s',
+      },
+      _ => 'source:${e.source.wire}',
+    };
 
 String _key(HistoryEntry e) => '${e.kind.wire}|${e.recordId}';
 

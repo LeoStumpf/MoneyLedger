@@ -170,6 +170,7 @@ class NostrRelayPool {
   final List<NostrSubscription> _live = [];
   final _verified = _BoundedMap<String, bool>(_kRememberIds);
   var _subCounter = 0;
+  final _connectionChanges = StreamController<void>.broadcast(sync: false);
   late final String _subPrefix =
       'ml${_random.nextInt(1 << 24).toRadixString(16)}';
   bool _closed = false;
@@ -201,6 +202,30 @@ class NostrRelayPool {
   /// Whether the pool currently holds an open connection to [relay].
   bool isConnected(String relay) =>
       _relays.any((r) => r.url == relay && r.conn != null);
+
+  /// DEV-J: no relay is reachable — none holds an open connection and every
+  /// one failed (connect error / timeout / dropped) since its last good
+  /// connection. False before anything was tried.
+  bool get offline =>
+      !_closed && _relays.every((r) => r.conn == null && r._failures > 0);
+
+  /// Fires when a connection opens, fails or drops ([offline] may have
+  /// changed). Closed with the pool.
+  Stream<void> get connectionChanges => _connectionChanges.stream;
+
+  /// DEV-J: a relay without a connection that a live subscription wants is
+  /// tried again **now** (the reconnect backoff is cut short) — e.g. when the
+  /// app comes back to the foreground.
+  void reconnectNow() {
+    if (_closed) return;
+    for (final r in _relays) {
+      r.reconnectNow();
+    }
+  }
+
+  void _connectionChanged() {
+    if (!_connectionChanges.isClosed) _connectionChanges.add(null);
+  }
 
   /// Publishes [event] to every relay — or only to those in [only] (G52
   /// step 5: relays the caller backs off / blocks are left out); one result
@@ -286,6 +311,7 @@ class NostrRelayPool {
       await s.close();
     }
     await Future.wait([for (final r in _relays) r.shutdown()]);
+    await _connectionChanges.close();
   }
 
   String _nextSubId() => '$_subPrefix-${_subCounter++}';
@@ -440,6 +466,7 @@ class _Relay {
       _failures++;
       debugPrint('[nostr] $url: connect failed ($e)');
       _scheduleReconnect();
+      pool._connectionChanged();
       return false;
     }
     if (pool._closed) {
@@ -460,6 +487,7 @@ class _Relay {
     for (final h in [..._subs.values]) {
       if (h.live != null) sendReq(h.live!);
     }
+    pool._connectionChanged();
     return true;
   }
 
@@ -537,6 +565,14 @@ class _Relay {
     debugPrint('[nostr] $url: disconnected');
     _failures++;
     _scheduleReconnect();
+    pool._connectionChanged();
+  }
+
+  void reconnectNow() {
+    if (!_wantsLive || conn != null || _connecting != null) return;
+    _reconnect?.cancel();
+    _reconnect = null;
+    unawaited(ensureConnected());
   }
 
   void _scheduleReconnect() {

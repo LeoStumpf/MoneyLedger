@@ -210,6 +210,56 @@ void main() {
       expect(find.text('host'), findsOneWidget);
     });
 
+    testWidgets('link group (DEV-J): a batch by someone else names them '
+        '(from the versions\' `by`)', (tester) async {
+      const ann = MemberModel(
+        groupId: 'g1',
+        userId: 'p1',
+        displayName: 'Ann',
+        status: 'active',
+        updatedAt: 1,
+      );
+      const ben = MemberModel(
+        groupId: 'g1',
+        userId: 'p2',
+        displayName: 'Ben',
+        status: 'active',
+        updatedAt: 1,
+      );
+      final entries = [
+        _entries[0],
+        _entries[1],
+        _entry(
+          3,
+          RecordKind.expense,
+          'e2',
+          expensePayload(_e('e2', 'Taxi').asLinkVersion('p2')),
+          _t1,
+        ),
+      ];
+      await tester.pumpWidget(
+        testRouterApp(
+          const GroupResetPage(roomId: 'g1'),
+          overrides: [
+            ...testOverrides(members: const [ann, ben]),
+            groupHistoryProvider.overrideWith(
+              (ref, g) => Stream.value(entries),
+            ),
+            historyFloorProvider.overrideWith((ref) => Stream.value(0)),
+            currentUserIdProvider.overrideWith((ref) => kLocalAccountId),
+            localModeActiveProvider.overrideWithValue(true),
+            currentParticipantProvider.overrideWith(
+              (ref, g) => Future<MemberModel?>.value(ann),
+            ),
+            groupResetServiceProvider.overrideWith((ref) => _FakeReset()),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('undoFrom-3')), findsOneWidget);
+      expect(find.textContaining('by Ben'), findsOneWidget);
+    });
+
     testWidgets('G62: a new group\'s first expense, a minute after '
         'creating it, can be undone', (tester) async {
       final entries = [

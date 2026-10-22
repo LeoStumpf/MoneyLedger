@@ -124,6 +124,21 @@ void main() {
       expect(store.files, isEmpty);
     });
 
+    test('a group created later the same day still gets a snapshot that '
+        'day (G58, DEV-J)', () async {
+      final morning = DateTime(2026, 10, 16, 8);
+      expect(await service.snapshotIfDue(morning), isFalse);
+      expect(await HistoryDao(db).snapshotCheckedDay(), isNull);
+      await GroupsDao(db).upsertGroupLww(
+        groupCompanion(
+          const GroupModel(roomId: 'g1', name: 'Trip', currency: 'EUR'),
+        ),
+      );
+      await addExpense('e1', 'Dinner');
+      expect(await service.snapshotIfDue(DateTime(2026, 10, 16, 18)), isTrue);
+      expect(store.files.keys, ['2026-10-16.json']);
+    });
+
     test('written once a day, only when the ledger changed', () async {
       await GroupsDao(db).upsertGroupLww(
         groupCompanion(

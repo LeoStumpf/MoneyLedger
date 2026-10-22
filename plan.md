@@ -863,28 +863,61 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       copy (a second own device / another member doesn't protect against
       someone emptying it), own sentence `backupNudgeLinkBody`; the other
       groups keep the "only on this device" text
-- [ ] (step 13) Restore point / backup preview of a link group shows the
+- [x] (step 13) Restore point / backup preview of a link group shows the
       backup-file warning ("Wer die Datei hat …, wähle, wer du bist") even
-      when nothing is restored (group already here) — say less there
-- [ ] (step 13) Reset page: link-group batches by others have no author
-      line ("von Ben") — the history has the `by` participant
-- [ ] (step 13) Offline: the cloud stays "Über die Relays synchronisiert"
+      when nothing is restored (group already here) — say less there —
+      **done (DEV-J follow-ups):** `RestorePreview.linkGroups` counts only
+      link groups not held here (the ones `reopenLinkChannel` brings back)
+- [x] (step 13) Reset page: link-group batches by others have no author
+      line ("von Ben") — the history has the `by` participant — **done:**
+      `HistoryEntry.linkAuthor`, `ChangeBatch.linkEditors`, batches split per
+      `by` writer, `changeBatches(meParticipant:)` (our other phone = us)
+- [x] (step 13) Offline: the cloud stays "Über die Relays synchronisiert"
       and the sheet "liegen auf den Relays (gerade eben)" while *Sync now*
       says the relays are unreachable; an expense added offline shows no
-      "not synced yet" mark. Reconnect caught up after ~60 s (no resume)
-- [ ] (step 13) A peer that deleted the group (unpublished) shows as
+      "not synced yet" mark. Reconnect caught up after ~60 s (no resume) —
+      **done:** `NostrRelayPool.offline` / `connectionChanges` /
+      `reconnectNow`; the engine overlays `LinkSyncProblem.offline` (cloud
+      *Offline – kein Relay erreichbar*, sheet text), `isLinkRecordPending`
+      marks rows newer than the last delivered snapshot; back online every
+      unsynced group publishes at once (retry back-off cut), the live
+      reconnect back-off caps at 30 s (`kLinkReconnectMax`, was 5 min),
+      resume reconnects at once
+- [ ] (DEV-J follow-up) Device check: offline detection relies on the
+      socket failing — a half-open socket after a network switch (no
+      WebSocket ping) may still look connected until it errors; check on
+      the Pixel (airplane mode / wifi ↔ data) that the cloud turns *Offline*
+      and catches up within ~30 s
+- [x] (step 13) A peer that deleted the group (unpublished) shows as
       "Letzte Aktualisierung gerade eben" in the sync sheet — could say it
-      removed its copy
-- [ ] (step 13) Adding a relay doesn't publish to it until the next change
-      ("Noch nicht genutzt"; relay.damus.io)
-- [ ] (step 13) Web, local mode: the web limits notice drops the "syncs
+      removed its copy — **done:** the unpublish header parts carry
+      `left: true` (not on a lock); receivers drop that publisher's peer row
+      (no merge) and the join picker doesn't count it as "used on another
+      phone"; older builds merge the header part as before
+- [x] (step 13) Adding a relay doesn't publish to it until the next change
+      ("Noch nicht genutzt"; relay.damus.io) — **done:** a delivery counted
+      once ≥ 1 relay accepted, so a new relay that didn't answer in time was
+      never retried; now `_newRelays` per group: published to the new relays
+      only (when nothing else changed) until each holds every part, retried
+      with the back-off; the group stays synced meanwhile. (Device: check
+      relay.damus.io really takes our kind-31847 events)
+- [x] (step 13) Web, local mode: the web limits notice drops the "syncs
       only while the tab is open" part, which applies to link groups; the
       web onboarding's "Keep a copy" says "Nobody else has a copy … Settings
       → Back up all groups" right after joining a shared group (path is
-      Settings → Backup & restore since G70)
-- [ ] (step 13) Notifications: one *Don't allow* already turns the switch
+      Settings → Backup & restore since G70) — **done:** local mode with a
+      link group gets the full notice; onboarding without an account and
+      with a link group: `onboardingBackupLinkBody`; every "Settings → Back
+      up all groups" hint now names *Settings → Backup & restore* (privacy
+      texts unchanged — they're pinned to PRIVACY.md)
+- [x] (step 13) Notifications: one *Don't allow* already turns the switch
       into "blocked … allow them in Android's app settings" (smoke 7.13
-      expects that after two denials) — check on a real device
+      expects that after two denials) — check on a real device — **done:**
+      `notification_permission_denials` (per ledger, reset when granted);
+      not allowed yet → the switch shows off (turning it on asks again),
+      "blocked" only from the 2nd denial (`notificationsBlockedFor`). Device
+      check still open (smoke 7.13: Android 13+ returns `false` without a
+      dialog after the 2nd denial — counts as the 3rd, stays blocked)
 
 ### G53. Mixed groups + "lock group" 🟡
 - [x] Review (from G52 step 4): any link holder with a Matrix device can push a
@@ -1062,9 +1095,10 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       width (per-group count line wraps); snackbar wording counts groups +
       versions together — DEV-J: the switch was missing for a link group
       (fixed, see G52 step 13); German check still open
-- [ ] (G58, DEV-J) `snapshot_checked_day` is set on a start with no group
+- [x] (G58, DEV-J) `snapshot_checked_day` is set on a start with no group
       yet — a group created later that day gets its first restore point the
-      next day
+      next day — **done:** an empty ledger no longer marks the day; the next
+      start / background round the same day writes it
 - [x] Decide: encrypt snapshot files — **no** (Leo 2026-10-17; private app
       dir like the DB, Android backup off)
 - [x] Concurrent resets by two members converge per record (mix) — **LWW as

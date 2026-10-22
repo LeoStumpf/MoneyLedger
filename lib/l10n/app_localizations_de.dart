@@ -484,7 +484,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get backupBeforeExitTip =>
-      'Tipp: Sichere vorher alle Gruppen (Einstellungen → Alle Gruppen sichern).';
+      'Tipp: Sichere vorher alle Gruppen (Einstellungen → Sichern & Wiederherstellen).';
 
   @override
   String get backupBeforeExit => 'Vorher alle Gruppen sichern';
@@ -1329,7 +1329,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingBackupBody =>
-      'Niemand sonst speichert deine Daten. Gruppen mit anderen Personen liegen auch auf deren Geräten. Für Gruppen, die nur du nutzt, melde dich auf einem zweiten Gerät an oder speichere ab und zu eine Sicherung (Einstellungen → Alle Gruppen sichern).';
+      'Niemand sonst speichert deine Daten. Gruppen mit anderen Personen liegen auch auf deren Geräten. Für Gruppen, die nur du nutzt, melde dich auf einem zweiten Gerät an oder speichere ab und zu eine Sicherung (Einstellungen → Sichern & Wiederherstellen).';
 
   @override
   String get csvPreviewTitle => 'CSV importieren?';
@@ -1910,7 +1910,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get localModeBackupHint =>
-      'Sichere regelmäßig (Einstellungen → Alle Gruppen sichern) – niemand sonst hat eine Kopie.';
+      'Sichere regelmäßig (Einstellungen → Sichern & Wiederherstellen) – niemand sonst hat eine Kopie.';
 
   @override
   String get localModeConnectHint =>
@@ -2012,7 +2012,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingBackupLocalBody =>
-      'Niemand sonst hat eine Kopie deiner Daten. Speichere ab und zu eine Sicherung (Einstellungen → Alle Gruppen sichern) und bewahre sie sicher auf.';
+      'Niemand sonst hat eine Kopie deiner Daten. Speichere ab und zu eine Sicherung (Einstellungen → Sichern & Wiederherstellen) und bewahre sie sicher auf.';
+
+  @override
+  String get onboardingBackupLinkBody =>
+      'Alle mit dem Einladungslink haben eine Kopie einer geteilten Gruppe – und können sie ändern oder leeren. Speichere ab und zu eine Sicherung (Einstellungen → Sichern & Wiederherstellen) und bewahre sie sicher auf.';
 
   @override
   String get privacyLocalTitle => 'Lokaler Modus (ohne Konto)';
@@ -3240,6 +3244,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get linkCloudSynced => 'Über die Relays synchronisiert';
+
+  @override
+  String get linkCloudOffline => 'Offline – kein Relay erreichbar';
+
+  @override
+  String get linkSyncOffline =>
+      'Gerade ist kein Relay erreichbar – bist du offline? Was sich seit der letzten Synchronisierung geändert hat, wird gesendet, sobald die Verbindung wieder da ist.';
 
   @override
   String get syncNow => 'Jetzt synchronisieren';

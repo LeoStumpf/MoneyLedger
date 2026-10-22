@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/background/background_sync_provider.dart'
+    show linkGroupsExistProvider;
 import '../../core/l10n/l10n.dart';
 import '../../core/platform/is_web.dart';
 import '../../core/session/app_session.dart';
@@ -11,10 +13,13 @@ import '../../core/widgets/action_error.dart';
 import '../backup/backup_restore_page.dart' show kBackupLocation;
 
 /// G75 (U31): the web's limits in one place — no background sync (Matrix
-/// mode: it syncs only while the tab is open), no restore points, the data
-/// lives in this browser only.
-String webLimitsText(AppLocalizations l, {required bool local}) =>
-    local ? l.webLimitsBodyLocal : l.webLimitsBody;
+/// mode, or a link group without an account — DEV-J: it syncs only while
+/// the tab is open), no restore points, the data lives in this browser only.
+String webLimitsText(
+  AppLocalizations l, {
+  required bool local,
+  bool linkGroups = false,
+}) => local && !linkGroups ? l.webLimitsBodyLocal : l.webLimitsBody;
 
 /// G75 (U31): shown once on the groups page on the web, until *Got it*
 /// (device-wide flag `DevicePrefs.webNoticeSeen`, stored in this browser).
@@ -29,6 +34,8 @@ class WebLimitsBanner extends ConsumerWidget {
     if (prefs == null || prefs.webNoticeSeen) return const SizedBox.shrink();
     final l = context.l10n;
     final local = ref.watch(localModeActiveProvider);
+    final linkGroups =
+        local && (ref.watch(linkGroupsExistProvider).value ?? false);
     final scheme = Theme.of(context).colorScheme;
     final onColor = scheme.onSurface;
     final buttonStyle = TextButton.styleFrom(foregroundColor: onColor);
@@ -69,7 +76,11 @@ class WebLimitsBanner extends ConsumerWidget {
                         ),
                         const SizedBox(height: Insets.xs),
                         Text(
-                          webLimitsText(l, local: local),
+                          webLimitsText(
+                            l,
+                            local: local,
+                            linkGroups: linkGroups,
+                          ),
                           key: const Key('webLimitsBody'),
                           style: TextStyle(color: onColor),
                         ),
@@ -128,6 +139,8 @@ class WebLimitsAboutTile extends ConsumerWidget {
     if (!ref.watch(isWebProvider)) return const SizedBox.shrink();
     final l = context.l10n;
     final local = ref.watch(localModeActiveProvider);
+    final linkGroups =
+        local && (ref.watch(linkGroupsExistProvider).value ?? false);
     return ListTile(
       key: const Key('webLimitsTile'),
       leading: const Icon(Icons.language),
@@ -138,7 +151,7 @@ class WebLimitsAboutTile extends ConsumerWidget {
         builder: (ctx) => AlertDialog(
           title: Text(l.webLimitsTitle),
           content: Text(
-            webLimitsText(l, local: local),
+            webLimitsText(l, local: local, linkGroups: linkGroups),
             key: const Key('webLimitsDialogBody'),
           ),
           actions: [
