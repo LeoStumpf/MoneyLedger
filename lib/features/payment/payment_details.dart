@@ -167,8 +167,9 @@ String? normalizePaypalMe(String input) {
   s = s.replaceFirst(RegExp(r'^www\.', caseSensitive: false), '');
   s = s.replaceFirst(RegExp(r'^paypal\.me/', caseSensitive: false), '');
   if (s.startsWith('@')) s = s.substring(1);
-  final slash = s.indexOf('/');
-  if (slash >= 0) s = s.substring(0, slash);
+  // PayPal's own share links end in "?country.x=DE&locale.x=de_DE".
+  final end = s.indexOf(RegExp(r'[/?#]'));
+  if (end >= 0) s = s.substring(0, end);
   return RegExp(r'^[A-Za-z0-9]{1,20}$').hasMatch(s) ? s : null;
 }
 
@@ -214,13 +215,14 @@ String? epcQrPayload(
     return runes.length <= max ? s : String.fromCharCodes(runes.take(max));
   }
 
-  final head = [
+  var name = cut(clean(details.name!), 70);
+  List<String> head() => [
     'BCD',
     '002',
     '1', // UTF-8
     'SCT',
     details.bic ?? '',
-    cut(clean(details.name!), 70),
+    name,
     details.iban!,
     if (cents >= 1 && cents <= kEpcMaxCents)
       'EUR${_plainAmount(cents, 'EUR')}'
@@ -229,11 +231,16 @@ String? epcQrPayload(
   ];
   var text = cut(clean(remittance ?? ''), 140);
   String build() => [
-    ...head,
+    ...head(),
     if (text.isNotEmpty) ...['', '', text],
   ].join('\n');
   while (text.isNotEmpty && utf8.encode(build()).length > kEpcMaxBytes) {
     text = cut(text, text.runes.length - 1).trimRight();
+  }
+  // Still too long (a name of 4-byte characters, e.g. emoji): shorten the
+  // name too, but never to nothing.
+  while (name.runes.length > 1 && utf8.encode(build()).length > kEpcMaxBytes) {
+    name = cut(name, name.runes.length - 1).trimRight();
   }
   return build();
 }

@@ -65,6 +65,8 @@ void main() {
         'paypal.me/annamuster',
         'https://www.paypal.me/annamuster/10EUR',
         ' PayPal.Me/annamuster ',
+        'https://paypal.me/annamuster?country.x=DE&locale.x=de_DE',
+        'paypal.me/annamuster#x',
       ]) {
         expect(normalizePaypalMe(input), 'annamuster', reason: input);
       }
@@ -135,6 +137,20 @@ void main() {
       expect(lines.length, 11, reason: 'newlines in the reference removed');
       expect(lines[10].runes.length, lessThanOrEqualTo(140));
       expect(utf8.encode(p).length, lessThanOrEqualTo(kEpcMaxBytes));
+    });
+
+    test('a name of 4-byte characters is shortened to fit too', () {
+      final p = epcQrPayload(
+        PaymentDetails(name: '😀' * 70, iban: _me.iban, bic: _me.bic),
+        cents: 100,
+        currency: 'EUR',
+        remittance: 'Rom',
+      )!;
+      expect(utf8.encode(p).length, lessThanOrEqualTo(kEpcMaxBytes));
+      final lines = p.split('\n');
+      expect(lines.length, 8, reason: 'the reference goes first');
+      expect(lines[5], isNotEmpty);
+      expect(lines[6], _me.iban);
     });
   });
 
