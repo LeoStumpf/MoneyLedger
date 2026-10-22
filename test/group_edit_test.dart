@@ -329,6 +329,11 @@ void main() {
       ListTile tile(String key) =>
           tester.widget<ListTile>(find.byKey(Key(key)));
       expect(tile('editGroupTile').enabled, isFalse);
+      // G73's exchange-rates tile pushed the Data section down.
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('resetGroupTile')),
+        100,
+      );
       expect(tile('resetGroupTile').enabled, isFalse);
       expect(tile('backupGroupTile').enabled, isTrue);
       expect(tile('exportCsvTile').enabled, isTrue);

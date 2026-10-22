@@ -52,7 +52,8 @@ To override the Flutter binary: `FLUTTER=/path/to/flutter ./build.sh`
 Output lands in `build/web/`.
 
 **Web build without CDNs (G43):** the privacy promise is that the app talks
-only to Matrix homeservers, so the web build loads nothing from Google:
+only to Matrix homeservers (plus link groups' Nostr relays and — only on tap —
+G73's exchange-rate service), so the web build loads nothing from Google:
 - **Always** `flutter build web --release --no-web-resources-cdn` (build.sh, CI)
   → CanvasKit from `build/web/canvaskit/` (`"useLocalCanvasKit":true` in the
   built `flutter_bootstrap.js`); without the flag it comes from
@@ -250,6 +251,7 @@ lib/
     expense_category.dart      # G16: ExpenseCategory (stable wire ids), suggestCategory heuristic, normalizeNote
     expense_date.dart          # G49/G60: ISO day helpers, storedExpenseDate, recordDateProblem, displayDay (expense + payment)
                                # G47: CustomCategory, resolveCategory, kCustomCategoryIcons, bounds
+    exchange_rates.dart        # G73: ExchangeRates (signed meta), rate strings, convertCents
     link_model.dart            # G52: LinkChannelModel (toString omits the secrets) + LinkPeerModel
     group_archive.dart         # G16: GroupArchive (device-local) + ledgerFingerprint
   features/
@@ -263,6 +265,7 @@ lib/
                                #   group_settings_page.dart: G65 group settings (/groups/:id/settings)
                                #   group_actions.dart: G65 shared flows (edit, archive, backup, CSV, leave/delete)
                                #   group_categories_page.dart: G47 custom categories (add / rename / hide)
+                               #   group_rates_page.dart: G73 exchange rates + settle switch + RateDialog
     expenses/                  # Expense list, add/edit/delete, ledger sync
       ledger_syncer.dart       # LedgerSyncer: subscribes to to-device onMessage → writes to Drift
                                # Static @visibleForTesting methods for unit-testable event processing
@@ -279,6 +282,8 @@ lib/
       balance_share.dart       # G69 pure "who pays whom" share text
       group_stats.dart         # G69 pure overview stats (total, paid vs. share, categories)
       balance_provider.dart    # Riverpod: watches Drift streams, recomputes on change
+      settle_currency.dart     # G73 pure ledgerForSettling (convert into the base currency)
+      exchange_rate_fetcher.dart # G73 Fetch current rate (Frankfurter, only on tap)
       record_payment_dialog.dart # G28 "X paid Y" dialog (any two participants)
     backup/                    # Full JSON backup (G5) + CSV export/import (Phase D, G13) — see "Backup" below
       ledger_backup.dart       # Pure-Dart backup codec (buildBackupJson / parseBackup) + nudge logic + file names
@@ -1952,6 +1957,70 @@ written, snackbar `paymentGone`. Read-only (removed) groups: no tap, no
 menu. Tests: `test/g60_payment_edit_test.dart`,
 `test/integration/settlement_edit_sync_test.dart`.
 
+### Exchange rates + settle in one currency (G73)
+
+Fixed, **hand-entered** rates per group (U18) — in the **signed group meta**,
+like G47's categories **only when set** (absent = pre-G73 body / G27 hash —
+golden in `test/core/exchange_rates_wire_test.dart`):
+`"exchange_rates": {"base": "EUR", "rates": {"CHF": "1.0797"}, "settle": true}`
+(`ExchangeRates`, `models/exchange_rates.dart`; `GroupModel.exchangeRates`).
+A rate = what **1 unit** of the currency is worth in `base`, as a
+**canonical decimal string** (canonical JSON has no floats; `isValidRate`:
+no leading / trailing zeros, ≤ 9 + 10 digits, > 0); `settle` only when true
+= "settle up in {base}". Content rules (`exchangeRatesProblem` in
+`groupMetaProblem` → `invalid_record`): base + codes = 3 capital letters, a
+code ≠ base, 1 … `kMaxExchangeRates` (50) rates, no unknown keys; a
+malformed value parses to an invalid entry (refused, never dropped). Schema
+**v17** `groups.exchange_rates_json` (added before the v12 backfill; the
+v16 → v17 step forgets meta refusals like v11 / v16). Whole-meta LWW (a
+concurrent rate + name edit loses one — G57). G48 reset / G58 exact state
+reset the rates with the meta; bootstrap / backup carry them; not in the CSV.
+- **Balances:** `ledgerForSettling` (`features/balance/settle_currency.dart`,
+  pure) — with `settle` on, every expense / payment in a currency **with a
+  rate** is converted into `base` for the calculation only (amount via
+  `convertCents`: BigInt, half away from zero, hundredths → hundredths for
+  every currency incl. JPY; the split re-spread over the same people by
+  `distributeByWeights`, so it sums exactly); others stay separate. Used by
+  `balanceForRoomProvider` (via `settlingLedgerProvider` +
+  `groupExchangeRatesProvider`, `balance_provider.dart` → balance page,
+  settle-up, share text, leave warning), `groupOverviewProvider` (my
+  balance, totals) and the people page's removal warning. Group stats (G69)
+  stay per original currency. Nothing is stored converted — turning it off
+  restores the per-currency view.
+- **UI:** group settings → *Exchange rates* (`exchangeRatesTile`, summary
+  `exchangeRatesSummary`) → `GroupRatesPage` (`/groups/:id/rates`,
+  `groupRatesLocation`): intro, *Settle up in {base}* switch
+  (`settleInBaseSwitch`), rows "1 CHF = 1,0797 EUR" (`rate-<code>`,
+  `displayRate` = locale decimal, no grouping) with remove
+  (`removeRate-<code>`), "used without a rate: …" (`ratesMissing`), FAB
+  *Add rate* (`addRate` → currency picker → dialog). Base = the group
+  currency when the first rate is added (kept if the group currency changes
+  later). `RateDialog` (`rateField`, `rateSave`; `,` or `.` via
+  `normalizeRateInput`). Writes: `GroupEditor.setExchangeRates` (new meta
+  version, `nextLwwClock`, signed / `pendingSign` / link version, relayed;
+  read-only for non-members). Balance page: "Settled in EUR …" note
+  (`settledInBaseNote`, `openRatesFromBalance`) or, with several currencies
+  and no conversion, *Set exchange rates* (`setExchangeRates`).
+- **Fetch current rate** (`fetchRateButton`, `exchange_rate_fetcher.dart`):
+  the only third-party request outside Matrix / Nostr, **only on tap**:
+  `GET https://api.frankfurter.dev/v2/rate/<from>/<base>` (Frankfurter —
+  open source, free, no key / account / cookies, ECB + central-bank
+  reference rates, CORS ok; ~30 currencies, others → 404 / 422 →
+  `RateUnavailableException` → "enter it yourself"). The request carries
+  only the two codes (pinned by a `MockClient` test); the dialog names the
+  host (`fetchRateSource`); the fetched value is only filled in (date shown)
+  until *Save*. Test seam `exchangeRateFetcherProvider` (tests never hit the
+  network). PRIVACY.md + `privacyRates*` (pinned equal), and the G43
+  "only Matrix homeservers" texts (`privacyNoTrackingBody`,
+  `privacyLocalBody`, summary table) name it as an exception.
+- Mixed versions: a pre-G73 build refuses signed metas carrying rates (bad
+  signature) until updated — `docs/open-points.md`. Tests:
+  `test/core/exchange_rates_test.dart`, `exchange_rates_wire_test.dart`,
+  `test/features/settle_currency_test.dart`,
+  `test/integration/exchange_rates_sync_test.dart`,
+  `test/database/schema_v17_migration_test.dart`,
+  `test/g73_exchange_rates_test.dart`, G71 guidelines.
+
 ### Share, overview, groups order (G69)
 
 - **Share "who pays whom" (U17):** balance page app bar → *Share*
@@ -2554,7 +2623,7 @@ Expenses and settlements use **UUIDv7** IDs. All amounts are **integer cents** t
 
 **`com.moneyledger.settlement`** content: `{ "v", "id", "group", "amount", "currency", "from", "to", "created_at", "updated_at", "deleted", "date"?, "origin", "sig" }` (`from`/`to` are participant ids; `date` — G60, optional ISO `YYYY-MM-DD`, only when the payment is back-dated, signed and hashed only when present, exactly like the expense `date`).
 
-**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "categories"?, "sig" }` — `categories` (G47, optional, only when the group has custom categories): `[{ "id": "c:<uuidv7>", "name": "Dog", "icon": "pets", "hidden": true? }]`, part of the signed body and the G27 hash only when present.
+**`com.moneyledger.member`** (participant) content: `{ "v", "group", "participant_id", "name", "matrix_id", "status", "updated_at", "sig" }` — `matrix_id` is null for a local participant. (`user` is the pre-virtual-users key, still read on the receiver for forward-compat.) **`com.moneyledger.group`** (meta): `{ "v", "group", "name", "currency", "updated_at", "categories"?, "link"?, "locked_at"?, "exchange_rates"?, "sig" }` — `categories` (G47, optional, only when the group has custom categories): `[{ "id": "c:<uuidv7>", "name": "Dog", "icon": "pets", "hidden": true? }]`, part of the signed body and the G27 hash only when present. `exchange_rates` (G73, optional): `{ "base": "EUR", "rates": { "CHF": "1.0797" }, "settle": true? }` — rates as canonical decimal strings, likewise only when set (see "Exchange rates (G73)").
 
 **`com.moneyledger.digest`** (anti-entropy) — sent per group to all claimed members *including self*. Maps are `id → "<updated_at>:<hash8>"` (G27; a bare int = clock only), **tombstones included**; `meta_hash` is the meta's hash8; the `members` map (keyed by participant id) doubles as membership/identity gossip — each entry is the full **signed** member version (verified like a member payload). `rejected` (optional, G6) lists versions the sender refused (`{expenses: {id: T}, settlements: {…}, members: {pid: T}, meta: T}`) so peers don't re-send them; G18 review 2: the highest refused version per id — further ones ride in an optional `rejected_more` (`{expenses: {id: ["T:hash8", …]}, …, meta: [...]}`). A `reply: false` digest is answered once with `reply: true` (bounded two-message exchange):
 ```json

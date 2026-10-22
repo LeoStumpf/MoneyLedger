@@ -206,6 +206,11 @@ void main() {
     await tester.pump();
 
     await openGroupSettings(tester);
+    // G73's exchange-rates tile pushed the Data section down.
+    await tester.scrollUntilVisible(
+      find.text('Reset to an earlier state…'),
+      100,
+    );
     expect(find.text('Export CSV'), findsOneWidget);
     expect(find.text('Back up this group'), findsOneWidget); // G34
     expect(find.text('Reset to an earlier state…'), findsOneWidget); // G48

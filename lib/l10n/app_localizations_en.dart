@@ -894,7 +894,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyNoTrackingBody =>
-      'Apart from the Nostr relays of groups you share with an invite link (see “Shared groups (invite link)”), the app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.';
+      'Apart from the Nostr relays of groups you share with an invite link (see “Shared groups (invite link)”) and the exchange-rate service you can ask with “Fetch current rate” (see “Exchange rates”), the app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element\'s sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.';
 
   @override
   String get privacyBackgroundTitle => 'Background sync on Android';
@@ -1978,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyLocalBody =>
-      'If you use MoneyLedger without a Matrix account, groups you don\'t share send nothing: for them the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). A group you share with an invite link syncs through public Nostr relays (see “Shared groups (invite link)”). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.';
+      'If you use MoneyLedger without a Matrix account, groups you don\'t share send nothing: for them the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). A group you share with an invite link syncs through public Nostr relays (see “Shared groups (invite link)”). Links you tap, e.g. to the source code, open in your browser; “Fetch current rate” asks the exchange-rate service only when you tap it (see “Exchange rates”). Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.';
 
   @override
   String get categoryNone => 'No category';
@@ -3672,4 +3672,109 @@ class AppLocalizationsEn extends AppLocalizations {
   String whyMatrixWithMatrix(String text) {
     return 'Matrix: $text';
   }
+
+  @override
+  String get exchangeRatesTitle => 'Exchange rates';
+
+  @override
+  String get exchangeRatesTileNone =>
+      'Not set — currencies are settled separately';
+
+  @override
+  String exchangeRatesTileRates(int count, String base) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rates in $base',
+      one: '1 rate in $base',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String exchangeRatesTileSettled(String rates, String base) {
+    return '$rates · settle up in $base';
+  }
+
+  @override
+  String exchangeRatesIntro(String base) {
+    return 'Fixed rates you enter yourself. They belong to the group: everyone in it sees and uses the same rates. Rates are given in $base.';
+  }
+
+  @override
+  String settleInBase(String base) {
+    return 'Settle up in $base';
+  }
+
+  @override
+  String get settleInBaseBody =>
+      'Balances and suggested payments convert the other currencies at these rates. A currency without a rate stays separate.';
+
+  @override
+  String rateRow(String from, String rate, String base) {
+    return '1 $from = $rate $base';
+  }
+
+  @override
+  String get addRate => 'Add rate';
+
+  @override
+  String get removeRate => 'Remove rate';
+
+  @override
+  String get noRatesYet => 'No rates yet.';
+
+  @override
+  String ratesMissingFor(String currencies) {
+    return 'Used in this group without a rate: $currencies';
+  }
+
+  @override
+  String rateDialogTitle(String from, String base) {
+    return '1 $from in $base';
+  }
+
+  @override
+  String rateFieldLabel(String base) {
+    return 'Rate in $base';
+  }
+
+  @override
+  String get rateInvalid =>
+      'Enter a number greater than 0 (at most 10 decimals).';
+
+  @override
+  String get fetchRate => 'Fetch current rate';
+
+  @override
+  String fetchRateSource(String host) {
+    return 'Asks Frankfurter ($host, reference rates of central banks) — only when you tap. It sees your IP address and the two currencies, nothing about the group.';
+  }
+
+  @override
+  String fetchedRateFrom(String date) {
+    return 'Reference rate of $date (Frankfurter) — check it before saving.';
+  }
+
+  @override
+  String get fetchRateUnavailable =>
+      'No rate available for this pair — enter it yourself.';
+
+  @override
+  String get fetchRateFailedTitle => 'Couldn\'t fetch the rate';
+
+  @override
+  String settledInBaseNote(String base) {
+    return 'Settled in $base: other currencies are converted at the group\'s fixed rates.';
+  }
+
+  @override
+  String get setExchangeRates => 'Set exchange rates';
+
+  @override
+  String get privacyRatesTitle => 'Exchange rates';
+
+  @override
+  String get privacyRatesBody =>
+      'A group can have fixed exchange rates that you enter yourself; they are part of the group and sync to everyone in it like its name. Only when you tap “Fetch current rate”, the app asks Frankfurter (api.frankfurter.dev — a free, open-source service publishing reference rates of the European Central Bank and other central banks) for the rate between the two currencies. The request goes directly from your device and needs no account or key; the service (and its hosting provider) sees your device\'s IP address, the two currency codes and the time — nothing about your groups, the people in them or any amounts. It is never contacted automatically, and the fetched rate is only filled in for you to check before you save it.';
 }

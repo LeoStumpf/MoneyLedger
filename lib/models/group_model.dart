@@ -1,3 +1,4 @@
+import 'exchange_rates.dart';
 import 'expense_category.dart';
 import 'record_signature.dart';
 
@@ -61,6 +62,10 @@ class GroupModel {
   /// when set.
   final int? lockedAt;
 
+  /// G73: the group's fixed exchange rates (+ "settle in base"); null =
+  /// none. Part of the signed body and the G27 hash only when set.
+  final ExchangeRates? exchangeRates;
+
   /// G6: signature of this meta version (null = legacy / unsigned).
   final RecordSignature? sig;
 
@@ -79,6 +84,7 @@ class GroupModel {
     this.categories = const [],
     this.link,
     this.lockedAt,
+    this.exchangeRates,
     this.sig,
     this.pendingSign = false,
     this.linkAuthor,
@@ -98,6 +104,7 @@ class GroupModel {
         categories: categories,
         link: link,
         lockedAt: lockedAt,
+        exchangeRates: exchangeRates,
         sig: sig,
         pendingSign: pendingSign,
         linkAuthor: linkAuthor,
@@ -106,6 +113,7 @@ class GroupModel {
   /// G53: the next meta version (clock [updatedAt]) with the content of
   /// this one, the given fields replaced — unsigned, no author hint.
   /// [link] / [lockedAt]: pass [keepLinkState] (the default) to keep them.
+  /// G73: [exchangeRates] likewise ([keepExchangeRates] = keep, null = none).
   GroupModel nextVersion({
     required int updatedAt,
     String? name,
@@ -113,6 +121,7 @@ class GroupModel {
     List<CustomCategory>? categories,
     Object? link = keepLinkState,
     Object? lockedAt = keepLinkState,
+    Object? exchangeRates = keepExchangeRates,
   }) => GroupModel(
     roomId: roomId,
     name: name ?? this.name,
@@ -123,6 +132,9 @@ class GroupModel {
     lockedAt: identical(lockedAt, keepLinkState)
         ? this.lockedAt
         : lockedAt as int?,
+    exchangeRates: identical(exchangeRates, keepExchangeRates)
+        ? this.exchangeRates
+        : exchangeRates as ExchangeRates?,
   );
 
   /// G52: this version as written in a link-only group — unsigned, not
@@ -135,6 +147,7 @@ class GroupModel {
     currency: currency,
     updatedAt: updatedAt,
     categories: categories,
+    exchangeRates: exchangeRates,
     linkAuthor: author,
   );
 
@@ -147,3 +160,10 @@ class GroupModel {
 
 /// Sentinel for [GroupModel.nextVersion]: keep the current link state.
 const Object keepLinkState = Object();
+
+/// Sentinel for [GroupModel.nextVersion]: keep the current exchange rates.
+const Object keepExchangeRates = _KeepExchangeRates();
+
+class _KeepExchangeRates {
+  const _KeepExchangeRates();
+}

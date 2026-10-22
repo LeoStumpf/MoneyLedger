@@ -11,6 +11,7 @@ import 'group_actions.dart';
 import 'group_archive_provider.dart';
 import 'group_overview_provider.dart';
 import 'group_provider.dart';
+import 'group_rates_page.dart';
 import '../link/link_invite.dart';
 import '../../core/widgets/large_text.dart';
 
@@ -91,6 +92,15 @@ class GroupSettingsPage extends ConsumerWidget {
               subtitle: Text(l.categoriesTileBody),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/groups/$roomId/categories'),
+            ),
+            // G73: fixed exchange rates + "settle up in {base}".
+            ListTile(
+              key: const Key('exchangeRatesTile'),
+              leading: const Icon(Icons.currency_exchange),
+              title: Text(l.exchangeRatesTitle),
+              subtitle: Text(exchangeRatesSummary(l, group?.exchangeRates)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(groupRatesLocation(roomId)),
             ),
             SettingsSectionHeader(l.membersTitle),
             ListTile(

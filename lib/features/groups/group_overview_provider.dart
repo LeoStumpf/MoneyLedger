@@ -4,6 +4,8 @@ import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../balance/balance_calculator.dart';
+import '../balance/balance_provider.dart' show groupExchangeRatesProvider;
+import '../balance/settle_currency.dart';
 import '../expenses/expenses_provider.dart';
 import 'group_provider.dart';
 
@@ -63,15 +65,21 @@ GroupOverview groupOverview(Ref ref, String groupId) {
   ]) {
     if (last == null || t > last) last = t;
   }
+  final settling = ledgerForSettling(
+    expenses,
+    settlements,
+    ref.watch(groupExchangeRatesProvider(groupId)),
+  );
   return GroupOverview(
     members: [
       for (final m in all)
         if (m.isActive) m,
     ],
     me: me,
+    // G73: in the settle-up currency while that is on.
     myBalance: me == null
         ? const {}
-        : netBalanceOf(me.userId, expenses, settlements),
+        : netBalanceOf(me.userId, settling.expenses, settling.settlements),
     lastActivityAt: last,
     recordCount: expenses.length + settlements.length,
   );

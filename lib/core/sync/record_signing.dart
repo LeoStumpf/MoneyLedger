@@ -162,6 +162,9 @@ Map<String, Object?> groupMetaContent(GroupModel g) => {
   // other meta keeps exactly its pre-G53 body and hash.
   if (g.link != null) 'link': g.link!.toJson(),
   if (g.lockedAt != null) 'locked_at': g.lockedAt,
+  // G73: only when the group has exchange rates — every other meta keeps
+  // exactly its pre-G73 body and hash.
+  if (g.exchangeRates != null) 'exchange_rates': g.exchangeRates!.toJson(),
 };
 
 Map<String, Object?> groupMetaBody(GroupModel g, SignerId signer) => {

@@ -30,6 +30,9 @@ class Groups extends Table {
   TextColumn get linkSecret => text().nullable()();
   // G53: when the group was locked (wire `locked_at`, ms); NULL = never.
   IntColumn get lockedAt => integer().nullable()();
+  // G73: the fixed exchange rates (JSON, the wire `exchange_rates`
+  // verbatim); NULL = none. Part of the signed meta when set.
+  TextColumn get exchangeRatesJson => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {roomId};
@@ -425,7 +428,7 @@ class AppDatabase extends _$AppDatabase {
   });
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -473,6 +476,15 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(groups, groups.linkEpoch);
         await m.addColumn(groups, groups.linkSecret);
         await m.addColumn(groups, groups.lockedAt);
+      }
+
+      // G73 (v17): the meta's exchange rates — same reason (the v12
+      // backfill reads the groups table with today's columns).
+      var exchangeRatesAdded = false;
+      Future<void> addExchangeRates() async {
+        if (exchangeRatesAdded) return;
+        exchangeRatesAdded = true;
+        await m.addColumn(groups, groups.exchangeRatesJson);
       }
 
       // v2 (Phase B): add the local membership table. Existing
@@ -610,6 +622,7 @@ class AppDatabase extends _$AppDatabase {
         await addSettlementDate();
         await addLinkAuthors();
         await addGroupLink();
+        await addExchangeRates();
         await backfillRecordHistory(this);
       }
       // v13 (G49): the optional expense date (nullable — existing expenses
@@ -653,6 +666,19 @@ class AppDatabase extends _$AppDatabase {
       // refusals so peers re-send and this build verifies them properly.
       if (from < 16) {
         await addGroupLink();
+        if (from >= 6) {
+          await customStatement(
+            "DELETE FROM rejected_versions WHERE kind = 'meta'",
+          );
+        }
+      }
+      // v17 (G73 exchange rates): the signed meta's optional
+      // `exchange_rates` (NULL for every existing meta — signatures and
+      // hashes unchanged). Like v11 / v16: a pre-G73 build refused signed
+      // metas carrying them — forget meta refusals so peers re-send and
+      // this build verifies them properly.
+      if (from < 17) {
+        await addExchangeRates();
         if (from >= 6) {
           await customStatement(
             "DELETE FROM rejected_versions WHERE kind = 'meta'",

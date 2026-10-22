@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../models/exchange_rates.dart';
 import '../../models/expense_category.dart';
 import '../../models/expense_model.dart';
 import '../../models/group_model.dart';
@@ -75,6 +76,8 @@ Map<String, dynamic> groupMetaPayload(GroupModel g) => {
   // G53: optional — the open invite link of a mixed group / the lock time.
   if (g.link != null) 'link': g.link!.toJson(),
   if (g.lockedAt != null) 'locked_at': g.lockedAt,
+  // G73: optional — the group's fixed exchange rates.
+  if (g.exchangeRates != null) 'exchange_rates': g.exchangeRates!.toJson(),
   if (g.sig != null) 'sig': g.sig!.toJson(),
   // G52: the unsigned, unhashed author hint of a link-group version.
   if (g.linkAuthor != null) 'by': g.linkAuthor,
@@ -360,6 +363,8 @@ GroupModel? groupMetaFromPayload(Map<String, dynamic> c) {
     // G53 (optional; malformed → invalid values, refused by the gate).
     link: GroupLink.fromJson(c['link']),
     lockedAt: _lockedAtFromPayload(c['locked_at']),
+    // G73 (optional; malformed → an invalid entry, refused by the gate).
+    exchangeRates: ExchangeRates.fromJson(c['exchange_rates']),
     sig: RecordSignature.fromJson(c['sig']),
     linkAuthor: linkAuthorFromPayload(c),
   );

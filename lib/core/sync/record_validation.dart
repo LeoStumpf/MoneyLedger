@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../models/exchange_rates.dart';
 import '../../models/expense_category.dart';
 import '../../models/expense_date.dart';
 import '../../models/expense_model.dart';
@@ -89,6 +90,8 @@ String? groupMetaProblem(GroupModel g) {
   }
   final lockedAt = g.lockedAt;
   if (lockedAt != null && lockedAt < 0) return 'locked_at $lockedAt';
+  final fxProblem = exchangeRatesProblem(g.exchangeRates);
+  if (fxProblem != null) return fxProblem;
   final cats = g.categories;
   if (cats.length > kMaxCustomCategories) {
     return '${cats.length} categories';
@@ -105,6 +108,26 @@ String? groupMetaProblem(GroupModel g) {
     if (!kCustomCategoryIcons.contains(c.icon)) {
       return 'category icon "${c.icon}"';
     }
+  }
+  return null;
+}
+
+/// G73: why [fx] isn't a valid `exchange_rates` value (null = valid or
+/// absent): the base isn't a currency code, there is no rate or more than
+/// [kMaxExchangeRates], a rate names an invalid code or the base itself, or
+/// a value isn't a canonical positive decimal ([isValidRate]).
+String? exchangeRatesProblem(ExchangeRates? fx) {
+  if (fx == null) return null;
+  if (!isCurrencyCode(fx.base)) return 'exchange rate base "${fx.base}"';
+  if (fx.rates.isEmpty) return 'no exchange rates';
+  if (fx.rates.length > kMaxExchangeRates) {
+    return '${fx.rates.length} exchange rates';
+  }
+  for (final MapEntry(key: code, value: rate) in fx.rates.entries) {
+    if (!isCurrencyCode(code) || code == fx.base) {
+      return 'exchange rate currency "$code"';
+    }
+    if (!isValidRate(rate)) return 'exchange rate of $code';
   }
   return null;
 }

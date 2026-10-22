@@ -13,6 +13,7 @@ import '../../core/link/link_keys.dart' show generateLinkSecret;
 import '../../core/link/link_sync_engine.dart'
     show LinkUnpublisher, linkSyncEngineProvider, linkUnpublisherProvider;
 import '../../core/link/link_uri.dart' show encodeLinkSecret;
+import '../../models/exchange_rates.dart';
 import '../../models/link_model.dart';
 import '../../core/database/daos/members_dao.dart';
 import '../../core/database/daos/settings_dao.dart';
@@ -936,6 +937,23 @@ class GroupEditor extends _$GroupEditor {
         await _writeCategories(w, current, [
           for (final c in current.categories) c.id == updated.id ? updated : c,
         ]);
+      });
+
+  /// G73: replaces [groupId]'s fixed exchange rates ([fx] null = none) — a
+  /// new meta version (name, currency, categories, link state kept),
+  /// signed and relayed like [edit]. No change → nothing is written; rates
+  /// breaking the content rules throw (nothing written).
+  Future<void> setExchangeRates(String groupId, ExchangeRates? fx) =>
+      _runGroupWrite(ref, (s) => state = s, (w) async {
+        final current = await w.groups.getGroup(groupId);
+        if (current == null || current.exchangeRates == fx) return;
+        final next = current.nextVersion(
+          updatedAt: nextLwwClock(current.updatedAt),
+          exchangeRates: fx,
+        );
+        final problem = groupMetaProblem(next);
+        if (problem != null) throw ArgumentError(problem);
+        await _write(w, next);
       });
 
   /// Writes [current] with [categories] as a new meta version; false when

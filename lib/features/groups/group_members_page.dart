@@ -14,6 +14,8 @@ import '../../core/widgets/content_width.dart';
 import '../../core/widgets/person_avatar.dart';
 import 'add_person_dialog.dart';
 import 'group_exit_dialog.dart' show removalBalanceWarning;
+import '../balance/balance_provider.dart' show groupExchangeRatesProvider;
+import '../balance/settle_currency.dart';
 import '../balance/balance_calculator.dart';
 import '../balance/settle_up.dart';
 import '../expenses/expenses_provider.dart';
@@ -641,15 +643,21 @@ class _MemberTile extends ConsumerWidget {
       final settlements = await ref
           .read(settlementsForRoomProvider(roomId).future)
           .timeout(wait);
+      // G73: in the settle-up currency while that is on.
+      final ledger = ledgerForSettling(
+        expenses,
+        settlements,
+        ref.read(groupExchangeRatesProvider(roomId)),
+      );
       final warning = removalBalanceWarning(
         member.userId,
         member.label,
-        expenses,
-        settlements,
+        ledger.expenses,
+        ledger.settlements,
         l,
       );
       if (warning == null) return null;
-      final debt = calculateDebts(expenses, settlements)
+      final debt = calculateDebts(ledger.expenses, ledger.settlements)
           .where((d) => d.from == member.userId || d.to == member.userId)
           .firstOrNull;
       return (warning: warning, debt: debt);

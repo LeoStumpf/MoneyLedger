@@ -129,6 +129,18 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _exchangeRatesJsonMeta = const VerificationMeta(
+    'exchangeRatesJson',
+  );
+  @override
+  late final GeneratedColumn<String> exchangeRatesJson =
+      GeneratedColumn<String>(
+        'exchange_rates_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     roomId,
@@ -142,6 +154,7 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
     linkEpoch,
     linkSecret,
     lockedAt,
+    exchangeRatesJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -231,6 +244,15 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         lockedAt.isAcceptableOrUnknown(data['locked_at']!, _lockedAtMeta),
       );
     }
+    if (data.containsKey('exchange_rates_json')) {
+      context.handle(
+        _exchangeRatesJsonMeta,
+        exchangeRatesJson.isAcceptableOrUnknown(
+          data['exchange_rates_json']!,
+          _exchangeRatesJsonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -284,6 +306,10 @@ class $GroupsTable extends Groups with TableInfo<$GroupsTable, Group> {
         DriftSqlType.int,
         data['${effectivePrefix}locked_at'],
       ),
+      exchangeRatesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}exchange_rates_json'],
+      ),
     );
   }
 
@@ -305,6 +331,7 @@ class Group extends DataClass implements Insertable<Group> {
   final int? linkEpoch;
   final String? linkSecret;
   final int? lockedAt;
+  final String? exchangeRatesJson;
   const Group({
     required this.roomId,
     required this.name,
@@ -317,6 +344,7 @@ class Group extends DataClass implements Insertable<Group> {
     this.linkEpoch,
     this.linkSecret,
     this.lockedAt,
+    this.exchangeRatesJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -344,6 +372,9 @@ class Group extends DataClass implements Insertable<Group> {
     if (!nullToAbsent || lockedAt != null) {
       map['locked_at'] = Variable<int>(lockedAt);
     }
+    if (!nullToAbsent || exchangeRatesJson != null) {
+      map['exchange_rates_json'] = Variable<String>(exchangeRatesJson);
+    }
     return map;
   }
 
@@ -370,6 +401,9 @@ class Group extends DataClass implements Insertable<Group> {
       lockedAt: lockedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lockedAt),
+      exchangeRatesJson: exchangeRatesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exchangeRatesJson),
     );
   }
 
@@ -390,6 +424,9 @@ class Group extends DataClass implements Insertable<Group> {
       linkEpoch: serializer.fromJson<int?>(json['linkEpoch']),
       linkSecret: serializer.fromJson<String?>(json['linkSecret']),
       lockedAt: serializer.fromJson<int?>(json['lockedAt']),
+      exchangeRatesJson: serializer.fromJson<String?>(
+        json['exchangeRatesJson'],
+      ),
     );
   }
   @override
@@ -407,6 +444,7 @@ class Group extends DataClass implements Insertable<Group> {
       'linkEpoch': serializer.toJson<int?>(linkEpoch),
       'linkSecret': serializer.toJson<String?>(linkSecret),
       'lockedAt': serializer.toJson<int?>(lockedAt),
+      'exchangeRatesJson': serializer.toJson<String?>(exchangeRatesJson),
     };
   }
 
@@ -422,6 +460,7 @@ class Group extends DataClass implements Insertable<Group> {
     Value<int?> linkEpoch = const Value.absent(),
     Value<String?> linkSecret = const Value.absent(),
     Value<int?> lockedAt = const Value.absent(),
+    Value<String?> exchangeRatesJson = const Value.absent(),
   }) => Group(
     roomId: roomId ?? this.roomId,
     name: name ?? this.name,
@@ -436,6 +475,9 @@ class Group extends DataClass implements Insertable<Group> {
     linkEpoch: linkEpoch.present ? linkEpoch.value : this.linkEpoch,
     linkSecret: linkSecret.present ? linkSecret.value : this.linkSecret,
     lockedAt: lockedAt.present ? lockedAt.value : this.lockedAt,
+    exchangeRatesJson: exchangeRatesJson.present
+        ? exchangeRatesJson.value
+        : this.exchangeRatesJson,
   );
   Group copyWithCompanion(GroupsCompanion data) {
     return Group(
@@ -458,6 +500,9 @@ class Group extends DataClass implements Insertable<Group> {
           ? data.linkSecret.value
           : this.linkSecret,
       lockedAt: data.lockedAt.present ? data.lockedAt.value : this.lockedAt,
+      exchangeRatesJson: data.exchangeRatesJson.present
+          ? data.exchangeRatesJson.value
+          : this.exchangeRatesJson,
     );
   }
 
@@ -474,7 +519,8 @@ class Group extends DataClass implements Insertable<Group> {
           ..write('linkAuthor: $linkAuthor, ')
           ..write('linkEpoch: $linkEpoch, ')
           ..write('linkSecret: $linkSecret, ')
-          ..write('lockedAt: $lockedAt')
+          ..write('lockedAt: $lockedAt, ')
+          ..write('exchangeRatesJson: $exchangeRatesJson')
           ..write(')'))
         .toString();
   }
@@ -492,6 +538,7 @@ class Group extends DataClass implements Insertable<Group> {
     linkEpoch,
     linkSecret,
     lockedAt,
+    exchangeRatesJson,
   );
   @override
   bool operator ==(Object other) =>
@@ -507,7 +554,8 @@ class Group extends DataClass implements Insertable<Group> {
           other.linkAuthor == this.linkAuthor &&
           other.linkEpoch == this.linkEpoch &&
           other.linkSecret == this.linkSecret &&
-          other.lockedAt == this.lockedAt);
+          other.lockedAt == this.lockedAt &&
+          other.exchangeRatesJson == this.exchangeRatesJson);
 }
 
 class GroupsCompanion extends UpdateCompanion<Group> {
@@ -522,6 +570,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
   final Value<int?> linkEpoch;
   final Value<String?> linkSecret;
   final Value<int?> lockedAt;
+  final Value<String?> exchangeRatesJson;
   final Value<int> rowid;
   const GroupsCompanion({
     this.roomId = const Value.absent(),
@@ -535,6 +584,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.linkEpoch = const Value.absent(),
     this.linkSecret = const Value.absent(),
     this.lockedAt = const Value.absent(),
+    this.exchangeRatesJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GroupsCompanion.insert({
@@ -549,6 +599,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     this.linkEpoch = const Value.absent(),
     this.linkSecret = const Value.absent(),
     this.lockedAt = const Value.absent(),
+    this.exchangeRatesJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : roomId = Value(roomId),
        name = Value(name);
@@ -564,6 +615,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Expression<int>? linkEpoch,
     Expression<String>? linkSecret,
     Expression<int>? lockedAt,
+    Expression<String>? exchangeRatesJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -578,6 +630,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
       if (linkEpoch != null) 'link_epoch': linkEpoch,
       if (linkSecret != null) 'link_secret': linkSecret,
       if (lockedAt != null) 'locked_at': lockedAt,
+      if (exchangeRatesJson != null) 'exchange_rates_json': exchangeRatesJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -594,6 +647,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     Value<int?>? linkEpoch,
     Value<String?>? linkSecret,
     Value<int?>? lockedAt,
+    Value<String?>? exchangeRatesJson,
     Value<int>? rowid,
   }) {
     return GroupsCompanion(
@@ -608,6 +662,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
       linkEpoch: linkEpoch ?? this.linkEpoch,
       linkSecret: linkSecret ?? this.linkSecret,
       lockedAt: lockedAt ?? this.lockedAt,
+      exchangeRatesJson: exchangeRatesJson ?? this.exchangeRatesJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -648,6 +703,9 @@ class GroupsCompanion extends UpdateCompanion<Group> {
     if (lockedAt.present) {
       map['locked_at'] = Variable<int>(lockedAt.value);
     }
+    if (exchangeRatesJson.present) {
+      map['exchange_rates_json'] = Variable<String>(exchangeRatesJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -668,6 +726,7 @@ class GroupsCompanion extends UpdateCompanion<Group> {
           ..write('linkEpoch: $linkEpoch, ')
           ..write('linkSecret: $linkSecret, ')
           ..write('lockedAt: $lockedAt, ')
+          ..write('exchangeRatesJson: $exchangeRatesJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6597,6 +6656,7 @@ typedef $$GroupsTableCreateCompanionBuilder =
       Value<int?> linkEpoch,
       Value<String?> linkSecret,
       Value<int?> lockedAt,
+      Value<String?> exchangeRatesJson,
       Value<int> rowid,
     });
 typedef $$GroupsTableUpdateCompanionBuilder =
@@ -6612,6 +6672,7 @@ typedef $$GroupsTableUpdateCompanionBuilder =
       Value<int?> linkEpoch,
       Value<String?> linkSecret,
       Value<int?> lockedAt,
+      Value<String?> exchangeRatesJson,
       Value<int> rowid,
     });
 
@@ -6676,6 +6737,11 @@ class $$GroupsTableFilterComposer
 
   ColumnFilters<int> get lockedAt => $composableBuilder(
     column: $table.lockedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exchangeRatesJson => $composableBuilder(
+    column: $table.exchangeRatesJson,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6743,6 +6809,11 @@ class $$GroupsTableOrderingComposer
     column: $table.lockedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get exchangeRatesJson => $composableBuilder(
+    column: $table.exchangeRatesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GroupsTableAnnotationComposer
@@ -6794,6 +6865,11 @@ class $$GroupsTableAnnotationComposer
 
   GeneratedColumn<int> get lockedAt =>
       $composableBuilder(column: $table.lockedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get exchangeRatesJson => $composableBuilder(
+    column: $table.exchangeRatesJson,
+    builder: (column) => column,
+  );
 }
 
 class $$GroupsTableTableManager
@@ -6835,6 +6911,7 @@ class $$GroupsTableTableManager
                 Value<int?> linkEpoch = const Value.absent(),
                 Value<String?> linkSecret = const Value.absent(),
                 Value<int?> lockedAt = const Value.absent(),
+                Value<String?> exchangeRatesJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion(
                 roomId: roomId,
@@ -6848,6 +6925,7 @@ class $$GroupsTableTableManager
                 linkEpoch: linkEpoch,
                 linkSecret: linkSecret,
                 lockedAt: lockedAt,
+                exchangeRatesJson: exchangeRatesJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6863,6 +6941,7 @@ class $$GroupsTableTableManager
                 Value<int?> linkEpoch = const Value.absent(),
                 Value<String?> linkSecret = const Value.absent(),
                 Value<int?> lockedAt = const Value.absent(),
+                Value<String?> exchangeRatesJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GroupsCompanion.insert(
                 roomId: roomId,
@@ -6876,6 +6955,7 @@ class $$GroupsTableTableManager
                 linkEpoch: linkEpoch,
                 linkSecret: linkSecret,
                 lockedAt: lockedAt,
+                exchangeRatesJson: exchangeRatesJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

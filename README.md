@@ -61,6 +61,11 @@ and sees only ciphertext.
   (e.g. into the trip's chat), and an **overview** per currency: total
   spent, what everyone paid vs. their share, the biggest categories. The
   groups list is sorted by last activity.
+- **Fixed exchange rates** per group (group settings → *Exchange rates*,
+  entered by hand or with *Fetch current rate*, which asks
+  [Frankfurter](https://frankfurter.dev) only when tapped) and *Settle up in
+  {currency}*: the other currencies are converted at those rates for the
+  balances and suggested payments.
 - **Archive** settled groups on this device (⋮ → *Archive group*, or the group settings): they move
   into a collapsed *Archived* section and come back by themselves when
   something new is added.

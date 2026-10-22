@@ -124,6 +124,7 @@ Expected results are in *italics*.
 | 6.4 | Edit group → default currency USD → add an expense → *balance page shows separate EUR and USD debts, no conversion* (then delete it + switch back) | emu |
 | 6.5 | Everything settled → *"All settled up!"* | emu |
 | 6.6 | Balance → ⓘ next to "Suggested payments" → *"Simplified debts" explanation*; multi-currency group → *"settled separately per currency" note* (G16) | emu |
+| 6.7 | (G73) Group with EUR + CHF expenses → balance page → *Set exchange rates* → *Add rate* → CHF → dialog *1 CHF in EUR*: the source line names api.frankfurter.dev; **nothing is requested before the tap** (debug logcat / browser network tab); *Fetch current rate* → *rate filled in, "Reference rate of …"*; Save → turn on *Settle up in EUR* → balance page: *one EUR section + "Settled in EUR …" note*; the peer shows the same rates (group settings tile) and the same EUR debts. Remove the rate → *both back to per-currency*. Offline: *Fetch* → friendly network error inline. German, 360 dp: *"1 CHF = 1,0797 EUR"*, dialog fits | 2dev |
 
 ## 7. Sync
 

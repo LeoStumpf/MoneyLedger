@@ -34,6 +34,7 @@ import 'package:money_ledger/features/expenses/expenses_provider.dart';
 import 'package:money_ledger/features/groups/create_group_page.dart';
 import 'package:money_ledger/features/groups/group_members_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
+import 'package:money_ledger/features/groups/group_rates_page.dart';
 import 'package:money_ledger/features/groups/group_settings_page.dart';
 import 'package:money_ledger/features/groups/groups_page.dart';
 import 'package:money_ledger/features/history/restore_points.dart';
@@ -44,6 +45,7 @@ import 'package:money_ledger/features/receipts/receipt_store.dart';
 import 'package:money_ledger/features/settings/settings_page.dart';
 import 'package:money_ledger/features/welcome/welcome_page.dart';
 import 'package:money_ledger/features/welcome/why_matrix_page.dart';
+import 'package:money_ledger/models/exchange_rates.dart';
 import 'package:money_ledger/models/expense_model.dart';
 import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
@@ -125,6 +127,7 @@ void _phone(WidgetTester tester, {double height = 780}) {
 
 List<dynamic> _overrides({
   List<dynamic> extra = const [],
+  List<GroupModel> groups = const [_group],
   GroupSyncStatus syncStatus = const GroupSyncStatus(
     pendingPeers: {},
     minPeerInSyncAt: null,
@@ -134,7 +137,7 @@ List<dynamic> _overrides({
     syncStatus: syncStatus,
     isLoggedIn: true,
     members: _members,
-    groups: const [_group],
+    groups: groups,
     expenses: _expenses,
     settlements: _settlements,
     debts: _debts,
@@ -348,6 +351,36 @@ void main() {
     await _expectGuidelines(tester);
     handle.dispose();
   });
+
+  for (final dialog in [false, true]) {
+    testWidgets('G73 exchange rates page${dialog ? ': rate dialog' : ''}', (
+      tester,
+    ) async {
+      _phone(tester);
+      final handle = tester.ensureSemantics();
+      final group = GroupModel(
+        roomId: _g,
+        name: 'Rome 2026',
+        currency: 'EUR',
+        exchangeRates: ExchangeRates(
+          base: 'EUR',
+          rates: const {'CHF': '1.0797'},
+          settle: true,
+        ),
+      );
+      await tester.pumpWidget(
+        _routed(const GroupRatesPage(roomId: _g), _overrides(groups: [group])),
+      );
+      await tester.pumpAndSettle();
+      if (dialog) {
+        await tester.tap(find.byKey(const Key('rate-CHF')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('fetchRateButton')), findsOneWidget);
+      }
+      await _expectGuidelines(tester, contrast: !dialog);
+      handle.dispose();
+    });
+  }
 
   testWidgets('people page', (tester) async {
     _phone(tester);

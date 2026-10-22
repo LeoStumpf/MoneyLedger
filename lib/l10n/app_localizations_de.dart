@@ -903,7 +903,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyNoTrackingBody =>
-      'Abgesehen von den Nostr-Relays der Gruppen, die du mit einem Einladungslink teilst (siehe „Geteilte Gruppen (Einladungslink)“), kommuniziert die App nur mit Matrix-Homeservern: auf der Anmeldeseite mit dem Server, den du einträgst – und erst, wenn du ihn bestätigst oder dich anmeldest –, danach nur mit deinem eigenen Homeserver. Über ihn fragt sie auch die Matrix-Profilnamen und Geräte der Personen in deinen Gruppen ab (dein Homeserver fragt dafür ggf. deren Homeserver). Wenn du Single Sign-on nutzt oder dich im Web registrierst, öffnet dein Browser die Seiten, zu denen dich dein Homeserver schickt (bei matrix.org ggf. die Registrierungsseite von Element, app.element.io). Links in der App – etwa zum Quellcode auf GitHub – öffnen sich erst in deinem Browser, wenn du darauf tippst. Die Web-Version wird vollständig von der Seite geladen, auf der sie bereitgestellt wird: kein Code und keine Schriften von Google oder anderen Dritten. Es gibt keine Analyse, keine Absturzberichte, keine Werbe-ID und keinerlei Tracking.';
+      'Abgesehen von den Nostr-Relays der Gruppen, die du mit einem Einladungslink teilst (siehe „Geteilte Gruppen (Einladungslink)“) und dem Wechselkurs-Dienst, den du mit „Aktuellen Kurs abrufen“ fragen kannst (siehe „Wechselkurse“), kommuniziert die App nur mit Matrix-Homeservern: auf der Anmeldeseite mit dem Server, den du einträgst – und erst, wenn du ihn bestätigst oder dich anmeldest –, danach nur mit deinem eigenen Homeserver. Über ihn fragt sie auch die Matrix-Profilnamen und Geräte der Personen in deinen Gruppen ab (dein Homeserver fragt dafür ggf. deren Homeserver). Wenn du Single Sign-on nutzt oder dich im Web registrierst, öffnet dein Browser die Seiten, zu denen dich dein Homeserver schickt (bei matrix.org ggf. die Registrierungsseite von Element, app.element.io). Links in der App – etwa zum Quellcode auf GitHub – öffnen sich erst in deinem Browser, wenn du darauf tippst. Die Web-Version wird vollständig von der Seite geladen, auf der sie bereitgestellt wird: kein Code und keine Schriften von Google oder anderen Dritten. Es gibt keine Analyse, keine Absturzberichte, keine Werbe-ID und keinerlei Tracking.';
 
   @override
   String get privacyBackgroundTitle =>
@@ -2001,7 +2001,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLocalBody =>
-      'Wenn du MoneyLedger ohne Matrix-Konto nutzt, senden Gruppen, die du nicht teilst, nichts: Für sie kontaktiert die App keinen Server und synchronisiert nichts (die Web-Version wird nur von der Seite geladen, auf der sie bereitgestellt wird). Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays (siehe „Geteilte Gruppen (Einladungslink)“). Links, auf die du tippst – etwa zum Quellcode –, öffnen sich in deinem Browser. Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben.';
+      'Wenn du MoneyLedger ohne Matrix-Konto nutzt, senden Gruppen, die du nicht teilst, nichts: Für sie kontaktiert die App keinen Server und synchronisiert nichts (die Web-Version wird nur von der Seite geladen, auf der sie bereitgestellt wird). Eine Gruppe, die du mit einem Einladungslink teilst, synchronisiert über öffentliche Nostr-Relays (siehe „Geteilte Gruppen (Einladungslink)“). Links, auf die du tippst – etwa zum Quellcode –, öffnen sich in deinem Browser; „Aktuellen Kurs abrufen“ fragt den Wechselkurs-Dienst nur, wenn du darauf tippst (siehe „Wechselkurse“). Dein Name, deine Gruppen, Ausgaben und Zahlungen liegen nur in einer lokalen Datenbank auf diesem Gerät, dazu eine kleine Einstellungsdatei (ob du die Begrüßung gesehen hast, dein lokaler Profilname). „Lokale Daten löschen“ in den Einstellungen oder das Deinstallieren der App entfernt sie. Verbindest du später ein Matrix-Konto, ziehen die lokalen Daten in dieses Konto um, und ab dann gelten die Abschnitte oben.';
 
   @override
   String get categoryNone => 'Keine Kategorie';
@@ -3710,4 +3710,109 @@ class AppLocalizationsDe extends AppLocalizations {
   String whyMatrixWithMatrix(String text) {
     return 'Matrix: $text';
   }
+
+  @override
+  String get exchangeRatesTitle => 'Wechselkurse';
+
+  @override
+  String get exchangeRatesTileNone =>
+      'Nicht festgelegt – Währungen werden getrennt ausgeglichen';
+
+  @override
+  String exchangeRatesTileRates(int count, String base) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Kurse in $base',
+      one: '1 Kurs in $base',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String exchangeRatesTileSettled(String rates, String base) {
+    return '$rates · Ausgleich in $base';
+  }
+
+  @override
+  String exchangeRatesIntro(String base) {
+    return 'Feste Kurse, die du selbst einträgst. Sie gehören zur Gruppe: Alle in der Gruppe sehen und nutzen dieselben Kurse. Die Kurse gelten in $base.';
+  }
+
+  @override
+  String settleInBase(String base) {
+    return 'In $base ausgleichen';
+  }
+
+  @override
+  String get settleInBaseBody =>
+      'Salden und Zahlungsvorschläge rechnen die anderen Währungen zu diesen Kursen um. Eine Währung ohne Kurs bleibt getrennt.';
+
+  @override
+  String rateRow(String from, String rate, String base) {
+    return '1 $from = $rate $base';
+  }
+
+  @override
+  String get addRate => 'Kurs hinzufügen';
+
+  @override
+  String get removeRate => 'Kurs entfernen';
+
+  @override
+  String get noRatesYet => 'Noch keine Kurse.';
+
+  @override
+  String ratesMissingFor(String currencies) {
+    return 'In der Gruppe ohne Kurs: $currencies';
+  }
+
+  @override
+  String rateDialogTitle(String from, String base) {
+    return '1 $from in $base';
+  }
+
+  @override
+  String rateFieldLabel(String base) {
+    return 'Kurs in $base';
+  }
+
+  @override
+  String get rateInvalid =>
+      'Gib eine Zahl größer als 0 ein (höchstens 10 Nachkommastellen).';
+
+  @override
+  String get fetchRate => 'Aktuellen Kurs abrufen';
+
+  @override
+  String fetchRateSource(String host) {
+    return 'Fragt Frankfurter ($host, Referenzkurse der Zentralbanken) – nur wenn du tippst. Der Dienst sieht deine IP-Adresse und die zwei Währungen, nichts über die Gruppe.';
+  }
+
+  @override
+  String fetchedRateFrom(String date) {
+    return 'Referenzkurs vom $date (Frankfurter) – prüf ihn vor dem Speichern.';
+  }
+
+  @override
+  String get fetchRateUnavailable =>
+      'Für diese Währungen gibt es keinen Kurs – trag ihn selbst ein.';
+
+  @override
+  String get fetchRateFailedTitle => 'Kurs konnte nicht abgerufen werden';
+
+  @override
+  String settledInBaseNote(String base) {
+    return 'Ausgleich in $base: Andere Währungen werden zu den festen Kursen der Gruppe umgerechnet.';
+  }
+
+  @override
+  String get setExchangeRates => 'Wechselkurse festlegen';
+
+  @override
+  String get privacyRatesTitle => 'Wechselkurse';
+
+  @override
+  String get privacyRatesBody =>
+      'Eine Gruppe kann feste Wechselkurse haben, die du selbst einträgst; sie gehören zur Gruppe und werden wie ihr Name mit allen in der Gruppe synchronisiert. Nur wenn du auf „Aktuellen Kurs abrufen“ tippst, fragt die App Frankfurter (api.frankfurter.dev – ein kostenloser Open-Source-Dienst mit den Referenzkursen der Europäischen Zentralbank und anderer Zentralbanken) nach dem Kurs zwischen den zwei Währungen. Die Anfrage geht direkt von deinem Gerät aus und braucht kein Konto und keinen Schlüssel; der Dienst (und sein Hosting-Anbieter) sieht die IP-Adresse deines Geräts, die zwei Währungscodes und die Uhrzeit – nichts über deine Gruppen, die Personen darin oder Beträge. Er wird nie automatisch kontaktiert, und der abgerufene Kurs wird nur eingetragen, damit du ihn vor dem Speichern prüfst.';
 }

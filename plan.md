@@ -1032,12 +1032,25 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       the runtime prompt at a sensible moment — after G52 step 8
 
 ### G73. Manual exchange rates (U18) 🟢
-- [ ] Fixed rates per group in the signed meta, "settle in {currency}" — wire
+- [x] Fixed rates per group in the signed meta, "settle in {currency}" — wire
       change → bundle with G57 after G52/G53
-- [ ] *Fetch current rate* button (Leo 2026-10-17: any source): only on tap,
+      → `exchange_rates: {base, rates: {code: "decimal"}, settle?}` only when
+      set (additive like G47), schema v17; settle switch in the meta (same
+      for everyone); balances convert at the rates, other currencies stay
+      separate; group settings → *Exchange rates* page
+- [x] *Fetch current rate* button (Leo 2026-10-17: any source): only on tap,
       never automatic; source named in the dialog + PRIVACY.md / in-app
       privacy text (a third-party request leaves the device — G43 promise
       wording must be adjusted); pick a keyless source without tracking
+      → Frankfurter (`api.frankfurter.dev/v2/rate/<from>/<to>`, open source,
+      no key / cookies, ECB reference rates); new privacy section
+      *Exchange rates*, G43 texts name it as the exception
+- [ ] Device check: smoke 6.7 (two devices, fetch only on tap, DE 360 dp)
+- [ ] Decide (Leo, with G57): rates stay whole-meta LWW (as categories) or
+      join a per-field merge; settle switch per group (today) vs. a personal
+      view setting
+- [ ] Later maybe: offline demo seed with a CHF/EUR group + rates (store
+      screenshots); rates in the CSV export
 
 ### G75. Usability polish (review leftovers) 🟡
 - [x] U27: shorter, plain-language verification / device texts
@@ -1186,7 +1199,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G70 — simplify backup / restore
 - [x] G71 — accessibility + form flow
 - [ ] G72 — local notifications (on by default)
-- [ ] G73 — manual exchange rates + fetch button (with G57)
+- [x] G73 — manual exchange rates + fetch button (with G57) — device check smoke 6.7 + G57 decision open
 - [x] G75 — usability polish (review leftovers)
 - [ ] G74 — payment details + GiroCode (with G57 / G73)
 - [ ] G76 — multiple payers (wire, with G57 / G73 / G74)

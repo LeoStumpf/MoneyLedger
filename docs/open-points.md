@@ -191,6 +191,30 @@ peers'), and SAS works with other members' devices (members page). Open:
 - Duplicate names are prevented in the dialog (case-insensitive) but not by
   the content rules (two peers may create "Dog" concurrently).
 
+### Exchange rates (G73) — limits
+- **Mixed versions:** the rates live in the signed group meta
+  (`exchange_rates`, only when set). A pre-G73 build rebuilds the meta body
+  without them → bad signature → it refuses that and every later meta
+  version of the group until updated (link-only groups: it stores the
+  unsigned meta without the rates). The v17 migration forgets refused meta
+  versions, like v11 / v16. Unreleased app → accepted.
+- **Whole-meta LWW** (as G47): a rate change concurrent with a rename /
+  category edit loses one of them — part of the G57 decision
+  (`docs/design/g57-category-merge.md`).
+- **One base per group**, set when the first rate is added (the group
+  currency then); changing it means removing all rates first. Rates are
+  fixed (no history): changing a rate re-values **every** earlier expense
+  in that currency for the balances — intended ("fixed rate for this
+  trip"), not a per-expense rate.
+- **Settle in one currency is per group, for everyone** (it is in the meta),
+  not a personal view. Group stats (G69 overview) stay per original
+  currency; the CSV has neither rates nor converted amounts.
+- **Fetch current rate:** Frankfurter covers ~30 currencies (ECB list +
+  some central banks); others must be typed. The request reveals the
+  device's IP and the currency pair to Frankfurter (and its host,
+  Cloudflare) — only on tap, said in the dialog + privacy text. Rates are
+  rounded to 10 decimals; a rate < 10⁻¹⁰ or ≥ 10⁹ can't be stored.
+
 ### Expense / payment date (G49 / G60) — limits
 - **Mixed versions:** a back-dated expense carries the optional signed
   `date` (ISO `YYYY-MM-DD`, only when it differs from the creation day). A

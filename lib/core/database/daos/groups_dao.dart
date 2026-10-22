@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import '../app_database.dart';
+import '../../../models/exchange_rates.dart';
 import '../../../models/expense_category.dart';
 import '../../../models/group_model.dart';
 import '../../../models/record_signature.dart';
@@ -46,6 +47,9 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
             ? linkFromColumns(group.linkEpoch.value, group.linkSecret.value)
             : null,
         lockedAt: group.lockedAt.present ? group.lockedAt.value : null,
+        exchangeRates: group.exchangeRatesJson.present
+            ? decodeExchangeRates(group.exchangeRatesJson.value)
+            : null,
       ),
     );
     final oldVersion = old == null ? null : groupMetaVersion(_toModel(old));
@@ -88,6 +92,7 @@ class GroupsDao extends DatabaseAccessor<AppDatabase> with _$GroupsDaoMixin {
     categories: decodeCategories(g.categoriesJson),
     link: linkFromColumns(g.linkEpoch, g.linkSecret),
     lockedAt: g.lockedAt,
+    exchangeRates: decodeExchangeRates(g.exchangeRatesJson),
     sig: RecordSignature.decode(g.sig),
     pendingSign: g.pendingSign,
     linkAuthor: g.linkAuthor,
@@ -113,6 +118,21 @@ String? encodeCategories(List<CustomCategory> categories) => categories.isEmpty
     ? null
     : jsonEncode([for (final c in categories) c.toJson()]);
 
+/// G73: the stored `exchange_rates_json` (NULL → none; unreadable → an
+/// invalid entry, like a malformed wire value).
+ExchangeRates? decodeExchangeRates(String? json) {
+  if (json == null || json.isEmpty) return null;
+  try {
+    return ExchangeRates.fromJson(jsonDecode(json));
+  } catch (_) {
+    return ExchangeRates.fromJson(const <String, Object?>{});
+  }
+}
+
+/// G73: [fx] as stored (none → NULL).
+String? encodeExchangeRates(ExchangeRates? fx) =>
+    fx == null ? null : jsonEncode(fx.toJson());
+
 /// A fully-populated companion for an LWW upsert of [g] (G6 fields included).
 GroupsCompanion groupCompanion(GroupModel g) => GroupsCompanion(
   roomId: Value(g.roomId),
@@ -129,4 +149,6 @@ GroupsCompanion groupCompanion(GroupModel g) => GroupsCompanion(
   linkEpoch: Value(g.link?.epoch),
   linkSecret: Value(g.link?.secret),
   lockedAt: Value(g.lockedAt),
+  // G73: always set (also to null) — removing the last rate must clear it.
+  exchangeRatesJson: Value(encodeExchangeRates(g.exchangeRates)),
 );

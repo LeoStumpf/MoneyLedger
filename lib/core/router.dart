@@ -24,6 +24,7 @@ import '../features/expenses/add_expense_page.dart';
 import '../features/expenses/expenses_page.dart';
 import '../features/groups/create_group_page.dart';
 import '../features/groups/group_categories_page.dart';
+import '../features/groups/group_rates_page.dart';
 import '../features/groups/group_members_page.dart';
 import '../features/groups/group_settings_page.dart';
 import '../features/groups/groups_page.dart';
@@ -258,6 +259,11 @@ GoRouter router(Ref ref) {
         path: '/groups/:roomId/categories',
         builder: (_, s) =>
             GroupCategoriesPage(roomId: s.pathParameters['roomId']!),
+      ),
+      // G73: the group's fixed exchange rates.
+      GoRoute(
+        path: '/groups/:roomId/rates',
+        builder: (_, s) => GroupRatesPage(roomId: s.pathParameters['roomId']!),
       ),
       // G65: the group settings page (was the long group ⋮ menu).
       GoRoute(

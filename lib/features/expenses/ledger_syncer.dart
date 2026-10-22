@@ -24,6 +24,7 @@ import '../../core/sync/record_gate.dart';
 import '../../core/sync/record_signing.dart' show RecordKind;
 import '../../core/sync/sync_health.dart';
 import '../../core/sync/record_verifier.dart';
+import '../../models/exchange_rates.dart';
 import '../../models/expense_category.dart' show parseCustomCategories;
 import '../../models/member_model.dart';
 import '../../models/record_signature.dart';
@@ -574,6 +575,11 @@ class LedgerSyncer {
         updatedAt: Value(clampInboundClock(content['updated_at'] as int? ?? 0)),
         categoriesJson: Value(
           encodeCategories(parseCustomCategories(content['categories'])),
+        ),
+        exchangeRatesJson: Value(
+          encodeExchangeRates(
+            ExchangeRates.fromJson(content['exchange_rates']),
+          ),
         ),
         sig: Value(RecordSignature.fromJson(content['sig'])?.encode()),
         linkAuthor: const Value(null), // G52: see processExpense

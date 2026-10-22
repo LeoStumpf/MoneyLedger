@@ -542,7 +542,7 @@
   "privacyHomeserverTitle": "What your Matrix homeserver sees",
   "privacyHomeserverBody": "To sync, MoneyLedger sends every change as an end-to-end-encrypted Matrix to-device message to the devices of the others in the group. Your homeserver (and their homeservers) relay these messages and keep each one only until the receiving device has fetched it, but cannot read them. They do see metadata: which accounts and devices exchange messages, when, how often and roughly how large they are. MoneyLedger creates no rooms, saves nothing in your account's settings and never marks you as online; when it syncs, it asks your homeserver only for these messages and for encryption-key updates — not for your rooms, presence or account settings. What your homeserver still keeps is what every Matrix app needs: your account, its list of devices (this one is named “MoneyLedger”, with when and from which IP address it was last used), each device's public encryption keys and one-time keys, and the messages above until they are delivered (for a device that never comes back, until it is removed). Your Matrix account itself — user name, devices, encryption keys, IP addresses and sign-in history — is handled by your homeserver under its own privacy policy.",
   "privacyNoTrackingTitle": "No analytics, no servers of ours",
-  "privacyNoTrackingBody": "Apart from the Nostr relays of groups you share with an invite link (see “Shared groups (invite link)”), the app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element's sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
+  "privacyNoTrackingBody": "Apart from the Nostr relays of groups you share with an invite link (see “Shared groups (invite link)”) and the exchange-rate service you can ask with “Fetch current rate” (see “Exchange rates”), the app talks only to Matrix homeservers: on the sign-in page to the server you enter — and only once you confirm it or sign in — and after that only to your own homeserver. Through it, the app also looks up the Matrix profile names and devices of the people in your groups (your homeserver may ask theirs). If you use single sign-on or sign up on the web, your browser opens the pages your homeserver sends you to (for matrix.org possibly Element's sign-up page, app.element.io). Links in the app — to the source code on GitHub, for example — open in your browser only when you tap them. The web version is loaded entirely from the site that hosts it: no code or fonts from Google or any other third party. There is no analytics, no crash reporting, no advertising ID and no tracking of any kind.",
   "privacyBackgroundTitle": "Background sync on Android",
   "privacyBackgroundBody": "On Android, MoneyLedger can sync about every 15 minutes while the app is closed (only with a network connection and not on low battery). It uses the same encrypted messages to your homeserver and, for groups you share with an invite link, the same encrypted copies on the Nostr relays (also without an account), and shows no notifications. With a Matrix account you can turn it off in Settings; without one it runs only while you have a group shared with an invite link. The web version syncs only while its tab is open.",
   "privacyCsvTitle": "Export, backup and import",
@@ -1680,7 +1680,7 @@
   "@privacyLocalTitle": {
     "description": "Privacy policy section title (G40)"
   },
-  "privacyLocalBody": "If you use MoneyLedger without a Matrix account, groups you don't share send nothing: for them the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). A group you share with an invite link syncs through public Nostr relays (see “Shared groups (invite link)”). Links you tap, e.g. to the source code, open in your browser. Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.",
+  "privacyLocalBody": "If you use MoneyLedger without a Matrix account, groups you don't share send nothing: for them the app contacts no server and nothing is synced (the web version is only loaded from the site that hosts it). A group you share with an invite link syncs through public Nostr relays (see “Shared groups (invite link)”). Links you tap, e.g. to the source code, open in your browser; “Fetch current rate” asks the exchange-rate service only when you tap it (see “Exchange rates”). Your name, groups, expenses and payments are stored only in a local database on this device, plus a small preferences file (whether you saw the welcome, your local profile name). Deleting local data in the settings, or uninstalling the app, removes them. If you later connect a Matrix account, the local data moves into that account and from then on the sections above apply.",
   "@privacyLocalBody": {
     "description": "Privacy policy section body (G40)"
   },
@@ -3799,5 +3799,171 @@
         "type": "String"
       }
     }
+  },
+  "exchangeRatesTitle": "Exchange rates",
+  "@exchangeRatesTitle": {
+    "description": "Title of the G73 exchange-rates page / group settings tile"
+  },
+  "exchangeRatesTileNone": "Not set — currencies are settled separately",
+  "@exchangeRatesTileNone": {
+    "description": "Group settings tile subtitle without rates"
+  },
+  "exchangeRatesTileRates": "{count, plural, =1{1 rate in {base}} other{{count} rates in {base}}}",
+  "@exchangeRatesTileRates": {
+    "description": "Group settings tile subtitle: number of rates",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "exchangeRatesTileSettled": "{rates} · settle up in {base}",
+  "@exchangeRatesTileSettled": {
+    "description": "Tile subtitle while settling in the base currency",
+    "placeholders": {
+      "rates": {
+        "type": "String"
+      },
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "exchangeRatesIntro": "Fixed rates you enter yourself. They belong to the group: everyone in it sees and uses the same rates. Rates are given in {base}.",
+  "@exchangeRatesIntro": {
+    "description": "Intro text on the exchange-rates page",
+    "placeholders": {
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "settleInBase": "Settle up in {base}",
+  "@settleInBase": {
+    "description": "Switch: convert other currencies to the base when settling",
+    "placeholders": {
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "settleInBaseBody": "Balances and suggested payments convert the other currencies at these rates. A currency without a rate stays separate.",
+  "@settleInBaseBody": {
+    "description": "Subtitle of the settle-in switch"
+  },
+  "rateRow": "1 {from} = {rate} {base}",
+  "@rateRow": {
+    "description": "One exchange rate",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "rate": {
+        "type": "String"
+      },
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "addRate": "Add rate",
+  "@addRate": {
+    "description": "Button: add an exchange rate"
+  },
+  "removeRate": "Remove rate",
+  "@removeRate": {
+    "description": "Tooltip: remove an exchange rate"
+  },
+  "noRatesYet": "No rates yet.",
+  "@noRatesYet": {
+    "description": "Empty exchange-rates list"
+  },
+  "ratesMissingFor": "Used in this group without a rate: {currencies}",
+  "@ratesMissingFor": {
+    "description": "Currencies of the group that have no rate",
+    "placeholders": {
+      "currencies": {
+        "type": "String"
+      }
+    }
+  },
+  "rateDialogTitle": "1 {from} in {base}",
+  "@rateDialogTitle": {
+    "description": "Title of the rate dialog",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "rateFieldLabel": "Rate in {base}",
+  "@rateFieldLabel": {
+    "description": "Label of the rate field",
+    "placeholders": {
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "rateInvalid": "Enter a number greater than 0 (at most 10 decimals).",
+  "@rateInvalid": {
+    "description": "Rate field error"
+  },
+  "fetchRate": "Fetch current rate",
+  "@fetchRate": {
+    "description": "Button: ask the exchange-rate service once"
+  },
+  "fetchRateSource": "Asks Frankfurter ({host}, reference rates of central banks) — only when you tap. It sees your IP address and the two currencies, nothing about the group.",
+  "@fetchRateSource": {
+    "description": "Explains what the fetch button contacts",
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "fetchedRateFrom": "Reference rate of {date} (Frankfurter) — check it before saving.",
+  "@fetchedRateFrom": {
+    "description": "After fetching a rate",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "fetchRateUnavailable": "No rate available for this pair — enter it yourself.",
+  "@fetchRateUnavailable": {
+    "description": "The service has no rate for the pair"
+  },
+  "fetchRateFailedTitle": "Couldn't fetch the rate",
+  "@fetchRateFailedTitle": {
+    "description": "Error title when fetching fails"
+  },
+  "settledInBaseNote": "Settled in {base}: other currencies are converted at the group's fixed rates.",
+  "@settledInBaseNote": {
+    "description": "Balance page note while settling in one currency",
+    "placeholders": {
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "setExchangeRates": "Set exchange rates",
+  "@setExchangeRates": {
+    "description": "Balance page button opening the exchange-rates page"
+  },
+  "privacyRatesTitle": "Exchange rates",
+  "@privacyRatesTitle": {
+    "description": "Privacy section title"
+  },
+  "privacyRatesBody": "A group can have fixed exchange rates that you enter yourself; they are part of the group and sync to everyone in it like its name. Only when you tap “Fetch current rate”, the app asks Frankfurter (api.frankfurter.dev — a free, open-source service publishing reference rates of the European Central Bank and other central banks) for the rate between the two currencies. The request goes directly from your device and needs no account or key; the service (and its hosting provider) sees your device's IP address, the two currency codes and the time — nothing about your groups, the people in them or any amounts. It is never contacted automatically, and the fetched rate is only filled in for you to check before you save it.",
+  "@privacyRatesBody": {
+    "description": "Privacy section body (keep equal to PRIVACY.md)"
   }
 }

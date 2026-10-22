@@ -21,8 +21,8 @@ MoneyLedger server that could receive your data.
 | What the homeserver can read | Nothing of the ledger — only encrypted messages and their metadata |
 | What the homeserver keeps | Your account, its devices and their encryption keys, and encrypted messages until they are delivered — no rooms, no presence, no account settings from MoneyLedger |
 | Analytics, crash reporting, ads, tracking | None |
-| Leaves the device | Encrypted sync messages, sign-in and profile / device lookups — to your homeserver only; for groups you share with an invite link, an encrypted copy of the group to public Nostr relays; a CSV or backup file only when you export one |
-| Third parties (Google, CDNs, …) | None — except the public Nostr relays of groups you share with an invite link; links open in your browser only when you tap them |
+| Leaves the device | Encrypted sync messages, sign-in and profile / device lookups — to your homeserver only; for groups you share with an invite link, an encrypted copy of the group to public Nostr relays; two currency codes to an exchange-rate service only when you tap “Fetch current rate”; a CSV or backup file only when you export one |
+| Third parties (Google, CDNs, …) | None — except the public Nostr relays of groups you share with an invite link and, only when you tap “Fetch current rate”, the exchange-rate service Frankfurter; links open in your browser only when you tap them |
 
 ## Your ledger stays on your devices
 
@@ -53,17 +53,18 @@ privacy policy.
 ## No analytics, no servers of ours
 
 Apart from the Nostr relays of groups you share with an invite link (see
-“Shared groups (invite link)”), the app talks only to Matrix homeservers: on
-the sign-in page to the server you enter — and only once you confirm it or sign
-in — and after that only to your own homeserver. Through it, the app also looks
-up the Matrix profile names and devices of the people in your groups (your
-homeserver may ask theirs). If you use single sign-on or sign up on the web,
-your browser opens the pages your homeserver sends you to (for matrix.org
-possibly Element's sign-up page, app.element.io). Links in the app — to the
-source code on GitHub, for example — open in your browser only when you tap
-them. The web version is loaded entirely from the site that hosts it: no code
-or fonts from Google or any other third party. There is no analytics, no crash
-reporting, no advertising ID and no tracking of any kind.
+“Shared groups (invite link)”) and the exchange-rate service you can ask with
+“Fetch current rate” (see “Exchange rates”), the app talks only to Matrix
+homeservers: on the sign-in page to the server you enter — and only once you
+confirm it or sign in — and after that only to your own homeserver. Through it,
+the app also looks up the Matrix profile names and devices of the people in
+your groups (your homeserver may ask theirs). If you use single sign-on or sign
+up on the web, your browser opens the pages your homeserver sends you to (for
+matrix.org possibly Element's sign-up page, app.element.io). Links in the app —
+to the source code on GitHub, for example — open in your browser only when you
+tap them. The web version is loaded entirely from the site that hosts it: no
+code or fonts from Google or any other third party. There is no analytics, no
+crash reporting, no advertising ID and no tracking of any kind.
 
 ## Background sync on Android
 
@@ -81,12 +82,13 @@ If you use MoneyLedger without a Matrix account, groups you don't share send
 nothing: for them the app contacts no server and nothing is synced (the web
 version is only loaded from the site that hosts it). A group you share with an
 invite link syncs through public Nostr relays (see “Shared groups (invite
-link)”). Links you tap, e.g. to the source code, open in your browser. Your
-name, groups, expenses and payments are stored only in a local database on this
-device, plus a small preferences file (whether you saw the welcome, your local
-profile name). Deleting local data in the settings, or uninstalling the app,
-removes them. If you later connect a Matrix account, the local data moves into
-that account and from then on the sections above apply.
+link)”). Links you tap, e.g. to the source code, open in your browser; “Fetch
+current rate” asks the exchange-rate service only when you tap it (see
+“Exchange rates”). Your name, groups, expenses and payments are stored only in
+a local database on this device, plus a small preferences file (whether you saw
+the welcome, your local profile name). Deleting local data in the settings, or
+uninstalling the app, removes them. If you later connect a Matrix account, the
+local data moves into that account and from then on the sections above apply.
 
 ## Shared groups (invite link)
 
@@ -168,6 +170,19 @@ when you leave or delete the group, and when you delete local data or
 uninstall the app; signing out keeps it. The camera and photo picker are
 Android's own: MoneyLedger asks for no camera or storage permission and only
 receives the one photo you choose.
+
+## Exchange rates
+
+A group can have fixed exchange rates that you enter yourself; they are part of
+the group and sync to everyone in it like its name. Only when you tap “Fetch
+current rate”, the app asks Frankfurter (api.frankfurter.dev — a free,
+open-source service publishing reference rates of the European Central Bank and
+other central banks) for the rate between the two currencies. The request goes
+directly from your device and needs no account or key; the service (and its
+hosting provider) sees your device's IP address, the two currency codes and the
+time — nothing about your groups, the people in them or any amounts. It is
+never contacted automatically, and the fetched rate is only filled in for you
+to check before you save it.
 
 ## Deleting your data
 

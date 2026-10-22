@@ -571,12 +571,14 @@ GroupResetPlan planGroupResetTo({
   final oldMeta = target.meta;
   if (meta != null && oldMeta != null && !_sameMeta(oldMeta, meta)) {
     // G53: a reset never changes the link state — the current meta's open
-    // link / lock is kept (only name, currency and categories go back).
+    // link / lock is kept (only name, currency, categories and — G73 —
+    // the exchange rates go back).
     final next = meta.nextVersion(
       updatedAt: nextLwwClock(meta.updatedAt, now: now),
       name: oldMeta.name,
       currency: oldMeta.currency,
       categories: oldMeta.categories,
+      exchangeRates: oldMeta.exchangeRates,
     );
     if (target._usable(
           RecordKind.meta,
@@ -680,6 +682,7 @@ bool _sameMeta(GroupModel a, GroupModel b) =>
         name: a.name,
         currency: a.currency,
         categories: a.categories,
+        exchangeRates: a.exchangeRates,
       ),
     ) ==
     groupMetaVersionHash(
@@ -688,5 +691,6 @@ bool _sameMeta(GroupModel a, GroupModel b) =>
         name: b.name,
         currency: b.currency,
         categories: b.categories,
+        exchangeRates: b.exchangeRates,
       ),
     );

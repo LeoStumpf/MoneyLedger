@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/widgets/large_text.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/matrix/transport_provider.dart';
@@ -16,10 +17,12 @@ import '../../models/member_model.dart';
 import '../expenses/expense_category_ui.dart';
 import '../expenses/expenses_provider.dart';
 import '../groups/group_provider.dart';
+import '../groups/group_rates_page.dart';
 import 'balance_calculator.dart';
 import 'balance_provider.dart';
 import 'balance_share.dart';
 import 'group_stats.dart';
+import 'settle_currency.dart';
 import 'settle_up.dart';
 
 /// Per-participant net balance per currency, derived from the simplified
@@ -107,6 +110,14 @@ class _BalancePageState extends ConsumerState<BalancePage> {
     final theme = Theme.of(context);
     final nets = netsFromDebts(debts);
     final multiCurrency = nets.length > 1;
+    // G73: "settle up in {base}" converted something → say so.
+    final fx = ref.watch(groupExchangeRatesProvider(widget.roomId));
+    // (Expenses only: a payment alone in a rated currency is rare, and the
+    // page doesn't watch the payments stream itself.)
+    final converted = settlesConverted(fx, [
+      for (final e in expenses) e.currency,
+    ]);
+    void openRates() => context.push(groupRatesLocation(widget.roomId));
     final nothingYet = debts.isEmpty && stats.isEmpty;
 
     void record({DebtEntry? debt}) =>
@@ -154,6 +165,18 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                     // overview.
                     if (debts.isEmpty)
                       const ContentWidth(child: _SettledCard()),
+                    if (converted)
+                      ContentWidth(
+                        child: _CurrencyNote(
+                          key: const Key('settledInBaseNote'),
+                          text: l.settledInBaseNote(fx!.base),
+                          action: TextButton(
+                            key: const Key('openRatesFromBalance'),
+                            onPressed: openRates,
+                            child: Text(l.exchangeRatesTitle),
+                          ),
+                        ),
+                      ),
                     // G16: several currencies are never netted against
                     // each other — say so once at the top.
                     if (multiCurrency)
@@ -183,6 +206,19 @@ class _BalancePageState extends ConsumerState<BalancePage> {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                      ),
+                    // G73: one currency instead — fixed rates.
+                    if (multiCurrency && canRecord && !converted)
+                      ContentWidth(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton.icon(
+                            key: const Key('setExchangeRates'),
+                            onPressed: openRates,
+                            icon: const Icon(Icons.currency_exchange),
+                            label: Text(l.setExchangeRates),
                           ),
                         ),
                       ),
@@ -854,6 +890,46 @@ class _CategoryBar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// G73: a small note above the balances with an action under it.
+class _CurrencyNote extends StatelessWidget {
+  final String text;
+  final Widget action;
+  const _CurrencyNote({super.key, required this.text, required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Insets.xs, Insets.m, Insets.xs, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.currency_exchange,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: Insets.s),
+              Expanded(
+                child: Text(
+                  text,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          action,
+        ],
       ),
     );
   }
