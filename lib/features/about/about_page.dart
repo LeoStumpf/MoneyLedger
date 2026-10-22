@@ -152,6 +152,7 @@ class PrivacyPolicyPage extends StatelessWidget {
       (l.privacyRestorePointsTitle, l.privacyRestorePointsBody),
       (l.privacyReceiptsTitle, l.privacyReceiptsBody),
       (l.privacyRatesTitle, l.privacyRatesBody),
+      (l.privacyPaymentTitle, l.privacyPaymentBody),
       (l.privacyDeleteTitle, l.privacyDeleteBody),
       (l.privacyContactTitle, l.privacyContactBody),
     ];

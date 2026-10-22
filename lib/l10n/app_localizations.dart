@@ -5947,6 +5947,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A group can have fixed exchange rates that you enter yourself; they are part of the group and sync to everyone in it like its name. Only when you tap “Fetch current rate”, the app asks Frankfurter (api.frankfurter.dev — a free, open-source service publishing reference rates of the European Central Bank and other central banks) for the rate between the two currencies. The request goes directly from your device and needs no account or key; the service (and its hosting provider) sees your device\'s IP address, the two currency codes and the time — nothing about your groups, the people in them or any amounts. It is never contacted automatically, and the fetched rate is only filled in for you to check before you save it.'**
   String get privacyRatesBody;
+
+  /// G74 settings section header
+  ///
+  /// In en, this message translates to:
+  /// **'Payment details'**
+  String get settingsSectionPayment;
+
+  /// G74 settings tile title
+  ///
+  /// In en, this message translates to:
+  /// **'Bank account & PayPal.me'**
+  String get paymentDetailsTileTitle;
+
+  /// G74 settings tile subtitle, nothing set
+  ///
+  /// In en, this message translates to:
+  /// **'Optional — shown as a QR code when someone pays you back'**
+  String get paymentDetailsTileNone;
+
+  /// G74 settings tile subtitle: the IBAN's last four characters
+  ///
+  /// In en, this message translates to:
+  /// **'IBAN ending {last4}'**
+  String paymentDetailsTileIban(String last4);
+
+  /// G74 page intro
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Stored only on this device and never sent to the others in your groups. When someone owes you money, the balance page shows a QR code for them to scan: a GiroCode for their banking app (euro only) or your PayPal.me link with the amount.'**
+  String get paymentDetailsIntro;
+
+  /// G74 page section
+  ///
+  /// In en, this message translates to:
+  /// **'Bank account (SEPA)'**
+  String get paymentBankSection;
+
+  /// G74 field label
+  ///
+  /// In en, this message translates to:
+  /// **'Account holder'**
+  String get paymentNameLabel;
+
+  /// G74 validation
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the account holder — the bank needs it.'**
+  String get paymentNameRequired;
+
+  /// G74 field label
+  ///
+  /// In en, this message translates to:
+  /// **'IBAN'**
+  String get paymentIbanLabel;
+
+  /// G74 validation
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a valid IBAN — check it for typos.'**
+  String get paymentIbanInvalid;
+
+  /// G74 field label
+  ///
+  /// In en, this message translates to:
+  /// **'BIC (optional)'**
+  String get paymentBicLabel;
+
+  /// G74 field helper
+  ///
+  /// In en, this message translates to:
+  /// **'Only needed for some banks outside the EU.'**
+  String get paymentBicHelper;
+
+  /// G74 validation
+  ///
+  /// In en, this message translates to:
+  /// **'A BIC has 8 or 11 letters and digits.'**
+  String get paymentBicInvalid;
+
+  /// G74 page section
+  ///
+  /// In en, this message translates to:
+  /// **'PayPal'**
+  String get paymentPaypalSection;
+
+  /// G74 field label
+  ///
+  /// In en, this message translates to:
+  /// **'PayPal.me name'**
+  String get paymentPaypalLabel;
+
+  /// G74 field helper
+  ///
+  /// In en, this message translates to:
+  /// **'Your name from the link paypal.me/name — you can also paste the whole link.'**
+  String get paymentPaypalHelper;
+
+  /// G74 validation
+  ///
+  /// In en, this message translates to:
+  /// **'Only letters and digits, up to 20.'**
+  String get paymentPaypalInvalid;
+
+  /// G74 button
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all fields'**
+  String get paymentDetailsClear;
+
+  /// G74 snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Payment details saved'**
+  String get paymentDetailsSaved;
+
+  /// G74 snackbar
+  ///
+  /// In en, this message translates to:
+  /// **'Payment details removed'**
+  String get paymentDetailsCleared;
+
+  /// G74 balance page debt-row button tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Show my payment details'**
+  String get paymentShowDetails;
+
+  /// G74 sheet title
+  ///
+  /// In en, this message translates to:
+  /// **'{name} pays you {amount}'**
+  String paymentRequestTitle(String name, String amount);
+
+  /// G74 sheet segment
+  ///
+  /// In en, this message translates to:
+  /// **'Bank transfer'**
+  String get paymentMethodBank;
+
+  /// G74 sheet segment
+  ///
+  /// In en, this message translates to:
+  /// **'PayPal'**
+  String get paymentMethodPaypal;
+
+  /// G74 screen-reader label
+  ///
+  /// In en, this message translates to:
+  /// **'GiroCode QR code for a bank transfer of {amount}'**
+  String paymentGiroCodeSemantics(String amount);
+
+  /// G74 sheet hint
+  ///
+  /// In en, this message translates to:
+  /// **'Scan with a banking app (GiroCode) — name, IBAN and amount are filled in.'**
+  String get paymentGiroCodeHint;
+
+  /// G74 sheet, non-euro debt
+  ///
+  /// In en, this message translates to:
+  /// **'A GiroCode works only for euro — your bank account:'**
+  String get paymentGiroCodeEuroOnly;
+
+  /// G74 sheet button
+  ///
+  /// In en, this message translates to:
+  /// **'Copy IBAN'**
+  String get paymentCopyIban;
+
+  /// G74 screen-reader label
+  ///
+  /// In en, this message translates to:
+  /// **'QR code of your PayPal.me link for {amount}'**
+  String paymentPaypalQrSemantics(String amount);
+
+  /// G74 sheet hint
+  ///
+  /// In en, this message translates to:
+  /// **'Scan with the phone camera to open PayPal with the amount.'**
+  String get paymentPaypalQrHint;
+
+  /// G74 sheet button
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get paymentShareLink;
+
+  /// G74 sheet footnote
+  ///
+  /// In en, this message translates to:
+  /// **'Shown only on this device — change it under Settings → Payment details.'**
+  String get paymentRequestLocalNote;
+
+  /// G74 privacy section title
+  ///
+  /// In en, this message translates to:
+  /// **'Payment details'**
+  String get privacyPaymentTitle;
+
+  /// G74 privacy section body (keep equal to PRIVACY.md)
+  ///
+  /// In en, this message translates to:
+  /// **'You can enter your own bank account (account holder, IBAN, BIC) and PayPal.me name under Settings → Payment details. MoneyLedger stores them only on this device, for the account you use (or local mode — they move along when you connect a Matrix account). They are never sent to the others in your groups or to any server, and are not part of any backup file, restore point or CSV. They leave the device only as a QR code on its own screen — for someone who owes you money to scan — or as a PayPal.me link you choose to share. Removing them in the settings, deleting local data or uninstalling the app deletes them; signing out keeps them.'**
+  String get privacyPaymentBody;
+
+  /// G74 page title
+  ///
+  /// In en, this message translates to:
+  /// **'Payment details'**
+  String get paymentDetailsPageTitle;
 }
 
 class _AppLocalizationsDelegate

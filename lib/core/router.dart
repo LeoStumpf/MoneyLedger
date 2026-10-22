@@ -29,6 +29,7 @@ import '../features/groups/group_members_page.dart';
 import '../features/groups/group_settings_page.dart';
 import '../features/groups/groups_page.dart';
 import '../features/link/relay_settings_page.dart';
+import '../features/payment/payment_details_page.dart';
 import '../features/settings/settings_page.dart';
 
 part 'router.g.dart';
@@ -75,7 +76,8 @@ const _signedOutEntryPages = {kWelcomeLocation, kLocalSetupLocation};
 ///   bounce off the auth / entry pages, bare root, splash and a stale
 ///   onboarding screen to the groups list. Local mode has no devices page.
 ///   The settings pages (`/settings`, `/groups/:id/settings`, G65; the
-///   backup page `/backup`, G70; the relays `/settings/relays`, G52 step 9)
+///   backup page `/backup`, G70; the relays `/settings/relays`, G52 step 9; the payment details
+///   `/settings/payment`, G74)
 ///   are "in" pages: signed out they redirect
 ///   like any other.
 /// * G52 step 7: the join page ([kJoinLocation]) is **never** redirected —
@@ -213,6 +215,11 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: kRelaySettingsLocation,
         builder: (_, _) => const RelaySettingsPage(),
+      ),
+      // G74: own payment details (bank account / PayPal.me).
+      GoRoute(
+        path: kPaymentDetailsLocation,
+        builder: (_, _) => const PaymentDetailsPage(),
       ),
       // G70: backup file + restore points + per-group reset on one page.
       GoRoute(

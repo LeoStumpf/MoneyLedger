@@ -304,6 +304,9 @@ lib/
                                #   group_reset.dart (GroupResetService), group_reset_page.dart,
                                #   restore_points.dart (daily maintenance, snapshots), snapshot_policy.dart (pure
                                #   rotation), snapshot_store*.dart (native files / none on web), restore_points_page.dart
+    payment/                   # G74 own payment details (device-local): payment_details.dart (pure: IBAN / BIC /
+                               #   PayPal.me parsing, EPC GiroCode payload, PayPal.me link), _provider, _page
+                               #   (/settings/payment), payment_request_sheet.dart (balance page QR sheet)
     receipts/                  # G78 receipt photo (Android, this device only): receipt_store*.dart (files /
                                #   none), receipt_picker.dart (image_picker seam), receipt_field.dart (form + viewer)
     devices/                   # Device list + SAS verification UI (DevicesPage, member device sheet,
@@ -1926,6 +1929,42 @@ only** (hidden on the web, desktop and in the offline demo). `lib/features/recei
   `test/features/receipts_test.dart`). Limits: `docs/open-points.md`.
   Tests: `test/features/receipts_test.dart`, `test/g78_receipt_photo_test.dart`,
   `test/features/local_mode_test.dart` (adoption moves), G71 a11y.
+
+### Payment details + GiroCode, device-local (G74)
+
+Optional **own** bank account (account holder, IBAN, optional BIC) and
+PayPal.me name — Settings → *Payment details* (`PaymentDetailsTile` →
+`/settings/payment`, `kPaymentDetailsLocation`, `PaymentDetailsPage`).
+`lib/features/payment/`.
+- **Storage:** `AppSettings` `payment_details` (JSON, `PaymentDetails.encode`;
+  `SettingsDao.watchPaymentDetailsRaw` / `setPaymentDetailsRaw` /
+  `clearPaymentDetails`) — **per ledger, device-local, never synced**, not in
+  a backup file / snapshot / CSV; `adoptLocalLedger` copies it into the
+  account (unless the account has its own). `myPaymentDetailsProvider`
+  (tests: `testOverrides(paymentDetails:)`). `toString` hides the data —
+  never log an IBAN.
+- **Pure** (`payment_details.dart`): `normalizeIban` / `isValidIban` (format,
+  mod-97, length for known countries `kIbanLengths`), `formatIban` (groups of
+  4), `isValidBic`, `normalizePaypalMe` (name, `@name`, pasted link → name;
+  letters + digits ≤ 20), `paypalMeUrl(user, cents:, currency:)`
+  (`…/12.50EUR`, 0 decimals for JPY & co.), `epcQrPayload` — EPC069-12
+  "BCD" **v002** (BIC optional), UTF-8, `SCT`, name ≤ 70, amount
+  `EUR12.50` (left out beyond 999 999 999.99), reference = the group name
+  (≤ 140, cut until the payload ≤ 331 bytes); null unless EUR + a bank
+  account.
+- **UI:** balance page — a debt **owed to me** with details set gets a QR
+  icon button (`paymentQr-<from>-<to>-<cur>`, tooltip `paymentShowDetails`)
+  → `showPaymentRequestSheet`: "{name} pays you {amount}", segmented *Bank
+  transfer* / *PayPal* when both, GiroCode (`QrCodeView`, G52) + IBAN +
+  *Copy IBAN*, or the PayPal.me link as QR + *Share link* (`shareOrCopy`);
+  non-EUR → no GiroCode, IBAN as text. Shown on **this** screen for the
+  payer to scan — nothing is sent. Privacy: PRIVACY.md + `privacyPayment*`
+  (pinned equal by `test/features/payment_details_test.dart`).
+- **Not done — needs Leo (plan.md G74):** showing the payee's details on the
+  *payer's* device needs a synced field (wire + privacy decisions: carrier
+  record, opt-in per group, link groups, old builds). Tests:
+  `test/features/payment_details_test.dart`, `test/g74_payment_details_ui_test.dart`,
+  G71 guideline tests. Limits: `docs/open-points.md`.
 
 ### Settlements / recording payments (G28)
 

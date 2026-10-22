@@ -267,6 +267,26 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
   Future<void> setLinkRelayStateRaw(String relay, String json) =>
       _setValue('$_linkRelayStatePrefix$relay', json);
 
+  // ── G74: own payment details ─────────────────────────────────────────────
+
+  static const _paymentDetailsKey = 'payment_details';
+
+  /// The user's own payment details as stored (`PaymentDetails.encode`, a
+  /// small JSON map), or null — device-local, per ledger, never synced.
+  Stream<String?> watchPaymentDetailsRaw() =>
+      (select(appSettings)..where((t) => t.key.equals(_paymentDetailsKey)))
+          .watchSingleOrNull()
+          .map((row) => row?.value);
+
+  Future<String?> paymentDetailsRaw() => _getValue(_paymentDetailsKey);
+
+  Future<void> setPaymentDetailsRaw(String json) =>
+      _setValue(_paymentDetailsKey, json);
+
+  Future<void> clearPaymentDetails() => (delete(
+    appSettings,
+  )..where((t) => t.key.equals(_paymentDetailsKey))).go();
+
   // ── G53: signed self-claims after "Connect a Matrix account" ─────────────
 
   static const _linkSelfClaimPrefix = 'link_self_claim:';

@@ -184,6 +184,18 @@ time — nothing about your groups, the people in them or any amounts. It is
 never contacted automatically, and the fetched rate is only filled in for you
 to check before you save it.
 
+## Payment details
+
+You can enter your own bank account (account holder, IBAN, BIC) and PayPal.me
+name under Settings → Payment details. MoneyLedger stores them only on this
+device, for the account you use (or local mode — they move along when you
+connect a Matrix account). They are never sent to the others in your groups or
+to any server, and are not part of any backup file, restore point or CSV. They
+leave the device only as a QR code on its own screen — for someone who owes you
+money to scan — or as a PayPal.me link you choose to share. Removing them in
+the settings, deleting local data or uninstalling the app deletes them; signing
+out keeps them.
+
 ## Deleting your data
 
 - Leave or delete a group (group settings): it and all its records are removed

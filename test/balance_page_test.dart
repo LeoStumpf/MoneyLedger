@@ -16,6 +16,7 @@ import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_page.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/member_model.dart';
+import 'package:money_ledger/features/payment/payment_details_provider.dart';
 
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
@@ -324,6 +325,8 @@ void main() {
                 ),
               ]),
             ),
+            // G74: no own payment details (a Drift watch never settles).
+            myPaymentDetailsProvider.overrideWith((_) => Stream.value(null)),
             // G69: the overview reads the expenses — static, a Drift watch
             // stream never settles under the fake clock (G33).
             expensesForRoomProvider.overrideWith(

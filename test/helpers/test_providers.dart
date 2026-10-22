@@ -4,6 +4,8 @@ library;
 
 import 'package:money_ledger/features/link/link_join.dart';
 import 'package:money_ledger/features/welcome/why_matrix_hint.dart';
+import 'package:money_ledger/features/payment/payment_details.dart';
+import 'package:money_ledger/features/payment/payment_details_provider.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -115,6 +117,8 @@ List<dynamic> testOverrides({
   // Matrix?" hint was dismissed.
   Set<String> linkGroupIds = const {},
   bool whyMatrixHintDismissed = false,
+  // G74: the own payment details the settings / balance page see.
+  PaymentDetails? paymentDetails,
   // G71: the sync status every group shows (default: synced).
   GroupSyncStatus syncStatus = const GroupSyncStatus(
     pendingPeers: {},
@@ -166,6 +170,7 @@ List<dynamic> testOverrides({
   whyMatrixHintDismissedProvider.overrideWith(
     (_) => Stream.value(whyMatrixHintDismissed),
   ),
+  myPaymentDetailsProvider.overrideWith((_) => Stream.value(paymentDetails)),
   // G39/G40: device-wide preferences in memory — welcome seen, no local
   // profile (never the platform file / localStorage).
   devicePrefsStoreProvider.overrideWithValue(

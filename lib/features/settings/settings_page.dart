@@ -20,6 +20,8 @@ import '../link/relay_settings_page.dart';
 import '../local/local_mode_ui.dart';
 import '../../core/link/link_sync_engine.dart' show linkRelaysViewProvider;
 import '../onboarding/onboarding_provider.dart';
+import '../payment/payment_details_page.dart';
+import '../payment/payment_details_provider.dart';
 import '../../core/widgets/large_text.dart';
 
 /// G65: route of the app settings page.
@@ -40,6 +42,7 @@ const kSettingsLocation = '/settings';
 /// * **Backup & restore** — one tile (last backup date) opening the
 ///   backup page (G70: backup file, restore points, reset one group);
 /// * **Data** — *Import CSV* (U21: was an app-bar icon);
+/// * **Payment details** (G74) — own bank account / PayPal.me, device-local;
 /// * **About**;
 /// * **Debug** — debug builds only (G36 one-off background round).
 ///
@@ -96,6 +99,9 @@ class SettingsPage extends ConsumerWidget {
               subtitle: Text(l.importCsvTileBody),
               onTap: () => importCsvWithPreview(context, ref),
             ),
+            // G74: own payment details (device-local, never synced).
+            SettingsSectionHeader(l.settingsSectionPayment),
+            const PaymentDetailsTile(),
             SettingsSectionHeader(l.settingsSectionAbout),
             ListTile(
               key: const Key('aboutTile'),
@@ -287,6 +293,33 @@ class _LocalSyncSection extends ConsumerWidget {
           ),
         const RelaysTile(),
       ],
+    );
+  }
+}
+
+/// G74: *Bank account & PayPal.me* → the payment details page; the
+/// subtitle says what is set (the IBAN's last four characters only).
+class PaymentDetailsTile extends ConsumerWidget {
+  const PaymentDetailsTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final d = ref.watch(myPaymentDetailsProvider).value;
+    final parts = [
+      if (d != null && d.hasBankAccount)
+        l.paymentDetailsTileIban(d.iban!.substring(d.iban!.length - 4)),
+      if (d != null && d.hasPaypal) 'paypal.me/${d.paypalMe}',
+    ];
+    return ListTile(
+      key: const Key('paymentDetailsTile'),
+      leading: const Icon(Icons.account_balance_outlined),
+      title: Text(l.paymentDetailsTileTitle),
+      subtitle: Text(
+        parts.isEmpty ? l.paymentDetailsTileNone : parts.join(' · '),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push(kPaymentDetailsLocation),
     );
   }
 }

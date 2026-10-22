@@ -51,6 +51,9 @@ import 'package:money_ledger/models/group_model.dart';
 import 'package:money_ledger/models/member_model.dart';
 
 import 'helpers/fake_auth_gateway.dart';
+import 'package:money_ledger/features/payment/payment_details.dart';
+import 'package:money_ledger/features/payment/payment_details_page.dart';
+
 import 'helpers/fake_device_gateway.dart';
 import 'helpers/fake_ledger_network.dart';
 import 'helpers/in_memory_database.dart';
@@ -127,6 +130,7 @@ void _phone(WidgetTester tester, {double height = 780}) {
 
 List<dynamic> _overrides({
   List<dynamic> extra = const [],
+  PaymentDetails? paymentDetails,
   List<GroupModel> groups = const [_group],
   GroupSyncStatus syncStatus = const GroupSyncStatus(
     pendingPeers: {},
@@ -141,6 +145,7 @@ List<dynamic> _overrides({
     expenses: _expenses,
     settlements: _settlements,
     debts: _debts,
+    paymentDetails: paymentDetails,
   ),
   currentUserIdProvider.overrideWith((_) => _me),
   currentParticipantProvider.overrideWith((ref, g) async => _members.first),
@@ -338,6 +343,53 @@ void main() {
     await tester.pumpWidget(_routed(const SettingsPage(), _overrides()));
     await tester.pumpAndSettle();
     await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  // G74: the payment details page and the balance page's QR sheet.
+  const payment = PaymentDetails(
+    name: 'Anna Muster',
+    iban: 'DE89370400440532013000',
+    paypalMe: 'annamuster',
+  );
+
+  testWidgets('G74 payment details page', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(const PaymentDetailsPage(), _overrides(paymentDetails: payment)),
+    );
+    await tester.pumpAndSettle();
+    await _expectGuidelines(tester);
+    handle.dispose();
+  });
+
+  testWidgets('G74 payment QR sheet (GiroCode)', (tester) async {
+    _phone(tester);
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _routed(
+        const BalancePage(roomId: _g),
+        _overrides(paymentDetails: payment),
+      ),
+    );
+    await tester.pumpAndSettle();
+    const qr = Key('paymentQr-$_bob-$_me-EUR');
+    await tester.scrollUntilVisible(
+      find.byKey(qr),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.byKey(qr)),
+      isSemantics(tooltip: en.paymentShowDetails, isButton: true),
+    );
+    await tester.tap(find.byKey(qr));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('paymentGiroCode')), findsOneWidget);
+    // The modal barrier is translucent — no contrast check.
+    await _expectGuidelines(tester, contrast: false);
     handle.dispose();
   });
 

@@ -3965,5 +3965,168 @@
   "privacyRatesBody": "A group can have fixed exchange rates that you enter yourself; they are part of the group and sync to everyone in it like its name. Only when you tap “Fetch current rate”, the app asks Frankfurter (api.frankfurter.dev — a free, open-source service publishing reference rates of the European Central Bank and other central banks) for the rate between the two currencies. The request goes directly from your device and needs no account or key; the service (and its hosting provider) sees your device's IP address, the two currency codes and the time — nothing about your groups, the people in them or any amounts. It is never contacted automatically, and the fetched rate is only filled in for you to check before you save it.",
   "@privacyRatesBody": {
     "description": "Privacy section body (keep equal to PRIVACY.md)"
+  },
+  "settingsSectionPayment": "Payment details",
+  "@settingsSectionPayment": {
+    "description": "G74 settings section header"
+  },
+  "paymentDetailsTileTitle": "Bank account & PayPal.me",
+  "@paymentDetailsTileTitle": {
+    "description": "G74 settings tile title"
+  },
+  "paymentDetailsTileNone": "Optional — shown as a QR code when someone pays you back",
+  "@paymentDetailsTileNone": {
+    "description": "G74 settings tile subtitle, nothing set"
+  },
+  "paymentDetailsTileIban": "IBAN ending {last4}",
+  "@paymentDetailsTileIban": {
+    "description": "G74 settings tile subtitle: the IBAN's last four characters",
+    "placeholders": {
+      "last4": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentDetailsIntro": "Optional. Stored only on this device and never sent to the others in your groups. When someone owes you money, the balance page shows a QR code for them to scan: a GiroCode for their banking app (euro only) or your PayPal.me link with the amount.",
+  "@paymentDetailsIntro": {
+    "description": "G74 page intro"
+  },
+  "paymentBankSection": "Bank account (SEPA)",
+  "@paymentBankSection": {
+    "description": "G74 page section"
+  },
+  "paymentNameLabel": "Account holder",
+  "@paymentNameLabel": {
+    "description": "G74 field label"
+  },
+  "paymentNameRequired": "Enter the account holder — the bank needs it.",
+  "@paymentNameRequired": {
+    "description": "G74 validation"
+  },
+  "paymentIbanLabel": "IBAN",
+  "@paymentIbanLabel": {
+    "description": "G74 field label"
+  },
+  "paymentIbanInvalid": "This isn't a valid IBAN — check it for typos.",
+  "@paymentIbanInvalid": {
+    "description": "G74 validation"
+  },
+  "paymentBicLabel": "BIC (optional)",
+  "@paymentBicLabel": {
+    "description": "G74 field label"
+  },
+  "paymentBicHelper": "Only needed for some banks outside the EU.",
+  "@paymentBicHelper": {
+    "description": "G74 field helper"
+  },
+  "paymentBicInvalid": "A BIC has 8 or 11 letters and digits.",
+  "@paymentBicInvalid": {
+    "description": "G74 validation"
+  },
+  "paymentPaypalSection": "PayPal",
+  "@paymentPaypalSection": {
+    "description": "G74 page section"
+  },
+  "paymentPaypalLabel": "PayPal.me name",
+  "@paymentPaypalLabel": {
+    "description": "G74 field label"
+  },
+  "paymentPaypalHelper": "Your name from the link paypal.me/name — you can also paste the whole link.",
+  "@paymentPaypalHelper": {
+    "description": "G74 field helper"
+  },
+  "paymentPaypalInvalid": "Only letters and digits, up to 20.",
+  "@paymentPaypalInvalid": {
+    "description": "G74 validation"
+  },
+  "paymentDetailsClear": "Clear all fields",
+  "@paymentDetailsClear": {
+    "description": "G74 button"
+  },
+  "paymentDetailsSaved": "Payment details saved",
+  "@paymentDetailsSaved": {
+    "description": "G74 snackbar"
+  },
+  "paymentDetailsCleared": "Payment details removed",
+  "@paymentDetailsCleared": {
+    "description": "G74 snackbar"
+  },
+  "paymentShowDetails": "Show my payment details",
+  "@paymentShowDetails": {
+    "description": "G74 balance page debt-row button tooltip"
+  },
+  "paymentRequestTitle": "{name} pays you {amount}",
+  "@paymentRequestTitle": {
+    "description": "G74 sheet title",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentMethodBank": "Bank transfer",
+  "@paymentMethodBank": {
+    "description": "G74 sheet segment"
+  },
+  "paymentMethodPaypal": "PayPal",
+  "@paymentMethodPaypal": {
+    "description": "G74 sheet segment"
+  },
+  "paymentGiroCodeSemantics": "GiroCode QR code for a bank transfer of {amount}",
+  "@paymentGiroCodeSemantics": {
+    "description": "G74 screen-reader label",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentGiroCodeHint": "Scan with a banking app (GiroCode) — name, IBAN and amount are filled in.",
+  "@paymentGiroCodeHint": {
+    "description": "G74 sheet hint"
+  },
+  "paymentGiroCodeEuroOnly": "A GiroCode works only for euro — your bank account:",
+  "@paymentGiroCodeEuroOnly": {
+    "description": "G74 sheet, non-euro debt"
+  },
+  "paymentCopyIban": "Copy IBAN",
+  "@paymentCopyIban": {
+    "description": "G74 sheet button"
+  },
+  "paymentPaypalQrSemantics": "QR code of your PayPal.me link for {amount}",
+  "@paymentPaypalQrSemantics": {
+    "description": "G74 screen-reader label",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentPaypalQrHint": "Scan with the phone camera to open PayPal with the amount.",
+  "@paymentPaypalQrHint": {
+    "description": "G74 sheet hint"
+  },
+  "paymentShareLink": "Share link",
+  "@paymentShareLink": {
+    "description": "G74 sheet button"
+  },
+  "paymentRequestLocalNote": "Shown only on this device — change it under Settings → Payment details.",
+  "@paymentRequestLocalNote": {
+    "description": "G74 sheet footnote"
+  },
+  "privacyPaymentTitle": "Payment details",
+  "@privacyPaymentTitle": {
+    "description": "G74 privacy section title"
+  },
+  "privacyPaymentBody": "You can enter your own bank account (account holder, IBAN, BIC) and PayPal.me name under Settings → Payment details. MoneyLedger stores them only on this device, for the account you use (or local mode — they move along when you connect a Matrix account). They are never sent to the others in your groups or to any server, and are not part of any backup file, restore point or CSV. They leave the device only as a QR code on its own screen — for someone who owes you money to scan — or as a PayPal.me link you choose to share. Removing them in the settings, deleting local data or uninstalling the app deletes them; signing out keeps them.",
+  "@privacyPaymentBody": {
+    "description": "G74 privacy section body (keep equal to PRIVACY.md)"
+  },
+  "paymentDetailsPageTitle": "Payment details",
+  "@paymentDetailsPageTitle": {
+    "description": "G74 page title"
   }
 }

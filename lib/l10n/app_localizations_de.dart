@@ -3815,4 +3815,130 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get privacyRatesBody =>
       'Eine Gruppe kann feste Wechselkurse haben, die du selbst einträgst; sie gehören zur Gruppe und werden wie ihr Name mit allen in der Gruppe synchronisiert. Nur wenn du auf „Aktuellen Kurs abrufen“ tippst, fragt die App Frankfurter (api.frankfurter.dev – ein kostenloser Open-Source-Dienst mit den Referenzkursen der Europäischen Zentralbank und anderer Zentralbanken) nach dem Kurs zwischen den zwei Währungen. Die Anfrage geht direkt von deinem Gerät aus und braucht kein Konto und keinen Schlüssel; der Dienst (und sein Hosting-Anbieter) sieht die IP-Adresse deines Geräts, die zwei Währungscodes und die Uhrzeit – nichts über deine Gruppen, die Personen darin oder Beträge. Er wird nie automatisch kontaktiert, und der abgerufene Kurs wird nur eingetragen, damit du ihn vor dem Speichern prüfst.';
+
+  @override
+  String get settingsSectionPayment => 'Zahlungsdaten';
+
+  @override
+  String get paymentDetailsTileTitle => 'Bankkonto & PayPal.me';
+
+  @override
+  String get paymentDetailsTileNone =>
+      'Optional – als QR-Code, wenn dir jemand Geld zurückzahlt';
+
+  @override
+  String paymentDetailsTileIban(String last4) {
+    return 'IBAN endet auf $last4';
+  }
+
+  @override
+  String get paymentDetailsIntro =>
+      'Optional. Bleibt nur auf diesem Gerät und wird nie an die anderen in deinen Gruppen geschickt. Wenn dir jemand Geld schuldet, zeigt die Saldo-Seite einen QR-Code zum Scannen: einen GiroCode für die Banking-App (nur Euro) oder deinen PayPal.me-Link mit dem Betrag.';
+
+  @override
+  String get paymentBankSection => 'Bankkonto (SEPA)';
+
+  @override
+  String get paymentNameLabel => 'Name auf dem Konto';
+
+  @override
+  String get paymentNameRequired =>
+      'Gib den Namen auf dem Konto ein – die Bank braucht ihn.';
+
+  @override
+  String get paymentIbanLabel => 'IBAN';
+
+  @override
+  String get paymentIbanInvalid =>
+      'Das ist keine gültige IBAN – prüf sie auf Tippfehler.';
+
+  @override
+  String get paymentBicLabel => 'BIC (optional)';
+
+  @override
+  String get paymentBicHelper =>
+      'Nur für manche Banken außerhalb der EU nötig.';
+
+  @override
+  String get paymentBicInvalid =>
+      'Eine BIC hat 8 oder 11 Buchstaben und Ziffern.';
+
+  @override
+  String get paymentPaypalSection => 'PayPal';
+
+  @override
+  String get paymentPaypalLabel => 'PayPal.me-Name';
+
+  @override
+  String get paymentPaypalHelper =>
+      'Dein Name aus dem Link paypal.me/name – du kannst auch den ganzen Link einfügen.';
+
+  @override
+  String get paymentPaypalInvalid =>
+      'Nur Buchstaben und Ziffern, höchstens 20.';
+
+  @override
+  String get paymentDetailsClear => 'Alle Felder leeren';
+
+  @override
+  String get paymentDetailsSaved => 'Zahlungsdaten gespeichert';
+
+  @override
+  String get paymentDetailsCleared => 'Zahlungsdaten entfernt';
+
+  @override
+  String get paymentShowDetails => 'Meine Zahlungsdaten zeigen';
+
+  @override
+  String paymentRequestTitle(String name, String amount) {
+    return '$name zahlt dir $amount';
+  }
+
+  @override
+  String get paymentMethodBank => 'Überweisung';
+
+  @override
+  String get paymentMethodPaypal => 'PayPal';
+
+  @override
+  String paymentGiroCodeSemantics(String amount) {
+    return 'GiroCode-QR-Code für eine Überweisung von $amount';
+  }
+
+  @override
+  String get paymentGiroCodeHint =>
+      'Mit der Banking-App scannen (GiroCode) – Name, IBAN und Betrag sind dann schon ausgefüllt.';
+
+  @override
+  String get paymentGiroCodeEuroOnly =>
+      'Einen GiroCode gibt es nur für Euro – dein Bankkonto:';
+
+  @override
+  String get paymentCopyIban => 'IBAN kopieren';
+
+  @override
+  String paymentPaypalQrSemantics(String amount) {
+    return 'QR-Code deines PayPal.me-Links über $amount';
+  }
+
+  @override
+  String get paymentPaypalQrHint =>
+      'Mit der Handykamera scannen – PayPal öffnet sich mit dem Betrag.';
+
+  @override
+  String get paymentShareLink => 'Link teilen';
+
+  @override
+  String get paymentRequestLocalNote =>
+      'Nur auf diesem Gerät gezeigt – ändern unter Einstellungen → Zahlungsdaten.';
+
+  @override
+  String get privacyPaymentTitle => 'Zahlungsdaten';
+
+  @override
+  String get privacyPaymentBody =>
+      'Unter Einstellungen → Zahlungsdaten kannst du dein eigenes Bankkonto (Name auf dem Konto, IBAN, BIC) und deinen PayPal.me-Namen eintragen. MoneyLedger speichert sie nur auf diesem Gerät, für das Konto, das du nutzt (oder den lokalen Modus – sie ziehen mit um, wenn du ein Matrix-Konto verbindest). Sie werden nie an die anderen in deinen Gruppen oder an einen Server geschickt und sind in keiner Sicherungsdatei, keinem Wiederherstellungspunkt und keiner CSV enthalten. Sie verlassen das Gerät nur als QR-Code auf seinem eigenen Bildschirm – zum Scannen für jemanden, der dir Geld schuldet – oder als PayPal.me-Link, den du selbst teilst. Wenn du sie in den Einstellungen entfernst, die lokalen Daten löschst oder die App deinstallierst, sind sie weg; beim Abmelden bleiben sie erhalten.';
+
+  @override
+  String get paymentDetailsPageTitle => 'Zahlungsdaten';
 }

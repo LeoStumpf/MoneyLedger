@@ -370,6 +370,19 @@ peers'), and SAS works with other members' devices (members page). Open:
 - Format: JPEG (PNG stays PNG — `image_picker` doesn't recompress it), file
   still named `.jpg`; `Image.memory` decodes either.
 
+### Payment details (G74) — limits
+- **Device-local only (for now)**: the own bank account / PayPal.me name
+  lives in this ledger's `AppSettings` (per account / local mode; moves along
+  with a local-mode adoption). The payee shows the QR code on *their own*
+  screen; the payer's app never learns the details. Showing them on the
+  payer's device ("when they settle with me", plan.md G74) needs a synced
+  field — wire / privacy decisions open (plan.md G74, needs Leo).
+- **Not in backups / restore points**: a new phone needs them entered again.
+- **GiroCode = euro only** (EPC SEPA credit transfer); other currencies get
+  the IBAN as text. Banking apps outside DE / AT / NL may not scan it.
+- The EPC remittance text is the group name (≤ 140 characters, cut to the
+  331-byte limit); some banks only accept Latin characters there.
+
 ### Real-device smoke tests
 Flows that can only be verified on a real device + homeserver, not in
 `flutter test` or the web build (`docs/smoke-test.md`):

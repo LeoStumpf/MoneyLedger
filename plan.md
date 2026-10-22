@@ -1068,9 +1068,28 @@ Leo 2026-10-17: **no store hurry — finish everything first**; people are enter
       (G77), local-only receipt photo (G78); **no** quick-add shortcut / widget
 
 ### G74. Payment details + GiroCode (Leo 2026-10-17) 🟢
-- [ ] Optional own IBAN / PayPal.me in the **app settings**; shown to others
-      when they settle with me (GiroCode QR with amount / PayPal link) — needs
-      a synced field → wire change, bundle with G57 / G73
+- [x] Optional own IBAN / PayPal.me in the **app settings** (Settings →
+      *Payment details*, `/settings/payment`; account holder, IBAN with
+      mod-97 check, optional BIC, PayPal.me name / pasted link) —
+      device-local per ledger (`AppSettings` `payment_details`), never synced,
+      not in backups / snapshots; moves along with a local-mode adoption
+- [x] GiroCode (EPC QR v002, UTF-8, amount + group name as reference,
+      euro only) and PayPal.me link with the amount — balance page: a QR
+      button on every debt **owed to me** → sheet *"{name} pays you
+      {amount}"* (GiroCode / PayPal switch, *Copy IBAN*, *Share link*), shown
+      on **my** screen for the payer to scan; privacy section *Payment
+      details* (PRIVACY.md + in-app)
+- [ ] **Decide (Leo) — the synced part** ("shown to others when they settle
+      with me"): which record carries it (signed `member` payload field vs.
+      own record kind / meta), opt-in per group or every group I'm in (incl.
+      invite-link groups → relays hold the IBAN encrypted under the link
+      key, readable by anyone with the link, also later), how a removal is
+      handled (old versions stay in peers' history / backups / snapshots),
+      and old builds (a pre-G74 build refuses signed member versions with a
+      new field → the member edit doesn't reach them; schema step forgetting
+      member refusals) — wire change, bundle with G57 / G73 / G76
+- [ ] Device check: smoke 5.21 (banking-app scan, PayPal link, DE 360 dp)
+- [ ] Later maybe: payment details in the G69 share text (opt-in)
 
 
 ### G76. Multiple payers per expense (Leo 2026-10-17) 🟢
@@ -1201,7 +1220,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G72 — local notifications (on by default)
 - [x] G73 — manual exchange rates + fetch button (with G57) — device check smoke 6.7 + G57 decision open
 - [x] G75 — usability polish (review leftovers)
-- [ ] G74 — payment details + GiroCode (with G57 / G73)
+- [~] G74 — payment details + GiroCode (with G57 / G73) — device-local part done; synced part needs Leo (wire / privacy)
 - [ ] G76 — multiple payers (wire, with G57 / G73 / G74)
 - [ ] G79 — DEV-I findings (calculator keyboard, truncations, lazy Matrix store)
 - [x] G77 — itemized split

@@ -118,6 +118,8 @@ Future<LocalAdoptionResult> adoptLocalLedger({
   );
   final groups = await from.groups.getAllGroups();
   final archives = await from.settings.watchArchivedGroups().first;
+  // G74: the own payment details move along (unless the account has some).
+  final payment = await from.settings.paymentDetailsRaw();
   final keys = await local.select(local.knownDeviceKeys).get();
   // G52: this device's link channels (and their peers) move along.
   final channels = {
@@ -170,6 +172,9 @@ Future<LocalAdoptionResult> adoptLocalLedger({
       }
       final archive = archives[g.roomId];
       if (archive != null) await to.settings.archiveGroup(g.roomId, archive);
+    }
+    if (payment != null && await to.settings.paymentDetailsRaw() == null) {
+      await to.settings.setPaymentDetailsRaw(payment);
     }
     // G52: the peers seen on the copied channels (device-local bookkeeping).
     await target.batch(
