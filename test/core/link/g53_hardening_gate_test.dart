@@ -11,6 +11,7 @@ import 'package:money_ledger/core/database/daos/expenses_dao.dart';
 import 'package:money_ledger/core/database/daos/groups_dao.dart';
 import 'package:money_ledger/core/database/daos/link_dao.dart';
 import 'package:money_ledger/core/database/daos/members_dao.dart';
+import 'package:money_ledger/core/database/daos/settings_dao.dart';
 import 'package:money_ledger/core/database/daos/signing_dao.dart';
 import 'package:money_ledger/core/link/group_policy.dart';
 import 'package:money_ledger/core/link/link_uri.dart';
@@ -64,6 +65,21 @@ GroupModel meta({
 );
 
 void main() {
+  group('lateArrivals (pure, round 3)', () {
+    test('first position after the lock\'s arrival → late', () {
+      expect(
+        lateArrivals([
+          (recordId: 'p1', position: 3),
+          (recordId: 'p2', position: 9),
+          (recordId: 'p1', position: 12),
+          (recordId: 'p3', position: 7),
+        ], 7),
+        {'p2'},
+      );
+      expect(lateArrivals(const [], 0), isEmpty);
+    });
+  });
+
   group('lockEligibilityBlockers (pure)', () {
     test('the newest version at or before locked_at decides', () {
       final versions = [
@@ -264,6 +280,103 @@ void main() {
       expect(await g.meta(groupMetaPayload(lock), relayedBy: alice), isTrue);
       expect((await groups.getGroup('g1'))!.isLocked, isTrue);
     });
+
+    test(
+      'round 3 (Leo 2026-10-22): a person back-dated before an already '
+      'seen lock doesn\'t block it — the re-judged lock is accepted',
+      () async {
+        final lock = await lockBy(aliceDevice, at: 500);
+        final g = gate();
+        final viaLink = gate(linkPath: true);
+        // The lock arrives while Ben (p1) is unclaimed: refused, its arrival
+        // is noted.
+        expect(await g.meta(groupMetaPayload(lock), relayedBy: alice), isFalse);
+        expect(await SettingsDao(db).lockSeen('g1', 500), isNotNull);
+        // A link holder publishes a new person, back-dated before the lock.
+        expect(
+          await viaLink.member(
+            memberPayload(member('px', updatedAt: 400)),
+            relayedBy: via,
+          ),
+          isTrue,
+        );
+        // Ben's claim (stamped before the lock) arrives late.
+        final claim = await signMember(
+          bobDevice,
+          member('p1', matrixId: bob, updatedAt: 300),
+        );
+        expect(await g.member(memberPayload(claim), relayedBy: bob), isTrue);
+        expect(await refusals(), isEmpty);
+        // Re-sent: px came after the lock did → doesn't count.
+        expect(await g.meta(groupMetaPayload(lock), relayedBy: alice), isTrue);
+        expect((await groups.getGroup('g1'))!.isLocked, isTrue);
+      },
+    );
+
+    test('round 3: a person that arrived before the lock still blocks it, '
+        'back-dated or not', () async {
+      expect(
+        await gate(
+          linkPath: true,
+        ).member(memberPayload(member('px', updatedAt: 400)), relayedBy: via),
+        isTrue,
+      );
+      final claim = await signMember(
+        bobDevice,
+        member('p1', matrixId: bob, updatedAt: 300),
+      );
+      expect(await gate().member(memberPayload(claim), relayedBy: bob), isTrue);
+      final lock = await lockBy(aliceDevice, at: 500);
+      expect(
+        await gate().meta(groupMetaPayload(lock), relayedBy: alice),
+        isFalse,
+      );
+      expect(await refusals(), ['meta:g1:lock_not_eligible']);
+    });
+
+    test('round 3: the lock\'s arrival marker goes with the group', () async {
+      final lock = await lockBy(aliceDevice, at: 500);
+      await gate().meta(groupMetaPayload(lock), relayedBy: alice);
+      expect(await SettingsDao(db).lockSeen('g1', 500), isNotNull);
+      await db.purgeGroup('g1');
+      expect(await SettingsDao(db).lockSeen('g1', 500), isNull);
+    });
+
+    test(
+      'round 3: over the link a claim for someone else\'s Matrix ID is '
+      'refused (claim_not_own); over Matrix the invite is unchanged',
+      () async {
+        final viaLink = gate(linkPath: true);
+        final invite = await signMember(
+          aliceDevice,
+          member('p1', matrixId: bob, updatedAt: 5),
+        );
+        expect(
+          await viaLink.member(memberPayload(invite), relayedBy: via),
+          isFalse,
+        );
+        expect(
+          await refusals(),
+          isEmpty,
+          reason: 'transient: the same version may still come over Matrix',
+        );
+        expect(
+          (await members.getMembers(
+            'g1',
+          )).firstWhere((m) => m.userId == 'p1').matrixId,
+          isNull,
+        );
+        // Over Matrix the invite is unchanged.
+        expect(
+          await gate().member(memberPayload(invite), relayedBy: alice),
+          true,
+        );
+        expect(
+          await members.activeClaimedMatrixIds('g1'),
+          unorderedEquals([alice, bob]),
+        );
+      },
+    );
 
     test('a snapshot carrying the claim and the lock: the participants go '
         'in first, the lock is valid', () async {

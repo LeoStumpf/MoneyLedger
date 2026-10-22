@@ -41,6 +41,7 @@ import '../../models/group_model.dart';
 import '../../models/member_model.dart';
 import '../database/app_database.dart';
 import '../database/daos/groups_dao.dart';
+import '../database/daos/history_dao.dart';
 import '../database/daos/link_dao.dart';
 import '../database/daos/members_dao.dart';
 import '../database/daos/settings_dao.dart';
@@ -148,6 +149,59 @@ Future<List<LinkSelfClaim>> claimLinkParticipants({
     out.add(LinkSelfClaim(groupId: groupId, claim: claim, meta: signedMeta));
   }
   return out;
+}
+
+/// G53 (Leo 2026-10-22, round 3) — **confirm an invite on the link**: over
+/// the link path a claim of a participant is only accepted as the claimed
+/// account's own (signed by it). A Matrix invite ("Invite by Matrix ID",
+/// signed by the inviter) therefore never reaches the devices that see the
+/// group only by link (they refuse it as `claim_not_own`). So the
+/// invitee's device, bridging a **mixed** group (signed meta with `link`),
+/// writes one version of its own participant signed by itself — name,
+/// status and payment details kept, `nextLwwClock` — when no version
+/// claimed by [mxid] and signed by [mxid] is known here (stored or in the
+/// G48 history). Returns it (to relay), or null when nothing was needed /
+/// possible (no key yet: the next bridging run tries again). [crypto] is
+/// only asked when a confirmation is due.
+Future<MemberModel?> confirmOwnLinkClaim({
+  required AppDatabase db,
+  required String groupId,
+  required String mxid,
+  required Future<RecordCrypto?> Function() crypto,
+  int Function()? clock,
+}) async {
+  if (!mxid.startsWith('@')) return null;
+  final meta = await GroupsDao(db).getGroup(groupId);
+  if (meta == null || meta.sig == null || meta.link == null) return null;
+  final members = MembersDao(db);
+  final current = claimedBy(await members.getMembers(groupId), mxid);
+  if (current == null || !current.isActive || current.matrixId != mxid) {
+    return null;
+  }
+  bool own(MemberModel m) => m.matrixId == mxid && m.sig?.user == mxid;
+  if (own(current)) return null;
+  final history = await HistoryDao(
+    db,
+  ).entriesForRecord(groupId, RecordKind.member, current.userId);
+  if (history.any((e) => e.member != null && own(e.member!))) return null;
+  final key = await crypto();
+  if (key == null || key.identity == null || db.isClosed) return null;
+  final claim = await signMember(
+    key,
+    MemberModel(
+      groupId: groupId,
+      userId: current.userId,
+      displayName: current.displayName,
+      matrixId: mxid,
+      status: current.status,
+      updatedAt: nextLwwClock(current.updatedAt, now: clock?.call()),
+      payment: current.payment,
+    ),
+  );
+  if (db.isClosed) return null;
+  await members.upsertMemberLww(memberCompanion(claim));
+  debugPrint('[link] $groupId: confirmed our claim with our own signature');
+  return claim;
 }
 
 /// Relays [claims] over Matrix to each group's active Matrix members (self

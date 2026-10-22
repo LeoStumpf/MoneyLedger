@@ -184,7 +184,9 @@ peers'), and SAS works with other members' devices (members page). Open:
   back to whole-meta LWW until a Matrix member merges); a **restore** never
   merges (it never signs); "last edited by" of a merged meta names the
   merging device; a pre-v19 build refuses every meta carrying `clocks`
-  (most metas after the first edit) until updated.
+  (most metas after the first edit) until updated. **Leo 2026-10-22
+  (round 3): both limits accepted** — no-account devices in mixed groups
+  don't write a merged meta, a restore never merges.
 - **No delete** — only *hide* (old expenses stay labelled). An expense whose
   `c:` id the group doesn't define (e.g. a CSV from another group without a
   name column, or the definition lost to the LWW case above) shows as
@@ -410,6 +412,13 @@ peers'), and SAS works with other members' devices (members page). Open:
   only stops future copies (Leo 2026-10-22; PRIVACY.md says so).
 - **Link groups**: anyone with a group's link can read them (and, like
   everything there, write a version `by` me — a forgeable hint).
+- **Others may clear / roll back my details** (Leo 2026-10-22, round 3:
+  accepted as built): the gate lets another member's version carry **no**
+  details or a value I published **earlier** (an editor that missed my
+  later change — refusing it would keep that editor's rename / removal out
+  for good). So any member can clear my details or reset them to an older
+  own value; never set a value I didn't publish. My device publishes them
+  again with my next change of the settings.
 - **Old builds** refuse member versions carrying `payment` (`invalid` on a
   pre-v19 build) — my renames etc. don't reach them until they update.
 - **GiroCode = euro only** (EPC SEPA credit transfer); other currencies get
@@ -440,9 +449,52 @@ peers'), and SAS works with other members' devices (members page). Open:
   settings help (no deep link to them yet). The blocked hint in the settings
   refreshes on reopening the page, not on returning from Android's
   settings.
+- **Switch shows off while Android doesn't allow notifications** (Leo
+  2026-10-22, round 3: OK as built): before the permission is granted the
+  settings switch is off (turning it on asks); "blocked" only from the
+  second denial (`notificationsBlockedFor`).
 - **Dependency:** `flutter_local_notifications` needs core library
   desugaring (`desugar_jdk_libs`, GPL-2.0 + Classpath Exception) in the
   Android build; F-Droid-compatible (no Google services).
+
+### Link / mixed groups (G52 / G53) — limits
+- **Relay reconnect while the app is open** (Leo 2026-10-22, round 3: OK):
+  the live subscription's back-off caps at **30 s** (`kLinkReconnectMax`);
+  resume reconnects at once; the pool's own default (5 min) applies only
+  outside the live subscription. A half-open socket looks connected until
+  it errors (no WebSocket ping).
+- **Claims over the link are self-claims only** (Leo 2026-10-22, round 3):
+  a signed claim that sets a Matrix ID new for a participant this device
+  holds is accepted over the link only when signed by that very account
+  (`claim_not_own`, transient — the same version may still arrive over
+  Matrix). A Matrix invite ("Invite by Matrix ID", signed by the inviter)
+  reaches link-only devices only through the invitee's own confirmation:
+  its device writes one self-signed version of its participant when it
+  bridges (`confirmOwnLinkClaim`) — until that device runs the app once,
+  the invitee shows as unclaimed there and its signed writes are dropped
+  there (`signer_not_member`, transient). A participant **new** to a
+  device (a late joiner's snapshot) is taken as the snapshot names it — a
+  forged claim of a person the joiner never held can't be told from an
+  invite there (the other devices refuse it; they disagree). A self-claim
+  for the claimer's own account of a still unclaimed person stays possible
+  (that is the "link participant signs in later" flow).
+- **Unverifiable claims stay unresolved** (round 3): when the homeserver's
+  device list can't be read, the claim is dropped but its link event is
+  recorded (peer, its "me", snapshot digest), so it isn't merged again on
+  every fetch; the claim is looked at again with the publisher's **next**
+  event (any change, the 10-day refresh) or when it arrives over Matrix.
+- **Lock eligibility ignores late arrivals** (round 3): people whose first
+  version reached a device after the lock did (`lateArrivals`, the lock's
+  arrival = the `record_history` position in `lock_seen:<group>:<locked_at>`)
+  don't count — closes the back-dated-person trick, but a **genuine**
+  person added concurrently with the lock and seen only after it doesn't
+  block it on that device either. After the 90-day history pruning a
+  person's first entry may be gone; a lock re-judged that much later could
+  then ignore someone who was there before it (only for a lock refused for
+  90+ days).
+- **Devices without an account** still can't read device lists: a
+  fabricated self-claim (and a lock built on it) is accepted there; the
+  round-3 self-claim-only rule applies there too (no claims for others).
 
 ### Real-device smoke tests
 Flows that can only be verified on a real device + homeserver, not in

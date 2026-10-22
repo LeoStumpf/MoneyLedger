@@ -666,6 +666,35 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
   DE informal).
 - **G61:** after *Set total to the sum*, show a snackbar with the new amount.
 
+### Leo's decisions 2026-10-22, round 3 (binding)
+1. [x] **claim_unverifiable** (a Matrix-ID claim over the link whose device
+   list can't be read): keep the claim unresolved, but **record** the
+   event's bookkeeping (`link_peers` last seen, the peer's "me", snapshot
+   digest) — no re-merge on every fetch, the publisher shows in the sync
+   sheet — **built** (G53 round 3)
+2. [x] **Mixed groups:** a Matrix claim over the **link** path is valid only
+   when signed by a device of exactly the claimed account (self-claim);
+   claims for someone else's MXID over link are refused; *Invite by Matrix
+   ID* over Matrix unchanged — **built** (`claim_not_own`, transient; the
+   invitee's device confirms its claim with its own signature so link-only
+   devices take the invite — `confirmOwnLinkClaim`)
+3. [x] **Lock eligibility:** people whose first version arrived on this
+   device after the lock did don't count (back-dated-person trick) —
+   **built** (`lateArrivals`, `lock_seen:<group>:<locked_at>`)
+4. [x] **G74:** any member may clear / reset my payment details to an
+   earlier own value (as built) — OK, documented (open-points.md)
+5. [x] **Relay reconnect cap 30 s** while the app is open — OK, design doc
+   §4.3 updated
+6. [ ] Someone deleting their copy of a link group stays in the others'
+   sync sheet as "deleted the group" (stored flag; EN + DE) — separate task
+7. [x] **Notification switch** shows off while Android doesn't allow
+   notifications — OK, documented (open-points.md G72)
+8. [ ] PRIVACY.md + in-app privacy text: "Settings → Back up all groups" →
+   "Settings → Backup & restore" (DE likewise; both identical, test) —
+   separate task
+9. [x] **G57 limits** OK: no-account devices in mixed groups can't write a
+   merged meta; a restore never merges — documented (open-points.md)
+
 ### G52. Link groups (implementation, incl. app key) 🟠
 Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] 1. Pure codec + crypto (`lib/core/link/`): link URI, HKDF (`kLinkSaltV1`), envelope (gzip + AES-GCM, AAD), sharding plan (`kLinkContentBudget` 60 000)
@@ -1003,10 +1032,15 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       in a mixed group only by link, or a lock only after N days without
       such changes) — or accept it (removals are visible, a G48 reset
       doesn't bring people back though)
+      — round 3: assigning a slot to **someone else's** Matrix ID over the
+      **link** is refused now (`claim_not_own`); over Matrix (an "invite"
+      by a Matrix member) and removals stay possible
 - [ ] (G53 hardening) Devices **without** an account can't read device
       lists: a fabricated claim (also of that device's own "me") and a lock
       built on fabricated claims are still accepted there — the group can
       turn read-only on a no-account phone; the Matrix devices refuse both
+      — round 3: only **self**-claims count over the link there too (no
+      claims for someone else's MXID); a fabricated self-claim still does
 - [ ] (G53 hardening) A claim signed by a device that signed out before
       this Matrix device first saw it (a late joiner of a mixed group by
       link) isn't trusted on the link path (`claim_device_not_listed`); the
@@ -1016,6 +1050,19 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       locker's device keeps its lock, the others refuse it ("agree to
       disagree", no loop); a refused lock that becomes valid later is only
       re-sent over Matrix (digest), not by already merged link events
+      — round 3 (Leo): on a device that saw the lock **before** that
+      person, the person no longer counts (`lateArrivals`), so the lock is
+      valid there once re-judged; a device that saw the person first still
+      refuses it
+- [ ] (G53 round 3) A Matrix invite reaches link-only devices only after the
+      invitee's device ran the app once (its self-signed confirmation);
+      until then the invitee shows unclaimed there and its signed writes
+      are dropped there (transient). A participant **new** to a device (a
+      late joiner) is taken as the snapshot names it (a forged claim for
+      someone else can't be told from an invite there)
+- [ ] (G53 round 3) `lock_seen` is a `record_history` position: a lock
+      refused for more than the 90-day history window may ignore a person
+      whose earlier entries were pruned (rare; open-points.md)
 - [x] (G53 review) A Matrix account that joined a mixed group by link (its
       "me" unclaimed) signed its writes — every peer dropped them
       (`signer_not_member`); it now writes link versions like local mode
@@ -1464,7 +1511,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G50 — no-login link groups design doc (`docs/design/no-login-sharing.md`) — signed off by Leo 2026-10-17 (§14)
 - [x] G51 — Nostr spike — GO (2026-10-17); retention checks + web-verify decision open
 - [ ] G52 — link groups implementation
-- [x] G53 — mixed groups + lock group (device pass with G52 step 13; open points for Leo in G53)
+- [x] G53 — mixed groups + lock group (device pass with G52 step 13; open points for Leo in G53) — round 3 rules (Leo 2026-10-22: unverifiable claims recorded, self-claims only over the link + invite confirmation, late arrivals ignored for the lock) built
 - [x] G54 — "Why Matrix?" info screen + welcome reorder (device pass: smoke §15 with G52 step 13)
 - [x] G55 — web glyph coverage without Google (found in G43) — accepted as is (Leo 2026-10-17); Flutter-upgrade reminder kept in G55
 - [x] DEV-H — device/browser pass for Phase H: G45 smoke 7.12 (pre-G45 install updates, `[g45]` cache clear once, sync/invite/SAS ok, presence stays offline), G43 manual browser network check, G46 (Delete local data → welcome choices; Back from a new group → list), G47 smoke 5.13 + 5.14 on two devices, G48 smoke 8.13–8.15, G49 smoke 5.15, G59 split rows at phone width (use `pixel-lock` for the Pixel) — done 2026-10-17: all pass; found G62

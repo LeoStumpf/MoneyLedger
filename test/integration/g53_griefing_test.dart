@@ -8,8 +8,9 @@
 /// * a fabricated self-claim on the link path (a device key the homeserver
 ///   doesn't list) → a Matrix device doesn't trust it and replicates
 ///   nothing to that account;
-/// * a claim whose device list can't be read is looked at again on the
-///   next fetch, and accepted once the homeserver answers.
+/// * a claim whose device list can't be read stays unresolved, but its
+///   event is recorded (round 3, Leo 2026-10-22) — looked at again with the
+///   publisher's next event, accepted once the homeserver answers.
 library;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -178,35 +179,53 @@ void main() {
     );
   });
 
-  test('homeserver unreachable: the claim is dropped, the event stays '
-      'unprocessed and the next fetch accepts it', () async {
-    final ben = h.device(kLocalAccountId);
-    final s = await mixedGroupWithBen(ben);
-    final eveLocal = h.device(kLocalAccountId);
-    await h.join(eveLocal, s.g, s.secret, name: 'Eve');
-    // A genuine claim (Eve's real device), arriving only by link.
-    final eveAtEve = (await MembersDao(
-      eveLocal.db,
-    ).getMembers(s.g)).firstWhere((m) => m.displayName == 'Eve');
-    final claim = await signMember(
-      h.matrix.clientFor(_eve).crypto,
-      _claimed(eveAtEve, _eve),
-    );
-    h.matrix.keys.unreachable = true;
-    await MembersDao(eveLocal.db).upsertMemberLww(memberCompanion(claim));
-    await h.settle();
-    Future<String?> claimAtAlice() async => (await MembersDao(
-      s.alice.db,
-    ).getMembers(s.g)).firstWhere((m) => m.userId == eveAtEve.userId).matrixId;
-    expect(await claimAtAlice(), isNull);
-    expect(
-      await refusals(s.alice),
-      isNot(contains('member:claim_unverifiable')),
-    );
+  test(
+    'homeserver unreachable (round 3): the claim stays unresolved, the '
+    'event is recorded (peer + its "me" in the sync sheet, not merged '
+    'again on every fetch); the publisher\'s next event resolves it',
+    () async {
+      final ben = h.device(kLocalAccountId);
+      final s = await mixedGroupWithBen(ben);
+      final eveLocal = h.device(kLocalAccountId);
+      await h.join(eveLocal, s.g, s.secret, name: 'Eve');
+      // A genuine claim (Eve's real device), arriving only by link.
+      final eveAtEve = (await MembersDao(
+        eveLocal.db,
+      ).getMembers(s.g)).firstWhere((m) => m.displayName == 'Eve');
+      final claim = await signMember(
+        h.matrix.clientFor(_eve).crypto,
+        _claimed(eveAtEve, _eve),
+      );
+      h.matrix.keys.unreachable = true;
+      await MembersDao(eveLocal.db).upsertMemberLww(memberCompanion(claim));
+      await h.settle();
+      Future<String?> claimAtAlice() async =>
+          (await MembersDao(s.alice.db).getMembers(
+            s.g,
+          )).firstWhere((m) => m.userId == eveAtEve.userId).matrixId;
+      expect(await claimAtAlice(), isNull);
+      expect(
+        await refusals(s.alice),
+        isNot(contains('member:claim_unverifiable')),
+      );
+      // The event's bookkeeping is recorded: Eve's publisher with her "me".
+      final peer = (await LinkDao(
+        s.alice.db,
+      ).getPeers(s.g)).where((p) => p.me == eveAtEve.userId).single;
+      expect(peer.snapshotDigest, isNotNull);
 
-    h.matrix.keys.unreachable = false;
-    await s.alice.engine.refresh(groupId: s.g);
-    await h.settle();
-    expect(await claimAtAlice(), _eve);
-  });
+      // Reachable again: a fetch doesn't merge the same event again …
+      h.matrix.keys.unreachable = false;
+      await s.alice.engine.refresh(groupId: s.g);
+      await h.settle();
+      expect(await claimAtAlice(), isNull, reason: 'not re-merged');
+
+      // … Eve's next event (any change) carries the claim again → accepted.
+      final sub = eveLocal.c.listen(expenseAdderProvider, (_, _) {});
+      await addExpense(eveLocal, s.g, 'Matches', eveAtEve.userId);
+      sub.close();
+      await h.settle();
+      expect(await claimAtAlice(), _eve);
+    },
+  );
 }

@@ -384,6 +384,21 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
     appSettings,
   )..where((t) => t.key.equals('$_linkSelfClaimPrefix$groupId'))).go();
 
+  // ── G53 round 3: when a lock first arrived ───────────────────────────────
+
+  static const lockSeenPrefix = 'lock_seen:';
+
+  static String _lockSeenKey(String groupId, int lockedAt) =>
+      '$lockSeenPrefix$groupId:$lockedAt';
+
+  /// Where `record_history` stood (highest entry id) when the lock of
+  /// [groupId] with `locked_at` [lockedAt] first arrived here, or null.
+  Future<int?> lockSeen(String groupId, int lockedAt) async =>
+      int.tryParse(await _getValue(_lockSeenKey(groupId, lockedAt)) ?? '');
+
+  Future<void> setLockSeen(String groupId, int lockedAt, int position) =>
+      _setValue(_lockSeenKey(groupId, lockedAt), '$position');
+
   // ── G52 step 12 follow-up: "this link was replaced" ──────────────────────
 
   static const linkReplacedPrefix = 'link_replaced:';

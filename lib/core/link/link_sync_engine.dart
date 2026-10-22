@@ -89,6 +89,7 @@ import '../matrix/ledger_transport.dart';
 import '../matrix/transport_provider.dart';
 import '../session/app_session.dart';
 import '../session/local_transport.dart';
+import '../sync/delivery_policy.dart';
 import '../sync/ledger_payloads.dart';
 import '../sync/meta_merge.dart';
 import '../sync/record_gate.dart';
@@ -100,6 +101,7 @@ import 'link_envelope.dart';
 import 'link_keys.dart';
 import 'link_relay_policy.dart';
 import 'link_replaced.dart';
+import 'link_self_claim.dart';
 import 'link_snapshot.dart';
 import 'link_uri.dart';
 import 'nostr/nip09.dart';
@@ -798,11 +800,17 @@ class LinkSyncEngine {
         channels = true;
       } else {
         ledger = true;
-        if (u.table == _db.groups.actualTableName) groups = true;
+        // Round 3: and a participant change may make us a member (an
+        // invite arriving after the meta) — bridging + claim confirmation.
+        if (u.table == _db.groups.actualTableName ||
+            u.table == _db.members.actualTableName) {
+          groups = true;
+        }
       }
     }
     if (channels) unawaited(_reloadChannels());
-    // G53: a meta change may open / move / close a link (bridging, lock).
+    // G53: a meta change may open / move / close a link (bridging, lock);
+    // a participant change may make this account a member.
     if (groups) _scheduleBridge();
     if (ledger) {
       for (final g in _channels.keys) {
@@ -1163,10 +1171,18 @@ class LinkSyncEngine {
           trustAttestations: false,
         );
         if (!_alive) return;
-        // G53 hardening: a claim whose device list couldn't be read was
-        // dropped — leave the event unprocessed so the next fetch merges it
-        // again (everything else in it is idempotent).
-        if (gate.unverifiableClaims != unverifiable) return;
+        // G53 (Leo 2026-10-22, round 3): a claim whose device list couldn't
+        // be read stays unresolved (dropped, not recorded), but the event's
+        // bookkeeping is recorded all the same — it isn't merged again on
+        // every fetch and its publisher shows in the sync sheet. The claim
+        // is looked at again with the publisher's next event (or arrives
+        // over Matrix).
+        if (gate.unverifiableClaims != unverifiable) {
+          debugPrint(
+            '[link] $group: a claim in ${event.id} stays unresolved '
+            '(device list unreachable)',
+          );
+        }
         await _link.recordPeerEvent(
           groupId: group,
           pubkey: event.pubkey,
@@ -2140,6 +2156,40 @@ class LinkSyncEngine {
           debugPrint('[link] ${g.roomId} was locked: leaving the relays');
           await _dropChannel(g.roomId);
       }
+      if (me != null && identity != null && _alive) {
+        await _confirmOwnClaim(g.roomId, identity);
+      }
+    }
+  }
+
+  /// G53 round 3 (Leo 2026-10-22): our claim of a mixed group came from an
+  /// inviter's signature — link-only devices refuse that over the link
+  /// (`claim_not_own`), so confirm it with our own ([confirmOwnLinkClaim])
+  /// and relay that over Matrix too (the table change publishes it on the
+  /// link). Best-effort: no key yet → the next bridging run tries again.
+  Future<void> _confirmOwnClaim(String groupId, String mxid) async {
+    Future<LedgerTransport>? transport;
+    Future<LedgerTransport> t() => transport ??= withDeliveryPolicy(
+      _ref.read(ledgerTransportProvider.future).timeout(kLinkTransportWait),
+      _settings,
+    );
+    try {
+      final claim = await confirmOwnLinkClaim(
+        db: _db,
+        groupId: groupId,
+        mxid: mxid,
+        crypto: () async => (await t()).crypto,
+        clock: _clock,
+      );
+      if (claim == null || !_alive) return;
+      await relayLinkSelfClaims(
+        [LinkSelfClaim(groupId: groupId, claim: claim)],
+        members: _members,
+        transport: await t(),
+        isAlive: () => _alive,
+      );
+    } catch (e) {
+      if (_alive) debugPrint('[link] confirming our claim in $groupId: $e');
     }
   }
 

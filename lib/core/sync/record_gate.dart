@@ -7,6 +7,7 @@ import '../database/daos/expenses_dao.dart';
 import '../database/daos/groups_dao.dart';
 import '../database/daos/history_dao.dart' show HistoryDao, HistorySource;
 import '../database/daos/members_dao.dart';
+import '../database/daos/settings_dao.dart';
 import '../database/daos/signing_dao.dart';
 import '../link/group_policy.dart';
 import '../link/lock_eligibility.dart';
@@ -130,10 +131,23 @@ import 'record_verifier.dart';
 ///   the signer's account with that key ([RecordVerifier.deviceListed]):
 ///   not listed → refused (`claim_device_not_listed`, recorded); can't tell
 ///   → dropped (`claim_unverifiable`, transient, counted in
-///   [unverifiableClaims] so the link engine looks at the event again).
+///   [unverifiableClaims]; round 3: the claim stays unresolved until the
+///   publisher's next event, the event's bookkeeping is recorded).
 ///   The claim isn't stored, so nothing is replicated to that account.
 ///   Snapshot participants whose claim isn't trusted that way don't count
 ///   for the signer / claim rules either.
+///
+/// **Round 3** (Leo 2026-10-22):
+/// * over the link path of a link-only / mixed group a signed claim that
+///   sets a Matrix ID new for a stored participant must be that account's
+///   **own** claim (signed by the claimed account, of an active, unclaimed
+///   participant) — else refused (`claim_not_own`, transient: the same
+///   version may still arrive over Matrix); claims for
+///   someone else ("Invite by Matrix ID") only travel over Matrix. The
+///   invitee's device confirms its claim with its own signature
+///   (`confirmOwnLinkClaim`), which link-only devices then accept.
+/// * lock eligibility ignores participants whose first version reached this
+///   device after the lock did (`lateArrivals`, `SettingsDao.lockSeen`).
 class RecordGate {
   RecordGate({
     required this.verifier,
@@ -187,7 +201,8 @@ class RecordGate {
 
   /// How many claims were dropped because the device list couldn't be read
   /// (G53 hardening) — the link engine compares it before / after a merge
-  /// and then doesn't mark the event processed.
+  /// and logs the claim as unresolved (round 3: the event itself is
+  /// recorded as processed all the same).
   int get unverifiableClaims => _unverifiableClaims;
   int _unverifiableClaims = 0;
   final bool Function() _isAlive;
@@ -662,6 +677,18 @@ class RecordGate {
     }
     final policy = await _policyOf(m.groupId);
     if (!_isAlive()) return false;
+    if (_claimNotOwn(policy, m, current)) {
+      await _refuse(
+        m.groupId,
+        RecordKind.member,
+        m.userId,
+        version,
+        const Verdict.reject(RejectReason.claimNotOwn),
+        relayedBy,
+        m.sig,
+      );
+      return false;
+    }
     final problem =
         memberProblem(m, allowLocalClaim: allowLocalClaims) ??
         await _claimProblem(policy, m, current, extra: snapshotMembers);
@@ -755,6 +782,26 @@ class RecordGate {
     return true;
   }
 
+  /// G53 (Leo 2026-10-22, round 3): whether [m] is a signed Matrix-ID
+  /// claim on the link path of a link-only / mixed group that sets a Matrix
+  /// ID new for the stored participant [current] without being that
+  /// account's own claim ([_isSelfClaim]) — refused (`claim_not_own`).
+  /// A participant new to this device (a late joiner's snapshot) is taken
+  /// as the snapshot names it (its Matrix invite can't be told apart).
+  bool _claimNotOwn(
+    GroupPolicyInfo? info,
+    MemberModel m,
+    MemberModel? current,
+  ) =>
+      _linkPath &&
+      info != null &&
+      info.policy != GroupPolicy.matrix &&
+      m.sig != null &&
+      m.matrixId != null &&
+      current != null &&
+      m.matrixId != current.matrixId &&
+      !_isSelfClaim(m, current);
+
   /// G53 hardening: whether participant version [m] ([current] = stored)
   /// is a link-path claim whose signing device must be checked — signed,
   /// setting a Matrix ID this device doesn't hold for it yet.
@@ -773,7 +820,8 @@ class RecordGate {
     String group,
     List<MemberModel> ms,
   ) async {
-    if (!_linkPath || !verifyClaimDevices) return ms;
+    if (!_linkPath) return ms;
+    final info = await _policyOf(group);
     final stored = {
       for (final m in await members.getMembers(group)) m.userId: m,
     };
@@ -781,6 +829,12 @@ class RecordGate {
     for (final m in ms) {
       if (!_isAlive()) return out;
       final have = stored[m.userId];
+      // Round 3: a claim for someone else's Matrix ID is refused here.
+      if (_claimNotOwn(info, m, have)) continue;
+      if (!verifyClaimDevices) {
+        out.add(m);
+        continue;
+      }
       if (!_checksClaim(m, have)) {
         // An unsigned claim new to this device is refused anyway.
         if (m.matrixId == null ||
@@ -814,15 +868,38 @@ class RecordGate {
           if (m.sig != null || m.matrixId == null) m,
       ];
     } else {
+      final db = members.attachedDatabase;
       final history = await HistoryDao(
-        members.attachedDatabase,
+        db,
       ).entriesForGroupKind(g.roomId, RecordKind.member);
+      // Round 3 (Leo 2026-10-22): people whose first version arrived here
+      // after this lock first arrived don't count (a back-dated person).
+      final seen = await _lockSeen(g);
+      final late = lateArrivals([
+        for (final e in history) (recordId: e.recordId, position: e.id),
+      ], seen);
       versions = [
-        ...await members.getMembers(g.roomId),
-        for (final e in history) ?e.member,
+        for (final m in await members.getMembers(g.roomId))
+          if (!late.contains(m.userId)) m,
+        for (final e in history)
+          if (!late.contains(e.recordId)) ?e.member,
       ];
     }
     return lockEligibilityBlockers(g.lockedAt!, versions);
+  }
+
+  /// Round 3: the `record_history` position (highest entry id) at which
+  /// lock [g] first arrived on this device — stored the first time it is
+  /// judged (`SettingsDao.lockSeen`), so a re-judged lock (after a late
+  /// participant version) keeps its arrival.
+  Future<int> _lockSeen(GroupModel g) async {
+    final db = members.attachedDatabase;
+    final settings = SettingsDao(db);
+    final have = await settings.lockSeen(g.roomId, g.lockedAt!);
+    if (have != null) return have;
+    final at = await HistoryDao(db).latestId();
+    await settings.setLockSeen(g.roomId, g.lockedAt!, at);
+    return at;
   }
 
   /// G74: whether another member's version [m] may hold its payment

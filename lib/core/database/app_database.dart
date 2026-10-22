@@ -439,6 +439,10 @@ class AppDatabase extends _$AppDatabase {
     await (delete(
       appSettings,
     )..where((t) => t.key.equals('link_replaced:$groupId'))).go();
+    // G53 round 3: and when its locks first arrived.
+    await (delete(
+      appSettings,
+    )..where((t) => t.key.like('lock_seen:$groupId:%'))).go();
   });
 
   @override

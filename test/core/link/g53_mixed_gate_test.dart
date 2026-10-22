@@ -537,8 +537,9 @@ void main() {
       },
     );
 
-    test('link path, mixed: a member may assign a Matrix account (signed); '
-        'a non-member may not', () async {
+    test('link path, mixed (round 3): a member assigning a Matrix account '
+        'is refused over the link (claim_not_own) — only the account\'s '
+        'own claim counts; a non-member may not either', () async {
       await openLink();
       await link.putChannel(channel('g1', me: 'pa'));
       final invite = await signMember(
@@ -547,7 +548,23 @@ void main() {
       );
       expect(
         await linkGate.member(memberPayload(invite), relayedBy: via),
+        isFalse,
+      );
+      // Bob confirms the claim with his own signature: accepted.
+      final own = await signMember(
+        bobDevice,
+        member('p1', matrixId: bob, updatedAt: 6),
+      );
+      expect(await linkGate.member(memberPayload(own), relayedBy: via), isTrue);
+      // A later version keeping the claim (a member's rename) is fine.
+      final again = await signMember(
+        aliceDevice,
+        member('p1', matrixId: bob, name: 'Bobby', updatedAt: 7),
+      );
+      expect(
+        await linkGate.member(memberPayload(again), relayedBy: via),
         isTrue,
+        reason: 'a member may still rename a claimed participant over link',
       );
       final rogue = await signMember(
         eveDevice,

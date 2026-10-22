@@ -697,9 +697,24 @@ participants first; the locker stamps `locked_at` after every participant
 version. On a Matrix device's link path (`RecordGate(verifyClaimDevices:)`)
 a new Matrix-ID claim needs its signing device on the homeserver list
 (`RecordVerifier.deviceListed`): not listed → `claim_device_not_listed`
-(recorded), can't tell → `claim_unverifiable` (transient; the link event
-stays unprocessed). Tests `g53_hardening_gate_test.dart`,
+(recorded), can't tell → `claim_unverifiable` (transient; round 3: the
+claim stays unresolved but the link event **is recorded** — peer, "me",
+snapshot digest — and the claim is retried with the publisher's next event).
+Tests `g53_hardening_gate_test.dart`,
 `test/integration/g53_griefing_test.dart`.
+**G53 round 3 (Leo 2026-10-22):** over the link path of a link-only /
+mixed group a claim setting a Matrix ID new for a stored participant must be
+the account's **own** (`_isSelfClaim`) — else `claim_not_own` (transient: the
+same version may still arrive over Matrix); *Invite by Matrix ID* stays a
+Matrix-path action, and the invitee's device confirms its claim with its own
+signature when it bridges (`confirmOwnLinkClaim` in `link_self_claim.dart`;
+bridging also runs on `members` changes) so link-only devices take it. Lock
+eligibility ignores people whose first version reached this device after
+the lock did (`lateArrivals`; the lock's arrival = the `record_history`
+position stored as `lock_seen:<group>:<locked_at>`, dropped by
+`purgeGroup`). Tests `test/integration/g53_round3_test.dart`; design doc
+"As built (G53 round 3)"; limits in `docs/open-points.md` "Link / mixed
+groups".
 
 ### Reset invite link (G52 step 12)
 

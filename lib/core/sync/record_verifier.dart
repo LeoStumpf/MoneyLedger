@@ -51,6 +51,16 @@ enum RejectReason {
   /// all, no Matrix client yet). Not recorded: looked at again later.
   claimUnverifiable('claim_unverifiable', recorded: false),
 
+  /// G53 (Leo 2026-10-22, round 3): a signed participant version arriving
+  /// over the **link path** of a link-only / mixed group that sets a Matrix
+  /// ID new for a participant this device holds, without being that
+  /// account's own claim (signed by the claimed account, of an active,
+  /// unclaimed participant). Claims for someone else's Matrix ID only
+  /// travel over Matrix ("Invite by Matrix ID"). Not recorded: a refusal
+  /// names the version, not the path — the same invite arriving over
+  /// Matrix on an account's device must still be accepted.
+  claimNotOwn('claim_not_own', recorded: false),
+
   /// G53 hardening (§10.1, Leo 2026-10-22): a lock (a signed meta without
   /// `link`, with `locked_at`) while some participant that was active at
   /// `locked_at` wasn't claimed by a Matrix account then. Recorded; cleared

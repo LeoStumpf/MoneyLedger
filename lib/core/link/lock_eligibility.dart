@@ -42,3 +42,26 @@ List<MemberModel> lockEligibilityBlockers(
       if (m.isActive && !isValidMxid(m.matrixId)) m,
   ];
 }
+
+/// Round 3 (Leo 2026-10-22): the participants whose **first** version
+/// reached this device after the lock did — [entries] are this device's
+/// participant history entries (`record_history`: participant id + append
+/// position), [lockSeen] the highest position when the lock first arrived.
+/// They don't count for the lock's eligibility (closes the trick of
+/// publishing a person back-dated before an already seen lock). A
+/// participant without history entries counts (it predates the history).
+/// Pure.
+Set<String> lateArrivals(
+  Iterable<({String recordId, int position})> entries,
+  int lockSeen,
+) {
+  final first = <String, int>{};
+  for (final e in entries) {
+    final have = first[e.recordId];
+    if (have == null || e.position < have) first[e.recordId] = e.position;
+  }
+  return {
+    for (final MapEntry(:key, :value) in first.entries)
+      if (value > lockSeen) key,
+  };
+}
