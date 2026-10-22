@@ -428,6 +428,7 @@ void main() {
           const GroupMembersPage(roomId: _g),
           overrides: [
             currentUserIdProvider.overrideWithValue('@anna:x.org'),
+            ledgerGroupsProvider.overrideWith((ref) => Stream.value(const [])),
             groupMembersProvider(
               _g,
             ).overrideWith((ref) => Stream.value(members)),
@@ -451,6 +452,58 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(en.linkMatrixAccount), findsNothing);
       expect(find.text(en.rename), findsOneWidget);
+    });
+  });
+
+  group('people page of a mixed group (DEV-K)', () {
+    testWidgets('a Matrix group shared by link keeps its Matrix side: '
+        'accounts shown, Matrix invite + Matrix ID actions', (tester) async {
+      const me = '@anna:x.org';
+      const bob = '@bob:x.org';
+      final members = [
+        _member(me, 'Anna', mxid: me),
+        _member(bob, 'Bob', mxid: bob),
+        _member('p-lena', 'Lena'),
+      ];
+      const mixed = GroupModel(
+        roomId: _g,
+        name: 'Flat',
+        currency: 'EUR',
+        updatedAt: 1,
+        link: GroupLink(epoch: 1, secret: _secret),
+        sig: RecordSignature(user: me, device: 'D', key: 'k', sig: 's'),
+      );
+      await tester.pumpWidget(
+        testApp(
+          const GroupMembersPage(roomId: _g),
+          overrides: [
+            currentUserIdProvider.overrideWithValue(me),
+            ledgerGroupsProvider.overrideWith(
+              (ref) => Stream.value(const [mixed]),
+            ),
+            groupMembersProvider(
+              _g,
+            ).overrideWith((ref) => Stream.value(members)),
+            currentParticipantProvider(
+              _g,
+            ).overrideWith((ref) async => members.first),
+            linkInviteStateProvider(
+              _g,
+            ).overrideWith((ref) async => LinkInviteState.open),
+            ...FakeTrustStore().overrides(FakeDeviceGateway(const [])),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('membersInviteLink')), findsOneWidget);
+      expect(find.byTooltip(en.inviteByMatrixId), findsOneWidget);
+      // Bob is shown with his account, not as "Local".
+      expect(find.byKey(Key('memberAccount:$bob')), findsOneWidget);
+      expect(find.text(en.localModeYouSubtitle), findsNothing);
+      expect(find.text(en.localParticipant), findsOneWidget); // Lena only
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
+      expect(find.text(en.matrixIdLabel), findsOneWidget);
     });
   });
 

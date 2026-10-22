@@ -88,10 +88,17 @@ LinkInviteState linkInviteStateOf({
       : LinkInviteState.unavailable;
 }
 
-/// [LinkInviteState] of a group — re-read when its members or the group
-/// list change; the channel is read once (it only changes through this
-/// device's own invite / join, which invalidate this provider). An error
-/// (DB closed mid-switch) reads as [LinkInviteState.unavailable].
+/// This device's link channel of a group, watched (null: none).
+final linkChannelOfGroupProvider = StreamProvider.autoDispose
+    .family<LinkChannelModel?, String>(
+      (ref, groupId) => ref.watch(linkDaoProvider).watchChannel(groupId),
+    );
+
+/// [LinkInviteState] of a group — re-read when its members, the group list
+/// or its link channel change (DEV-K: the channel also goes away without
+/// this device's doing — a lock by another member leaves the relays — and
+/// the group page kept showing the link status). An error (DB closed
+/// mid-switch) reads as [LinkInviteState.unavailable].
 final linkInviteStateProvider = FutureProvider.autoDispose
     .family<LinkInviteState, String>((ref, groupId) async {
       final localMode = ref.watch(localModeActiveProvider);
@@ -100,9 +107,9 @@ final linkInviteStateProvider = FutureProvider.autoDispose
       final identity = mxid.isEmpty ? null : mxid;
       final membersF = ref.watch(groupMembersProvider(groupId).future);
       final groupsF = ref.watch(ledgerGroupsProvider.future);
-      final link = ref.watch(linkDaoProvider);
+      final channelF = ref.watch(linkChannelOfGroupProvider(groupId).future);
       try {
-        final channel = await link.getChannel(groupId);
+        final channel = await channelF;
         final members = await membersF;
         final group = (await groupsF)
             .where((g) => g.roomId == groupId)

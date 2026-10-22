@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:money_ledger/features/link/link_invite.dart';
 import 'package:go_router/go_router.dart';
 import 'package:money_ledger/core/database/account_database.dart';
 import 'package:money_ledger/core/database/app_database.dart';
@@ -283,6 +284,9 @@ void main() {
               _g,
             ).overrideWith((ref) => Stream.value(_members)),
             ledgerGroupsProvider.overrideWith((_) => Stream.value([_group])),
+            linkInviteStateProvider(
+              _g,
+            ).overrideWith((ref) async => LinkInviteState.unavailable),
             ...FakeTrustStore().overrides(FakeDeviceGateway(const [])),
           ]),
         );

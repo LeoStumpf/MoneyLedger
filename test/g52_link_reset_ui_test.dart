@@ -208,6 +208,9 @@ void main() {
             const GroupMembersPage(roomId: _g),
             overrides: [
               currentUserIdProvider.overrideWithValue('@anna:x.org'),
+              ledgerGroupsProvider.overrideWith(
+                (ref) => Stream.value(const []),
+              ),
               groupMembersProvider(
                 _g,
               ).overrideWith((ref) => Stream.value(members)),

@@ -33,6 +33,8 @@ import 'package:money_ledger/features/auth/sso_provider.dart';
 import 'package:money_ledger/features/balance/balance_calculator.dart';
 import 'package:money_ledger/features/balance/balance_provider.dart';
 import 'package:money_ledger/features/expenses/expenses_provider.dart';
+import 'package:money_ledger/features/link/link_invite.dart'
+    show linkChannelOfGroupProvider;
 import 'package:money_ledger/features/groups/group_archive_provider.dart';
 import 'package:money_ledger/features/groups/group_provider.dart';
 import 'package:money_ledger/models/group_archive.dart';
@@ -208,6 +210,11 @@ List<dynamic> signingUiOverrides({
   // G52 step 12 follow-up: the group page's "link replaced" notice (an
   // `AppSettings` watch stream otherwise).
   linkReplacedNoticeProvider.overrideWith((_, _) => Stream.value(linkReplaced)),
+  // DEV-K: the invite state watches the link channel — read it once here
+  // (a drift watch stream's timers would outlive the tree).
+  linkChannelOfGroupProvider.overrideWith(
+    (ref, g) => Stream.fromFuture(ref.watch(linkDaoProvider).getChannel(g)),
+  ),
   knownDeviceKeysProvider.overrideWith((_) => Stream.value(keys)),
   rejectedVersionProvider.overrideWith((_, _) => Stream.value(null)),
   trustedDevicesProvider.overrideWith((_) => Stream.value(const {})),

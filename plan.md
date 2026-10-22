@@ -690,6 +690,10 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       reset link + switch, delete → unpublish, web join + edits both ways.
       **Open:** the Pixel was not attached (no second network), App Link
       verification (landing site not live), TalkBack, §14 / §15
+      — **2026-10-22 (DEV-K):** three emulators again: §13 core flows,
+      offline status + catch-up, reset marker banner / old-link note /
+      switch, §14.1–14.5 (smoke "Last run"); still open: Pixel + second
+      network, App Link, TalkBack, §15, 14.6
 - [x] (from step 5) **Creating a link group while signed in:** a Matrix
       device signs every write, so a group it created has a signed meta and
       `openLinkChannel` refuses it (`signedGroup` — it would turn `mixed`,
@@ -806,10 +810,10 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
       snapshot: it lists the publisher as a peer with an empty digest, and
       a joiner that finds **only** markers creates a nameless group — fine
       while old builds aren't released
-- [ ] (from the step 12 marker) Device pass: reset on one phone → the
+- [x] (from the step 12 marker) Device pass: reset on one phone → the
       other phone still on the old link shows the banner; after opening
       the new link it is gone; opening the old link on a third device says
-      "This invite link was replaced"
+      "This invite link was replaced" — DEV-K 2026-10-22 (emulators)
 - [ ] (from step 12) Until everyone switched, a member still on the old
       link merges the old-link holders' (e.g. the removed person's)
       changes and carries them into the new link when switching — inherent
@@ -937,7 +941,7 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [x] "Lock group" once every active participant has a Matrix account: link
       channel closed, key dropped, unsigned versions refused from then on
       (signed group meta); reopening creates a new key + link — step 4
-- [ ] Device pass: smoke §14 (with G52 step 13)
+- [x] Device pass: smoke §14 (with G52 step 13) — DEV-K 2026-10-22: 14.1–14.5 on three emulators (14.6 360 dp / 200 % not run); found the mixed people page + lock status bugs (fixed, see DEV-K)
 - [x] (G53) **Leo:** confirm the consequence of mixed groups for people
       without an account (no meta / claimed-people edits); alternative would
       need a new wire rule (unsigned metas that keep `link` / `locked_at`)
@@ -1072,8 +1076,9 @@ Sub-steps = design doc §13 (each a commit with tests; fakes first):
 - [ ] (G57) A device without a Matrix account in a **mixed** group can't
       sign a merged meta (falls back to whole-meta LWW until a Matrix
       member merges); a restore never merges (never signs) — accepted?
-- [ ] (G57) Device check: concurrent rename / category add on two phones
-      (Matrix and a link group) — `[g57] merged meta` in logcat
+- [x] (G57) Device check: concurrent rename / category add on two phones
+      (Matrix and a link group) — `[g57] merged meta` in logcat — DEV-K
+      2026-10-22: both paths merged once per side, converged, no loop
 - [x] Decide (Leo): design note `docs/design/g57-category-merge.md`
       (2026-10-22) — keep whole-meta LWW, per-category clocks in the meta,
       or categories as their own record kind; also the G53 link / lock meta
@@ -1466,7 +1471,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] G58 — restore-point follow-ups (found in G48)
 - [x] G60 — expense-date follow-ups (found in G49)
 - [x] G61 — split follow-ups (found in G59)
-- [~] G57 — custom-category follow-ups (found in G47) — C1 merge built (wire bundle, v19); device check open
+- [~] G57 — custom-category follow-ups (found in G47) — C1 merge built (wire bundle, v19); device check done (DEV-K)
 - [x] G56 — UX follow-ups (found in G46)
 - [x] G63 — correctness + texts before release (usability review U11 …)
 - [x] G64 — people when creating a group (before G52 step 6/7)
@@ -1480,9 +1485,12 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] G72 — local notifications (on by default) — device check smoke 7.13 open
 - [x] G73 — manual exchange rates + fetch button (with G57) — device check smoke 6.7 + G57 decision open
 - [x] G75 — usability polish (review leftovers)
-- [x] G74 — payment details + GiroCode (with G57 / G73) — synced to my groups; device check smoke 5.21 open
+- [x] G74 — payment details + GiroCode (with G57 / G73) — synced to my groups; device check smoke 5.21 partly (DEV-K: sheet on the peer, link + Matrix group; real banking-app scan open)
 - [x] G76 — multiple payers (wire: `payers` + empty `paid_by`) — device check smoke 5.22 open
 - [ ] G79 — DEV-I findings (calculator keyboard, truncations, lazy Matrix store)
+- [x] DEV-K — round device pass (2026-10-22): smoke §13 + §14, G57 merge on both paths, G74 details on the peer, reset marker, offline status; release APK built (xiaomi install: INSTALL_FAILED_USER_RESTRICTED) — fixed: mixed-group people page shown as a link group, link sync icon left after a lock by someone else
+  - [ ] (DEV-K) Pixel + second network, App Link, TalkBack, §15, 14.6 and a real GiroCode scan still need a physical phone
+  - [ ] (DEV-K) After a link reset a third device opening the old link no longer sees the resetter as "already picked on another phone" (its snapshot left the old topic) — fine with the "replaced" note? (low)
 - [x] G77 — itemized split
 - [x] G78 — receipt photo, this device only
 

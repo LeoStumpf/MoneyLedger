@@ -68,7 +68,19 @@ class GroupMembersPage extends ConsumerWidget {
     // Matrix accounts. G52: the same in a link group (its participants
     // carry no Matrix ID; "me" is this device's link participant).
     final localMode = ref.watch(localModeActiveProvider);
-    final local = localMode || linkGroup;
+    // DEV-K: a **mixed** group (a Matrix group also shared by link — signed
+    // meta with `link`) keeps its Matrix side on an account's device:
+    // claimed people show their account, *Invite by Matrix ID* and the
+    // Matrix ID / devices actions stay (they were hidden, and claimed
+    // members showed as "Local").
+    // (Only read for a link group — the meta is what tells mixed apart.)
+    final group = linkGroup
+        ? (ref.watch(ledgerGroupsProvider).value ?? const [])
+              .where((g) => g.roomId == roomId)
+              .firstOrNull
+        : null;
+    final mixed = group?.sig != null && group?.link != null;
+    final local = localMode || (linkGroup && !mixed);
     final me = ref.watch(currentParticipantProvider(roomId)).value;
     final selfId = me?.userId ?? claimedBy(all, myId)?.userId;
 

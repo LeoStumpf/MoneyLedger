@@ -269,6 +269,51 @@ level and has never been built. Nothing in this checklist has been run on iOS.
 
 ## Last run
 
+**2026-10-22 (DEV-K, round device pass: §13, §14, G57 / G74 / marker / offline)** ·
+`79bdc61` + DEV-K fixes · debug build on three `test-atd` emulators (DE,
+720×1280): A (5554, local mode "Anna", later *Connect a Matrix account* →
+test account A), M (5556, first local mode "Ben", then wiped and signed in
+as test account B), L (5558, fresh, local mode "Lena"); real relays nos.lol
++ nostr.mom, matrix.org. **The Pixel was not attached** (no second network,
+no real camera / banking app). **§13:** 13.1 disclosure + sheet; 13.3
+picker ("Schon auf einem anderen Handy gewählt"), fresh install → local
+mode; 13.4 B → A ≈ 5 s; 13.5 B offline → cloud *Offline – kein Relay
+erreichbar*, a row added offline shows *Noch nicht synchronisiert*, back
+online A's change arrived after ≈ 20 s, B's after ≈ 4 s; 13.8 *Link
+zurücksetzen* → B (old link) shows the **marker banner** "Anna hat den
+Einladungslink dieser Gruppe ersetzt …" within seconds; a third device
+opening the old link sees "Jemand hat diesen Einladungslink ersetzt …" in
+the picker; B opens the new link → „auf diesen Link umstellen?“ → *Diesen
+Link nutzen* → banner gone, edits flow again. Link-group **backup nudge**
+shows its own text. **G74 (5.21 partly):** A's IBAN + "Name auf dem Konto"
+in the settings → B (link group) balance page: *Zahlungsdaten von Anna*
+on the rows to Anna → GiroCode sheet "Du zahlst Anna 4,00 €", name, IBAN,
+*IBAN kopieren*, "Anna hat diese Daten mit der Gruppe geteilt."; also
+present in M's DB for the Matrix group (scan with a banking app not run —
+no real phone). **G57:** both offline, A renames, B adds category "Hund"
+(link group) → back online `[g57] merged meta` once on each side, both show
+"Ferien 2026" + "Hund"; same on the **Matrix** path (A renames "WG Sued",
+M adds "Garten") → merged once each, converged, no further merges.
+**Connect a Matrix account** with a link group: adopted, `0 rows signed`,
+stays a pure link group (no claim). **§14:** 14.1 *Diese Gruppe auch per
+Link teilen?* → M `[link] bridging …`; 14.2 L joins as new "Lena", her
+expense reaches A + M, footer "Von Lena über den Einladungslink geändert ·
+nicht überprüft"; 14.3 L rename → snackbar "Nur mit einem Matrix-Konto
+möglich", nothing changes; 14.4 *Gruppe absichern* → "Noch nicht alle haben
+ein Matrix-Konto … Lisa, Lena"; both removed → lock → M + L `was locked:
+leaving the relays`, L shows the secure-only banner; 14.5 *Mit Link
+einladen* again → new link, M bridges again. The receiver eligibility check
+(an ineligible lock) needs a crafted client — covered by tests only.
+**Found + fixed:** the people page of a **mixed** group showed Matrix
+members as "Lokal", "me" as "Du (auf diesem Gerät)" and hid *Per Matrix-ID
+einladen* / Matrix ID / devices; after a lock by someone else the group
+page kept the link cloud ("Deine Änderungen werden an die Relays gesendet
+…") — the invite state now watches the channel. Not run: Pixel / two
+networks, App Link, 13.6 / 13.7 / 13.9–13.12 (DEV-J ran them), 14.6, §15,
+TalkBack, a real GiroCode scan. Release APK built; `xiaomi install` on
+Leo's phone failed with `INSTALL_FAILED_USER_RESTRICTED` (MIUI asks on the
+phone / *Install via USB* off).
+
 **2026-10-22 (DEV-J, G52 step 13 link pass)** · `5c1bb63` + DEV-J fixes ·
 debug build on two `test-atd` emulators (5554 = A "Anna", creator, local
 mode; 5556 = B, fresh install, joined as "Ben"; DE, 360 dp), the web

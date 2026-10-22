@@ -1009,6 +1009,12 @@ link state (`GroupModel.nextVersion` — editor, CSV import, G48 reset).
   expiry, other parts NIP-09), channel dropped; others drop theirs on the
   meta. A device without a Matrix participant shows the read-only
   `secureOnlyBanner`. Reopen = *Invite with a link* again (new secret).
+- **UI (DEV-K):** the people page treats a **mixed** group (signed meta
+  with `link`) as a Matrix group on an account's device (accounts shown,
+  *Invite by Matrix ID*, Matrix ID / devices actions) — only link-only
+  groups and local mode are names only. `linkInviteStateProvider` watches
+  the channel (`linkChannelOfGroupProvider`): a lock by someone else drops
+  it without any action here (the group page kept the link sync icon).
 - Privacy: PRIVACY.md + `privacyLinkBody` (bridging, Matrix IDs visible to
   link holders, lock deletes the copies). Tests: `test/core/link/g53_mixed_gate_test.dart`,
   `test/database/schema_v16_migration_test.dart`, `test/integration/g53_*`,

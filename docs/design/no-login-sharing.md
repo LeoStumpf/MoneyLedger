@@ -824,6 +824,11 @@ Each step is a commit with tests. The fakes come first.
 - **Reset page:** unsigned link versions are attributed by their `by` participant (`HistoryEntry.linkAuthor`, `ChangeBatch.linkEditors`; batches split per writer; our own participant = us).
 - Tests: `test/core/link/nostr_relay_pool_test.dart` (offline / reconnectNow), `test/integration/link_sync_engine_test.dart` (offline → pending mark → published at once; a new relay retried alone), `test/integration/link_leave_backup_test.dart` (left peer dropped, preview count), `test/g68_sync_sheet_relays_test.dart` (offline cloud, sheet, row mark EN + DE), `test/features/group_history_test.dart` + `test/history_ui_test.dart` (link authors).
 
+**As built (DEV-K device pass, 2026-10-22):**
+- **People page of a mixed group:** an account's device shows it as a Matrix group (accounts, *Invite by Matrix ID*, Matrix ID / devices actions) — it used to treat every group with a channel like a link-only one ("Local" for claimed members). Link-only groups and local mode stay names only.
+- **Invite state follows the channel:** `linkInviteStateProvider` watches the channel row (`linkChannelOfGroupProvider`); a lock by another member deletes it on the receiving device (§10.1) without any action there, and the group page kept the link sync icon ("sending to the relays …").
+- Tests: `test/g52_link_invite_test.dart` (mixed people page), `test/features/link_invite_state_test.dart`.
+
 ## 14. Risks and open questions for Leo
 
 **Risks**
