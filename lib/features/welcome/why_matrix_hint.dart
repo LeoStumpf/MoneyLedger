@@ -10,6 +10,7 @@ import '../../core/widgets/action_error.dart';
 import '../expenses/expenses_provider.dart' show linkDaoProvider;
 import '../groups/group_provider.dart' show ledgerGroupsProvider;
 import '../groups/group_overview_provider.dart';
+import '../../models/group_model.dart';
 import '../onboarding/onboarding_provider.dart' show settingsDaoProvider;
 import 'why_matrix_page.dart';
 
@@ -22,7 +23,8 @@ const kWhyMatrixHintMinRecords = 10;
 /// only once a **link-only** group is really in use
 /// ([linkOnlyGroupRecordCounts]). Without an account and (Leo 2026-10-22)
 /// with a Matrix account alike: a Matrix user's link-only group is not in
-/// the secure mode either (a mixed or locked group doesn't count).
+/// the secure mode either (a mixed or locked group doesn't count for a
+/// Matrix account; without an account a mixed group does).
 bool shouldShowWhyMatrixHint({
   required bool? dismissed,
   required Iterable<int> linkOnlyGroupRecordCounts,
@@ -45,24 +47,36 @@ final linkGroupIdsProvider = StreamProvider.autoDispose<Set<String>>(
 
 /// Whether the groups page shows the hint now ([shouldShowWhyMatrixHint]).
 final whyMatrixHintProvider = Provider.autoDispose<bool>((ref) {
-  // Cheapest first: a ledger without an unsigned meta (e.g. a Matrix
-  // account's own groups) has no link-only group — no further reads.
+  // Without an account every link group counts (a mixed one too — the
+  // user is anonymous there); a Matrix account only its link-only groups
+  // (Leo 2026-10-22: mixed / locked groups are in the secure mode).
+  final local = ref.watch(localModeActiveProvider);
+  // Cheapest first: a Matrix account's ledger without an unsigned meta has
+  // no link-only group — no further reads.
   final groups = [
     for (final g in ref.watch(ledgerGroupsProvider).value ?? const [])
-      if (g.sig == null) g,
+      if (local || g.sig == null) g,
   ];
   if (groups.isEmpty) return false;
   final ids = ref.watch(linkGroupIdsProvider).value ?? const <String>{};
   if (ids.isEmpty) return false;
   final dismissed = ref.watch(whyMatrixHintDismissedProvider).value;
   if (dismissed != false) return false;
+  bool counts(GroupModel g) {
+    final policy = deriveGroupPolicyFor(
+      hasChannel: ids.contains(g.roomId),
+      meta: g,
+    );
+    return local
+        ? policy != GroupPolicy.matrix
+        : policy == GroupPolicy.linkOnly;
+  }
+
   return shouldShowWhyMatrixHint(
     dismissed: dismissed,
     linkOnlyGroupRecordCounts: [
       for (final g in groups)
-        if (deriveGroupPolicyFor(hasChannel: ids.contains(g.roomId), meta: g) ==
-            GroupPolicy.linkOnly)
-          ref.watch(groupOverviewProvider(g.roomId)).recordCount,
+        if (counts(g)) ref.watch(groupOverviewProvider(g.roomId)).recordCount,
     ],
   );
 });

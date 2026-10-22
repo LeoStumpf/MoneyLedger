@@ -445,6 +445,34 @@ void main() {
       });
     }
 
+    // Without an account a mixed group counts too (the user is anonymous
+    // there) — only a Matrix account skips it.
+    testWidgets('no account: a mixed group counts', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          '/groups',
+          overrides: overrides(
+            group: const GroupModel(
+              roomId: _g,
+              name: 'Trip',
+              currency: 'EUR',
+              updatedAt: 1,
+              link: GroupLink(epoch: 1, secret: 'x'),
+              sig: RecordSignature(
+                user: '@ben:x',
+                device: 'D',
+                key: 'k',
+                sig: 's',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('whyMatrixHint')), findsOneWidget);
+      expect(find.text(en.whyMatrixHintBody), findsOneWidget);
+    });
+
     const signed = RecordSignature(
       user: '@anna:x',
       device: 'D',

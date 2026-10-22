@@ -513,7 +513,8 @@ card (`WhyMatrixHintCard`, `why_matrix_hint.dart`): pure
 (`AppSettings` `why_matrix_hint_dismissed`, per ledger,
 `SettingsDao.watchWhyMatrixHintDismissed` / `dismissWhyMatrixHint`) and a
 **link-only** group (`linkGroupIdsProvider` + unsigned meta,
-`deriveGroupPolicyFor`; mixed / locked don't count) with ≥
+`deriveGroupPolicyFor`; for a Matrix account mixed / locked don't count,
+without an account a mixed one does) with ≥
 `kWhyMatrixHintMinRecords` (10) live records (`GroupOverview.recordCount`)
 — without an account **and** (Leo 2026-10-22) with a Matrix account, which
 gets its own body (`whyMatrixHintBodyMatrix`: anyone with the link can see /
