@@ -137,4 +137,31 @@ void main() {
       );
     });
   });
+
+  test('a converted amount beyond kMaxAmountCents stays unconverted', () {
+    final fx = ExchangeRates(
+      base: 'IDR',
+      rates: const {'EUR': '999999999'},
+      settle: true,
+    );
+    final big = _e('big', 10000000000000, 'EUR', 'a', {
+      'a': 5000000000000,
+      'b': 5000000000000,
+    });
+    final small = _e('small', 100, 'EUR', 'a', {'a': 50, 'b': 50});
+    const pay = SettlementModel(
+      id: 'p',
+      roomId: 'g',
+      amountCents: 10000000000000,
+      currency: 'EUR',
+      fromUser: 'b',
+      toUser: 'a',
+      createdAt: 3,
+    );
+    final l = ledgerForSettling([big, small], [pay], fx);
+    expect(identical(l.expenses[0], big), isTrue);
+    expect(l.expenses[1].currency, 'IDR');
+    expect(l.expenses[1].amountCents, 99999999900);
+    expect(identical(l.settlements.single, pay), isTrue);
+  });
 }

@@ -1980,7 +1980,8 @@ reset the rates with the meta; bootstrap / backup carry them; not in the CSV.
   rate** is converted into `base` for the calculation only (amount via
   `convertCents`: BigInt, half away from zero, hundredths → hundredths for
   every currency incl. JPY; the split re-spread over the same people by
-  `distributeByWeights`, so it sums exactly); others stay separate. Used by
+  `distributeByWeights`, so it sums exactly); others stay separate (also a
+  record whose converted amount would exceed `kMaxAmountCents`). Used by
   `balanceForRoomProvider` (via `settlingLedgerProvider` +
   `groupExchangeRatesProvider`, `balance_provider.dart` → balance page,
   settle-up, share text, leave warning), `groupOverviewProvider` (my
