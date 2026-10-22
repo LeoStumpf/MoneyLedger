@@ -280,6 +280,8 @@ void main() {
       expect(notificationOpenAllowed('/settings'), isTrue);
       expect(notificationOpenAllowed('/groups/x/expenses'), isTrue);
       for (final p in [
+        '',
+        '/',
         '/splash',
         '/onboarding',
         '/welcome',
@@ -331,7 +333,7 @@ void main() {
     expect(en.privacyBackgroundBody, contains('it shows a notification'));
     expect(
       de.privacyBackgroundBody,
-      contains('zeigt es eine Benachrichtigung'),
+      contains('zeigt die App eine Benachrichtigung'),
     );
     expect(en.privacyBackgroundBody, contains('no push service'));
     expect(de.privacyBackgroundBody, contains('kein Push-Dienst'));

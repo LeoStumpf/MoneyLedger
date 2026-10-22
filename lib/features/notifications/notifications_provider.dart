@@ -121,8 +121,11 @@ Future<void> setNotificationsEnabled(WidgetRef ref, bool on) async {
 }
 
 /// Pages a tapped notification must not jump away from: start-up, sign-in
-/// and joining (the group opens once the user is in).
+/// and joining (the group opens once the user is in). `''` / `/`: the
+/// router has not resolved its first location yet (redirected right after).
 const _notificationBlockedPaths = {
+  '',
+  '/',
   kSplashLocation,
   kWelcomeLocation,
   kLocalSetupLocation,
