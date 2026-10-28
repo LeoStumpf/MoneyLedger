@@ -1,0 +1,1 @@
+Split group expenses with no server of ours: local-first, end-to-end encrypted.

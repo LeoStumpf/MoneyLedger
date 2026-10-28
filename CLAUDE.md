@@ -96,7 +96,10 @@ done; `ios/Runner` is template level. Don't spend effort on iOS unless asked.
 pub get → build_runner → `git diff --exit-code` (codegen/l10n must be
 committed) → format check → `flutter analyze` → tests → web release build.
 Flutter is pinned there (`flutter-version`) — bump it together with the local
-toolchain. No Android build in CI (Rust + NDK).
+toolchain. A second job, `android`, installs the Rust Android targets and builds
+the signed split APKs + AAB (artifact, 30 days); a tag `v<version>` publishes a
+GitHub release with the APKs (notes: `fastlane/metadata/android/en-US/changelogs/
+<versionCode>.txt`). Release steps: README "Releasing (Android)".
 
 **Offline demo mode (G15):** `--dart-define=OFFLINE_DEMO=true` (`kOfflineDemo`,
 `lib/core/demo/`) — `main()` runs the app with `demoOverrides()`: signed in as

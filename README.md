@@ -33,6 +33,31 @@ and sees only ciphertext.
 - **Private by design:** records are E2EE (vodozemac); inbound records are
   membership-gated so only group members can write to a group's ledger.
 
+<p>
+  <img src="docs/screenshots/en-light-groups.png" width="24%" alt="Groups">
+  <img src="docs/screenshots/en-light-group.png" width="24%" alt="Group">
+  <img src="docs/screenshots/en-light-balance.png" width="24%" alt="Balances">
+  <img src="docs/screenshots/en-dark-add.png" width="24%" alt="Add expense">
+</p>
+
+## Install
+
+Two ways, both free:
+
+1. **Download from GitHub** — take the `arm64-v8a` APK from the
+   [latest release](https://github.com/LeoStumpf/MoneyLedger/releases/latest) (it fits nearly
+   every phone; `armeabi-v7a` is for older 32-bit ones), open it and allow the install. To get
+   updates automatically, add this repository to [Obtainium](https://obtainium.imranr.dev/).
+2. **Install through Google Play as a tester** — *coming soon.* A closed test on Google Play is
+   being set up; this section will link to it once it is open.
+
+The two are signed differently, so Android will not update one with the other: to switch,
+**back up first** (Settings → Backup & restore → Back up all groups), uninstall, install the
+other and restore the backup.
+
+> **Transparency:** MoneyLedger was "vibe-coded" collaboratively with Claude (Anthropic's AI
+> assistant), which wrote much of the code under human direction.
+
 ### Features
 
 - **First-open welcome** that explains the app before any login: what it
@@ -296,6 +321,24 @@ flutter build apk --release      # → build/app/outputs/flutter-apk/
 > `tool/web/check_web_build.sh build/web` verifies a build (build.sh + CI run
 > it); after a Flutter upgrade it may ask you to re-run
 > `python3 -I tool/fonts/make_web_fonts.py` for a new engine Roboto path.
+
+### Releasing (Android)
+
+CI (`.github/workflows/ci.yml`, job `android`) builds the signed release on every push to
+`main`: split APKs per ABI and the App Bundle (AAB) for Google Play, kept as a workflow
+artifact for 30 days. To publish a version:
+
+1. Raise `version:` in `pubspec.yaml` (`<name>+<versionCode>`; the code only ever goes up).
+2. Write `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` (at most 500
+   characters — it is also Play's "What's new").
+3. Commit and push, then `git tag v<name> && git push origin v<name>`.
+
+CI checks that the tag matches the version, builds and signs, and publishes a GitHub release
+with `MoneyLedger-<name>-<abi>.apk`. For Google Play, take the AAB from that run's artifact
+and upload it in Play Console. The store texts live in `fastlane/metadata/android/en-US/`.
+
+The signing key comes from three repository secrets — `ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD` — which forks never see.
 
 ### Release signing (Android)
 

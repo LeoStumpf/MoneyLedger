@@ -1,0 +1,8 @@
+First release of MoneyLedger — share expenses in groups without a central server.
+• Your ledger stays on your devices
+• Share a group with an invite link, no account needed — or sync end-to-end encrypted via your Matrix account
+• Equal, exact, shares or percent splits, several payers, multiple currencies, payments
+• Categories, notes, search, archive
+• Encrypted backups and CSV export
+• English and German, light and dark theme
+No ads, no tracking.

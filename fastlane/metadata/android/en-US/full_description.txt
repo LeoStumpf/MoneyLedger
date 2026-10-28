@@ -1,0 +1,29 @@
+MoneyLedger is a free, open-source app for sharing expenses in groups — trips, flat shares, dinners — in the spirit of Splitwise or Tricount, but without a MoneyLedger server. Your groups, expenses and payments live in a local database on your devices.
+
+NO ACCOUNT NEEDED
+• Start right away with just your name; groups you don't share never leave your phone
+• Share a group with an invite link or QR code: every copy travels end-to-end encrypted over public Nostr relays, which see neither names nor amounts
+• Want more security? Connect a Matrix account (matrix.org or your own homeserver) at any time: records are signed by the device that wrote them and travel as end-to-end-encrypted messages; the homeserver only ever sees ciphertext
+
+SPLITTING
+• Equal, exact amounts, shares or percentages — always adding up to the cent
+• Several payers for one expense, back-dated expenses and payments
+• Multiple currencies, with fixed exchange rates per group if you want to settle in one
+• Simplified "who pays whom", shareable as text, plus an overview per currency
+
+ORGANISED
+• Categories (also your own), notes, search and filters
+• Archive settled groups; they come back by themselves when something new is added
+• Restore points and "reset this group to an earlier state" undo mistakes
+• Optional receipt photo, kept on this device only
+
+YOUR DATA
+• Full backup to a file, optionally encrypted with a passphrase, and CSV export/import
+• Background sync and notifications about others' changes on Android — no push service, no Firebase
+• No ads, no analytics, no tracking
+
+English and German, light and dark theme.
+
+Free software under the GNU AGPL v3. Source code: github.com/LeoStumpf/MoneyLedger
+
+MoneyLedger was written with Claude, Anthropic's AI model, under the developer's direction and testing.
