@@ -912,7 +912,7 @@ Each step is a commit with tests. The fakes come first.
 | E4 | live: subscriber + publisher (2 processes, laptop), 20 publishes every 10 s (one address, replaced each time), ~1.2 KB frames | delivery p50 **137 ms**, p95 **193 ms** (max 223); `OK` p50 47 ms | p50 **145 ms**, p95 **182 ms** (max 221); `OK` p50 45 ms | p50 < 1.5 s, p95 < 5 s ✓ |
 | E5 | fresh connection → `REQ` 2 topics (4 events) → `EOSE`, 10 runs | connect 105–119 ms, REQ→EOSE 35–95 ms, total p50 147 / max 206 ms | connect 105–110 ms, REQ→EOSE 35–38 ms, total p50 144 / max 148 ms | < 3 s p95 ✓ |
 | E6 | 6 fresh keys (= 6 groups from one IP), one 4.8 KB event each, 6 s apart, both relays | 6/6 `OK true`, no `rate-limited`, no NOTICE | 6/6 `OK true`, no `rate-limited` | ✓ (at our pace; the whole spike — ≈ 55 events from ≈ 13 fresh keys per relay in 15 min — never triggered a limit) |
-| E7 | retention probes published 08:42:44 UTC (+30 d and +10 min), see below | +0 h both served; **+15 min and +1 h: 30-d served, 10-min probe gone** (NIP-40 honoured) | same | 30-d probe at +4.4 d served on both ✓ (gate passed); at +8 d served on both ✓ (§12 criterion met); 14 d / 31 d pending |
+| E7 | retention probes published 08:42:44 UTC (+30 d and +10 min), see below | +0 h both served; **+15 min and +1 h: 30-d served, 10-min probe gone** (NIP-40 honoured) | same | 30-d probe at +4.4 d served on both ✓ (gate passed); at +8 d served on both ✓ (§12 criterion met); at +11.5 d served on both ✓; 14 d / 31 d pending |
 | E8 | crypto, 200-record snapshot (synthetic bootstrap shape, unsigned, 98 553 B JSON) | see next table | | |
 | E9 | Android headless round | **skipped — covered by the G52 device pass** | | |
 | E10 | NIP-11 | §4.6 / §9.4 | | ✓ |
@@ -961,6 +961,7 @@ cd tool/spike/nostr && dart run bin/check_retention.dart
 | +1 d | 2026-10-18 ≥ 08:43 | 30-d served — checked at +13.7 h (2026-10-17 22:25): served on both |
 | **+3 d (gate)** | **2026-10-20 ≥ 08:43** | 30-d served on both → retention criterion passed — **done 2026-10-21 18:09 (+105 h): served on both, 10-min still gone → gate passed** |
 | +7 d | 2026-10-24 ≥ 08:43 | 30-d served on ≥ 1 relay (§12 E7 criterion: on both) — **done 2026-10-25 09:03 (+192 h): served on both, 10-min still gone → §12 E7 criterion met** |
+| +11.5 d | 2026-10-28 21:37 | extra check (+277 h): 30-d served on both, 10-min still gone |
 | +14 d | 2026-10-31 ≥ 08:43 | informational (the 10-day refresh keeps real groups fresh) |
 | +31 d | 2026-11-17 | 30-d probe gone (NIP-40 honoured) |
 

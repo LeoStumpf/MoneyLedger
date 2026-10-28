@@ -625,7 +625,7 @@ snapshot; relays allow 128 KB–1 MB per event; NIP-40 expiration).
       `tool/spike/nostr/`, read-only): +1 d 2026-10-18, **+3 d 2026-10-20 =
       gate before G52 step 5 (sync engine)** → **passed** (checked
       2026-10-21, +105 h: 30-d probe served on nos.lol + nostr.mom), +7 d 2026-10-24 (§12
-      criterion) → **passed** (checked 2026-10-25, +192 h: served on both, 10-min probe gone), +14 d 2026-10-31, +31 d 2026-11-17 (probe gone)
+      criterion) → **passed** (checked 2026-10-25, +192 h: served on both, 10-min probe gone; again at +277 h on 2026-10-28), +14 d 2026-10-31, +31 d 2026-11-17 (probe gone)
 - [x] **Leo (2026-10-17): verify on native only, skip on the web.** Web signature verify misses the target (dart2js `bip340`
       4.9 s for 20 events) — proposal: verify on native only, web relies on
       the AES-GCM tag (§3.3 / §16); alternatives: verify only new events,
